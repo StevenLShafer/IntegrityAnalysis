@@ -8,6 +8,21 @@ the bottom rather than being deleted, so the reasoning survives.
 
 ## Where things stand — 2026-08-21 (session handoff)
 
+**UPDATE 2026-08-25: two corpus regression runs are IN FLIGHT**,
+launched detached after the day's six parser PRs merged (60-65: wide
+xlsx input, median [Q1,Q3], docx input, the vocacapsaicin engine
+repairs, folder-upload resilience, stat-tag labels - all deployed).
+Both rerun corpus/buildParseOutcomes.R on the current engine into
+FRESH work dirs (the old work dir would resume-skip):
+`C:/temp/POW_20260825` (Carlisle corpus, 1,865 PDFs, ~2 h;
+baseline to diff against is the committed corpus/ParseOutcomes.csv -
+per-file OUTCOME flips and diagnostic drift, not just the 71.9% rate)
+and `C:/temp/AAW_20260825` (C:/Temp/AA - NOTE it holds 6,328 PDFs,
+the whole submission archive, not only the 654 RCTs; ~6-7 h, no
+committed baseline - the yield is gross parse rate and nothing
+hanging). Logs: run.log/run.err in each work dir. NEXT: compare,
+investigate any regression, and update this note.
+
 **A full Carlisle-2017 validation run is IN FLIGHT**, launched detached
 2026-08-21 morning (survives every session): the shipped engine over
 all 5,080 One Sheet trials at mMax = 100,000, via the committed runner
