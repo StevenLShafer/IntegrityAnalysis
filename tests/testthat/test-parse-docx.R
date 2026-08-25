@@ -218,6 +218,28 @@ test_that("a caption written INSIDE the table as its first row is promoted", {
   expect_false(any(grepl("Nausea|TEAE", res$data$ROW)))
 })
 
+test_that("a captions-only manuscript explains where its tables went", {
+  # journals collect tables as separate files at submission; the
+  # revision docx then lists only "Table 1 / Baseline characteristics"
+  # paragraphs (vocacapsaicin ALN revisions, 2026-08-25)
+  doc <- officer::read_docx()
+  doc <- officer::body_add_par(doc, "Methods and results prose.")
+  doc <- officer::body_add_par(doc, "Table 1")
+  doc <- officer::body_add_par(doc,
+    "Baseline characteristics. No subjects were taking opioids.")
+  f <- file.path(tempdir(), "captionsonly.docx")
+  print(doc, target = f)
+  expect_error(parseBaselineTableHeuristics(f, quiet = TRUE),
+               "captions.*separate files")
+  # a docx with neither tables nor captions keeps the plain message
+  doc2 <- officer::read_docx()
+  doc2 <- officer::body_add_par(doc2, "Just prose, nothing tabular.")
+  f2 <- file.path(tempdir(), "notables.docx")
+  print(doc2, target = f2)
+  expect_error(parseBaselineTableHeuristics(f2, quiet = TRUE),
+               "must be a Word table")
+})
+
 test_that("the ai guard refuses a docx unless ai = never", {
   f <- syntheticDocxMeanSD()
   expect_error(parseBaselineTable(f, ai = "always", quiet = TRUE),

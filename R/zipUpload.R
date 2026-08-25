@@ -61,8 +61,13 @@
 
   # directories (Length 0 and trailing slash) and macOS junk: silent
   isDir  <- grepl("[/\\\\]$", name) | (len == 0 & ext == "")
+  # NOTE the Office lock-file test ("~$Manuscript.docx") runs on the
+  # raw name, not `base`: basename() TILDE-EXPANDS a leading "~", so a
+  # lock file at the archive root comes back mangled and the prefix
+  # test on `base` silently misses it.
   isJunk <- grepl("(^|/)__MACOSX(/|$)", name) | base == ".DS_Store" |
-    startsWith(base, "._")
+    startsWith(base, "._") |
+    grepl("(^|/)~\\$", gsub("\\\\", "/", name))
   drop(which(isDir | isJunk))
 
   # traversal and absolute names: refused loudly even though junkpaths
