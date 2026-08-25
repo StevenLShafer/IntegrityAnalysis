@@ -143,6 +143,43 @@
   pageWords[!rail, , drop = FALSE]
 }
 
+# Rotated margin text - the "Downloaded from http://... by <institution>
+# on <date>" watermark rail running up the edge of many published PDFs -
+# arrives from pdf_data() with its glyph box SWAPPED: a multi-character
+# word 5 points wide and up to hundreds of points tall. An upright word
+# of two or more characters is never taller than it is wide, so the swap
+# is a clean signature (single characters are exempt - an upright "I" is
+# genuinely tall and narrow, and ASA class rows depend on it).
+#
+# Left in place, the rail shreds across the table's own text lines: on
+# the vocacapsaicin corpus (2026-08-22) a lone "from" landed between two
+# category rows and silently became the open block header - orphaning
+# the remaining children into mean/SD rows - and the URL's digits seeded
+# a phantom arm cluster whose missing N vetoed every n (%) row.
+.ppStripRotatedText <- function(pageWords) {
+  if (is.null(pageWords) || nrow(pageWords) < 8) return(pageWords)
+  # candidate words: implausibly narrow for their length (the reported
+  # "width" of a rotated word is the font height's ~5 points, whatever
+  # its character count). Narrow UPRIGHT words exist too ("yr", "kg" in
+  # a condensed font), which is why narrowness alone must not strip -
+  # the rail test below is what decides.
+  narrow <- pageWords$width <= 6 & nchar(pageWords$text) >= 2
+  if (sum(narrow) < 4) return(pageWords)
+  # the rail: four or more narrow words sharing one x position and
+  # spanning a third of the page's height - running text never stacks
+  # words in a perfect vertical line
+  drop <- rep(FALSE, nrow(pageWords))
+  pageSpan <- diff(range(pageWords$y))
+  for (x0 in unique(pageWords$x[narrow])) {
+    g <- which(narrow & abs(pageWords$x - x0) <= 1)
+    if (length(g) >= 4 &&
+        diff(range(pageWords$y[g])) > 0.3 * pageSpan)
+      drop[g] <- TRUE
+  }
+  if (!any(drop)) return(pageWords)
+  pageWords[!drop, , drop = FALSE]
+}
+
 # ---------------------------------------------------------------------------
 # Table captions: "Table 1", "TABLE I", "Tab. 2"
 # ---------------------------------------------------------------------------

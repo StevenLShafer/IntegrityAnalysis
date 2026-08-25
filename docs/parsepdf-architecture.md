@@ -130,13 +130,39 @@ Cell shapes recognised (`tokenize.R`):
 | `numParen` | `45.3 (12.1)` | mean (SD) **or** n (%) — disambiguated from footnotes and labels |
 | `nPct` | `15 (60%)` | binary category |
 | `fraction` | `15/10`, `12/8/5` | k-way category |
-| `medianRng` | `127 [98–160]` | **skipped** — the method needs a mean and an SD |
+| `medianRng` | `127 [98–160]`, `127 [98, 160]` | median with Q1/Q3 **when the row label, caption, or footnote says the interval is an IQR** (issue 18; the app's metalog null accepts median/Q1/Q3 since issue 12); a stated range, or an unlabeled interval, is **skipped** — an IQR and a range both straddle the median, so only the text can tell them apart, and a fraud screen must not guess |
 | `pctOnly` | `60%` | **skipped** — no count |
 | `plain` | `45.3` | count under a category header, or an arm N |
 
 `ROUND_MEAN` is read from the printed glyphs, never inferred from the value: `63` has 0 decimals
 and `63.0` has 1. That distinction is data — it tells the Monte Carlo analysis how much of a
 discrepancy rounding alone can explain.
+
+### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
+
+A `.docx` submission enters through `parseBaselineTableHeuristics()` like any file (the
+`pdfFile` parameter name is historical; dispatch is by extension) and lands in
+`R/parseDocx.R`. A Word table is already a grid of cells — `officer::docx_summary()` returns
+the body in document order — so the docx path **fabricates the word-coordinate `lines`
+structure and feeds `.ppParseBlock()` verbatim**: column *c*'s words sit at
+`x = (c−1) × pitch`, with the pitch computed from the widest cell so `.ppClusterColumns()`
+always sees each Word column as one cluster. Every cell rule above comes for free.
+
+What differs from a PDF: captions pair exactly (the nearest preceding paragraphs, scored by
+`.ppCaptionScore()` — caption-above-table is the engine's native orientation, and submissions
+put tables at the end, which doesn't matter because every table in the document is a
+candidate); footnotes are the paragraphs after the table, appended as synthetic lines so the
+`stopPattern`/footnote machinery runs unchanged; arm-N recovery reads the paragraphs
+(armNRecovery.R is pure text); no glyph repair is needed (officer returns real Unicode);
+`pages` in the result is the table's ordinal, `layout` is `"docx"`, `engine` is
+`"heuristic-docx"`. The AI fallback is refused for docx input (it renders PDF pages).
+
+Officer quirks measured and handled: `doc_index` is unique per **cell**, and `row_id` runs on
+across tables — tables are reassembled by `doc_index` continuity and rebased per table.
+Punted: "Table 1 continued" split into a second Word table is not stitched; vertically merged
+cells keep their text in the first row only. Security: a docx (zip + XML via libxml2) parses
+as data and cannot execute, but crafted XML can stall its parser — the app routes docx through
+`parseBaselineTableFiles()`'s subprocess-and-timeout exactly like a PDF.
 
 ### 05b — Submitted manuscripts (2026-08-20)
 
@@ -352,9 +378,9 @@ resubmitted without translation. Two details to preserve when building the API:
   `server.R` would read as a category (its test is "integer-valued with at
   least one NA").
 - `$skipped` names each row that could not be used **and why** ("median
-  \[range\] - integrity analysis needs mean and SD"). That is what tells the
-  editor where to look, and it is more useful to return than a count of
-  failures.
+  \[range\] - the analysis needs quartiles (Q1/Q3), not the range"). That is
+  what tells the editor where to look, and it is more useful to return than a
+  count of failures.
 
 ## Where money is spent
 

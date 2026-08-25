@@ -552,6 +552,102 @@ non-detection is a pinned regression test.
 
 ---
 
+## 19. Word .docx manuscripts as input (IMPLEMENTED 2026-08-21)
+
+Steve's request (2026-08-21): parse a manuscript in Word format by the
+same rules as the PDF engine, allowing for the submission convention -
+tables at the end of the file, captions probably (not necessarily)
+before each table.
+
+As built (R/parseDocx.R): a Word table is already a grid of cells, so
+the docx path fabricates the word-coordinate `lines` structure and
+feeds the PDF engine's `.ppParseBlock()` VERBATIM - zero changes to the
+most heavily test-pinned code in the package - which buys every cell
+rule for free (mean ± SD, footnote-driven "a (b)" disambiguation,
+n (%) complements, percent conversion, SD-vs-SE, arm-N recovery from
+the Methods text). Column c's words sit at x = (c-1) x pitch, pitch
+computed from the widest cell so .ppClusterColumns() always sees each
+Word column as one cluster (pinned by test). Every table in the
+document is a candidate scored by the same caption-preference rules as
+the PDF path, so end-of-manuscript placement does not matter - and
+caption-above-table is the engine's NATIVE orientation, so the
+submission convention costs nothing. `pages` in the result is the
+table's ordinal (docx has no pages); `engine` is "heuristic-docx".
+
+Decisions worth remembering:
+
+- **Dispatch is by extension inside parseBaselineTableHeuristics()**,
+  keeping the exported API (and the historical `pdfFile` name) stable -
+  so inst/scripts/parseOne.R needed NO change, eliminating the
+  inst/-desync failure mode PR #10 hit.
+- **docx goes through the subprocess batcher** like a PDF: a .docx (zip
+  of XML via officer/libxml2) parses as data and cannot execute, but
+  the threat model says the manuscript author is the adversary, and
+  crafted XML can stall or exhaust the parser; the per-file OS timeout
+  contains that for free.
+- **The AI fallback is refused for docx** (it renders PDF pages); the
+  deployed app always runs ai = "never" anyway.
+- **officer quirks, measured on fixtures**: docx_summary()'s doc_index
+  is unique per CELL, and row_id runs on across tables - tables are
+  reassembled by doc_index continuity and rebased. Do not "simplify"
+  the grouping back to doc_index equality.
+- Punted (documented in the architecture map): "Table 1 continued"
+  split into a second Word table is not stitched; vertically merged
+  cells keep their text in the first row only; a pasted IMAGE of a
+  table has no text to read and fails with a message.
+
+Validation: tests/testthat/test-parse-docx.R over synthetic officer
+fixtures (helper-syntheticDocx.R) - submission format end to end,
+footnote disambiguation, p-column drop, no-caption table, decoy results
+table out-scored, arm-N recovery with CONSORT review flag, ragged
+cells, adapter cluster pinning, the subprocess path, the app-level
+upload, and the zip allowlist. The median-through-docx test activates
+automatically once issue 18's engine change merges.
+
+---
+
+## 18. Parse engine emits median [Q1, Q3] (IMPLEMENTED 2026-08-21)
+
+Steve's decision (2026-08-21, while scoping the docx work): the engine's
+unconditional skip of `medianRng` cells ("integrity analysis needs mean
+and SD") predated issue 12 - the app has accepted median/Q1/Q3 rows
+since then (metalog null) - so the skip was stale, and median support
+belongs in the shared parse engine now rather than as a future issue.
+
+As built (R/tokenize.R + R/parseBaselineTableHeuristics.R):
+
+- The `medianRng` token gained the comma/semicolon separator ("127
+  [98, 160]" - the printed IQR form, which the dash-only pattern never
+  matched) and now carries its THIRD number (`num3`/`dec3`; extraction
+  is structured via `.ppMedianParts`, because a bare number grep read
+  the separator dash of "127 [98-160]" as a minus sign).
+- **Emission is gated on text, never numbers**: an IQR and a min-max
+  range both straddle the median, so they are numerically
+  indistinguishable, and feeding a range into the quartile-matched
+  metalog would be a correctness bug in a fraud-screening verdict. The
+  row's own label outranks the caption/footnote (one table can print
+  IQR and range rows side by side); "interquartile range" is recognized
+  as an IQR statement, not a range statement. Verdicts: IQR stated ->
+  emit MEAN(=median)/Q1/Q3 (SD/SE empty, ROUND_MEAN from the printed
+  median); range stated -> skip "the analysis needs quartiles (Q1/Q3),
+  not the range"; nothing stated -> skip "median with an unlabeled
+  interval - if it is an IQR, enter median/Q1/Q3 by hand". A median
+  outside its own interval also refuses.
+- Q1/Q3 columns appear in the output only when a median row was
+  actually emitted - `.ppBaseColumns()` is unchanged, because the AI
+  path and the hybrid merge index by it and adding two always-empty
+  columns would clutter every parse.
+
+The wide-spreadsheet parser (issue 17) applies the same gate on its own
+cells; the docx parser (issue 19) inherits this engine change for free.
+Validation: tests/testthat/test-parse-median.R (all three gate
+verdicts, both separators, label-beats-footnote, end-to-end
+validateData acceptance); the existing median [range] fixtures in
+test-parse-synthetic.R and test-app-pipeline.R still skip, now with the
+quartile-focused reason.
+
+---
+
 ## Closed
 
 ### 2. Point https://integrityanalysis.io at the app (closed 2026-08-19)

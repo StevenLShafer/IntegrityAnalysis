@@ -265,7 +265,7 @@
           <tr><td><code>numParen</code></td><td>45.3 (12.1)</td><td>mean (SD) <em>or</em> n (%) — disambiguated from footnotes and labels</td></tr>
           <tr><td><code>nPct</code></td><td>15 (60%)</td><td>binary category</td></tr>
           <tr><td><code>fraction</code></td><td>15/10 · 12/8/5</td><td>k-way category</td></tr>
-          <tr><td><code>medianRng</code></td><td>127 [98–160]</td><td><strong>skipped</strong> — the method needs a mean and an SD</td></tr>
+          <tr><td><code>medianRng</code></td><td>127 [98–160] · 127 [98, 160]</td><td>median + Q1/Q3 when the text says IQR (issue 18); a stated range or unlabeled interval is <strong>skipped</strong></td></tr>
           <tr><td><code>pctOnly</code></td><td>60%</td><td><strong>skipped</strong> — no count</td></tr>
           <tr><td><code>plain</code></td><td>45.3</td><td>count under a category header, or an arm N</td></tr>
         </tbody>
@@ -274,6 +274,19 @@
     <p><code>ROUND_MEAN</code> is read from the printed glyphs, never inferred from the value:
     <code>63</code> has 0 decimals and <code>63.0</code> has 1. That distinction is data — it
     tells the Monte Carlo analysis how much of a discrepancy rounding alone can explain.</p>
+
+    <h3>Word manuscripts — .docx (issue 19, 2026-08-21)</h3>
+    <p>A <code>.docx</code> submission dispatches by extension inside
+    <code>parseBaselineTableHeuristics()</code> to <code>R/parseDocx.R</code>. A Word table is
+    already a grid of cells, so the docx path fabricates the word-coordinate
+    <code>lines</code> structure and feeds <code>.ppParseBlock()</code> verbatim — column
+    <em>c</em>'s words at <code>x = (c−1) × pitch</code>, pitch computed from the widest cell so
+    every Word column is exactly one cluster — buying every cell rule above unchanged. Captions
+    pair exactly (nearest preceding paragraphs, scored by <code>.ppCaptionScore()</code>);
+    footnotes append as synthetic lines; arm-N recovery reads the paragraphs; <code>pages</code>
+    is the table's ordinal; <code>engine</code> is <code>heuristic-docx</code>. The AI fallback
+    is refused for docx (it renders PDF pages). A crafted docx can stall libxml2, so the app
+    routes it through the subprocess-and-timeout batcher exactly like a PDF.</p>
 
     <h3>Submitted manuscripts (2026-08-20)</h3>
     <p>The deployed app screens <strong>submissions, not published articles</strong>. Screening

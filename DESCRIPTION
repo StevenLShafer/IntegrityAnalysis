@@ -38,6 +38,7 @@ Imports:
   stats,
   tools,
   utils,
+  xml2,
   zip
 Suggests:
     graphics,
@@ -71,6 +72,7 @@ Collate:
   parseWideTable.R
   armNRecovery.R
   parseBaselineTableHeuristics.R
+  parseDocx.R
   aiFallback.R
   parseBaselineTable.R
   parseBaselineTableFiles.R

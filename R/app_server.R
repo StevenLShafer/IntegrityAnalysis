@@ -661,7 +661,7 @@ app_server <- function(input, output, session) {
       files <- expandZipUploads(files)
       uploadedPaths <<- unique(c(uploadedPaths, files$datapath))
 
-      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf")
+      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx")
       for (nm in files$name[bad])
         outputComments(paste0(nm, " is not a supported file type."))
       files <- files[!bad, , drop = FALSE]
@@ -697,7 +697,11 @@ app_server <- function(input, output, session) {
         # tibble's [,col] semantics break the column handling downstream.
         as.data.frame(read_excel(path))
       }
-      for (i in which(files$ext != "pdf")) {
+      # NOTE this is an EXCLUSION list, not a whitelist: everything that
+      # survived the allowlist above and is not a parsed-document type
+      # falls into readSheet(). A new document format must be excluded
+      # here too, or it lands in the spreadsheet readers (issue 19).
+      for (i in which(!files$ext %in% c("pdf", "docx"))) {
         # Journal-style wide tables first (issue 17): a sheet laid out
         # the way journals print Table 1 - including the Editor's View
         # workbook this app itself generates - parses into template
@@ -751,10 +755,15 @@ app_server <- function(input, output, session) {
           list(stem = files$stem[i], data = d)
       }
 
-      pdfIdx <- which(files$ext == "pdf")
+      # Article PDFs and Word manuscripts share one parsing route: a
+      # subprocess per file with an OS timeout (poppler hangs on ~2% of
+      # real PDFs; a crafted docx can stall libxml2 - the author of a
+      # manuscript under investigation is the threat model), engine
+      # dispatch by extension inside parseBaselineTableHeuristics().
+      pdfIdx <- which(files$ext %in% c("pdf", "docx"))
       if (length(pdfIdx) > 0) {
         progress <- shiny::Progress$new(session, style = "notification")
-        progress$set(message = "Parsing PDF(s) ",
+        progress$set(message = "Parsing document(s) ",
                      detail = paste0(length(pdfIdx),
                                      " file(s), up to 60 s each"))
         res <- parseBaselineTableFiles(files$datapath[pdfIdx],
@@ -783,7 +792,11 @@ app_server <- function(input, output, session) {
           }
           outputComments(paste0(
             "Extracted the baseline table from ", files$name[i],
-            ": table page ", res$page[k], ", ", res$arms[k], " arm(s) (",
+            # for a .docx, `page` is the table's ordinal in the document
+            if (identical(r$layout, "docx"))
+              paste0(": table ", res$page[k], " of the document, ")
+            else paste0(": table page ", res$page[k], ", "),
+            res$arms[k], " arm(s) (",
             res$armsWithN[k], " with N), ", res$variables[k],
             " variable(s), ", res$continuous[k], " with mean and SD."))
           d <- r$data
