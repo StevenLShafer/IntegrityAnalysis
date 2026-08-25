@@ -517,6 +517,57 @@ sensitivity.
 
 ---
 
+## 21. A medRxiv preprint stress-test corpus (no ground truth, by design)
+
+Steve's idea (2026-08-25): preprint servers permit programmatic access,
+so harvest randomized-controlled-trial preprints into a test corpus.
+There is no ground truth for the values - what a preprint corpus buys
+is the opposite of validation: a firehose of AUTHOR-typeset PDFs (Word
+exports, LaTeX, every table habit in the wild, no copyeditor), which is
+exactly where parser crashes, hangs, and layout blind spots hide.
+Journal corpora can never supply that diversity, because a copyeditor
+has already ironed it out.
+
+As built: `corpus/downloadPreprintRCTs.R` walks the api.biorxiv.org
+metadata API for an interval (medRxiv by default - RCTs live there, not
+on bioRxiv), keeps records whose title/abstract says randomized trial
+(minus protocols, reviews, meta-analyses, post-hoc analyses), and
+fetches each newest-version PDF. **Gentle by requirement** (Steve,
+2026-08-25): one metadata page per second, one PDF per ~6 s with
+jitter, an identifying user agent with a contact address, and the
+instruction that any future rate trouble is answered by slowing down,
+not retrying harder. Resumable manifest records DOI, version, date,
+category, and LICENSE per file. The corpus lives under C:/temp and is
+never committed (corpus/README.md rules). Feed it to
+`corpus/buildParseOutcomes.R`; score CRASHES, HANGS, and skip-reason
+distribution - never values.
+
+Smoke-tested on one July-2026 medRxiv week (415 records -> 18 RCT
+candidates -> 8/8 fetchable PDFs fetched and verified; one 403
+recorded in the manifest and skipped).
+
+**Continuous operation** (Steve: "it could run continuously on this
+machine over a period of several weeks. Or more"): the metadata scan
+caches per (server, interval) in candidates.csv/scanState.csv, so only
+the first run walks the API; every later run downloads the next batch.
+Two STANDING WINDOWS SCHEDULED TASKS registered 2026-08-25 on this
+machine (view/edit in Task Scheduler):
+
+- **"IntegrityAnalysis medRxiv harvest"** - daily 02:00: 150 PDFs per
+  night at ~2 min each over the interval 2019-06-01..2026-08-25 into
+  C:/temp/medrxiv_rct; the first night also performs the one-time
+  metadata walk. Exhausts the candidate list in a few weeks, then
+  nightly runs no-op; extend the interval to pick up new postings.
+- **"IntegrityAnalysis corpora backup"** - Sundays 03:00:
+  tools/backupCorpora.ps1, an ADDITIVE robocopy of every local corpus
+  (journals, AA, medrxiv_rct, .NewCarlisle, .Boldt, .Fujii, the Shafer
+  studies folder - ~13 GB at filing) into
+  OneDrive/IntegrityAnalysisCorpora. Additive on purpose: a local
+  deletion never propagates to the backup (the 2026-08-19 corpus wipe
+  is why this exists). Check that the OneDrive plan has headroom.
+
+---
+
 ## 20. Docling cross-check harness and PubTables-1M fixture mining
 
 Filed 2026-08-25 (Steve's request, after surveying the document-parsing
