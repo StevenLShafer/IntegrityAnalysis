@@ -8,8 +8,35 @@ the bottom rather than being deleted, so the reasoning survives.
 
 ## Where things stand — 2026-08-21 (session handoff)
 
-**UPDATE 2026-08-25 evening - Carlisle regression COMPLETE and the
-week's engine work is CERTIFIED: parse rate 71.9% -> 83.1%** (1,550 of
+**UPDATE 2026-08-25 end of day.** Landed today, all on main and
+deployed: journal-style wide-spreadsheet input (PR #60), median
+[Q1, Q3] in the shared engine (#61), Word .docx manuscript input
+(#62), seven engine repairs from the vocacapsaicin four-format
+verification (#63, #65), folder-crash resilience with per-file
+subprocess batching and progress (#64), the medRxiv gentle harvester +
+OneDrive corpus backup (#66, nightly scheduled tasks), the BYOK AI
+assist (#67 - production demo succeeded: paste key, upload, green
+AI-read rows), workflow install hardening (#68), docs (#69), and
+immediate API-key validation with green/red verdicts (#70). QUEUED FOR
+TOMORROW: (a) the recertification below; (b) restructure this file to
+open-issues-first (Steve approved; worktree C:/Temp/ia-issues-rewrite,
+branch issues-restructure); (c) fold PDF parsing of freshly harvested
+medRxiv files into the nightly job using a snapshot-installed library
+(R CMD INSTALL to a private lib - never load_all from the live tree
+in corpus children); (d) pull PubTables-1M (issue 20); (e) rerun the
+A&A assembly (command below) and report the gross rate.
+
+**CERTIFICATION ON HOLD - the numbers in the next paragraph are
+CONTAMINATED.** The regeneration's parse children load_all'ed the live
+working tree, which was being edited mid-run, so the cached chunks mix
+engine versions. A clean rerun against an R CMD INSTALL snapshot
+library is IN FLIGHT in the adjudication session; ITS numbers are
+authoritative and it will update this block when done. Until then do
+NOT cite 83.1% / +214 (the r = 0.9930 Carlisle-2017 validation and the
+AI-assist demo are unaffected and safe to cite).
+
+**SUPERSEDED (contaminated - see above) 2026-08-25 evening - Carlisle
+regression: parse rate 71.9% -> 83.1%** (1,550 of
 1,865; +214 newly parsed, 5 newly failing, all five at candidate
 selection - adjudication chip filed; among files parsed both ways,
 variables/file up +0.25 mean). The regenerated
