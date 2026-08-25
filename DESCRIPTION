@@ -38,6 +38,7 @@ Imports:
   stats,
   tools,
   utils,
+  xml2,
   zip
 Suggests:
     graphics,

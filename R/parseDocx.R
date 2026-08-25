@@ -15,13 +15,15 @@
 # median gating, and arm-N recovery.
 #
 # What is genuinely different from a PDF, and how it is handled:
-#   - No pages, no coordinates. officer::docx_summary() returns the body
-#     in document order: paragraphs, and table cells with row/column
-#     ids. Coordinates are synthesized (.ppDocxLines): column c's words
-#     sit at x = (c-1) * pitch, where pitch is computed from the widest
-#     cell so that .ppClusterColumns() (gapTol = 25) always sees each
-#     Word column as exactly one cluster and a long label can never
-#     overrun its neighbour. Pinned by a unit test.
+#   - No pages, no coordinates. The body XML is read directly (xml2,
+#     which travels with officer): paragraphs and tables in document
+#     order, each table an exact grid of cells - see .ppDocxData for
+#     why docx_summary() cannot do this job. Coordinates are then
+#     synthesized (.ppDocxLines): column c's words sit at
+#     x = (c-1) * pitch, where pitch is computed from the widest cell
+#     so that .ppClusterColumns() (gapTol = 25) always sees each Word
+#     column as exactly one cluster and a long label can never overrun
+#     its neighbour. Pinned by a unit test.
 #   - Submissions put tables at the END of the file, captions (usually)
 #     just before each table. Caption-above-table is the engine's native
 #     orientation, and here the pairing is exact rather than heuristic:
@@ -54,58 +56,104 @@
 # through parseBaselineTableFiles()'s one-subprocess-per-file OS timeout
 # exactly like a PDF.
 
-# Read the document body: paragraphs (doc_index, text) and tables (one
-# character matrix each, plus the doc_index range its cells span).
+# One Word table element -> a character matrix of cell text.
 #
-# docx_summary()'s doc_index is unique PER ELEMENT - in the officer
-# version pinned here that means per CELL, not per table (measured
-# 2026-08-21 on a generated fixture: a one-table document numbered its
-# 27 cells 5..31), and row_id runs on ACROSS tables rather than
-# restarting (a second table's first row arrived as row_id 4). Tables
-# are therefore reassembled by doc_index continuity: cells of one table
-# are consecutive elements, and any gap means another element - at
-# minimum the paragraph Word requires between adjacent tables - sits
-# between, i.e. a new table starts. Row numbers are rebased per table.
+# Read from the XML directly (xml2 travels with officer) rather than
+# from officer::docx_summary(), whose output cannot reassemble tables:
+# measured on generated fixtures (2026-08-21/22), its doc_index is
+# unique per CELL, its row_id runs on ACROSS tables, and EMPTY cells
+# are omitted while still consuming doc_index values - so no rule over
+# the summary can tell one table from two, and a real manuscript's
+# Table 1 shattered into 8 fragments (Steve's vocacapsaicin corpus).
+# The XML has none of these ambiguities: one <w:tbl>, its <w:tr> rows,
+# their <w:tc> cells - empty ones included - and <w:gridSpan> for
+# horizontal merges.
+.ppDocxTableMatrix <- function(tbl) {
+  rows <- xml2::xml_find_all(tbl, "./w:tr")
+  if (length(rows) == 0) return(NULL)
+  cellsList <- lapply(rows, function(tr) {
+    tcs <- xml2::xml_find_all(tr, "./w:tc")
+    if (length(tcs) == 0) return(character(0))
+    txt <- vapply(tcs, xml2::xml_text, character(1))
+    span <- vapply(tcs, function(tc) {
+      gs <- xml2::xml_find_first(tc, "./w:tcPr/w:gridSpan")
+      v <- xml2::xml_attr(gs, "val")
+      if (is.na(v)) 1L else max(1L, suppressWarnings(as.integer(v)))
+    }, integer(1))
+    span[is.na(span)] <- 1L
+    out <- character(sum(span))
+    pos <- 1L
+    for (k in seq_along(txt)) {
+      out[pos] <- txt[k]
+      # A merged HEADER cell spanning several columns ("Treatment
+      # (n = 50)" over its subcolumns) is replicated across its span
+      # when it carries an arm size, so each spanned column keeps its
+      # N. Everything else spanned stays empty - an empty cell yields
+      # no token, which the engine already tolerates.
+      if (span[k] > 1L && grepl("(?i)n\\s*=\\s*\\d", txt[k], perl = TRUE))
+        out[pos + seq_len(span[k] - 1L)] <- txt[k]
+      pos <- pos + span[k]
+    }
+    out
+  })
+  nc <- max(lengths(cellsList))
+  if (nc == 0) return(NULL)
+  mat <- matrix("", nrow = length(cellsList), ncol = nc)
+  for (r in seq_along(cellsList)) {
+    cl <- cellsList[[r]]
+    if (length(cl) > 0) mat[r, seq_along(cl)] <- cl
+  }
+  mat
+}
+
+# Read the document body in order: paragraphs (doc_index, text) and
+# tables (cell matrix plus its position among the body's children).
+# Consecutive same-width tables with nothing but empty paragraphs
+# between them are STITCHED into one: manuscripts routinely split one
+# visual Table 1 into several Word table objects, and the header rows
+# (arm names, arm Ns) live in the first fragment while the data rows
+# live in the rest. A NON-empty paragraph between two tables - the next
+# table's caption - blocks stitching.
 .ppDocxData <- function(docxFile) {
-  s <- officer::docx_summary(officer::read_docx(docxFile))
-  para <- s[s$content_type == "paragraph", c("doc_index", "text")]
-  para$text[is.na(para$text)] <- ""
-  tcells <- s[s$content_type == "table cell", , drop = FALSE]
+  x <- officer::read_docx(docxFile)
+  body <- xml2::xml_find_first(x$doc_obj$get(), "//w:body")
+  kids <- xml2::xml_children(body)
+  para <- list()
   tabs <- list()
-  if (nrow(tcells) > 0 && all(c("row_id", "cell_id") %in% names(tcells))) {
-    tcells <- tcells[order(tcells$doc_index), , drop = FALSE]
-    grp <- cumsum(c(TRUE, diff(tcells$doc_index) > 1))
-    for (gi in seq_len(max(grp))) {
-      tc <- tcells[grp == gi, , drop = FALSE]
-      r0 <- suppressWarnings(min(tc$row_id, na.rm = TRUE))
-      nr <- suppressWarnings(max(tc$row_id, na.rm = TRUE)) - r0 + 1L
-      nc <- suppressWarnings(max(tc$cell_id, na.rm = TRUE))
-      if (!is.finite(nr) || !is.finite(nc)) next
-      mat <- matrix("", nrow = nr, ncol = nc)
-      for (k in seq_len(nrow(tc))) {
-        r <- tc$row_id[k] - r0 + 1L; cl <- tc$cell_id[k]
-        if (is.na(r) || is.na(cl)) next
-        txt <- tc$text[k]
-        if (is.na(txt)) txt <- ""
-        mat[r, cl] <- txt
-        # A merged HEADER cell spanning several columns ("Treatment
-        # (n = 50)" over its subcolumns) is replicated across its span
-        # when it carries an arm size, so each spanned column keeps its
-        # N. Everything else spanned stays empty - an empty cell yields
-        # no token, which the engine already tolerates.
-        cs <- if ("col_span" %in% names(tc)) tc$col_span[k] else NA
-        if (!is.na(cs) && cs > 1 &&
-            grepl("(?i)n\\s*=\\s*\\d", txt, perl = TRUE)) {
-          for (cc in seq(cl + 1L, min(nc, cl + as.integer(cs) - 1L)))
-            if (!nzchar(mat[r, cc])) mat[r, cc] <- txt
-        }
-      }
-      tabs[[length(tabs) + 1]] <-
-        list(docFirst = min(tc$doc_index), docLast = max(tc$doc_index),
-             cells = mat)
+  for (i in seq_along(kids)) {
+    nm <- xml2::xml_name(kids[[i]])
+    if (nm == "p") {
+      para[[length(para) + 1]] <-
+        data.frame(doc_index = i, text = xml2::xml_text(kids[[i]]),
+                   stringsAsFactors = FALSE)
+    } else if (nm == "tbl") {
+      mat <- .ppDocxTableMatrix(kids[[i]])
+      if (!is.null(mat))
+        tabs[[length(tabs) + 1]] <-
+          list(docFirst = i, docLast = i, cells = mat)
     }
   }
-  list(tables = tabs, paragraphs = para)
+  para <- if (length(para) > 0) do.call(rbind, para) else
+    data.frame(doc_index = integer(0), text = character(0),
+               stringsAsFactors = FALSE)
+  para$text[is.na(para$text)] <- ""
+
+  stitched <- list()
+  for (t in tabs) {
+    prev <- if (length(stitched) > 0) stitched[[length(stitched)]] else NULL
+    between <- para$text[para$doc_index > (if (is.null(prev)) -1 else
+                                             prev$docLast) &
+                           para$doc_index < t$docFirst]
+    if (!is.null(prev) && ncol(prev$cells) == ncol(t$cells) &&
+        !any(nzchar(.ppSquish(between)))) {
+      prev$cells <- rbind(prev$cells, t$cells)
+      prev$docLast <- t$docLast
+      stitched[[length(stitched)]] <- prev
+    } else {
+      stitched[[length(stitched) + 1]] <- t
+    }
+  }
+  list(tables = stitched, paragraphs = para)
 }
 
 # Fabricate one engine "line" (a data frame of words with text/x/y/width/
