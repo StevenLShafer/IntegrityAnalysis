@@ -175,6 +175,49 @@ test_that("median [Q1, Q3] flows through the docx path once the engine emits it"
   expect_identical(dur$Q3, c(160, 155))
 })
 
+test_that("a caption written INSIDE the table as its first row is promoted", {
+  # manuscripts often put "Table 1: Baseline characteristics ..." in the
+  # table's own first row; it must become the candidate's caption (and
+  # beat a larger uncaptioned results table), not trip the stop pattern
+  # (header names must be unique and non-empty for data.frame - pad
+  # the "empty" cells with distinct whitespace, which .ppSquish erases)
+  decoy <- list(
+    headers = c("Table - Summary of Treatment-Emergent Adverse Events",
+                " ", "  "),
+    rows = rbind(
+      c("", "Group A (n = 40)", "Group B (n = 42)"),
+      c("Any TEAE",  "27 (68%)", "28 (67%)"),
+      c("Nausea",    "6 (15%)",  "7 (17%)"),
+      c("Headache",  "7 (18%)",  "8 (19%)"),
+      c("Vomiting",  "1 (3%)",   "4 (10%)"),
+      c("Dizziness", "4 (10%)",  "5 (12%)")))
+  f <- makeTableDocx(
+    file.path(tempdir(), "incap.docx"),
+    prose = "Results are described below.",
+    headers = c("Table 1: Baseline characteristics of study subjects",
+                " ", "  "),
+    rows = rbind(
+      c("Characteristic", "0.05 mg/mL",    "Placebo"),
+      c("",               "N=36",          "N=37"),
+      c("Age (years)",    "48.9(12.3)",    "50.7(12.5)")),
+    tablesBefore = list())
+  # append the decoy AFTER the baseline table (bigger, no real caption)
+  doc <- officer::read_docx(f)
+  doc <- officer::body_add_par(doc, "")
+  dfd <- as.data.frame(decoy$rows, stringsAsFactors = FALSE)
+  names(dfd) <- decoy$headers
+  doc <- officer::body_add_table(doc, dfd, header = TRUE)
+  print(doc, target = f)
+
+  res <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_match(res$caption, "Baseline characteristics")
+  # ("Age (years)" may lose its unit parenthetical to label cleaning,
+  # which another PR refines - match the prefix)
+  age <- res$data[grepl("^Age", res$data$ROW), ]
+  expect_identical(age$MEAN, c(48.9, 50.7))
+  expect_false(any(grepl("Nausea|TEAE", res$data$ROW)))
+})
+
 test_that("the ai guard refuses a docx unless ai = never", {
   f <- syntheticDocxMeanSD()
   expect_error(parseBaselineTable(f, ai = "always", quiet = TRUE),

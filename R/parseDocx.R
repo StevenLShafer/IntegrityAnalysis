@@ -144,7 +144,14 @@
     between <- para$text[para$doc_index > (if (is.null(prev)) -1 else
                                              prev$docLast) &
                            para$doc_index < t$docFirst]
-    if (!is.null(prev) && ncol(prev$cells) == ncol(t$cells) &&
+    # a table that opens with its own full-width "Table ..." title row
+    # is a NEW table, never a continuation, even with nothing between
+    nz1 <- which(nzchar(.ppSquish(t$cells[1, ])))
+    ownTitle <- length(nz1) == 1 &&
+      grepl("(?i)^(table|tab\\.?)\\b", .ppSquish(t$cells[1, nz1[1]]),
+            perl = TRUE)
+    if (!is.null(prev) && !ownTitle &&
+        ncol(prev$cells) == ncol(t$cells) &&
         !any(nzchar(.ppSquish(between)))) {
       prev$cells <- rbind(prev$cells, t$cells)
       prev$docLast <- t$docLast
@@ -272,6 +279,29 @@ parseBaselineTableDocx <- function(docxFile,
       if (cs >= capScore) { capScore <- cs; caption <- pt }
     }
     if (!is.finite(capScore)) capScore <- 0
+    # Manuscripts often write the caption INSIDE the table, as its
+    # first row ("Table 1: Baseline characteristics of study subjects"
+    # across the width - vocacapsaicin corpus, 2026-08-22). Left in
+    # place, that row would trip the engine's next-table stop pattern
+    # AND the candidate would score 0, letting a larger results table
+    # win. Promote it: a leading row with exactly one non-empty cell
+    # whose text is caption-shaped becomes the candidate's caption.
+    mat <- tab$cells
+    while (nrow(mat) > 0) {
+      nz <- which(nzchar(.ppSquish(mat[1, ])))
+      first <- if (length(nz) == 1) .ppSquish(mat[1, nz[1]]) else ""
+      if (nzchar(first) &&
+          grepl("(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b",
+                first, perl = TRUE)) {
+        cs <- .ppCaptionScore(first)
+        if (cs >= capScore || is.na(caption)) {
+          capScore <- cs
+          caption <- first
+        }
+        mat <- mat[-1, , drop = FALSE]
+      } else break
+    }
+    tab$cells <- mat
     # footnotes: up to 4 paragraphs after this table and before the next
     nextTable <- c(tableIdx, Inf)[t + 1]
     after <- para$text[para$doc_index > tab$docLast &
