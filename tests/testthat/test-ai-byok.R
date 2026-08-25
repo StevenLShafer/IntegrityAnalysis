@@ -89,3 +89,39 @@ test_that("INTEGRITY_AI_ALWAYS with a deployment key enables the assist", {
     expect_false(is.null(reactiveData()))
   })
 })
+
+test_that(".ppKeyCheck gives the three honest verdicts", {
+  # a fake key is "invalid" when the API is reachable, "unreachable"
+  # when it is not - both are acceptable on a runner; what is NEVER
+  # acceptable is "valid"
+  v <- .ppKeyCheck("FAKE-KEY-keycheck-test")
+  expect_true(v %in% c("invalid", "unreachable"))
+  expect_false(identical(v, "valid"))
+  # with a real key in the local environment, the check must pass
+  # (skipped where no key exists, e.g. the GitHub runner)
+  skip_if(!nzchar(Sys.getenv("ANTHROPIC_API_KEY")), "no local API key")
+  expect_identical(.ppKeyCheck(Sys.getenv("ANTHROPIC_API_KEY")), "valid")
+})
+
+test_that("the key field validates on entry, with honest verdicts", {
+  shiny::testServer(app_server, {
+    # a mid-typing fragment never touches the network
+    session$setInputs(aiKey = "sk-ant-abc")
+    expect_identical(aiKeyMsg(), "short")
+    expect_match(as.character(output$aiKeyStatus$html), "too short")
+    # a full-length fake key: invalid when the API answers, unreachable
+    # when it does not - never "valid"; the key string never renders
+    session$setInputs(aiKey = "FAKE-KEY-validate-me-000000000000000")
+    m <- aiKeyMsg()
+    expect_true(m %in% c("invalid", "unreachable"))
+    html <- as.character(output$aiKeyStatus$html)
+    expect_match(html, "Invalid key|Could not reach")
+    expect_false(grepl("FAKE-KEY-validate-me", html, fixed = TRUE))
+    # erasing the key clears any stale verdict (the programmatic clear
+    # after "invalid" consumes one empty event by design)
+    session$setInputs(aiKey = "")
+    session$setInputs(aiKey = " ")
+    session$setInputs(aiKey = "")
+    expect_null(aiKeyMsg())
+  })
+})

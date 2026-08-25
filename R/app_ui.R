@@ -193,6 +193,12 @@ app_ui <- function(testNote = NULL)
                         placeholder = paste(
                           "Optional: your Anthropic API key turns on the",
                           "AI assist for hard-to-read documents")),
+          # Live key verdict (Steve's design, 2026-08-25): a green
+          # "Key validated" or a red "Invalid key" about a second after
+          # typing stops, so the uploader always knows whether THIS
+          # session is armed. See the aiKeyStatus observer in
+          # app_server.R.
+          uiOutput("aiKeyStatus"),
           HTML(paste0(
             "<div style='font-size: 85%; color: #666; margin-top: -12px; ",
             "margin-bottom: 8px;'>",
