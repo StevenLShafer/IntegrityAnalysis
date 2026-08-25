@@ -750,6 +750,20 @@
       mainType <- "plain"
 
     if (mainType == "meanSD") {
+      # A trailing stat tag on a NAMED variable - "Age (years)-Mean
+      # (SD)", "Weight, mean" - is notation, not name: strip it so this
+      # path names rows the way the wide-spreadsheet parser does
+      # ("Age (years)", not "Age (years)-Mean"). The tag must FOLLOW a
+      # separator, so a label that IS the tag ("Mean", for the statRow
+      # rule below) and one that merely starts with the word ("Mean
+      # age (SD), yr" - the published vocacapsaicin wording) are both
+      # untouched. .ppCleanLabel has already removed a trailing "(SD)"
+      # parenthetical; the plus-minus alternative covers "mean +/- SD"
+      # it leaves behind (2026-08-25).
+      label <- .ppSquish(sub(
+        paste0("(?i)[\\s,;\u2013\u2014-]+mean",
+               "(\\s*\\(\\s*sd\\s*\\)|\\s*\u00b1\\s*sd)?\\s*$"),
+        "", label, perl = TRUE))
       # A row labelled just "Mean" / "Mean (SD)" is a summary-statistic
       # line under a variable heading ("Weight (kg)" sits on the line
       # above): the variable's name is that heading, and the heading
