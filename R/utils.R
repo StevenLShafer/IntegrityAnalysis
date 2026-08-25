@@ -277,12 +277,20 @@
 # or "(yr)" (but NOT one containing "/" - that names categories, e.g.
 # "(M/F)"), and trailing separator punctuation.
 .ppCleanLabel <- function(label) {
+  # Some PDFs map superscript footnote markers to control characters
+  # (a BEL where a superscript "a" is printed - vocacapsaicin corpus,
+  # 2026-08-22); strip them before anything pattern-matches the label.
+  label <- gsub("[[:cntrl:]]", "", label)
   label <- .ppSquish(label)
   label <- sub("(?i)[,;\u2014-]?\\s*(no\\.?|n)\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
   label <- sub("(?i)[,;\u2014-]?\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
   # trailing "(kg)", "(yr)", "(mmHg)" ... : parenthetical with no slash,
-  # 8 characters or fewer inside the parentheses
-  label <- sub("\\(([^/()]{1,8})\\)\\s*$", "", label)
+  # UNIT-LIKE content only - all lowercase up to 8 characters, or a
+  # 1-4 letter mixed-case symbol ("mmHg", "SD", "IQR"). "(Hispanic)"
+  # fit the old any-8-characters rule and a category level lost its
+  # distinguishing qualifier (vocacapsaicin corpus, 2026-08-22).
+  label <- sub("\\(([a-z\u00b5\u00b0%\u00b2\u00b30-9.\u00b7\\s-]{1,8}|[A-Za-z]{1,4}\\d?)\\)\\s*$",
+               "", label)
   label <- sub("[[:space:],;:\u2014-]+$", "", label)
   .ppSquish(label)
 }
