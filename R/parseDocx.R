@@ -248,10 +248,28 @@ parseBaselineTableDocx <- function(docxFile,
   say <- function(...) if (!quiet) message(...)
 
   doc <- .ppDocxData(docxFile)
-  if (length(doc$tables) == 0)
+  if (length(doc$tables) == 0) {
+    # A revision that lists "Table 1 / Baseline characteristics ..." as
+    # caption paragraphs but contains no table at all is a journal
+    # convention, not an accident: several journals collect tables as
+    # separate files at submission, and some manuscripts paste the
+    # table as a picture (both seen in the vocacapsaicin corpus,
+    # 2026-08-25). Say which situation this looks like, and what to
+    # upload instead.
+    hasCaption <- any(grepl("(?i)^\\s*(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b",
+                            doc$paragraphs$text, perl = TRUE))
     stop("No tables found in ", docxFile,
-         " - the baseline table must be a Word table, not an image or",
-         " tabbed text.")
+         if (hasCaption)
+           paste0(" - the file lists table captions, but the tables",
+                  " themselves are not in it (journals often collect",
+                  " tables as separate files at submission, and a table",
+                  " pasted as a picture has no text to read). Upload",
+                  " the file that holds the baseline table, or the",
+                  " compiled submission PDF.")
+         else
+           paste0(" - the baseline table must be a Word table, not an",
+                  " image or tabbed text."))
+  }
 
   # Document-level arm-N recovery constants, exactly as the PDF path
   # extracts them once from .ppPdfText() (armNRecovery.R is pure text).

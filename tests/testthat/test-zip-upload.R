@@ -32,6 +32,40 @@ test_that(".zipEntryPlan takes the right entries and refuses the wrong ones", {
   expect_match(plan$why[10], "larger than")
 })
 
+test_that("Office lock files (~$...) are junk, in archives and uploads", {
+  # a whole-folder selection drags them along whenever a document is
+  # open in Word/Excel (the vocacapsaicin folder, 2026-08-25)
+  plan <- .zipEntryPlan(data.frame(
+    Name = c("~$Manuscript.docx", "sub/~$Table 1.xlsx", "trial.csv"),
+    Length = c(162, 165, 100), stringsAsFactors = FALSE))
+  expect_false(plan$take[1]); expect_identical(plan$why[1], "")
+  expect_false(plan$take[2]); expect_identical(plan$why[2], "")
+  expect_true(plan$take[3])
+
+  # and the direct upload path skips them with one quiet summary line,
+  # never a per-file "could not read"
+  d <- file.path(tempdir(), paste0("lock", basename(tempfile(""))))
+  dir.create(d)
+  good <- file.path(d, "good.csv")
+  write.csv(data.frame(TRIAL = "T", ROW = c("Age", "Age"),
+                       N = c(15, 17), MEAN = c(45.3, 46.1),
+                       SD = c(12.1, 11.8), ROUND_MEAN = 1,
+                       ROUND_OBSERVATION = 1), good, row.names = FALSE)
+  junk <- file.path(d, "~$Manuscript.docx")
+  writeLines("not a document", junk)
+  shiny::testServer(app_server, {
+    session$setInputs(upload = data.frame(
+      name = basename(c(good, junk)), datapath = c(good, junk),
+      stringsAsFactors = FALSE))
+    g <- reactiveData()
+    expect_false(is.null(g))
+    expect_true("Age" %in% g$ROW)
+    log <- commentsLog()
+    expect_match(log, "lock file")
+    expect_false(grepl("Could not extract.*~\\$", log))
+  })
+})
+
 # --- real archive round trip -------------------------------------------
 
 makeUploadDf <- function(paths, names = basename(paths)) {

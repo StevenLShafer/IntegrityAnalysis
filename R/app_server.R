@@ -661,6 +661,20 @@ app_server <- function(input, output, session) {
       files <- expandZipUploads(files)
       uploadedPaths <<- unique(c(uploadedPaths, files$datapath))
 
+      # Office LOCK FILES ("~$Table 1.xlsx") ride along whenever a whole
+      # folder is selected while a document is open in Word/Excel. They
+      # are not documents - a few hundred bytes of owner metadata with
+      # the parent's extension - so refusing them with a scary "could
+      # not read" message per file just buries the real log (the 22-file
+      # vocacapsaicin folder upload, 2026-08-25). Skip them quietly.
+      lock <- startsWith(files$name, "~$") | startsWith(files$stem, "~$")
+      if (any(lock)) {
+        outputComments(paste0(
+          "Skipped ", sum(lock), " Office lock file(s) (names starting ",
+          "\"~$\" - created while a document is open, not documents)."))
+        files <- files[!lock, , drop = FALSE]
+      }
+
       bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx")
       for (nm in files$name[bad])
         outputComments(paste0(nm, " is not a supported file type."))
@@ -763,13 +777,25 @@ app_server <- function(input, output, session) {
       pdfIdx <- which(files$ext %in% c("pdf", "docx"))
       if (length(pdfIdx) > 0) {
         progress <- shiny::Progress$new(session, style = "notification")
-        progress$set(message = "Parsing document(s) ",
-                     detail = paste0(length(pdfIdx),
-                                     " file(s), up to 60 s each"))
-        res <- parseBaselineTableFiles(files$datapath[pdfIdx],
-                                       ai = "never", timeout = 60,
-                                       quiet = TRUE,
-                                       pctApprox = isTRUE(input$pctApprox))
+        # ONE file per batch call, ticking the progress bar BEFORE each:
+        # Progress$set pushes straight down the websocket, and those
+        # pushes are what keep the connection alive through a
+        # multi-minute folder upload. Parsing a whole folder in one
+        # silent call left the socket idle for minutes and the client
+        # greyed out on shinyapps.io - the 22-file vocacapsaicin folder,
+        # 2026-08-25. The per-call overhead (an options RDS per file) is
+        # milliseconds against a multi-second parse.
+        resList <- vector("list", length(pdfIdx))
+        for (k in seq_along(pdfIdx)) {
+          progress$set(value = (k - 1) / length(pdfIdx),
+                       message = "Parsing documents ",
+                       detail = paste0(files$name[pdfIdx[k]], " (", k,
+                                       " of ", length(pdfIdx), ")"))
+          resList[[k]] <- parseBaselineTableFiles(
+            files$datapath[pdfIdx[k]], ai = "never", timeout = 60,
+            quiet = TRUE, pctApprox = isTRUE(input$pctApprox))
+        }
+        res <- do.call(rbind, resList)
         progress$close()
         for (k in seq_along(pdfIdx)) {
           i <- pdfIdx[k]
