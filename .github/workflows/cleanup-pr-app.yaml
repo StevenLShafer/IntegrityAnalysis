@@ -35,8 +35,20 @@ jobs:
           r-version: release
           use-public-rspm: true
 
+      # FAIL LOUDLY here too (2026-08-25): install.packages() only WARNS
+      # when a package is unavailable, so an RSPM hiccup let this step
+      # "succeed" with nothing installed and the purge step died with
+      # "no package called rsconnect" - two stale PR apps (66, 67)
+      # accumulated before the red X was noticed. Now: fall back to CRAN
+      # source, and stop the job unless the namespace actually loads.
       - name: Install rsconnect
-        run: Rscript -e 'install.packages("rsconnect")'
+        run: |
+          Rscript -e '
+            install.packages("rsconnect")
+            if (!requireNamespace("rsconnect", quietly = TRUE))
+              install.packages("rsconnect",
+                               repos = "https://cloud.r-project.org")
+            stopifnot(requireNamespace("rsconnect", quietly = TRUE))'
 
       - name: Terminate and purge the PR app
         env:
