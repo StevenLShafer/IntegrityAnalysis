@@ -502,6 +502,62 @@ sensitivity.
 
 ---
 
+## 20. Docling cross-check harness and PubTables-1M fixture mining
+
+Filed 2026-08-25 (Steve's request, after surveying the document-parsing
+landscape while the vocacapsaicin corpus work landed). Two additions to
+the parser optimization loop (AGENTS.md), both LOCAL CORPUS TOOLING
+ONLY - nothing here ever ships in the deployed app, which stays
+deterministic, offline, and R-only.
+
+**Why the survey did not change the architecture.** The 2026 academic
+benchmark of nine table extractors (arxiv 2511.16134, ~44k scientific
+tables) puts the field's best - IBM Docling's detection + TableFormer
+models - at ~0.99 table detection but only ~0.86 end-to-end
+cell-STRUCTURE accuracy on clean published biomedical tables, and
+practitioner reports show its VLM mode hallucinating column names and
+repeating values on dense numeric data. A hallucinated number is worse
+than a refusal in a fraud screen. And structure is the easy half:
+none of these tools attempt the semantic layer - mean (SD) vs n (%),
+printed rounding, arm Ns, Total columns, IQR gates - where nearly all
+of the vocacapsaicin corpus defects lived. The deployed engine's
+division of labor stands. What the field CAN contribute:
+
+- **A Docling cross-check harness** - the same play as the 2026-08-21
+  AI comparison that exposed the 583 arm-N-blocked skips: run Docling
+  (Python, local, pinned version) over the corpus failure set and diff
+  its cell grids against the engine's. Where Docling finds a grid we
+  miss, that is a targeted repair with the failure in hand; where the
+  two disagree on cells, one of them is wrong and the PDF says which.
+  Docling's grids feed the engine the way the docx path already does
+  (a cell matrix through the synthetic-coordinate adapter into
+  .ppParseBlock), so a rescued grid can even be re-scored semantically.
+- **PubTables-1M fixture mining** - Microsoft's ground-truthed corpus
+  of 947,642 tables from PMC articles
+  (huggingface.co/datasets/bsmock/pubtables-1m, 117 GB total). We do
+  NOT need the page images that dominate that size: the structure
+  annotations carry bounding boxes in PDF coordinates, and the "words"
+  files hold extracted words with positions - the same shape
+  pdftools::pdf_data() feeds the engine - so the annotation + words
+  archives (a few GB) allow scoring the engine's grid against ground
+  truth directly, and layout patterns our 1,865-article corpus lacks
+  become synthetic fixtures. Every sample maps to a PMCID, and the PMC
+  open-access subset is bulk-retrievable, so full source PDFs for
+  end-to-end fixtures stay inside the licensed-download-only policy
+  (corpus/README.md). Store under C:/temp (never committed).
+- **Adopt TEDS** (tree-edit-distance similarity over table structure)
+  as a third corpus score alongside parse rate and Carlisle value
+  accuracy - it grades the grid; the value-accuracy score grades the
+  numbers; parse rate grades coverage.
+
+Done looks like: the annotation/words subset of PubTables-1M on local
+disk with a scoring script in corpus/; a Docling runner + diff report
+over the current ParseOutcomes failures; at least one round of repairs
+with fixtures pinned, scored the mandatory both ways (parse rate AND
+value accuracy - a grid win that misreads numbers is a regression).
+
+---
+
 ## 17. Journal-style wide spreadsheets as input (IMPLEMENTED 2026-08-21)
 
 Steve's request (2026-08-21): the app must read an Excel spreadsheet in
