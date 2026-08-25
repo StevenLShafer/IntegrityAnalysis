@@ -218,6 +218,27 @@ test_that("a caption written INSIDE the table as its first row is promoted", {
   expect_false(any(grepl("Nausea|TEAE", res$data$ROW)))
 })
 
+test_that("a trailing stat tag is stripped from named variable labels", {
+  # "Age (years)-Mean (SD)" names the variable "Age (years)" - the tag
+  # is notation. A label that IS the tag ("Mean", under a heading) or
+  # merely STARTS with the word ("Mean age (SD), yr") is untouched;
+  # rows come out named as the wide-spreadsheet parser names them.
+  f <- makeTableDocx(
+    file.path(tempdir(), "stattag.docx"),
+    caption = "Table 1. Baseline characteristics",
+    headers = c("Characteristic", "Control (n = 15)", "Treatment (n = 17)"),
+    rows = rbind(
+      c("Age (years)-Mean (SD)", "45.3(12.1)", "46.1(11.8)"),
+      c("Weight (kg), mean",     "63(13)",     "68(12)"),
+      c("Mean height, cm",       "165(7)",     "167(7)")))
+  res <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  # ("Weight (kg)" keeps its unit: the tag sat AFTER the parenthetical,
+  # shielding it from the label cleaner's trailing-unit strip - which
+  # matches how "Age (years)" comes out, so it is the better outcome)
+  expect_setequal(unique(res$data$ROW),
+                  c("Age (years)", "Weight (kg)", "Mean height, cm"))
+})
+
 test_that("a captions-only manuscript explains where its tables went", {
   # journals collect tables as separate files at submission; the
   # revision docx then lists only "Table 1 / Baseline characteristics"
