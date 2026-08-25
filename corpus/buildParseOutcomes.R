@@ -79,11 +79,16 @@ comment <- function(r) {
 }
 S$COMMENTS <- vapply(seq_len(nrow(S)), function(i) comment(S[i, ]),
                      character(1))
+# FIX (2026-08-25): the corpus-root prefix used to be stripped with a
+# regex whose escaping class TRE rejects ("Invalid contents of {}"), so
+# the whole run crashed AT THE FINAL ASSEMBLY - after every chunk had
+# parsed - and only when it reached this line. Paths are not patterns:
+# strip the prefix as a fixed string.
+rootP <- paste0(normalizePath(corpusDir, winslash = "/"), "/")
+absP  <- normalizePath(S$path, winslash = "/", mustWork = FALSE)
 out <- data.frame(
-  PDF        = sub(paste0("^", gsub("([\\^$.|?*+()\\[\\]{}])", "\\\\\\1",
-                                    normalizePath(corpusDir, winslash = "/")),
-                          "/?"), "",
-                   normalizePath(S$path, winslash = "/", mustWork = FALSE)),
+  PDF        = ifelse(startsWith(absP, rootP),
+                      substring(absP, nchar(rootP) + 1), absP),
   OUTCOME    = ifelse(S$ok, "successfully parsed", "not successfully parsed"),
   COMMENTS   = S$COMMENTS,
   PAGE       = S$page,       LAYOUT     = S$layout,

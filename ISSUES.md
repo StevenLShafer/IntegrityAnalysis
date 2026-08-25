@@ -8,20 +8,21 @@ the bottom rather than being deleted, so the reasoning survives.
 
 ## Where things stand — 2026-08-21 (session handoff)
 
-**UPDATE 2026-08-25: two corpus regression runs are IN FLIGHT**,
-launched detached after the day's six parser PRs merged (60-65: wide
-xlsx input, median [Q1,Q3], docx input, the vocacapsaicin engine
-repairs, folder-upload resilience, stat-tag labels - all deployed).
-Both rerun corpus/buildParseOutcomes.R on the current engine into
-FRESH work dirs (the old work dir would resume-skip):
-`C:/temp/POW_20260825` (Carlisle corpus, 1,865 PDFs, ~2 h;
-baseline to diff against is the committed corpus/ParseOutcomes.csv -
-per-file OUTCOME flips and diagnostic drift, not just the 71.9% rate)
-and `C:/temp/AAW_20260825` (C:/Temp/AA - NOTE it holds 6,328 PDFs,
-the whole submission archive, not only the 654 RCTs; ~6-7 h, no
-committed baseline - the yield is gross parse rate and nothing
-hanging). Logs: run.log/run.err in each work dir. NEXT: compare,
-investigate any regression, and update this note.
+**UPDATE 2026-08-25 evening - Carlisle regression COMPLETE and the
+week's engine work is CERTIFIED: parse rate 71.9% -> 83.1%** (1,550 of
+1,865; +214 newly parsed, 5 newly failing, all five at candidate
+selection - adjudication chip filed; among files parsed both ways,
+variables/file up +0.25 mean). The regenerated
+corpus/ParseOutcomes.csv IS the new committed baseline. The
+regeneration crashed once at final assembly - a pre-existing TRE
+regex-escaping bug in buildParseOutcomes.R, fixed in the same commit
+(paths are stripped as fixed strings now); all 19 chunks were already
+cached, so the rerun was instant. The A&A run (C:/temp/AAW_20260825,
+6,328 PDFs, the whole submission archive) is still grinding and its
+IN-MEMORY parent still has the buggy assembly, so expect it to crash
+at the very end tonight - rerun `Rscript corpus/buildParseOutcomes.R
+C:/Temp/AA C:/temp/AAW_20260825` and it assembles from cache in
+seconds.
 
 **A full Carlisle-2017 validation run is IN FLIGHT**, launched detached
 2026-08-21 morning (survives every session): the shipped engine over
@@ -347,96 +348,25 @@ STILL OPEN in this issue: the API-service side (per-request BYOK when
 issue 1 is built), and any landing-page copy at integrityanalysis.io
 describing the assist.
 
-Original direction, for the record:
+The rationale that shaped the build (kept because it still governs):
 
-**Direction update 2026-08-20:** the likelier shape is now
-publisher-supplied API keys (BYOK) - a publisher passes their own
-Anthropic key per request (API) or per call (R package;
-`parseBaselineTableAI(apiKey=)` already accepts one), charges land on
-their account, and supplying the key doubles as informed consent to
-send manuscript text to the model. A URL keyword would bill Steve;
-BYOK bills the beneficiary. Security requirements if built: the key is
-never stored or logged, and dies with the session.
+**The point is publication, not concealment.** The AI algorithm is part
+of the academic contribution: visible, tested, and citable, with the
+gate on the *spending*, never the *method*. Hence: the deployment can
+use somebody else's key (a publisher runs their own instance with
+`INTEGRITY_AI_ALWAYS=true` and their own `ANTHROPIC_API_KEY` - the gate
+is a policy, not a fork); the prompts and JSON schema ARE the algorithm
+(`.ppSystemPrompt()` / `.ppTableSchemaJson()` in R/aiFallback.R,
+written to be read); and the evidence travels with it (the measured
+rescue rates: 91% of known values on articles with no parseable table,
+81% where the deterministic engine misread, both scored against
+Carlisle where the deterministic engine scores zero).
 
-The AI fallback is off in deployment because every call is billed to the
-maintainer. A secret keyword in the URL would let him — and only him — turn it
-on for a session, e.g. `?ai=<secret>`, with the app comparing SHA-256 of the
-supplied value against a stored hash so the secret itself is never in the code.
-
-**The point is publication, not concealment.** The AI algorithm is part of the
-academic contribution: it should be visible, tested and citable even though
-running it costs money that only the maintainer is paying. The secret gates the
-*spending*, not the *method*. That ordering has three consequences worth
-building for:
-
-- **Make the deployment able to use somebody else's key.** If a publishing
-  house wants to adapt this, they will run their own instance and pay their own
-  bills. The gate should therefore be a policy, not a hard-coded off switch:
-  something like *AI is enabled when a valid unlock token is supplied, or when
-  this deployment sets `INTEGRITY_AI_ALWAYS=true`* — the second being how a
-  third party runs it with their own `ANTHROPIC_API_KEY`. Hard-coding "off"
-  would force them to fork the logic, which defeats the purpose.
-- **The prompts and the JSON schema are the algorithm.** They live in
-  `ParsePDF::.ppTableSchemaJson()` and `.ppSystemPrompt()`, written to be read.
-  Keep them legible and commented; they are the part a reviewer will want to
-  examine, more than the plumbing around them.
-- **The evidence should travel with it.** The measured rescue rates — 91% of
-  known values on articles with no baseline table, 81% on articles whose table
-  the deterministic engine misread, both scored against Carlisle on articles
-  where the deterministic engine scores zero — are what make the method a
-  contribution rather than an assertion.
-
-*(Resolved: ParsePDF is a temporary repository and will be folded into this one
-— see issue 9 — so the algorithm becomes public by moving here.)*
-
-Since the secret will be 32 random characters from a password manager rather
-than a memorable phrase, the entropy problem below is already solved; the
-remaining points still apply.
-
-The mechanism is right. Four things it needs to be safe:
-
-**1. Make the secret high-entropy, or use a slow hash.** SHA-256 is fast by
-design — billions of guesses a second on a GPU. A memorable keyword carries
-perhaps 30–40 bits of entropy and would fall to an offline dictionary attack in
-minutes *if the hash is public*, and this repository is public. Either use 32+
-random characters (brute force then infeasible), or store the secret with a
-deliberately slow KDF — `sodium::password_store()` / `password_verify()` gives
-argon2 and is the right tool if the secret must be memorable.
-
-**2. Keep the hash out of the repository.** Put it in an environment variable on
-shinyapps.io (`INTEGRITY_AI_KEY_SHA256`). Then there is no artefact to attack
-offline at all, which is worth more than the choice of hash.
-
-**3. Assume the URL will leak.** Query strings end up in browser history, server
-access logs, `Referer` headers sent to third parties, screenshots and shared
-links. Treat the token as low-value and rotatable, not as a password. A signed,
-expiring token (HMAC over an expiry timestamp) is strictly better than a static
-secret, because a leaked URL then stops working by itself.
-
-**4. Cap the spending regardless.** The token protects money, so do not let it
-be the only thing that does: a hard per-session and per-day call limit means a
-leaked token cannot run up an unbounded bill. Defence in depth, and cheap.
-
-**On injection.** The classic risk does not really arise here: R will not
-execute a query string unless something calls `eval(parse(text = ...))`, so the
-first rule is simply **never evaluate anything from the URL**. The real hazards
-are the ordinary ones — do not interpolate the parameter into a file path (path
-traversal), a `system()` call, or HTML output (XSS). Reading it is safe:
-
-```r
-q <- shiny::parseQueryString(session$clientData$url_search)
-supplied <- q[["ai"]]                      # character or NULL, never evaluated
-ok <- !is.null(supplied) &&
-      identical(digest::digest(supplied, algo = "sha256", serialize = FALSE),
-                Sys.getenv("INTEGRITY_AI_KEY_SHA256"))
-```
-
-Compare in constant time if convenient; the timing leak is marginal here but
-avoiding it costs nothing.
-
-**Also**: exclude the parameter from any bookmarking, or the secret gets stored
-in bookmark state, and make sure it never reaches the log that `outputComments()`
-writes.
+*(Superseded and removed 2026-08-25 at Steve's direction: the original
+design of a secret URL keyword known only to him - SHA-256/KDF gating,
+token-leak analysis, and the injection notes - is no longer relevant
+now that BYOK ships: there is no secret, only each uploader's own key.
+The full design discussion survives in git history.)*
 
 ---
 
