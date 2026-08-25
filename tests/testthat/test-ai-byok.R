@@ -24,7 +24,7 @@ test_that("a key turns the assist on; failure falls back; the key is never logge
   # is exactly what triggers the AI consult - the fake key then fails
   # authentication (or the network is absent), and the deterministic
   # result must stand
-  fakeKey <- "sk-ant-FAKE-byok-test-key-000000"
+  fakeKey <- "FAKE-KEY-byok-test-000000"
   up <- stageAi(syntheticPdfMeanSD())
   shiny::testServer(app_server, {
     session$setInputs(aiKey = fakeKey)
@@ -57,7 +57,7 @@ test_that("the per-session cap turns the assist off with a message", {
           else Sys.setenv(INTEGRITY_AI_SESSION_CAP = old), add = TRUE)
   up <- stageAi(syntheticPdfMeanSD())
   shiny::testServer(app_server, {
-    session$setInputs(aiKey = "sk-ant-FAKE-cap-test")
+    session$setInputs(aiKey = "FAKE-KEY-cap-test")
     session$setInputs(upload = data.frame(
       name = "meanSD.pdf", datapath = up, stringsAsFactors = FALSE))
     log <- commentsLog()
@@ -74,7 +74,7 @@ test_that("INTEGRITY_AI_ALWAYS with a deployment key enables the assist", {
   olds <- Sys.getenv(c("INTEGRITY_AI_ALWAYS", "ANTHROPIC_API_KEY"),
                      unset = NA)
   Sys.setenv(INTEGRITY_AI_ALWAYS = "true",
-             ANTHROPIC_API_KEY = "sk-ant-FAKE-deployment")
+             ANTHROPIC_API_KEY = "FAKE-KEY-deployment")
   on.exit({
     for (v in names(olds))
       if (is.na(olds[[v]])) Sys.unsetenv(v) else
