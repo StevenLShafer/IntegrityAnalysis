@@ -35,7 +35,12 @@ Manuscripts under review are confidential, and the app is built around
 that: uploaded files are deleted from disk when the session ends,
 downloads are generated straight into your browser, and nothing is
 logged. The deployed analysis is fully deterministic and offline — no
-document content is ever sent to any third-party service.
+document content is ever sent to any third-party service — with one
+opt-in exception under your sole control: the **AI assist** (see below)
+engages only when you enter your own Anthropic API key, and entering it
+is your explicit consent to send your uploaded documents' text to that
+service for the session. Without a key, nothing you upload ever leaves
+this server.
 
 **Usage counting:** I tabulate the number of times IntegrityAnalysis is
 opened and the number of analyses run — simple counts, and nothing
@@ -198,6 +203,41 @@ analyzed. Limits: 300 files and 300 MB uncompressed per archive.
 data straight into the grid — eight empty rows and placeholder category
 columns (CAT1–CAT3) to start. Add rows with the right-click menu or the
 **Add 5 Rows** button; add a named column with **Add Column**.
+
+## The AI assist (optional — bring your own key)
+
+The deterministic reader is deliberate about refusing what it cannot
+verify, and fed a single article PDF it yields a fully analyzable trial
+roughly a third of the time. For the rest, an optional **AI assist**
+exists: enter your own Anthropic API key in the field above the upload
+box, and pages the deterministic reader cannot fully parse are sent to
+the Anthropic API — under *your* account, at roughly $0.06–0.11 per
+article. When even no table can be found, the assist also asks for
+baseline data stated in the article's running text (some trials report
+age, weight, and sex in a Methods sentence rather than a table).
+Measured against Carlisle's hand-extracted values, the assist recovers
+about 91% of known values on articles with no parseable table and 81%
+where the deterministic reader misread the table.
+
+The ground rules, each deliberate:
+
+- **Your key is your consent.** Without a key, no document content ever
+  leaves the server; entering one authorizes sending your uploads' text
+  to the Anthropic API for this session — appropriate only when you
+  have the right to share the document.
+- **The key is never stored, never logged, and dies with the
+  session.** It goes in a masked field, not a URL.
+- **The deterministic reader always runs first and its numbers always
+  win.** The assist only fills gaps, and every AI-read line paints
+  **green** in the grid with a note to verify it against the
+  manuscript. The results workbook's audit trail records which engine
+  read each line.
+- **A per-session cap** (25 documents) bounds spending even on your own
+  key.
+- **Publishers running their own instance** can enable the assist
+  permanently by deploying with `INTEGRITY_AI_ALWAYS=true` and their
+  own `ANTHROPIC_API_KEY` — the gate is a policy, not a hard-coded
+  switch, so no fork is needed.
 
 # The data grid
 

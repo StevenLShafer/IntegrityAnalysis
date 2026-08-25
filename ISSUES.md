@@ -319,7 +319,35 @@ adds discrimination, report what merely agrees as corroboration.
 
 ---
 
-## 8. A URL keyword that unlocks AI parsing (future)
+## 8. AI parsing in deployment - BYOK (APP SIDE IMPLEMENTED 2026-08-25)
+
+**IMPLEMENTED in the app, 2026-08-25** (timed for Steve's outreach to
+journal EICs, publishers, and WAME): a masked key field above the
+upload box. With a key entered, document parsing switches from
+ai = "never" to the fallback path - the deterministic engine still runs
+first and its numbers still win; the AI fills gaps and, when no table
+parses at all, asks for baseline data stated in the running text. As
+designed here in 2026-08-20's direction update: the key is the
+consent, the charges land on the key's owner, and the key is never
+stored, never logged (upstream error text is scrubbed of it too),
+never in a URL, and dies with the session. Guardrails as built:
+AI-read lines paint GREEN in the grid ("verify against the
+manuscript") and are tagged in provenance; a per-session document cap
+(default 25, INTEGRITY_AI_SESSION_CAP) bounds spending even on the
+owner's own key; a docx with the assist on quietly takes the
+deterministic path (the fallback renders PDF pages). Third-party
+deployments enable it permanently with INTEGRITY_AI_ALWAYS=true plus
+their own ANTHROPIC_API_KEY - the gate is a policy, not a fork.
+The user guide carries the consent language and the measured rescue
+rates (91%/81%). Tests: test-ai-byok.R (fake-key graceful failure with
+the deterministic result intact, key never in the log, cap, the
+deployment pathway - no test makes a real API call).
+
+STILL OPEN in this issue: the API-service side (per-request BYOK when
+issue 1 is built), and any landing-page copy at integrityanalysis.io
+describing the assist.
+
+Original direction, for the record:
 
 **Direction update 2026-08-20:** the likelier shape is now
 publisher-supplied API keys (BYOK) - a publisher passes their own

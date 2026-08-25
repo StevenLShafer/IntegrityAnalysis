@@ -261,12 +261,16 @@ test_that("a captions-only manuscript explains where its tables went", {
                "must be a Word table")
 })
 
-test_that("the ai guard refuses a docx unless ai = never", {
+test_that("a docx with the AI assist on parses deterministically, no error", {
+  # the BYOK assist (issue 8) sends mixed folder uploads through with
+  # ai = "fallback"; a docx must quietly take the deterministic path
+  # (the AI fallback renders PDF pages, which a docx does not have)
   f <- syntheticDocxMeanSD()
-  expect_error(parseBaselineTable(f, ai = "always", quiet = TRUE),
-               "not available for .docx", fixed = TRUE)
-  res <- parseBaselineTable(f, ai = "never", quiet = TRUE)
+  res <- parseBaselineTable(f, ai = "fallback", quiet = TRUE)
   expect_s3_class(res, "ParsePDFTable")
+  expect_identical(res$engine, "heuristic-docx")
+  res2 <- parseBaselineTable(f, ai = "never", quiet = TRUE)
+  expect_identical(res2$data, res$data)
 })
 
 test_that("the subprocess batch path parses a docx (inst/ shipping guard)", {
