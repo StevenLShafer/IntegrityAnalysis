@@ -90,7 +90,18 @@ jobs:
 
 
       - name: Deploy tooling (floating)
-        run: Rscript -e 'install.packages(c("rsconnect", "remotes"))'
+        # install.packages() only WARNS on failure (see cleanup-pr-app);
+        # verify the namespaces or stop
+        run: |
+          Rscript -e '
+            pk <- c("rsconnect", "remotes")
+            install.packages(pk)
+            miss <- pk[!vapply(pk, requireNamespace, logical(1),
+                               quietly = TRUE)]
+            if (length(miss))
+              install.packages(miss, repos = "https://cloud.r-project.org")
+            stopifnot(all(vapply(pk, requireNamespace, logical(1),
+                                 quietly = TRUE)))'
 
       - name: Install the pushed commit from GitHub and deploy
         env:

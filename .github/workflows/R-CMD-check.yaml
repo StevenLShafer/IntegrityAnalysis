@@ -72,7 +72,18 @@ jobs:
 
 
       - name: Dev tooling (floating - not part of the runtime lockfile)
-        run: Rscript -e 'install.packages(c("rcmdcheck", "testthat", "pkgload"))'
+        # install.packages() only WARNS on failure (see cleanup-pr-app);
+        # verify the namespaces or stop
+        run: |
+          Rscript -e '
+            pk <- c("rcmdcheck", "testthat", "pkgload")
+            install.packages(pk)
+            miss <- pk[!vapply(pk, requireNamespace, logical(1),
+                               quietly = TRUE)]
+            if (length(miss))
+              install.packages(miss, repos = "https://cloud.r-project.org")
+            stopifnot(all(vapply(pk, requireNamespace, logical(1),
+                                 quietly = TRUE)))'
 
       - uses: r-lib/actions/check-r-package@v2
         env:
