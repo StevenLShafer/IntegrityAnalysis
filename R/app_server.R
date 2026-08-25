@@ -65,6 +65,63 @@ app_server <- function(input, output, session) {
   aiFilesUsed <- 0L  # documents that engaged the AI assist this session
                      # (spending defense-in-depth; see the upload observer)
 
+  # ---- Immediate key validation (Steve's design, 2026-08-25) -----------
+  # A silently-accepted key gives the uploader no way to know THIS
+  # session is armed (with two app tabs open, a key pasted into the
+  # other one looks identical to a working key - which mislaid a live
+  # demo). On entry, the key is checked against the API's free models
+  # endpoint (.ppKeyCheck - authenticates, spends nothing): valid -> a
+  # green confirmation that doubles as the "this session is armed"
+  # indicator; invalid -> a red message and the box is EMPTIED, so a
+  # typo cannot sit there looking accepted; unreachable -> an honest
+  # maybe, and the key is kept (it may still work at upload time).
+  # No server-side debounce: Shiny text inputs already debounce ~250 ms
+  # client-side and a pasted key is one event; the length gate below
+  # keeps mid-typing fragments off the network (real keys run ~100
+  # characters), showing a "too short" hint instead. The key itself
+  # never appears in any message.
+  aiKeyMsg <- reactiveVal(NULL)
+  aiKeyJustCleared <- FALSE   # our own programmatic clear must not
+                              # erase the "invalid" verdict it delivers
+  # (no ignoreInit: with ignoreNULL suppressing the creation-time NULL,
+  # ignoreInit would swallow the FIRST real key entry instead)
+  observeEvent(input$aiKey, {
+    key <- trimws(if (is.null(input$aiKey)) "" else input$aiKey)
+    if (!nzchar(key)) {
+      if (aiKeyJustCleared) aiKeyJustCleared <<- FALSE
+      else aiKeyMsg(NULL)   # user erased the key: no stale "validated"
+      return()
+    }
+    if (nchar(key) < 30) {
+      aiKeyMsg("short")
+      return()
+    }
+    verdict <- .ppKeyCheck(key)
+    aiKeyMsg(verdict)
+    if (identical(verdict, "invalid")) {
+      aiKeyJustCleared <<- TRUE
+      updateTextInput(session, "aiKey", value = "")
+    }
+  })
+  output$aiKeyStatus <- renderUI({
+    m <- aiKeyMsg()
+    if (is.null(m)) return(NULL)
+    switch(m,
+      short = div(style = "color: #9a6a00;",
+                  paste("That looks too short for an Anthropic API key -",
+                        "keep typing, or paste the whole key.")),
+      valid = div(style = "color: #1a7a1a; font-weight: bold;",
+                  HTML("&#10003; Key validated - the AI assist is ON for this session.")),
+      invalid = div(style = "color: #b02a2a; font-weight: bold;",
+                    HTML(paste0("&#10007; Invalid key - the Anthropic API ",
+                                "rejected it. The field has been cleared; ",
+                                "check the key and paste it again."))),
+      unreachable = div(style = "color: #9a6a00;",
+                        paste("Could not reach the Anthropic API to check",
+                              "the key - it will still be tried at upload",
+                              "time.")))
+  })
+
   # THE PURGE GUARANTEE (Steve's requirement, 2026-08-17): when the
   # session ends, no record of the analysis survives. Uploaded files
   # (manuscript PDFs and spreadsheets) are deleted from disk along with

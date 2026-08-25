@@ -74,6 +74,31 @@ claudeAvailable <- function() {
   nzchar(Sys.getenv("ANTHROPIC_API_KEY"))
 }
 
+# Validate a key against the API without spending anything: GET
+# /v1/models authenticates the key but consumes no tokens (verified
+# 2026-08-25: 401 for a bad key, 200 for a good one). Used by the app's
+# key field for immediate feedback (Steve's design, 2026-08-25: a
+# silently-accepted key gives the uploader no way to know the session
+# is actually armed - which mislaid a live demo). Three honest answers:
+# "valid", "invalid" (401/403 - the key itself is wrong), and
+# "unreachable" (network trouble or an unexpected status - the key may
+# still work at upload time, so the caller must not discard it).
+.ppKeyCheck <- function(apiKey) {
+  resp <- tryCatch(
+    httr2::request("https://api.anthropic.com/v1/models") |>
+      httr2::req_headers("x-api-key" = apiKey,
+                         "anthropic-version" = .ppApiVersion) |>
+      httr2::req_timeout(10) |>
+      httr2::req_error(is_error = function(resp) FALSE) |>
+      httr2::req_perform(),
+    error = function(e) NULL)
+  if (is.null(resp)) return("unreachable")
+  s <- httr2::resp_status(resp)
+  if (s == 200L) "valid"
+  else if (s %in% c(401L, 403L)) "invalid"
+  else "unreachable"
+}
+
 # Fetch the key, with an error that says exactly what to do about it.
 .ppApiKey <- function(apiKey = NULL) {
   if (!is.null(apiKey) && nzchar(apiKey)) return(apiKey)

@@ -219,6 +219,13 @@ Measured against Carlisle's hand-extracted values, the assist recovers
 about 91% of known values on articles with no parseable table and 81%
 where the deterministic reader misread the table.
 
+The key is **checked the moment you enter it** — a green "Key
+validated" confirms this session is armed (the check is free: it
+authenticates without spending tokens); an invalid key is refused in
+red and the field cleared, so a typo can never sit there looking
+accepted. Each browser tab is its own session, and the green check
+tells you which tab holds the live key.
+
 The ground rules, each deliberate:
 
 - **Your key is your consent.** Without a key, no document content ever
