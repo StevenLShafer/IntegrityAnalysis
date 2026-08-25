@@ -245,6 +245,23 @@
         tokensByLine[[i]] <- tokensByLine[[i]][0, , drop = FALSE]
       }
   }
+  # (3) "Body mass index, kg/m 2": a superscript unit exponent set as its
+  #     own word turns a variable heading into a "data" line with one bare
+  #     token, so it never becomes the category header, and the Mean /
+  #     Median rows beneath it lose their variable name (vocacapsaicin
+  #     corpus, 2026-08-22). A single small integer sitting right after a
+  #     short unit word at the line's end is an exponent, not a value.
+  for (i in which(kind == "data")) {
+    toks <- tokensByLine[[i]]
+    if (nrow(toks) != 1 || toks$type[1] != "plain") next
+    if (is.na(toks$num1[1]) || !toks$num1[1] %in% c(2, 3)) next
+    if (grepl("(?i)[a-z]{1,3}\\s*[23]\\s*[)\\]]?\\s*$", lineTexts[i],
+              perl = TRUE) &&
+        nchar(.ppSquish(sub("[23]\\s*[)\\]]?\\s*$", "", lineTexts[i]))) >= 4) {
+      kind[i] <- "label"
+      tokensByLine[[i]] <- toks[0, , drop = FALSE]
+    }
+  }
 
   dataIdx <- which(kind == "data")
   if (length(dataIdx) == 0) return(NULL)
@@ -260,10 +277,20 @@
   headerIdx <- headerIdx[headerIdx > capIdx & headerIdx < firstData]
   # When a real header line exists, the label lines before it are the
   # caption's legend sentences, not arm names - manuscripts print those
-  # between the caption and the table (2026-08-20).
+  # between the caption and the table (2026-08-20). EXCEPT the one line
+  # immediately above it: submission tables stack the header as an
+  # arm-NAMES row over an N row ("0.05 mg/mL" / "N=36"), so that line
+  # is the names (vocacapsaicin corpus, 2026-08-22). A legend sentence
+  # in that position is fenced out by its word count - prose runs far
+  # longer than one name per column.
   headerAt <- which(kind == "header")
-  if (length(headerAt) > 0)
-    headerIdx <- headerIdx[headerIdx >= headerAt[1]]
+  if (length(headerAt) > 0) {
+    nameRow <- headerAt[1] - 1L
+    keepNameRow <- nameRow %in% headerIdx &&
+      nrow(lines[[nameRow]]) <= cols$n * 3 + 2
+    headerIdx <- headerIdx[headerIdx >= headerAt[1] |
+                             (keepNameRow & headerIdx == nameRow)]
+  }
   armN    <- rep(NA_integer_, cols$n)
   armName <- rep(NA_character_, cols$n)
 
@@ -334,7 +361,29 @@
         pCol <- c(pCol, k)
     }
   }
-  arms  <- setdiff(seq_len(cols$n), pCol)
+
+  # ---- Drop a Total / Overall column --------------------------------------
+  # Many Table 1s close with a column summing the arms ("Total  N=147").
+  # It is not a treatment arm: its values are arithmetic consequences of
+  # the others, and analyzing it as an independent sample would corrupt
+  # the Monte Carlo (the "arms" would be guaranteed too similar).
+  # Identified by its header name alone - conservative exact matches, so
+  # a real arm can never be discarded by a fuzzy pattern (vocacapsaicin
+  # corpus, 2026-08-22).
+  totCol <- integer(0)
+  for (k in seq_len(cols$n)) {
+    hdr <- armName[k]
+    if (!is.na(hdr) &&
+        grepl(paste0("(?i)^(total|overall|all\\s+(patients|subjects|",
+                     "participants)|entire\\s+cohort)$"),
+              .ppSquish(hdr), perl = TRUE)) {
+      totCol <- c(totCol, k)
+      say("  column \"", .ppSquish(hdr), "\" dropped - a totals column,",
+          " not a treatment arm.")
+    }
+  }
+
+  arms  <- setdiff(seq_len(cols$n), c(pCol, totCol))
   nArms <- length(arms)
   if (nArms == 0) return(NULL)
 
@@ -433,6 +482,7 @@
   skipped      <- list()
   catHeader    <- NA_character_
   catHeaderPct <- FALSE        # did the category header announce percentages?
+  catHeaderNPct <- FALSE       # ... or "N (%)" cells (counts with percents)?
   catColumns   <- character(0)
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
@@ -451,11 +501,27 @@
   for (i in seq(firstData, lastData)) {
     if (kind[i] == "label") {
       lbl <- .ppCleanLabel(lineTexts[i])
+      # A journal watermark ("Downloaded from http://...") or copyright
+      # rail interleaves with the table's own lines on some published
+      # PDFs; taken as a label line it OVERWRITES the open block header
+      # mid-block, orphaning the remaining children (vocacapsaicin
+      # corpus, 2026-08-22: Race lost Black and Other to it).
+      if (grepl("(?i)https?://|www\\.|downloaded\\s+from|copyright|©",
+                lineTexts[i], perl = TRUE))
+        next
       if (nchar(lbl) > 0 && nrow(lines[[i]]) <= 6) {
         catHeader <- lbl
+        # "Race, N (%)": the children below are counts-with-percents -
+        # levels of ONE category variable, whatever shape their cells
+        # take ("12 (33)", "12(33%)", a bare "0"). Checked BEFORE the
+        # bare-% test, which would otherwise shadow it (vocacapsaicin
+        # corpus, 2026-08-22).
+        catHeaderNPct <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)",
+                               lineTexts[i], perl = TRUE)
         # "Race, %" / "ASA status, %": the children below are percentages
-        catHeaderPct <- grepl("%", lineTexts[i], fixed = TRUE) ||
-          grepl("(?i)\\bpercent", lineTexts[i], perl = TRUE)
+        catHeaderPct <- !catHeaderNPct &&
+          (grepl("%", lineTexts[i], fixed = TRUE) ||
+             grepl("(?i)\\bpercent", lineTexts[i], perl = TRUE))
       }
       next
     }
@@ -569,11 +635,26 @@
 
     if (mainType == "numParen") {
       labelSaysPct    <- grepl("(?i)\\(%\\)|percent", rawLabel, perl = TRUE)
+      # A wrapped row label can leave its "N (%)" tag on the NEXT line
+      # ("Nonsteroidal anti-inflammatory  4 (11) ..." with "drugs,
+      # N (%)" beneath it): the continuation is a label-kind line, and
+      # its tag is this row's notation evidence (vocacapsaicin corpus,
+      # 2026-08-22).
+      nextLabelPct <- i < length(kind) && kind[i + 1] == "label" &&
+        grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
+              perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
       decision <-
         if (parenIsSD == "sd") "sd"
         else if (parenIsSD == "percent") "percent"
-        else if (labelSaysPct) "percent"
+        else if (labelSaysPct || nextLabelPct) "percent"
+        # Under an open "N (%)" block header ("Race, N (%)"), an "a (b)"
+        # child is a count and its percentage, whatever the footnote says
+        # about means - the block header is CLOSER evidence than the
+        # table-level footnote. Without this, "White 12 (33)" became a
+        # mean of 12 with an SD of 33 because the footnote also said
+        # "mean (SD)" (vocacapsaicin corpus, 2026-08-22).
+        else if (!is.na(catHeader) && catHeaderNPct) "percent"
         else if (labelContinuous || footSaysMeanSD) "sd"
         else if (tableHasPlusMinus) "percent"
         else if (footSaysPercent) "percent"
@@ -585,12 +666,33 @@
             " - check, or set parenIsSD.")
     }
 
+    # Children of an "N (%)" block header are the levels of ONE category
+    # variable: accumulate them as counts under that header (the plain
+    # branch below) rather than emitting a separate binary category -
+    # with a double-counting complement - per level. A row announcing
+    # its OWN "n (%)" in its label is a standalone binary variable even
+    # while a block is open.
+    if (mainType == "nPct" && !is.na(catHeader) && catHeaderNPct &&
+        !grepl("(?i)\\(\\s*%\\s*\\)|percent", rawLabel, perl = TRUE))
+      mainType <- "plain"
+
     if (mainType == "meanSD") {
-      rowName <- .ppUniqueName(if (nchar(label) > 0) label else "Unnamed",
-                               usedRowNames)
+      # A row labelled just "Mean" / "Mean (SD)" is a summary-statistic
+      # line under a variable heading ("Weight (kg)" sits on the line
+      # above): the variable's name is that heading, and the heading
+      # stays OPEN for the Median line that customarily follows
+      # (vocacapsaicin corpus, 2026-08-22).
+      statRow <- !is.na(catHeader) &&
+        grepl("(?i)^mean\\b", label, perl = TRUE)
+      rowName <- .ppUniqueName(
+        if (statRow) catHeader
+        else if (nchar(label) > 0) label else "Unnamed", usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
-      catHeader <- NA_character_
-      catHeaderPct <- FALSE
+      if (!statRow) {
+        catHeader <- NA_character_
+        catHeaderPct <- FALSE
+        catHeaderNPct <- FALSE
+      }
       # A row label may override the table-level footnote: "Age, mean (SEM)"
       rowSaysSE <- grepl(seWord, rawLabel, perl = TRUE)
       rowSaysSD <- grepl("(?i)\\bs\\.?d\\.?\\b|standard\\s+deviation",
@@ -615,6 +717,7 @@
     } else if (mainType == "fraction") {
       catHeader <- NA_character_
       catHeaderPct <- FALSE
+      catHeaderNPct <- FALSE
       nParts <- max(vapply(armTok, function(t)
         if (is.null(t)) 0L else length(strsplit(t$text, "/")[[1]]), integer(1)))
       partNames <- NULL
@@ -660,13 +763,24 @@
         list(row = rowName, type = "category", perArm = perArm)
 
     } else if (mainType == "nPct") {
+      # The variable's name: the row label; failing that, an open block
+      # header (a bare "N (%)" label under "NSAID use" names the NSAID
+      # variable, not "Category"); failing both, "Category".
+      catName <- .ppUniqueName(
+        if (nchar(label) > 0) label
+        else if (!is.na(catHeader)) catHeader else "Category", catColumns)
       catHeader <- NA_character_
       catHeaderPct <- FALSE
-      catName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
-                               catColumns)
+      catHeaderNPct <- FALSE
       complementName <- .ppUniqueName(paste("Not", catName),
                                       c(catColumns, catName))
-      haveN <- all(!is.na(armN[arms]))
+      # The N requirement is ROW-LOCAL: only the arms this row actually
+      # has cells in need a known N for the complement. Requiring an N
+      # for every cluster let one stray cluster (a superscript exponent,
+      # a watermark) veto every n (%) row in the table (vocacapsaicin
+      # corpus, 2026-08-22).
+      present <- !vapply(armTok, is.null, logical(1))
+      haveN <- any(present) && all(!is.na(armN[arms[present]]))
       catColumns <- unique(c(catColumns, catName, if (haveN) complementName))
       rowName <- .ppUniqueName(catName, usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
@@ -679,6 +793,10 @@
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- armTok[[j]]
         if (is.null(t)) return(NULL)
+        # a mixed row may print a bare count in one arm ("0") among the
+        # n (%) cells; a non-integer bare cell is not a count
+        if (t$type == "plain" &&
+            (is.na(t$num1) || t$num1 != round(t$num1))) return(NULL)
         cnt <- as.integer(t$num1)
         out <- stats::setNames(list(cnt), catName)
         if (haveN) out[[complementName]] <- armN[arms[j]] - cnt
@@ -694,7 +812,31 @@
         list(row = rowName, type = "category", perArm = perArm)
 
     } else if (mainType == "plain") {
+      # "Median  71.9  82.3 ..." is a summary statistic, not counts, and
+      # without quartiles it is unusable either way. Skipped with its own
+      # reason, and the variable heading above it stays OPEN - the next
+      # line may be the same variable's Mean or IQR (vocacapsaicin
+      # corpus, 2026-08-22).
+      if (grepl("(?i)^median\\b", label, perl = TRUE)) {
+        addSkip(if (nchar(label) > 0 && is.na(catHeader)) label
+                else paste(c(catHeader[!is.na(catHeader)], label),
+                           collapse = " "),
+                paste("median without quartiles - enter median/Q1/Q3 by",
+                      "hand if an IQR is printed"), txt)
+        next
+      }
       if (!is.na(catHeader)) {
+        # as.integer() would silently truncate a stray "71.9" into a
+        # count of 71 - any non-integer cell refuses the whole row
+        nonInt <- vapply(armTok, function(t)
+          !is.null(t) && !is.na(t$num1) && t$num1 != round(t$num1),
+          logical(1))
+        if (any(nonInt)) {
+          addSkip(if (nchar(label) > 0) label else catHeader,
+                  paste("non-integer values under a category heading -",
+                        "not counts; enter by hand"), txt)
+          next
+        }
         catName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
                                  catColumns)
         catColumns <- unique(c(catColumns, catName))
@@ -891,6 +1033,10 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # Submitted manuscripts number every line down the left margin; strip the
   # rail before anything downstream sees it (2026-08-20, see pageLayout.R).
   allPages <- lapply(allPages, .ppStripLineNumberRail)
+  # Published PDFs carry a rotated "Downloaded from ..." watermark rail
+  # whose fragments interleave with the table's lines (2026-08-22, see
+  # pageLayout.R).
+  allPages <- lapply(allPages, .ppStripRotatedText)
   # Arm-N recovery candidates are document-level constants: the "(n = 24)"
   # mentions with allocation-flavoured context, and the stated randomized
   # totals that confirm a positional assignment. Extracted once here, used
