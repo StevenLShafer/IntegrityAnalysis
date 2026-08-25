@@ -139,12 +139,15 @@
 # Labels are otherwise kept verbatim (no .ppCleanLabel): unlike a PDF text
 # line, a spreadsheet label is deliberate, and stripping units ("(kg)")
 # would break the round trip against the validated frame it came from.
-.wideTagMeanSD  <- "(?i)[,;]?\\s*mean\\s*(\\(\\s*sd\\s*\\)|±\\s*sd)\\s*$"
-.wideTagMedIQR  <- paste0("(?i)[,;]?\\s*median\\s*[\\[(]\\s*",
+# the separator before a tag: comma/semicolon, or a dash - real tables
+# write "Age (years)-Mean (SD)" and "Female sex-N(%)" (vocacapsaicin
+# corpus, 2026-08-22)
+.wideTagMeanSD  <- "(?i)[,;–—-]?\\s*mean\\s*(\\(\\s*sd\\s*\\)|±\\s*sd)?\\s*$"
+.wideTagMedIQR  <- paste0("(?i)[,;–—-]?\\s*median\\s*[\\[(]\\s*",
                           "(q1\\s*[,;]?\\s*q3|iqr|interquartile[^\\])]*",
                           "|25th[^\\])]*)\\s*[\\])]\\s*$")
-.wideTagMedRng  <- "(?i)[,;]?\\s*median\\s*[\\[(][^\\])]*range[^\\])]*[\\])]\\s*$"
-.wideTagCat     <- "(?i)[,;]\\s*(no\\.?|n)(\\s*\\(\\s*%\\s*\\))?\\s*$"
+.wideTagMedRng  <- "(?i)[,;–—-]?\\s*median\\s*[\\[(][^\\])]*range[^\\])]*[\\])]\\s*$"
+.wideTagCat     <- "(?i)[,;–—-]\\s*(no\\.?|n)(\\s*\\(\\s*%\\s*\\))?\\s*$"
 
 # One number, as the engine prints it (comma/middle-dot decimals,
 # thousands separators, stray < >) - kept in sync with tokenize.R's .ppNUM.
@@ -187,6 +190,21 @@
     armName[k] <- if (nzchar(h)) h else paste("Arm", k)
   }
 
+  # A "Total"/"Overall" column is arithmetic over the arms, not an arm;
+  # analyzed as one it would corrupt the Monte Carlo (same rule, same
+  # conservative patterns, as the engine's totals-column drop -
+  # vocacapsaicin corpus, 2026-08-22).
+  tot <- which(grepl(paste0("(?i)^(total|overall|all\\s+(patients|subjects|",
+                            "participants)|entire\\s+cohort)$"),
+                     trimws(armName), perl = TRUE))
+  if (length(tot) > 0) {
+    armCols <- armCols[-tot]
+    armN    <- armN[-tot]
+    armName <- armName[-tot]
+    nArms   <- length(armCols)
+    if (nArms == 0) return(NULL)
+  }
+
   outRows      <- list()   # same shape as the engine's: row / type / perArm
   skipped      <- list()
   usedRowNames <- character(0)
@@ -200,13 +218,19 @@
 
   # A category variable accumulates over consecutive count rows (the
   # generator writes a "Sex, n" header then one indented row per
-  # category); it flushes when anything else appears.
-  catHeader <- NA_character_
+  # category); it flushes when anything else appears. catHeaderNPct
+  # records that the header announced count cells ("Race-N(%)"), which
+  # is what licenses "a (b)" children as counts (vocacapsaicin corpus).
+  catHeader     <- NA_character_
+  catHeaderNPct <- FALSE
   catAccum  <- NULL   # list(row = <ROW label>, perArm = list of named lists)
-  flushCat <- function() {
+  flushCat <- function(reset = TRUE) {
     if (!is.null(catAccum)) outRows[[length(outRows) + 1]] <<- catAccum
-    catAccum  <<- NULL
-    catHeader <<- NA_character_
+    catAccum <<- NULL
+    if (reset) {
+      catHeader     <<- NA_character_
+      catHeaderNPct <<- FALSE
+    }
   }
   addCount <- function(colName, counts) {
     # counts: integer vector over arms, NA where the cell was empty
@@ -266,6 +290,7 @@
     if (!any(nzchar(trimws(bodyTxt)))) {
       flushCat()
       catHeader <- if (nzchar(label)) label else "Category"
+      catHeaderNPct <- identical(tag, "cat")
       next
     }
 
@@ -296,15 +321,70 @@
     }
     mainType <- names(sort(table(types), decreasing = TRUE))[1]
 
+    # -- an arm-N row supplies missing arm Ns --------------------------
+    # Two shapes: a labelled "No. of patients" row of bare integers, and
+    # the two-line header's second row - no label, every cell "N=36"
+    # (vocacapsaicin corpus, 2026-08-22).
+    nCells <- nzchar(cellTxt)
+    if ((mainType == "plain" &&
+         grepl("(?i)^(no\\.?|n|number)\\b.*(patient|subject|participant|randomi)|^n$",
+               label, perl = TRUE)) ||
+        (!nzchar(label) && any(nCells) &&
+           all(grepl("(?i)^n\\s*=\\s*[\\d,]+$", cellTxt[nCells],
+                     perl = TRUE)))) {
+      for (j in seq_len(nArms))
+        if (!is.null(toks[[j]]) && toks[[j]]$type == "plain" &&
+            is.na(armN[j]))
+          armN[j] <- as.numeric(toks[[j]]$num1)
+      next
+    }
+
+    # A row whose whole label is "N (%)" is the count row OF the
+    # heading above it ("NSAID use" / "N (%)  4 (11%) ..."), not a
+    # child level named "N (%)" - route it to the standalone branch,
+    # which names it from the heading (vocacapsaicin corpus).
+    if (grepl("(?i)^(no\\.?|n)\\s*\\(\\s*%\\s*\\)$", label, perl = TRUE)) {
+      tag <- "cat"
+      label <- ""
+    }
+
     # -- category count rows -------------------------------------------
     # The generator indents them under the header; real-world sheets
-    # often do not, so a run of bare integers under an active category
-    # header also counts.
-    if (mainType == "plain" && (indent || !is.na(catHeader))) {
+    # often do not, so any count-shaped row under an active category
+    # header is a child: bare integers always, "a (b%)" cells always
+    # (the % marks a count), and bare "a (b)" cells when the header
+    # itself announced N (%). A row carrying its OWN tag is standalone.
+    isChild <- is.na(tag) && !is.na(catHeader) &&
+      (mainType %in% c("plain", "nPct") ||
+         (mainType == "numParen" && catHeaderNPct))
+    if ((mainType == "plain" && indent) || isChild) {
+      # "Median  71.9 ..." under a variable heading is a summary
+      # statistic: skip with its own reason - and as.integer() must
+      # never truncate a non-integer into a "count". Both skips leave
+      # the heading OPEN for the variable's next line.
+      if (grepl("(?i)^median\\b", label, perl = TRUE)) {
+        addSkip(paste(c(catHeader[!is.na(catHeader)], label),
+                      collapse = " "),
+                paste("median without quartiles - enter median/Q1/Q3 by",
+                      "hand if an IQR is printed"),
+                paste(cells[r, ], collapse = " | "))
+        next
+      }
+      nonInt <- vapply(toks, function(t)
+        !is.null(t) && t$type == "plain" && !is.na(t$num1) &&
+          t$num1 != round(t$num1), logical(1))
+      if (any(nonInt)) {
+        addSkip(if (nzchar(label)) label else catHeader,
+                paste("non-integer values under a category heading -",
+                      "not counts; enter by hand"),
+                paste(cells[r, ], collapse = " | "))
+        next
+      }
       if (is.na(catHeader)) catHeader <- "Category"
       counts <- vapply(seq_len(nArms), function(j) {
         t <- toks[[j]]
-        if (is.null(t) || t$type != "plain") NA_integer_
+        if (is.null(t) || !t$type %in% c("plain", "nPct", "numParen"))
+          NA_integer_
         else as.integer(t$num1)
       }, integer(1))
       colName <- .ppUniqueName(if (nzchar(label)) label else "Category",
@@ -313,17 +393,10 @@
       addCount(colName, counts)
       next
     }
-    flushCat()
-
-    # -- an "N of patients" row supplies missing arm Ns ----------------
-    if (mainType == "plain" &&
-        grepl("(?i)^(no\\.?|n|number)\\b.*(patient|subject|participant|randomi)|^n$",
-              label, perl = TRUE)) {
-      for (j in seq_len(nArms))
-        if (!is.null(toks[[j]]) && toks[[j]]$type == "plain")
-          armN[j] <- as.numeric(toks[[j]]$num1)
-      next
-    }
+    flushCat(reset = FALSE)
+    hdrName <- catHeader
+    catHeader <- NA_character_
+    catHeaderNPct <- FALSE
 
     txt <- paste(cells[r, ], collapse = " | ")
 
@@ -391,9 +464,18 @@
     }
 
     if (mainType == "meanSD") {
-      rowName <- .ppUniqueName(if (nzchar(label)) label else "Unnamed",
-                               usedRowNames)
+      # A bare "Mean (SD)" label is a summary-statistic line under a
+      # variable heading ("Weight (kg)" on the line above): the
+      # variable's name is that heading, which is then RESTORED so the
+      # "Median" line that customarily follows still knows its variable
+      # (vocacapsaicin corpus, 2026-08-22).
+      statRow <- !is.na(hdrName) &&
+        (!nzchar(label) || grepl("(?i)^mean$", label, perl = TRUE))
+      rowName <- .ppUniqueName(
+        if (statRow) hdrName
+        else if (nzchar(label)) label else "Unnamed", usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
+      if (statRow) catHeader <- hdrName
       # "Age, mean (SEM)" in the label files the value as SE, mirroring
       # the engine's row-level override; there is no footnote here to
       # consult, so the label is the only evidence.
@@ -424,9 +506,12 @@
     if (mainType == "nPct") {
       # Binary n (%) row: count column plus its complement when the arm N
       # is known - mirroring the engine's nPct branch, including the skip
-      # when no N makes the complement uncomputable.
-      catName <- .ppUniqueName(if (nzchar(label)) label else "Category",
-                               catColumns)
+      # when no N makes the complement uncomputable. An empty label takes
+      # the heading above it (the "N (%)" row of an "NSAID use" heading
+      # names the NSAID variable, not "Category").
+      catName <- .ppUniqueName(
+        if (nzchar(label)) label
+        else if (!is.na(hdrName)) hdrName else "Category", catColumns)
       complementName <- .ppUniqueName(paste("Not", catName),
                                       c(catColumns, catName))
       effN <- ifelse(is.na(lineN), armN, lineN)

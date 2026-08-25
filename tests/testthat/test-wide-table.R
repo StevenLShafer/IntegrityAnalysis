@@ -230,6 +230,90 @@ test_that("the csv flavor parses like the xlsx", {
   expect_identical(age$N, c(15, 17))
 })
 
+test_that("the vocacapsaicin xlsx shape parses completely (issue 17)", {
+  # Steve's real Table 1 as a spreadsheet (2026-08-22): a two-line
+  # header (names row, then a bare "N=36" row), a Total column, dash
+  # separators before the tags, N (%) block headers with "a(b%)"
+  # children, a mixed count row, "Mean(SD)" / "Median" statistic rows
+  # under variable headings, and a bare "N (%)" count row under its
+  # heading. Values are the paper's (the author supplied ground truth).
+  m <- rbind(
+    c("Characteristic",  "0.05 mg/mL", "0.15 mg/mL", "0.30 mg/mL",
+      "Placebo",     "Total"),
+    c("",                "N=36",       "N=36",       "N=38",
+      "N=37",        "N=147"),
+    c("Age (years)-Mean (SD)", "48.9(12.3)", "44.6(12.3)", "41.4(12.2)",
+      "50.7(12.5)",  "46.4(12.7)"),
+    c("Female sex-N(%)", "33(92%)",    "25(69%)",    "34(90%)",
+      "31(84%)",     "123(84%)"),
+    c("Race-N(%)",       "",           "",           "",
+      "",            ""),
+    c("White (Non-Hispanic)", "12(33%)", "9(25%)",   "11(29%)",
+      "10(27%)",     "42(29%)"),
+    c("Black",           "12(33%)",    "12(33%)",    "14(37%)",
+      "14(38%)",     "52(35%)"),
+    c("ASA Classification-N(%)", "",    "",           "",
+      "",            ""),
+    c("I",               "21(58%)",    "25(69%)",    "22(58%)",
+      "22(60%)",     "90(61%)"),
+    c("III",             "0",          "0",          "1(2%)",
+      "0",           "1(1%)"),
+    c("Weight (kg)",     "",           "",           "",
+      "",            ""),
+    c("Mean(SD)",        "76.4(16.5)", "82.9(19.1)", "78.6(13.8)",
+      "77.2(15.1)",  "78.8(16.2)"),
+    c("Median",          "71.9",       "82.3",       "78.7",
+      "78.9",        "78"),
+    c("NSAID Drug Use",  "",           "",           "",
+      "",            ""),
+    c("N (%)",           "4 (11%)",    "3 (8%)",     "6 (16%)",
+      "3 (8%)",      "16 (11%)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  blocks <- parseWideTable(f, "xlsx")
+  expect_false(is.null(blocks))
+  b <- blocks[[1]]
+  d <- b$data
+
+  # Total dropped; Ns from the second header row
+  expect_identical(nrow(b$arms), 4L)
+  expect_equal(b$arms$N, c(36, 36, 38, 37), ignore_attr = TRUE)
+  expect_false(any(vapply(d, function(col)
+    any(col %in% c(147, 123L, 42L, 52L, 90L, 16L)), logical(1))))
+
+  age <- d[d$ROW == "Age (years)", ]
+  expect_identical(age$MEAN, c(48.9, 44.6, 41.4, 50.7))
+  expect_identical(age$N, c(36, 36, 38, 37))
+
+  fem <- d[d$ROW == "Female sex", ]
+  expect_identical(fem[["Female sex"]], c(33L, 25L, 34L, 31L))
+  expect_identical(fem[["Not Female sex"]], c(3L, 11L, 4L, 6L))
+
+  race <- d[d$ROW == "Race", ]
+  expect_identical(race[["White (Non-Hispanic)"]], c(12L, 9L, 11L, 10L))
+  expect_identical(race[["Black"]], c(12L, 12L, 14L, 14L))
+  expect_true(all(is.na(race$MEAN)))
+
+  asa <- d[d$ROW == "ASA Classification", ]
+  expect_identical(asa[["I"]], c(21L, 25L, 22L, 22L))
+  expect_identical(asa[["III"]], c(0L, 0L, 1L, 0L))
+
+  wt <- d[d$ROW == "Weight (kg)", ]
+  expect_identical(wt$MEAN, c(76.4, 82.9, 78.6, 77.2))
+  expect_identical(wt$SD, c(16.5, 19.1, 13.8, 15.1))
+
+  ns <- d[d$ROW == "NSAID Drug Use", ]
+  expect_identical(ns[["NSAID Drug Use"]], c(4L, 3L, 6L, 3L))
+  expect_identical(ns[["Not NSAID Drug Use"]], c(32L, 33L, 32L, 34L))
+
+  # the Median line skipped with the quartile reason, heading intact
+  expect_identical(nrow(b$skipped), 1L)
+  expect_match(b$skipped$reason[1], "median without quartiles")
+  expect_match(b$skipped$label[1], "Weight")
+
+  v <- vdShared(b$data)
+  expect_false(v$FAIL)
+})
+
 test_that("a differing-N suffix comes back as that line's N", {
   m <- rbind(
     c("Variable",            "Arm 1 (n = 15)", "Arm 2 (n = 17)"),
