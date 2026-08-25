@@ -166,12 +166,16 @@ parseBaselineTable <- function(pdfFile,
   say <- function(...) if (!quiet) message(...)
 
   # The AI fallback renders PDF pages (parseBaselineTableAI), which a
-  # .docx does not have. Fail clearly up front rather than obscurely
-  # later; the deployed app always passes ai = "never", so this guard
-  # only ever fires for console users (issue 19).
-  if (grepl("[.]docx$", pdfFile, ignore.case = TRUE) && ai != "never")
-    stop("The AI fallback is not available for .docx input - it reads ",
-         "rendered PDF pages. Call with ai = \"never\".")
+  # .docx does not have. Proceed deterministically with a note rather
+  # than erroring: with the BYOK assist (issue 8) a mixed folder upload
+  # legitimately arrives here with ai = "fallback", and a docx failing
+  # OUTRIGHT because the assist was on would be strictly worse than the
+  # docx parse the user gets with it off.
+  if (grepl("[.]docx$", pdfFile, ignore.case = TRUE) && ai != "never") {
+    say("The AI fallback reads rendered PDF pages, which a .docx does ",
+        "not have - parsing this file deterministically.")
+    ai <- "never"
+  }
 
   # ---- AI-only path -------------------------------------------------------
   if (ai == "always")
@@ -265,6 +269,38 @@ parseBaselineTable <- function(pdfFile,
   key      <- function(v) tolower(.ppSquish(v))
   haveRows <- unique(key(het$data$ROW))
   newRows  <- aiRes$data[!key(aiRes$data$ROW) %in% haveRows, , drop = FALSE]
+
+  # The model names variables its own way - "Weight" for the printed
+  # "Weight, kg", "Sex" for "Female sex" - so a label comparison alone
+  # re-adds nearly every variable under a synonym: 20 duplicate lines on
+  # one real PDF (2026-08-25), and DUPLICATED variables would inflate
+  # the Stouffer combination. Values are the identity that labels are
+  # not: a candidate variable whose per-arm numbers already appear under
+  # some deterministic variable IS that variable, whatever either side
+  # called it. (Two genuine variables with identical values would be
+  # wrongly deduped - vastly rarer, and the safe direction for a fraud
+  # screen: rather one missing duplicate than one double-counted.)
+  rowSig <- function(d) {
+    catCols <- setdiff(names(d), c(.ppBaseColumns(), "Q1", "Q3"))
+    vapply(split(d, d$ROW), function(g) {
+      if (any(!is.na(g$MEAN)))
+        paste(sort(paste(g$N, g$MEAN, g$SD, g$SE, sep = "/")),
+              collapse = " | ")
+      else {
+        v <- unlist(g[intersect(catCols, names(g))])
+        paste(sort(v[!is.na(v)]), collapse = ",")
+      }
+    }, character(1))
+  }
+  hetSig  <- rowSig(het$data)
+  candSig <- rowSig(newRows)
+  dupRows <- names(candSig)[candSig %in% hetSig & nzchar(candSig)]
+  if (length(dupRows) > 0) {
+    say("Dropping ", length(dupRows), " model variable(s) whose values ",
+        "duplicate deterministic rows under another name: ",
+        paste(dupRows, collapse = ", "))
+    newRows <- newRows[!newRows$ROW %in% dupRows, , drop = FALSE]
+  }
 
   if (nrow(newRows) == 0) {
     say("The model found nothing the deterministic pass had missed.")

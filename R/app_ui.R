@@ -180,6 +180,30 @@ app_ui <- function(testNote = NULL)
             "Convert percent-only cells to approximate counts when the",
             "exact count cannot be determined (derived values show green",
             "in the table below)"), value = TRUE, width = "100%"),
+          # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
+          # password-type field: the key never appears on screen, never
+          # goes in a URL, is never stored or logged, and dies with the
+          # session (see the upload observer in app_server.R). The
+          # consent sentence below is load-bearing - the app's standing
+          # privacy promise is "no document content is ever sent to any
+          # third-party service", and entering a key is the uploader's
+          # explicit, per-session revision of that promise for their own
+          # documents.
+          passwordInput("aiKey", NULL, width = "100%",
+                        placeholder = paste(
+                          "Optional: your Anthropic API key turns on the",
+                          "AI assist for hard-to-read documents")),
+          HTML(paste0(
+            "<div style='font-size: 85%; color: #666; margin-top: -12px; ",
+            "margin-bottom: 8px;'>",
+            "<b>AI assist (optional - bring your own key).</b> With a key ",
+            "entered above, pages the deterministic reader cannot fully ",
+            "parse are sent to the Anthropic API under <i>your</i> account ",
+            "(roughly $0.06&ndash;0.11 per article). Entering a key is ",
+            "your consent to send the uploaded documents' text to that ",
+            "service during this session. The key is never stored or ",
+            "logged, and AI-read lines show green for review. Without a ",
+            "key, nothing you upload ever leaves this server.</div>")),
           actionButton("blank", "Start With an Empty Table"),
           HTML("<br><br>"),
           # The editable pre-analysis grid (Steve's request, 2026-08-17):

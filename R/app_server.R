@@ -62,6 +62,8 @@ app_server <- function(input, output, session) {
                            # line by line) before the user has typed anything
   uploadedPaths <- character(0)  # every file this session uploaded, for
                                  # the purge-on-exit guarantee below
+  aiFilesUsed <- 0L  # documents that engaged the AI assist this session
+                     # (spending defense-in-depth; see the upload observer)
 
   # THE PURGE GUARANTEE (Steve's requirement, 2026-08-17): when the
   # session ends, no record of the analysis survives. Uploaded files
@@ -776,6 +778,43 @@ app_server <- function(input, output, session) {
       # dispatch by extension inside parseBaselineTableHeuristics().
       pdfIdx <- which(files$ext %in% c("pdf", "docx"))
       if (length(pdfIdx) > 0) {
+        # ---- The AI assist: bring your own key (ISSUES.md issue 8) ----
+        # The deployed default stays ai = "never": manuscripts are
+        # confidential and verdicts must be reproducible. The assist
+        # turns on ONLY when the uploader supplies their own Anthropic
+        # key (charges land on their account, and entering the key IS
+        # their consent to send the document's text to the model), or
+        # when a third-party deployment sets INTEGRITY_AI_ALWAYS=true
+        # with its own ANTHROPIC_API_KEY - the gate is a policy, not a
+        # hard-coded off switch, so a publisher can run their own
+        # instance without forking (issue 8's design).
+        # The key is never stored, never logged (every message that
+        # could carry upstream error text is scrubbed below), never in
+        # a URL, and dies with the session. A per-session document cap
+        # is spending defense-in-depth even on their own key.
+        aiKey <- trimws(if (is.null(input$aiKey)) "" else input$aiKey)
+        aiAlways <- identical(tolower(Sys.getenv("INTEGRITY_AI_ALWAYS")),
+                              "true") &&
+          nzchar(Sys.getenv("ANTHROPIC_API_KEY"))
+        aiCap <- suppressWarnings(as.integer(
+          Sys.getenv("INTEGRITY_AI_SESSION_CAP", "25")))
+        if (is.na(aiCap)) aiCap <- 25L
+        aiOn <- nzchar(aiKey) || aiAlways
+        if (aiOn && aiFilesUsed >= aiCap) {
+          aiOn <- FALSE
+          outputComments(paste0(
+            "AI assist: this session's cap of ", aiCap, " document(s) ",
+            "is reached - parsing deterministically. Reload the app ",
+            "for a fresh session."))
+        } else if (aiOn) {
+          outputComments(paste0(
+            "AI assist is ON for this upload (",
+            if (nzchar(aiKey)) "your key" else "this deployment's key",
+            "): where the deterministic reader leaves gaps, document ",
+            "text is sent to the Anthropic API. AI-read lines show ",
+            "green - verify each against the manuscript."))
+        }
+
         progress <- shiny::Progress$new(session, style = "notification")
         # ONE file per batch call, ticking the progress bar BEFORE each:
         # Progress$set pushes straight down the websocket, and those
@@ -787,13 +826,24 @@ app_server <- function(input, output, session) {
         # milliseconds against a multi-second parse.
         resList <- vector("list", length(pdfIdx))
         for (k in seq_along(pdfIdx)) {
+          # cap re-checked per file, so one huge upload cannot blow past
+          # it mid-loop; an AI consult can take minutes, so the
+          # subprocess timeout grows with it
+          aiThis <- aiOn && aiFilesUsed < aiCap
           progress$set(value = (k - 1) / length(pdfIdx),
                        message = "Parsing documents ",
                        detail = paste0(files$name[pdfIdx[k]], " (", k,
-                                       " of ", length(pdfIdx), ")"))
+                                       " of ", length(pdfIdx), ")",
+                                       if (aiThis) " - AI assist on"))
           resList[[k]] <- parseBaselineTableFiles(
-            files$datapath[pdfIdx[k]], ai = "never", timeout = 60,
-            quiet = TRUE, pctApprox = isTRUE(input$pctApprox))
+            files$datapath[pdfIdx[k]],
+            ai = if (aiThis) "fallback" else "never",
+            timeout = if (aiThis) 300 else 60,
+            quiet = TRUE, pctApprox = isTRUE(input$pctApprox),
+            apiKey = if (nzchar(aiKey)) aiKey else NULL)
+          eng <- resList[[k]]$engine[1]
+          if (!is.na(eng) && eng %in% c("hybrid", "ai", "ai-prose"))
+            aiFilesUsed <<- aiFilesUsed + 1L
         }
         res <- do.call(rbind, resList)
         progress$close()
@@ -805,6 +855,9 @@ app_server <- function(input, output, session) {
             # nothing inside the app; translate, and show the user's own
             # file name rather than the upload temp path.
             msg <- res$error[k]
+            # upstream error text could conceivably echo request details;
+            # the key must never reach the log under any path
+            if (nzchar(aiKey)) msg <- gsub(aiKey, "<key>", msg, fixed = TRUE)
             msg <- gsub(files$datapath[i], files$name[i], msg, fixed = TRUE)
             msg <- sub(" Try the `pages` or `layout` argument, or ai = \"always\"\\.",
                        "", msg)
@@ -852,6 +905,25 @@ app_server <- function(input, output, session) {
             derived <- rbind(derived,
                              data.frame(ROW = "*", COL = "N", KIND = "recovered",
                                         NOTE = nNote, stringsAsFactors = FALSE))
+          }
+          # Lines the AI assist read (provenance "ai"/"ai-prose") paint
+          # their ROW cell green: usable, but a model read them off the
+          # page, so each one deserves a human glance (issue 8).
+          aiRows <- if (!is.null(r$provenance))
+            unique(r$provenance$ROW[grepl("^ai", r$provenance$ENGINE)])
+          else character(0)
+          if (length(aiRows) > 0) {
+            outputComments(paste0(
+              length(aiRows), " variable(s) in ", files$name[i],
+              " read by the AI assist: ",
+              paste(aiRows, collapse = ", "),
+              ". Shown green - verify each against the manuscript."))
+            derived <- rbind(derived, data.frame(
+              ROW = aiRows, COL = "ROW", KIND = "ai",
+              NOTE = paste("this line was read by the AI assist, not",
+                           "located on the page by the deterministic",
+                           "reader - verify it against the manuscript"),
+              stringsAsFactors = FALSE))
           }
           frames[[length(frames) + 1]] <-
             list(stem = files$stem[i], data = d,
@@ -933,7 +1005,9 @@ app_server <- function(input, output, session) {
                    ROW = f$derived$ROW, COL = f$derived$COL,
                    note = paste0(
                      ifelse(f$derived$KIND == "approximate",
-                            "APPROXIMATE - ", "Derived by the parser - "),
+                            "APPROXIMATE - ",
+                     ifelse(f$derived$KIND == "ai",
+                            "AI ASSIST - ", "Derived by the parser - ")),
                      f$derived$NOTE,
                      ". OK to use, but best to check against the paper ",
                      "before the analysis runs."),

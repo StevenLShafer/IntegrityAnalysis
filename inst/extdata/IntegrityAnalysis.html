@@ -35,6 +35,8 @@ vertical-align: middle;
 <ul>
 <li><a href="#the-seven-ways-in" id="toc-the-seven-ways-in">The seven
 ways in</a></li>
+<li><a href="#the-ai-assist-optional-bring-your-own-key" id="toc-the-ai-assist-optional-bring-your-own-key">The AI assist
+(optional — bring your own key)</a></li>
 </ul></li>
 <li><a href="#the-data-grid" id="toc-the-data-grid">The data
 grid</a></li>
@@ -101,8 +103,12 @@ the analysis is kept. Manuscripts under review are confidential, and the
 app is built around that: uploaded files are deleted from disk when the
 session ends, downloads are generated straight into your browser, and
 nothing is logged. The deployed analysis is fully deterministic and
-offline — no document content is ever sent to any third-party
-service.</p>
+offline — no document content is ever sent to any third-party service —
+with one opt-in exception under your sole control: the <strong>AI
+assist</strong> (see below) engages only when you enter your own
+Anthropic API key, and entering it is your explicit consent to send your
+uploaded documents’ text to that service for the session. Without a key,
+nothing you upload ever leaves this server.</p>
 <p><strong>Usage counting:</strong> I tabulate the number of times
 IntegrityAnalysis is opened and the number of analyses run — simple
 counts, and nothing else. Not even your IP address reaches the counter,
@@ -252,6 +258,41 @@ Table</strong> and type the data straight into the grid — eight empty
 rows and placeholder category columns (CAT1–CAT3) to start. Add rows
 with the right-click menu or the <strong>Add 5 Rows</strong> button; add
 a named column with <strong>Add Column</strong>.</p>
+<h2 id="the-ai-assist-optional-bring-your-own-key">The AI assist
+(optional — bring your own key)</h2>
+<p>The deterministic reader is deliberate about refusing what it cannot
+verify, and fed a single article PDF it yields a fully analyzable trial
+roughly a third of the time. For the rest, an optional <strong>AI
+assist</strong> exists: enter your own Anthropic API key in the field
+above the upload box, and pages the deterministic reader cannot fully
+parse are sent to the Anthropic API — under <em>your</em> account, at
+roughly $0.06–0.11 per article. When even no table can be found, the
+assist also asks for baseline data stated in the article’s running text
+(some trials report age, weight, and sex in a Methods sentence rather
+than a table). Measured against Carlisle’s hand-extracted values, the
+assist recovers about 91% of known values on articles with no parseable
+table and 81% where the deterministic reader misread the table.</p>
+<p>The ground rules, each deliberate:</p>
+<ul>
+<li><strong>Your key is your consent.</strong> Without a key, no
+document content ever leaves the server; entering one authorizes sending
+your uploads’ text to the Anthropic API for this session — appropriate
+only when you have the right to share the document.</li>
+<li><strong>The key is never stored, never logged, and dies with the
+session.</strong> It goes in a masked field, not a URL.</li>
+<li><strong>The deterministic reader always runs first and its numbers
+always win.</strong> The assist only fills gaps, and every AI-read line
+paints <strong>green</strong> in the grid with a note to verify it
+against the manuscript. The results workbook’s audit trail records which
+engine read each line.</li>
+<li><strong>A per-session cap</strong> (25 documents) bounds spending
+even on your own key.</li>
+<li><strong>Publishers running their own instance</strong> can enable
+the assist permanently by deploying with
+<code>INTEGRITY_AI_ALWAYS=true</code> and their own
+<code>ANTHROPIC_API_KEY</code> — the gate is a policy, not a hard-coded
+switch, so no fork is needed.</li>
+</ul>
 <h1 id="the-data-grid">The data grid</h1>
 <p>Every input route lands in the same editable grid, and the grid is
 the data of record: what you see is exactly what will be analyzed. Edit
