@@ -69,6 +69,7 @@ Collate:
   tokenize.R
   pageLayout.R
   utils.R
+  parseWideTable.R
   armNRecovery.R
   parseBaselineTableHeuristics.R
   parseDocx.R
