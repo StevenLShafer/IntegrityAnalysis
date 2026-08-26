@@ -17,12 +17,17 @@ FROM rocker/r-ver:4.5.3
 # System libraries for the locked R packages:
 #   poppler  - pdftools (PDF text + rendering)
 #   tesseract/leptonica + eng data - the OCR tier (issue 22)
+#   tbb      - oneTBB runtime: the PPM binary of Rfast links libtbb12,
+#              and without it the service dies at startup with
+#              "undefined symbol: tbb::detail::r1::spawn" (found live
+#              on the first App Runner deploy, 2026-08-26)
 #   sodium   - plumber's dependency for encrypted cookies
 #   xml2, curl, ssl, fontconfig/freetype/png/jpeg/tiff - parsing and
 #   rendering stack
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libpoppler-cpp-dev \
       libtesseract-dev libleptonica-dev tesseract-ocr-eng \
+      libtbb12 \
       libsodium-dev \
       libxml2-dev libcurl4-openssl-dev libssl-dev \
       libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev \
