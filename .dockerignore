@@ -1,0 +1,11 @@
+# Keep the image build context to the package itself. The corpora live
+# under C:/temp and are never in the repo, but belt-and-braces here.
+.git
+.github
+.Rproj.user
+renv/library
+renv/staging
+tests/testthat/_problems
+docs
+corpus
+*.Rproj

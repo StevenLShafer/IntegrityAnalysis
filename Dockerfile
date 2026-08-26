@@ -1,0 +1,47 @@
+# Dockerfile - the IntegrityAnalysis REST API as a container (issue 1,
+# phase 2).
+#
+# PROVENANCE: written 2026-08-26 by Claude Code (model Claude Fable 5)
+# at Steve Shafer's direction ("Go ahead with phase 2"): hosting target
+# AWS App Runner, image built by AWS CodeBuild (buildspec.yml) - there
+# is no local Docker on the development machine, and CodeBuild keeps
+# every credential inside the AWS account.
+#
+# Base: rocker/r-ver pins the EXACT R version the package is developed
+# and tested against (renv.lock records R 4.5.3), and configures CRAN
+# to the Posit Package Manager binary repository for the distro, so
+# renv::restore() installs binaries in minutes rather than compiling
+# for an hour.
+FROM rocker/r-ver:4.5.3
+
+# System libraries for the locked R packages:
+#   poppler  - pdftools (PDF text + rendering)
+#   tesseract/leptonica + eng data - the OCR tier (issue 22)
+#   sodium   - plumber's dependency for encrypted cookies
+#   xml2, curl, ssl, fontconfig/freetype/png/jpeg/tiff - parsing and
+#   rendering stack
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libpoppler-cpp-dev \
+      libtesseract-dev libleptonica-dev tesseract-ocr-eng \
+      libsodium-dev \
+      libxml2-dev libcurl4-openssl-dev libssl-dev \
+      libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev \
+      libtiff5-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Restore the LOCKED environment first, alone, so Docker layer caching
+# makes rebuilds after code-only changes nearly instant.
+COPY renv.lock renv.lock
+RUN R -e "install.packages('renv'); renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
+
+# Then the package itself.
+COPY . /build
+RUN R CMD INSTALL --no-multiarch /build && rm -rf /build
+
+# The service. INTEGRITY_API_TOKENS must be supplied by the runtime
+# (App Runner environment configuration) - with none set the service
+# starts but refuses every data request (fail closed, by design).
+EXPOSE 8080
+CMD ["Rscript", "-e", "IntegrityAnalysis::runApiService(port = 8080, host = '0.0.0.0')"]
