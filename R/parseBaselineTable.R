@@ -193,8 +193,64 @@ parseBaselineTable <- function(pdfFile,
                                  pctApprox = pctApprox, quiet = quiet),
     error = function(e) e)
 
+  # Tier 2 of issue 22: when the failed document has image-only pages -
+  # scanned pages, or tables pasted in as pictures - and the AI route is
+  # unavailable or also failed, retry those pages through the SAME
+  # deterministic engine on tesseract word boxes (.ppOcrData). Local,
+  # free, offline; but OCR misreads digits (3/8, 1/7), so the result's
+  # "ocr" provenance makes the app shade the whole table cyan with a
+  # verify-every-cell note. With a key present the AI image route (tier
+  # 1) runs first - a model reads a page picture better than OCR.
+  ocrRescue <- function() {
+    if (!requireNamespace("tesseract", quietly = TRUE)) return(NULL)
+    imgs <- tryCatch(.ppImageOnlyPages(.ppPdfText(pdfFile)),
+                     error = function(e) integer(0))
+    if (length(imgs) == 0) return(NULL)
+    say("Page(s) ", paste(imgs, collapse = ","), " are scanned images; ",
+        "retrying them with local OCR (tesseract) ...")
+    # OCR only the image pages (their captions are part of the picture);
+    # OCRing a 30-page preprint end to end would cost minutes for pages
+    # the text engine already read.
+    r <- tryCatch(
+      parseBaselineTableHeuristics(pdfFile, trial = trial,
+                                   pages = if (is.null(pages)) imgs else pages,
+                                   parenIsSD = parenIsSD,
+                                   roundObsDelta = roundObsDelta,
+                                   pctApprox = pctApprox,
+                                   ocr = TRUE, quiet = quiet),
+      error = function(e) {
+        say("The OCR retry also failed (", conditionMessage(e), ").")
+        NULL
+      })
+    # Quality gate: on a degraded scan OCR can "succeed" into noise -
+    # garbled labels, junk values, and no arm identity (live example
+    # 2026-08-26: medRxiv 10.1101/19007195, 34 of 286 cells filled,
+    # every arm nameless and N-less, values like 72087). Without any
+    # arm identity the analysis can never run, so surfacing the table
+    # would only erode trust. The AI image route reads the same page
+    # correctly; point there instead.
+    if (!is.null(r)) {
+      armKnown <- any(!is.na(r$arms$arm) & nzchar(r$arms$arm)) ||
+        any(!is.na(r$arms$N))
+      if (!armKnown) {
+        say("OCR found a table but could not read any arm name or arm ",
+            "N - the scan is too degraded for OCR. An Anthropic API ",
+            "key would let the AI assist read the page image instead.")
+        return(NULL)
+      }
+      r$flags <- paste("scanned page(s) read by local OCR - OCR can",
+                       "misread digits, so verify every value against",
+                       "the manuscript")
+    }
+    r
+  }
+
   if (inherits(het, "error")) {
-    if (ai == "never") stop(het)
+    if (ai == "never") {
+      ocr <- ocrRescue()
+      if (!is.null(ocr)) return(ocr)
+      stop(het)
+    }
     say("Deterministic parse failed (", conditionMessage(het),
         "); falling back to ", model, ".")
     out <- tryCatch(
@@ -212,12 +268,19 @@ parseBaselineTable <- function(pdfFile,
     if (inherits(out, "error") && prose) {
       say("No table could be read (", conditionMessage(out),
           "); asking ", model, " for baseline data stated in the text.")
-      out <- parseBaselineTableAI(pdfFile, trial = trial, source = "prose",
-                                  model = model, effort = effort,
-                                  maxTokens = maxTokens,
-                                  roundObsDelta = roundObsDelta,
-                                  apiKey = apiKey, quiet = quiet)
-    } else if (inherits(out, "error")) {
+      out <- tryCatch(
+        parseBaselineTableAI(pdfFile, trial = trial, source = "prose",
+                             model = model, effort = effort,
+                             maxTokens = maxTokens,
+                             roundObsDelta = roundObsDelta,
+                             apiKey = apiKey, quiet = quiet),
+        error = function(e) e)
+    }
+    if (inherits(out, "error")) {
+      # every AI route failed (bad key, network, refusal, nothing found);
+      # a scanned page may still yield to local OCR before giving up
+      ocr <- ocrRescue()
+      if (!is.null(ocr)) return(ocr)
       stop(out)
     }
     out$flags <- paste0("deterministic parse failed: ", conditionMessage(het))

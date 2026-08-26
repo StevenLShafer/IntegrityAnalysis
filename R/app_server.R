@@ -231,8 +231,11 @@ app_server <- function(input, output, session) {
   # explanatory text prints below the table, so each color carries its
   # explanation here, and every colored cell explains itself on hover.
   output$issueLegend <- renderUI({
-    hasDerived <- !is.null(parseDerived()) && nrow(parseDerived()) > 0
-    if (is.null(rIssues()) && !hasDerived) return(NULL)
+    dv <- parseDerived()
+    hasOcr <- !is.null(dv) && !is.null(dv$KIND) && any(dv$KIND == "ocr")
+    hasDerived <- !is.null(dv) && nrow(dv) > 0 &&
+      (is.null(dv$KIND) || any(dv$KIND != "ocr"))
+    if (is.null(rIssues()) && !hasDerived && !hasOcr) return(NULL)
     entry <- function(color, label, text) div(
       style = "margin: 2px 0;",
       span(style = paste0("display:inline-block; width:14px; height:14px;",
@@ -245,6 +248,12 @@ app_server <- function(input, output, session) {
           "count, or an arm N recovered from the document. OK to use,",
           "but best to check before it runs; hover the cell to see how",
           "it was derived.")),
+        if (hasOcr) entry("#d2ecef", "OCR", paste(
+          "this table came from a scanned page, read by optical",
+          "character recognition. OCR can misread digits (3 vs 8, 1 vs",
+          "7): carefully verify every value against the manuscript, or",
+          "enter an Anthropic API key above and re-upload the file for",
+          "the higher-accuracy AI read.")),
         entry("#fff3b0", "missing", paste(
           "a required value is empty. Enter it, or delete the row.",
           "Rows with a label but no data at all are left out of the",
@@ -277,20 +286,27 @@ app_server <- function(input, output, session) {
     if (!is.null(dv) && nrow(dv) > 0 && all(c("TRIAL", "ROW") %in% names(d))) {
       issPayload <- list(); notePayload <- list()
       for (g in seq_len(nrow(dv))) {
-        ci <- match(dv$COL[g], names(d))
-        if (is.na(ci)) next
+        # COL "*" = every column: whole-table shading, the OCR case
+        cis <- if (identical(dv$COL[g], "*")) seq_along(names(d))
+               else match(dv$COL[g], names(d))
+        cis <- cis[!is.na(cis)]
+        if (length(cis) == 0) next
+        code <- if (!is.null(dv$KIND) && identical(dv$KIND[g], "ocr"))
+          "ocr" else "derived"
         hits <- if (dv$ROW[g] == "*")
           which(as.character(d$TRIAL) == dv$TRIAL[g])
         else
           which(as.character(d$TRIAL) == dv$TRIAL[g] &
                 as.character(d$ROW) == dv$ROW[g])
-        # paint only cells that carry a value - a green empty cell would
-        # read as "this blank is fine", which is the opposite of true
-        hits <- hits[!is.na(d[hits, ci])]
-        for (r in hits) {
-          key <- paste0(r - 1, "|", ci - 1)
-          issPayload[[key]] <- "derived"
-          notePayload[[key]] <- dv$note[g]
+        for (ci in cis) {
+          # paint only cells that carry a value - a green empty cell would
+          # read as "this blank is fine", which is the opposite of true
+          keep <- hits[!is.na(d[hits, ci])]
+          for (r in keep) {
+            key <- paste0(r - 1, "|", ci - 1)
+            issPayload[[key]] <- code
+            notePayload[[key]] <- dv$note[g]
+          }
         }
       }
       if (length(issPayload) == 0) { issPayload <- NULL; notePayload <- NULL }
@@ -435,11 +451,16 @@ app_server <- function(input, output, session) {
       "      derived: 'The parser computed this value (a percent ",
       "               converted to a count, or a recovered arm N). ",
       "               OK to use, but best to check it before the ",
-      "               analysis runs.'};",
+      "               analysis runs.',",
+      "      ocr: 'This table was read by optical character recognition ",
+      "           from a scanned page. OCR can misread digits - verify ",
+      "           every value against the manuscript, or enter an API ",
+      "           key for the higher-accuracy AI read.'};",
       "    if (code === 'missing') td.style.background = '#fff3b0';",
       "    else if (code === 'unreadable') td.style.background = '#f4b6b6';",
       "    else if (code === 'incongruent') td.style.background = '#b8d0f0';",
       "    else if (code === 'derived') td.style.background = '#d7f0d7';",
+      "    else if (code === 'ocr') td.style.background = '#d2ecef';",
       "    if (code) {",
       "      var notes = instance.params.cellNotes;",
       "      td.title = (notes && notes[key]) ? notes[key] : help[code];",
@@ -982,6 +1003,29 @@ app_server <- function(input, output, session) {
                            "reader - verify it against the manuscript"),
               stringsAsFactors = FALSE))
           }
+          # A table read by local OCR from a scanned page (issue 22,
+          # tier 2) shades WHOLE-TABLE cyan: unlike the AI assist there
+          # is no model judgment involved, just glyph recognition, and
+          # a single misread digit (3/8, 1/7) would silently corrupt a
+          # fraud screen. ROW/COL "*" = every cell of the trial.
+          if (identical(r$engine, "heuristic-ocr")) {
+            outputComments(paste0(
+              files$name[i], ": the table page is a scanned image and ",
+              "was read by optical character recognition. The whole ",
+              "table is shaded cyan - OCR can misread digits, so ",
+              "verify every value against the manuscript, or enter an ",
+              "Anthropic API key above and re-upload for the ",
+              "higher-accuracy AI read."))
+            derived <- rbind(derived, data.frame(
+              ROW = "*", COL = "*", KIND = "ocr",
+              NOTE = paste("this table was read by optical character",
+                           "recognition from a scanned page. OCR can",
+                           "misread digits (3 vs 8, 1 vs 7) - verify",
+                           "every value against the manuscript, or",
+                           "enter an API key for the higher-accuracy",
+                           "AI read"),
+              stringsAsFactors = FALSE))
+          }
           frames[[length(frames) + 1]] <-
             list(stem = files$stem[i], data = d,
                  skips = if (nrow(r$skipped) > 0) r$skipped else NULL,
@@ -1058,13 +1102,18 @@ app_server <- function(input, output, session) {
       parseSkips(unique(rbind(parseSkips(), skipReg)))
       deriveReg <- do.call(rbind, lapply(frames, function(f) {
         if (is.null(f$derived) || nrow(f$derived) == 0) return(NULL)
+        # KIND survives into the registry so the renderer can paint OCR
+        # tables their own color (cyan) rather than derived green.
         data.frame(TRIAL = as.character(f$data$TRIAL[1]),
                    ROW = f$derived$ROW, COL = f$derived$COL,
+                   KIND = f$derived$KIND,
                    note = paste0(
                      ifelse(f$derived$KIND == "approximate",
                             "APPROXIMATE - ",
                      ifelse(f$derived$KIND == "ai",
-                            "AI ASSIST - ", "Derived by the parser - ")),
+                            "AI ASSIST - ",
+                     ifelse(f$derived$KIND == "ocr",
+                            "OCR - ", "Derived by the parser - "))),
                      f$derived$NOTE,
                      ". OK to use, but best to check against the paper ",
                      "before the analysis runs."),

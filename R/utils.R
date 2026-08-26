@@ -184,9 +184,11 @@
   dir.create(tmp, showWarnings = FALSE, recursive = TRUE)
   on.exit(unlink(tmp, recursive = TRUE, force = TRUE), add = TRUE)
 
+  # pdf_convert applies sprintf(filenames, page, format) itself, so hand
+  # it the template - a pre-formatted name warns (found 2026-08-26).
   imgs <- pdftools::pdf_convert(
     pdfFile, format = "png", pages = pages, dpi = dpi, verbose = FALSE,
-    filenames = file.path(tmp, sprintf("page%04d.png", pages)))
+    filenames = file.path(tmp, "page%04d.%s"))
 
   if (want == "text")
     vapply(imgs, function(i) tesseract::ocr(i), character(1), USE.NAMES = FALSE)
@@ -210,6 +212,17 @@
                       width  = (bb[, 3] - bb[, 1]) * scale,
                       height = (bb[, 4] - bb[, 2]) * scale,
                       stringsAsFactors = FALSE)
+    # tesseract reads the plus-minus sign as a plain plus, in three
+    # shapes seen live (2026-08-26, synthetic page at 300 dpi): a
+    # standalone word between mean and SD ("45.3 + 12.1"), glued to the
+    # mean ("63+ 13"), and fully glued ("165+7"). Without the repair no
+    # continuous row survives tokenization. In a baseline table a plus
+    # touching digits IS a plus-minus, so the repair lives HERE - in the
+    # OCR adapter - never in the global glyph normalizer, where a
+    # genuine plus (e.g. "T+ group") must survive.
+    out$text <- gsub("^\\+$", "\u00b1", out$text)
+    out$text <- gsub("(\\d)\\+$", "\\1\u00b1", out$text)
+    out$text <- gsub("(\\d)\\+(\\d)", "\\1\u00b1\\2", out$text)
     out[!is.na(out$text) & nzchar(trimws(out$text)), , drop = FALSE]
   })
 }
