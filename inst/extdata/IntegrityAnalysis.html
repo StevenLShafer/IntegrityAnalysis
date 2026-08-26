@@ -69,6 +69,8 @@ p</a></li>
 editorial systems and publishers)</a></li>
 <li><a href="#notes-and-roadmap" id="toc-notes-and-roadmap">Notes and
 roadmap</a></li>
+<li><a href="#about-the-software" id="toc-about-the-software">About the
+software</a></li>
 <li><a href="#references" id="toc-references">References</a></li>
 </ul>
 </nav>
@@ -926,6 +928,20 @@ long runs, and a REST API so manuscript-handling systems (Editorial
 Manager, ScholarOne) can submit tables directly.</li>
 <li>Questions, feedback, and bug reports to Steve Shafer at <a href="mailto:steven.shafer@stanford.edu" class="email">steven.shafer@stanford.edu</a>.</li>
 </ul>
+<h1 id="about-the-software">About the software</h1>
+<p>The method is Carlisle and Shafer’s; the original application was
+written entirely by Steve Shafer (2025). Since mid-August 2026,
+essentially all of the code — the PDF, Word, and spreadsheet parsers,
+the OCR and AI-assist tiers, the REST API, the test suite (over a
+thousand assertions), and this guide — has been written by
+<strong>Claude</strong>, Anthropic’s AI assistant (Claude Code; models
+Claude Opus 5 and Claude Fable 5), working under Steve’s direction. The
+division of labor: Steve sets the goals, reviews the behavior, and tests
+every change against real manuscripts; Claude writes the code, the
+tests, and the documentation. Every source file in the repository
+carries a provenance header recording who wrote it, when, and what
+verified it — the same auditability this app demands of the trials it
+screens. Credit where due, in both directions.</p>
 <h1 id="references">References</h1>
 <ol type="1">
 <li>Carlisle JB. The analysis of 168 randomised controlled trials to

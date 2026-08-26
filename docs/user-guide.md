@@ -718,6 +718,22 @@ endpoint definitions are `inst/api/plumber.R` in the repository.
 - Questions, feedback, and bug reports to Steve Shafer at
   <steven.shafer@stanford.edu>.
 
+# About the software
+
+The method is Carlisle and Shafer's; the original application was
+written entirely by Steve Shafer (2025). Since mid-August 2026,
+essentially all of the code — the PDF, Word, and spreadsheet parsers,
+the OCR and AI-assist tiers, the REST API, the test suite (over a
+thousand assertions), and this guide — has been written by **Claude**,
+Anthropic's AI assistant (Claude Code; models Claude Opus 5 and Claude
+Fable 5), working under Steve's direction. The division of labor:
+Steve sets the goals, reviews the behavior, and tests every change
+against real manuscripts; Claude writes the code, the tests, and the
+documentation. Every source file in the repository carries a
+provenance header recording who wrote it, when, and what verified
+it — the same auditability this app demands of the trials it screens.
+Credit where due, in both directions.
+
 # References
 
 1. Carlisle JB. The analysis of 168 randomised controlled trials to test
