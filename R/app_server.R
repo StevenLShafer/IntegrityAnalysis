@@ -83,6 +83,17 @@ app_server <- function(input, output, session) {
   aiKeyMsg <- reactiveVal(NULL)
   aiKeyJustCleared <- FALSE   # our own programmatic clear must not
                               # erase the "invalid" verdict it delivers
+  # PDFs that produced no table WITHOUT the assist this session - the
+  # candidates for an automatic re-read the moment a key validates
+  # (Steve's report, 2026-08-26: he uploaded a failing PDF, then entered
+  # a key, and the app just sat there; expecting a re-upload is not
+  # obvious). Files whose AI attempt itself failed are NOT recorded -
+  # re-running them under the same key would loop to the same failure.
+  failedParses <- NULL
+  # What the parsing pipeline processes: fed by input$upload AND by the
+  # key-validated retry, so both routes run the identical code path.
+  # The `note` lands in the log AFTER the pipeline's clear-log reset.
+  uploadPass <- reactiveVal(NULL)
   # (no ignoreInit: with ignoreNULL suppressing the creation-time NULL,
   # ignoreInit would swallow the FIRST real key entry instead)
   observeEvent(input$aiKey, {
@@ -102,21 +113,41 @@ app_server <- function(input, output, session) {
       aiKeyJustCleared <<- TRUE
       updateTextInput(session, "aiKey", value = "")
     }
+    # A key arriving AFTER a failed upload re-reads the failures with
+    # the assist on - automatically, because "upload it again" is not
+    # an obvious next step and the alternative is an app that just sits
+    # there (Steve's report, 2026-08-26).
+    if (identical(verdict, "valid") && !is.null(failedParses) &&
+        nrow(failedParses) > 0) {
+      retry <- unique(failedParses)
+      failedParses <<- NULL
+      uploadPass(list(
+        files = retry, stamp = Sys.time(),
+        note = paste0(
+          "Key validated - re-reading ", nrow(retry), " file(s) that ",
+          "could not be parsed without the AI assist: ",
+          paste(retry$name, collapse = ", "), " ...")))
+    }
   })
   output$aiKeyStatus <- renderUI({
     m <- aiKeyMsg()
     if (is.null(m)) return(NULL)
+    # In normal flow, not floated or positioned: the verdict must PUSH
+    # the consent text down, never sit on top of it (Steve's report,
+    # 2026-08-26 - the green check landed over the consent sentence and
+    # neither could be read; the consent div's old -12px top margin
+    # climbed over whatever rendered here).
     switch(m,
-      short = div(style = "color: #9a6a00;",
+      short = div(style = "color: #9a6a00; margin-bottom: 8px;",
                   paste("That looks too short for an Anthropic API key -",
                         "keep typing, or paste the whole key.")),
-      valid = div(style = "color: #1a7a1a; font-weight: bold;",
+      valid = div(style = "color: #1a7a1a; font-weight: bold; margin-bottom: 8px;",
                   HTML("&#10003; Key validated - the AI assist is ON for this session.")),
-      invalid = div(style = "color: #b02a2a; font-weight: bold;",
+      invalid = div(style = "color: #b02a2a; font-weight: bold; margin-bottom: 8px;",
                     HTML(paste0("&#10007; Invalid key - the Anthropic API ",
                                 "rejected it. The field has been cleared; ",
                                 "check the key and paste it again."))),
-      unreachable = div(style = "color: #9a6a00;",
+      unreachable = div(style = "color: #9a6a00; margin-bottom: 8px;",
                         paste("Could not reach the Anthropic API to check",
                               "the key - it will still be tried at upload",
                               "time.")))
@@ -695,14 +726,23 @@ app_server <- function(input, output, session) {
   # Upload Data Routines                                    #
   ###########################################################
 
+  # The bridge: a real upload becomes a pass through the pipeline below.
+  # The key-validated retry (see the aiKey observer) feeds the same
+  # reactive, so failed files re-read through the identical code path.
+  observeEvent(input$upload,
+    uploadPass(list(files = input$upload, stamp = Sys.time(), note = NULL)))
+
   observeEvent(
     {
-      input$upload
+      uploadPass()
     },
     {
+      pass <- uploadPass()
       reactiveResults(NULL)
       reactiveDone(FALSE)
       commentsLog(NULL)
+      # the retry's own announcement survives the log reset above
+      if (!is.null(pass$note)) outputComments(pass$note)
       # FIX: also clear the results and buttons from any previous file, so a
       # failed or fresh upload can't be analyzed/downloaded against stale data
       OUTPUT <<- NULL
@@ -735,7 +775,7 @@ app_server <- function(input, output, session) {
       # user), deterministic engine only (ai = "never": manuscripts are
       # confidential, verdicts must be reproducible). A failed parse is
       # reported per file and the rest continue.
-      files <- input$upload
+      files <- pass$files
       # record for the purge-on-exit guarantee (see session$onSessionEnded)
       uploadedPaths <<- unique(c(uploadedPaths, files$datapath))
       files$ext <- tolower(tools::file_ext(files$name))
@@ -914,11 +954,13 @@ app_server <- function(input, output, session) {
         # 2026-08-25. The per-call overhead (an options RDS per file) is
         # milliseconds against a multi-second parse.
         resList <- vector("list", length(pdfIdx))
+        aiTried <- logical(length(pdfIdx))
         for (k in seq_along(pdfIdx)) {
           # cap re-checked per file, so one huge upload cannot blow past
           # it mid-loop; an AI consult can take minutes, so the
           # subprocess timeout grows with it
           aiThis <- aiOn && aiFilesUsed < aiCap
+          aiTried[k] <- aiThis
           progress$set(value = (k - 1) / length(pdfIdx),
                        message = "Parsing documents ",
                        detail = paste0(files$name[pdfIdx[k]], " (", k,
@@ -956,6 +998,17 @@ app_server <- function(input, output, session) {
             outputComments(paste0(
               "Could not extract a baseline table from ", files$name[i],
               ": ", msg))
+            # A PDF that failed WITHOUT the assist becomes a retry
+            # candidate: if a key validates later this session, it is
+            # re-read automatically (see the aiKey observer). Files
+            # whose AI attempt itself failed are not recorded - the
+            # same key would just fail the same way.
+            if (files$ext[i] == "pdf" && !aiTried[k])
+              failedParses <<- unique(rbind(
+                failedParses,
+                data.frame(name = files$name[i],
+                           datapath = files$datapath[i],
+                           stringsAsFactors = FALSE)))
             next
           }
           outputComments(paste0(
