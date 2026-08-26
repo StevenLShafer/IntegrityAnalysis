@@ -45,12 +45,27 @@
 .apiTokens <- function()
   trimws(strsplit(Sys.getenv("INTEGRITY_API_TOKENS", ""), ",")[[1]])
 
+# Token issuance (Steve's design, 2026-08-26): the operator's registry
+# - a PRIVATE repository - stores only SHA-256 HASHES, and the service
+# env carries them as "sha256:<hex>" entries, so no live token is
+# recorded anywhere after the moment of issuance. Plaintext entries
+# keep working for local testing. tools/issueApiToken.R is the
+# issuing mechanism (public, like every mechanism here; the DATA is
+# what stays private).
 .apiAuthorized <- function(authHeader) {
   toks <- .apiTokens()
-  if (length(toks) == 0 || all(!nzchar(toks))) return(FALSE)
+  toks <- toks[nzchar(toks)]
+  if (length(toks) == 0) return(FALSE)
   if (is.null(authHeader) || !nzchar(authHeader)) return(FALSE)
   supplied <- sub("(?i)^\\s*Bearer\\s+", "", authHeader, perl = TRUE)
-  supplied %in% toks[nzchar(toks)]
+  if (!nzchar(supplied)) return(FALSE)
+  # hashed entries authorize ONLY via the hash of what the caller
+  # presents - never by literal match, or the registry's hashes would
+  # themselves be credentials and the whole design would be theater
+  plain  <- toks[!startsWith(toks, "sha256:")]
+  hashed <- paste0("sha256:", digest::digest(supplied, algo = "sha256",
+                                             serialize = FALSE))
+  supplied %in% plain || hashed %in% toks
 }
 
 # The template CSV: the exact column layout validateData() accepts, so

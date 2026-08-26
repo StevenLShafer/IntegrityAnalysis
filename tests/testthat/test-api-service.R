@@ -133,6 +133,27 @@ test_that("the auth helper is strict about tokens", {
   expect_false(.apiAuthorized("Bearer alpha"))
 })
 
+test_that("hashed registry entries authorize without storing plaintext", {
+  # the issuance design (2026-08-26): the private registry and the
+  # service env carry sha256:<hex> entries; a token exists in plaintext
+  # only on the operator's screen at issuance
+  old <- Sys.getenv("INTEGRITY_API_TOKENS", unset = NA)
+  on.exit(if (is.na(old)) Sys.unsetenv("INTEGRITY_API_TOKENS")
+          else Sys.setenv(INTEGRITY_API_TOKENS = old), add = TRUE)
+  token <- "ia_test_token_never_stored_anywhere"
+  h <- digest::digest(token, algo = "sha256", serialize = FALSE)
+  Sys.setenv(INTEGRITY_API_TOKENS = paste0("sha256:", h))
+  expect_true(.apiAuthorized(paste("Bearer", token)))
+  expect_false(.apiAuthorized("Bearer ia_some_other_token"))
+  # the hash itself is NOT a usable credential
+  expect_false(.apiAuthorized(paste("Bearer", h)))
+  expect_false(.apiAuthorized(paste0("Bearer sha256:", h)))
+  # mixed plaintext + hashed lists work (local testing convenience)
+  Sys.setenv(INTEGRITY_API_TOKENS = paste0("devtoken,sha256:", h))
+  expect_true(.apiAuthorized("Bearer devtoken"))
+  expect_true(.apiAuthorized(paste("Bearer", token)))
+})
+
 test_that("the BYOK key is scrubbed from parse failure text", {
   fakeKey <- "FAKE-KEY-api-scrub-000000000000000000"
   pdf <- file.path(tempdir(), "scrub-test.pdf")
