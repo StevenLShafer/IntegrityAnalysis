@@ -42,6 +42,7 @@ Imports:
   zip
 Suggests:
     graphics,
+    plumber,
     grDevices,
     pkgload,
     rcmdcheck,
@@ -77,4 +78,5 @@ Collate:
   parseBaselineTable.R
   parseBaselineTableFiles.R
   writeIntegrityTemplate.R
+  apiService.R
 Config/roxygen2/version: 8.1.0
