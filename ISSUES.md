@@ -105,7 +105,76 @@ is exhausted and the reasoning recorded.
 
 **Open issues:** 1 (API), 3 (validation - in flight above), 5 (MC
 parallelism; pairs with 11), 7 (survey), 8 (AI in deployment - BYOK
-direction), 11 (live analysis feedback), 12 (median/IQR validation).
+direction), 11 (live analysis feedback), 12 (median/IQR validation),
+22 (scanned tables - vision tier IMPLEMENTED, tesseract tier open),
+23 (verbose-column layout fixes from medRxiv).
+
+## 22. Scanned tables: page images to the AI, then local tesseract OCR
+
+The first night of the medRxiv harvest (issue 21) earned its keep
+immediately: 10.1101/19007195 is an ordinary text manuscript whose
+Table 1 page alone is a scanned picture - zero text-layer characters
+on page 19, 53,970 on the other 20 pages. No text route can reach that
+table. Steve's observation (2026-08-26): the A&A corpus could never
+have taught us this, because A&A's submission requirements precluded
+scanned tables - a corpus of curated submissions measures the gate,
+not the wild.
+
+Two tiers, agreed 2026-08-26:
+
+**Tier 1 (IMPLEMENTED 2026-08-26) - page images to the AI assist.**
+`parseBaselineTableAI()` now detects pages with no text layer
+(`.ppImageOnlyPages`) and sends them as rendered 150-dpi PNG content
+blocks instead of text. In a mixed document the image-only pages are
+tried first (when a table was pasted in as a picture, that is where it
+is); a fully scanned document uses a local tesseract OCR pass to
+locate the table page by caption score, then still sends the image
+(the model reads a page picture far better than OCR-mangled text).
+BYOK consent language already covers it - the uploaded documents'
+content, text or image, goes only under the user's own key.
+
+**Tier 2 (OPEN) - tesseract OCR into the deterministic engine.** The
+plumbing exists and has since 2026-08-15: `.ppOcrData()` returns
+tesseract word boxes scaled to PDF points, and
+`parseBaselineTableHeuristics(ocr = TRUE)` feeds them through the
+ordinary engine. What remains: (a) automatic engagement - when
+candidate pages are image-only and no API key is present, retry them
+with `ocr = TRUE`; (b) provenance `"ocr"` on every row so the grid
+shades the whole OCR-read table in its own color - a pale cyan,
+deliberately distinct from the incongruent blue and the derived green
+- with a legend note that OCR misreads digits (3/8, 1/7) and each cell
+needs eye verification against the manuscript, or an API key for the
+higher-accuracy AI read; (c) validation harness - run tesseract and
+the AI assist over the same scanned pages and score tesseract's digit
+accuracy against the model's reading before trusting it in
+production (Steve's design: the AI assist validates tesseract during
+testing).
+
+## 23. Layout repairs from the wild: statistic columns and superscript orphans
+
+10.1101/19007542 (medRxiv, first harvest night): the deterministic
+engine finds the right page and the right caption - "Table 1. Sample
+characteristics.", sitting BELOW the table - then rejects every row
+("no usable rows"). Four stacked hostilities, two of them worth
+engine work because they are common in real journals:
+
+- **Trailing test-statistic columns** (here t and p; elsewhere chi2,
+  F). The arm columns carry "(N = 22)" headers; the statistic columns
+  carry none. Detectable and droppable: a rightmost column block whose
+  header matches `(?i)^(t|z|F|p|chi.?2?|x2)$` (or is empty) and whose
+  cells are bare decimals with no N anywhere. The AI schema already
+  excludes these by instruction; the deterministic engine should too.
+- **Superscript orphans.** Footnote markers set as separate words ("A",
+  "B", "&") land between cells and split them across visual lines
+  ("0.02 &" on one line, its neighbor "0.89" alone on the next). Kin
+  to the rotated-rail filter (.ppStripRotatedText): single-glyph words
+  vertically offset from their line's baseline can be dropped before
+  clustering.
+
+The other two hostilities - row labels wrapped across lines with huge
+vertical whitespace, and the stat tag buried mid-label ("Age (s.d.) in
+years") - are the hard general case; diminishing returns, and exactly
+what the AI assist is for (the model reads this page trivially).
 
 ## 1. Build the API
 

@@ -107,7 +107,7 @@ offline — no document content is ever sent to any third-party service —
 with one opt-in exception under your sole control: the <strong>AI
 assist</strong> (see below) engages only when you enter your own
 Anthropic API key, and entering it is your explicit consent to send your
-uploaded documents’ text to that service for the session. Even then
+uploaded documents’ content to that service for the session. Even then
 confidentiality holds: Anthropic’s commercial terms bar it from training
 models on API submissions, and API data is deleted within about 30 days
 (see the AI-assist section for the specifics). Without a key, nothing
@@ -221,9 +221,11 @@ or with an unlabeled interval, is flagged for hand entry instead — the
 analysis needs quartiles, and the app will not guess. Extraction is
 imperfect by nature: table lines the reader could not use appear as
 red-flagged rows in the grid (fill them in from the paper, or delete
-them), and a scanned image with no text layer fails cleanly with a
-message. Whatever was extracted can be reviewed, corrected, and analyzed
-without leaving the app.</p>
+them). A scanned page with no text layer is beyond the deterministic
+reader — but with an API key entered, the AI assist reads the rendered
+page image directly (see the AI assist section); without one, it fails
+cleanly with a message. Whatever was extracted can be reviewed,
+corrected, and analyzed without leaving the app.</p>
 <p><strong>A Word manuscript (.docx).</strong> A submission in Word
 format uploads the same way as a PDF: the app examines every table in
 the document — submissions put them at the end, with the caption just
@@ -269,12 +271,16 @@ roughly a third of the time. For the rest, an optional <strong>AI
 assist</strong> exists: enter your own Anthropic API key in the field
 above the upload box, and pages the deterministic reader cannot fully
 parse are sent to the Anthropic API — under <em>your</em> account, at
-roughly $0.06–0.11 per article. When even no table can be found, the
-assist also asks for baseline data stated in the article’s running text
-(some trials report age, weight, and sex in a Methods sentence rather
-than a table). Measured against Carlisle’s hand-extracted values, the
-assist recovers about 91% of known values on articles with no parseable
-table and 81% where the deterministic reader misread the table.</p>
+roughly $0.06–0.11 per article. Pages with no text layer at all —
+scanned pages, or tables pasted into an otherwise digital manuscript as
+pictures — are sent as rendered page images, which the model reads
+directly; this is the only route in the app that can reach a scanned
+table. When even no table can be found, the assist also asks for
+baseline data stated in the article’s running text (some trials report
+age, weight, and sex in a Methods sentence rather than a table).
+Measured against Carlisle’s hand-extracted values, the assist recovers
+about 91% of known values on articles with no parseable table and 81%
+where the deterministic reader misread the table.</p>
 <p>The key is <strong>checked the moment you enter it</strong> — a green
 “Key validated” confirms this session is armed (the check is free: it
 authenticates without spending tokens); an invalid key is refused in red
@@ -285,8 +291,10 @@ tab holds the live key.</p>
 <ul>
 <li><strong>Your key is your consent.</strong> Without a key, no
 document content ever leaves the server; entering one authorizes sending
-your uploads’ text to the Anthropic API for this session — appropriate
-only when you have the right to share the document.</li>
+your uploads’ content — the text of unparseable pages, or, for pages
+with no text layer (scanned tables, tables pasted in as pictures), the
+rendered page image — to the Anthropic API for this session —
+appropriate only when you have the right to share the document.</li>
 <li><strong>The handoff stays confidential and is never used for model
 training.</strong> This is not something the app has to request on each
 call — no such per-request instruction exists, and none is needed,

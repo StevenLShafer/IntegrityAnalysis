@@ -55,6 +55,13 @@
 # model, not located on the page by coordinate. Every row it contributes   #
 # is tagged "ai" in the result's `provenance` table. For research-integrity #
 # work, check those rows against the printed table before relying on them. #
+#                                                                          #
+# 2026-08-26 (Claude Fable 5): pages with no text layer now travel as      #
+# rendered PNG images (150 dpi, base64 content blocks) - the medRxiv      #
+# harvest surfaced manuscripts whose Table 1 page alone is a scanned      #
+# picture (10.1101/19007195), which no text route can reach. Image-page    #
+# detection, selection priority, and the fully-scanned tesseract-assisted  #
+# path are described at .ppImageOnlyPages and in parseBaselineTableAI.     #
 ############################################################################
 
 # The endpoint and API version are fixed here rather than made arguments,
@@ -249,7 +256,8 @@ claudeAvailable <- function() {
   "deviation, and note that you did.",
   sep = "\n")
 
-.ppUserPrompt <- function(pageText, hint = NULL, source = "table") {
+.ppUserPrompt <- function(pageText, hint = NULL, source = "table",
+                          asImage = FALSE) {
   paste0(
     if (source == "prose")
       paste0("Below is the text of a trial report, extracted from the PDF.",
@@ -259,6 +267,15 @@ claudeAvailable <- function() {
              " Results giving age, weight and sex per group. Read them from",
              " there. If the article genuinely does not report baseline",
              " characteristics per group, set found to false.\n\n")
+    else if (asImage)
+      paste0("Attached are rendered image(s) of page(s) of a trial report.",
+             " These pages carry no machine-readable text layer - the table",
+             " was scanned or pasted in as a picture - so read the baseline",
+             " characteristics table directly from the image(s). Transcribe",
+             " the printed glyphs exactly; where a digit is genuinely",
+             " illegible, use null and say so in notes rather than guessing.",
+             " If none of the attached pages holds a baseline",
+             " characteristics table, set found to false.\n\n")
     else
       paste0("Below is the text layer of one page of a trial report,",
              " extracted from the PDF. Word spacing survives; column",
@@ -268,8 +285,39 @@ claudeAvailable <- function() {
     if (!is.null(hint) && nzchar(hint))
       paste0("What a deterministic parser already established about this",
              " article:\n", hint, "\n\n") else "",
-    "---- BEGIN TEXT ----\n", pageText, "\n---- END TEXT ----\n")
+    if (asImage) ""
+    else paste0("---- BEGIN TEXT ----\n", pageText, "\n---- END TEXT ----\n"))
 }
+
+# Render pages of a PDF to PNG and return them base64-encoded, for the
+# image content blocks of a Messages request. 150 dpi keeps a Letter page
+# near the API's ~1568-px auto-resize edge, so nothing is spent on pixels
+# the service would immediately throw away, while table digits stay crisp.
+.ppPageImagesB64 <- function(pdfFile, pages, dpi = 150) {
+  tmp <- file.path(tempdir(), paste0("aiimg", basename(tempfile(""))))
+  dir.create(tmp)
+  on.exit(unlink(tmp, recursive = TRUE, force = TRUE), add = TRUE)
+  # pdf_convert applies sprintf(filenames, page, format) itself, so the
+  # template must carry the placeholders - a pre-formatted name warns.
+  imgs <- pdftools::pdf_convert(
+    pdfFile, format = "png", pages = pages, dpi = dpi, verbose = FALSE,
+    filenames = file.path(tmp, "page%04d.%s"))
+  vapply(imgs,
+         # base64_enc line-wraps long input; the API rejects wrapped
+         # base64 ("invalid base64 data", found live 2026-08-26), so
+         # strip the newlines it inserts.
+         function(f) gsub("[\r\n]", "", jsonlite::base64_enc(
+           readBin(f, "raw", file.info(f)$size))),
+         character(1), USE.NAMES = FALSE)
+}
+
+# Pages whose text layer is (near-)empty. In a document that otherwise has
+# text, these are scanned or image-pasted pages - and when a manuscript's
+# tables were pasted in as pictures, they are precisely these pages. The
+# 100-character floor absorbs stray artifacts (a page number, a watermark
+# fragment) without letting a real prose page through.
+.ppImageOnlyPages <- function(pageTexts)
+  which(nchar(trimws(pageTexts)) < 100)
 
 # --------------------------------------------------------------------------
 # The API call
@@ -282,7 +330,21 @@ claudeAvailable <- function() {
                                  model = .ppDefaultModel,
                                  effort = "medium",
                                  maxTokens = 16000L,
-                                 source = "table") {
+                                 source = "table",
+                                 imagesB64 = NULL) {
+  prompt <- .ppUserPrompt(pageText, hint, source,
+                          asImage = length(imagesB64) > 0)
+  # With images the content is a list of typed blocks - the image(s) first,
+  # then the instruction text (the order Anthropic recommends). Without
+  # them it stays a plain string, byte-identical to what every existing
+  # test and cached request pins.
+  content <- if (length(imagesB64) > 0) {
+    c(lapply(imagesB64, function(b64)
+        list(type = "image",
+             source = list(type = "base64", media_type = "image/png",
+                           data = b64))),
+      list(list(type = "text", text = prompt)))
+  } else prompt
   list(
     model      = model,
     max_tokens = maxTokens,
@@ -297,8 +359,7 @@ claudeAvailable <- function() {
         schema = jsonlite::fromJSON(.ppTableSchemaJson(), simplifyVector = FALSE)
       )
     ),
-    messages = list(list(role = "user",
-                         content = .ppUserPrompt(pageText, hint, source)))
+    messages = list(list(role = "user", content = content))
   )
 }
 
@@ -441,6 +502,15 @@ claudeAvailable <- function() {
 #' engine cannot read a table's typography; [parseBaselineTable()] calls it
 #' for you when needed.
 #'
+#' Pages with no text layer — scanned pages, or tables pasted into the
+#' manuscript as pictures — are sent as rendered page images instead, which
+#' the model reads directly. In a mixed document the image-only pages are
+#' tried first (when a manuscript's table was pasted in as a picture, that
+#' is where it is). For a fully scanned document the table page is located
+#' with a local OCR pass (requires the suggested `tesseract` package; the
+#' OCR text is used only to pick the page — the page itself still travels
+#' as an image).
+#'
 #' The values this function returns were read by a language model rather than
 #' located on the page by coordinate, so they are tagged `"ai"` in the
 #' result's `provenance` table. Check them against the printed table before
@@ -507,33 +577,81 @@ parseBaselineTableAI <- function(pdfFile,
       pageText <- substr(pageText, 1, maxChars)
     pages <- NA_integer_
   } else {
+    # Pages with no text layer in a document that renders are scanned or
+    # image-pasted pages (found "in the wild" on medRxiv, 2026-08-26:
+    # 10.1101/19007195 is a normal text manuscript whose Table 1 page
+    # alone is a picture). The text route cannot reach them; the model
+    # can read the rendered image directly.
+    pageTexts  <- if (isTRUE(ocr)) NULL else .ppPdfText(pdfFile)
+    imagePages <- if (is.null(pageTexts)) integer(0)
+                  else .ppImageOnlyPages(pageTexts)
     if (is.null(pages)) {
-      allPages <- if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
-                  else .ppPdfData(pdfFile)
-      if (length(allPages) == 0)
-        stop("No text layer found in ", pdfFile, ".")
-      # Choose the page by table caption, the same way the deterministic
-      # engine does. Picking it by baseline vocabulary instead - which is what
-      # this did originally - sent the model to a page with no table on it in
-      # seven of twenty-one corpus trials, and it can only answer that there
-      # is no table there. Vocabulary scoring remains the fallback for
-      # documents with no caption anywhere.
-      pages <- .ppBestCaptionPage(allPages)
-      if (is.null(pages))
-        pages <- which.max(vapply(allPages, .ppScorePage, numeric(1)))
+      if (!is.null(pageTexts) && length(imagePages) &&
+          length(imagePages) < length(pageTexts)) {
+        # A mixed document, and the deterministic engine (which sees only
+        # text) found nothing usable - so the table most likely sits on
+        # the image-only pages. Send those, capped to bound cost; figures
+        # pasted the same way just come back "no table here".
+        pages <- utils::head(imagePages, 4L)
+        if (length(imagePages) > 4L)
+          say("Document has ", length(imagePages), " image-only pages; ",
+              "sending the first 4. Use pages= to aim elsewhere.")
+      } else if (!is.null(pageTexts) && length(pageTexts) &&
+                 length(imagePages) == length(pageTexts)) {
+        # Every page is a scan. Locate the table page with a cheap local
+        # OCR pass when tesseract is available (caption scoring over the
+        # OCR words, exactly as for a text PDF) - the page itself is then
+        # sent as an image, which the model reads far better than
+        # OCR-mangled text.
+        if (!requireNamespace("tesseract", quietly = TRUE))
+          stop("Every page of ", pdfFile, " is a scanned image with no ",
+               "text layer. Install the tesseract package (it is used ",
+               "only to locate the table page), or pass pages=.",
+               call. = FALSE)
+        say("Fully scanned document; locating the table page by OCR ...")
+        ocrPages <- .ppOcrData(pdfFile, dpi = ocrDpi)
+        pages <- .ppBestCaptionPage(ocrPages)
+        if (is.null(pages))
+          pages <- which.max(vapply(ocrPages, .ppScorePage, numeric(1)))
+      } else {
+        allPages <- if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
+                    else .ppPdfData(pdfFile)
+        if (length(allPages) == 0)
+          stop("No text layer found in ", pdfFile, ".")
+        # Choose the page by table caption, the same way the deterministic
+        # engine does. Picking it by baseline vocabulary instead - which is
+        # what this did originally - sent the model to a page with no table
+        # on it in seven of twenty-one corpus trials, and it can only answer
+        # that there is no table there. Vocabulary scoring remains the
+        # fallback for documents with no caption anywhere.
+        pages <- .ppBestCaptionPage(allPages)
+        if (is.null(pages))
+          pages <- which.max(vapply(allPages, .ppScorePage, numeric(1)))
+      }
     }
     pageText <- paste(if (isTRUE(ocr)) .ppOcrText(pdfFile, dpi = ocrDpi, pages = pages)
                       else .ppPdfText(pdfFile)[pages], collapse = "\n\n")
   }
-  if (!nzchar(.ppSquish(pageText)))
+
+  # An explicitly requested page can be image-only too; either way, any
+  # selected page without a text layer travels as a rendered image.
+  imagesB64 <- NULL
+  if (source == "table" && !isTRUE(ocr) && length(pages) &&
+      !anyNA(pages) && any(pages %in% imagePages)) {
+    say("Page(s) ", paste(intersect(pages, imagePages), collapse = ","),
+        " have no text layer - sending rendered image(s) instead.")
+    imagesB64 <- .ppPageImagesB64(pdfFile, pages)
+  }
+  if (length(imagesB64) == 0 && !nzchar(.ppSquish(pageText)))
     stop("There is no text layer in ", pdfFile, " to send.")
 
   say("Asking ", model, " to read ",
       if (source == "prose") "the article text for baseline data stated in prose"
-      else paste0("page ", paste(pages, collapse = ",")), " ...")
+      else paste0("page ", paste(pages, collapse = ","),
+                  if (length(imagesB64)) " (as image)" else ""), " ...")
   body   <- .ppClaudeRequestBody(pageText, hint = hint, model = model,
                                  effort = effort, maxTokens = maxTokens,
-                                 source = source)
+                                 source = source, imagesB64 = imagesB64)
   resp   <- .ppClaudePost(body, key)
   parsed <- .ppClaudeStructuredOutput(resp)
 

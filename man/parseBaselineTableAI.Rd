@@ -80,6 +80,15 @@ engine cannot read a table's typography; \code{\link[=parseBaselineTable]{parseB
 for you when needed.
 }
 \details{
+Pages with no text layer — scanned pages, or tables pasted into the
+manuscript as pictures — are sent as rendered page images instead, which
+the model reads directly. In a mixed document the image-only pages are
+tried first (when a manuscript's table was pasted in as a picture, that
+is where it is). For a fully scanned document the table page is located
+with a local OCR pass (requires the suggested \code{tesseract} package; the
+OCR text is used only to pick the page — the page itself still travels
+as an image).
+
 The values this function returns were read by a language model rather than
 located on the page by coordinate, so they are tagged \code{"ai"} in the
 result's \code{provenance} table. Check them against the printed table before

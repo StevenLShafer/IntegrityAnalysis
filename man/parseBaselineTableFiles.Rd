@@ -2,7 +2,7 @@
 % Please edit documentation in R/parseBaselineTableFiles.R
 \name{parseBaselineTableFiles}
 \alias{parseBaselineTableFiles}
-\title{Parse every PDF in a directory}
+\title{Parse every PDF and Word manuscript in a directory}
 \usage{
 parseBaselineTableFiles(
   files,
@@ -14,8 +14,8 @@ parseBaselineTableFiles(
 )
 }
 \arguments{
-\item{files}{A directory (every \code{.pdf} under it is parsed, recursively) or
-a character vector of PDF paths.}
+\item{files}{A directory (every \code{.pdf} and \code{.docx} under it is parsed,
+recursively) or a character vector of PDF / .docx paths.}
 
 \item{outputDir}{If given, each successful parse is also written there as
 \verb{<file>.xlsx} by \code{\link[=writeIntegrityTemplate]{writeIntegrityTemplate()}}. Created if missing.}
@@ -37,17 +37,20 @@ A data frame with one row per file: \code{file}, \code{ok}, \code{error},
 each \code{ParsePDFTable}, or \code{NULL} where parsing failed.
 }
 \description{
-Runs \code{\link[=parseBaselineTable]{parseBaselineTable()}} over many PDFs and returns one row per file
-describing what happened, with the parsed table itself kept in a list
-column.
+Runs \code{\link[=parseBaselineTable]{parseBaselineTable()}} over many PDFs and \code{.docx} manuscripts and
+returns one row per file describing what happened, with the parsed
+table itself kept in a list column.
 }
 \details{
-Each PDF is parsed in a \strong{separate R process} with a timeout. That is not
+Each file is parsed in a \strong{separate R process} with a timeout. That is not
 defensive programming for its own sake: a malformed PDF can hang poppler
 indefinitely, and because the hang is inside C code, \code{setTimeLimit()} and
 \code{tryCatch()} cannot end it. A file that hangs or crashes is recorded with
 \code{ok = FALSE} and the run carries on. The cost is a process launch per file,
-roughly half a second.
+roughly half a second. A \code{.docx} (a zip of XML read through officer /
+libxml2) cannot execute anything, but crafted XML can stall or exhaust
+its parser - the same subprocess-and-timeout containment covers it, which
+is why the app routes Word uploads through here too (issue 19).
 
 \code{ai} defaults to \code{"never"} here, unlike in \code{\link[=parseBaselineTable]{parseBaselineTable()}}. A
 directory can hold thousands of articles, and each fallback is a billable
