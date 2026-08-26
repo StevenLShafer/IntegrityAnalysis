@@ -598,6 +598,23 @@ sensitivity.
 
 ## 21. A medRxiv preprint stress-test corpus (no ground truth, by design)
 
+**UPDATE 2026-08-26: the nightly route is now S3.** The first harvest
+night's HTTPS fetches hit 403 on 67 of 72 PDFs (medRxiv's bot
+protection, which we do not evade). The replacement is the channel
+medRxiv built FOR bulk mining: the requester-pays bucket
+s3://medrxiv-src-monthly, billed to Steve's AWS account (verified
+live: 100 July-2026 packages, 842 MB, ~7 cents; ~$10/month budget
+alarm guards the account). `corpus/harvestMedrxivS3.R` lists the
+current+previous month folders, downloads up to 100 packages / 2 GB
+per night, reads DOI+title+abstract from each package's JATS XML,
+applies the SHARED filter (corpus/rctFilterPatterns.R, the PR #74
+rules - on the real abstract now, better input than API metadata),
+keeps RCT PDFs by DOI, and deletes everything else. First 103
+packages: 2 RCTs kept, 0 errors - the ~2% RCT base rate of a general
+medRxiv month is what the nightly cadence compounds. The scheduled
+task now runs this script; downloadPreprintRCTs.R remains for API
+metadata scans.
+
 Steve's idea (2026-08-25): preprint servers permit programmatic access,
 so harvest randomized-controlled-trial preprints into a test corpus.
 There is no ground truth for the values - what a preprint corpus buys
