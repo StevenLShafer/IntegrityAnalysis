@@ -103,56 +103,11 @@ manifest <- if (file.exists(manifestPath))
 saveManifest <- function() write.csv(manifest, manifestPath,
                                      row.names = FALSE)
 
-rctPattern  <- paste0(
-  "(?i)randomi[sz]ed[- ][^.]{0,60}\\btrial\\b|randomi[sz]ed controlled trial",
-  # "randomized, controlled study" and kin - CONSORT prefers "trial", but
-  # real RCT titles say "study" often enough to cost us candidates
-  "|randomi[sz]ed,?\\s+controlled\\s+stud(?:y|ies)",
-  "|\\bRCT\\b")
-dropPattern <- paste0("(?i)\\bprotocol\\b|systematic review|meta-analys",
-                      "|\\bpost.?hoc\\b|secondary analysis")
-
-# The first harvest night (2026-08-26) let two non-RCTs through, both the
-# same way: their ABSTRACTS mention the randomized trial their patients
-# came from (10.1101/19008268, a DBS imaging analysis of trial enrollees;
-# 10.1101/19007195, an EHR cohort compared against published RCT rates),
-# while rctPattern was tested against title+abstract and dropPattern
-# against the title only. Steve's diagnosis. Two repairs:
-#
-# - a title hit still qualifies on its own (CONSORT titles say
-#   "randomized controlled trial", and titles do not cite other trials);
-# - an abstract-only hit must ALSO describe randomization in the active
-#   voice - the way a trial reports its own methods ("participants were
-#   randomly assigned to ...") - not merely mention a trial, and must not
-#   look like an analysis OF another study's enrollees.
-#
-# Referential mentions ("enrolled in a randomized trial of X",
-# "compared with rates reported in RCTs") match neither active pattern
-# and are excluded. Imperfect by design - a secondary analysis that
-# reprints its parent's methods sentence still slips through - but each
-# leak costs only one harmless stress-test PDF.
-activePattern    <- paste0(
-  "(?i)\\b(?:were|was|are|is)\\s+randoml?y\\s+(?:assigned|allocated|",
-  "divided|distributed)\\b",
-  "|\\b(?:were|was)\\s+randomi[sz]ed\\s+(?:to|into|in\\s+a)\\b",
-  "|\\bwe\\s+randoml?y\\s+(?:assigned|allocated)\\b",
-  "|\\bwe\\s+(?:conducted|performed|carried\\s+out|report)\\s+",
-  "[^.]{0,80}\\brandomi[sz]ed\\b",
-  "|\\bin\\s+this\\s+[^.]{0,60}\\brandomi[sz]ed\\b",
-  "|\\bthis\\s+randomi[sz]ed\\b",
-  # design self-descriptions: "randomized, double-blinded, phase IIb",
-  # "double-blind randomized", "randomized parallel-group" - the way an
-  # abstract describes its OWN methods (a referential mention names the
-  # parent trial instead: "a randomized trial of X")
-  "|\\brandomi[sz]ed,?\\s+(?:double|single|triple|placebo|parallel|",
-  "open|blind|sham)[- ]",
-  "|\\b(?:double|single|triple)[- ]blind(?:ed)?,?\\s+randomi[sz]ed\\b")
-secondaryPattern <- paste0(
-  "(?i)\\bsub-?stud(?:y|ies)\\b|\\bancillary\\s+stud",
-  "|\\bnested\\s+(?:case|within|in)\\b",
-  "|\\b(?:enrolled|participants|patients|subjects|data|sample)\\b",
-  "[^.]{0,40}\\b(?:in|from|of)\\s+(?:a|the|an?\\s+ongoing)\\s+",
-  "[^.]{0,60}\\brandomi[sz]ed\\b")
+# The RCT filter (rctPattern/dropPattern/activePattern/secondaryPattern)
+# lives in corpus/rctFilterPatterns.R, SHARED with the S3-route
+# harvester (harvestMedrxivS3.R) so one improvement reaches both.
+source(file.path(dirname(sub("--file=", "", grep("^--file=",
+  commandArgs(FALSE), value = TRUE)[1])), "rctFilterPatterns.R"))
 
 # ---- walk the metadata API ---------------------------------------------
 # One page per call, 100 records each, cursor-paginated. Every VERSION of
