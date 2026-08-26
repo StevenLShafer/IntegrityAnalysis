@@ -650,6 +650,56 @@ extraction, validation, analysis — and compared with Carlisle's stored
 trial p values on the log scale: r = 0.94, median disagreement a factor
 of 1.05, and 97% agreement on which trials alarm at p < 0.05.
 
+# The API (for editorial systems and publishers)
+
+Everything the app does interactively is also callable as a REST
+service, so an editorial system (Editorial Manager and kin) can screen
+a submission automatically and silently during peer review. The
+service is the same engine, the same deterministic-first policy, and
+the same privacy contract as the app.
+
+**Endpoints.** `GET /health` reports the service identity (open, for
+monitoring). `POST /parse` accepts one document — article PDF, Word
+manuscript, or spreadsheet — and returns the extracted baseline table.
+`POST /analyze` goes on to validate and run the Monte Carlo, returning
+a per-trial results CSV and the overall Stouffer P.
+
+**Authentication.** Every data endpoint requires a bearer token issued
+by the service operator; a request without one is refused before any
+handler runs, and a service with no tokens configured refuses
+everything (fail closed).
+
+**A failed parse is a round trip, not a dead end.** Failure responses
+(HTTP 422) carry `templateCsv` — the partial table in the app's input
+layout, with what is wrong spelled out. Fix the flagged cells and POST
+that CSV straight back to `/analyze`: the failure payload is, by
+construction, valid input to the next call.
+
+**Nothing is retained.** Each upload lives in a working directory
+created for that request and deleted when the request ends, success or
+failure; every response says `"deleted": true`, because the contract
+requires confirming it.
+
+**The AI assist, per request.** Sending an `X-Anthropic-Key` header
+engages the AI assist for that request only, under the caller's own
+key — the same consent-and-billing model as the app's key field, with
+the same guarantees (the key is never stored or logged, and Anthropic's
+commercial terms bar training on API submissions).
+
+A publisher's developer can try it in one line once the operator
+supplies a token:
+
+```
+curl -X POST https://<service-host>/analyze \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@manuscript.pdf"
+```
+
+Public hosting is being stood up; publishers interested in running the
+service inside their own infrastructure can do so from the open
+source — `IntegrityAnalysis::runApiService()` starts it, and the
+endpoint definitions are `inst/api/plumber.R` in the repository.
+
 # Notes and roadmap
 
 - **Screening, then scrutiny.** The method flags improbable homogeneity.

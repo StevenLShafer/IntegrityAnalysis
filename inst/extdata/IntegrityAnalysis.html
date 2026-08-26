@@ -65,6 +65,8 @@ p</a></li>
 </ul></li>
 <li><a href="#results-and-downloads" id="toc-results-and-downloads">Results and downloads</a></li>
 <li><a href="#validation" id="toc-validation">Validation</a></li>
+<li><a href="#the-api-for-editorial-systems-and-publishers" id="toc-the-api-for-editorial-systems-and-publishers">The API (for
+editorial systems and publishers)</a></li>
 <li><a href="#notes-and-roadmap" id="toc-notes-and-roadmap">Notes and
 roadmap</a></li>
 <li><a href="#references" id="toc-references">References</a></li>
@@ -864,6 +866,49 @@ pipeline — PDF upload, extraction, validation, analysis — and compared
 with Carlisle’s stored trial p values on the log scale: r = 0.94, median
 disagreement a factor of 1.05, and 97% agreement on which trials alarm
 at p &lt; 0.05.</p>
+<h1 id="the-api-for-editorial-systems-and-publishers">The API (for
+editorial systems and publishers)</h1>
+<p>Everything the app does interactively is also callable as a REST
+service, so an editorial system (Editorial Manager and kin) can screen a
+submission automatically and silently during peer review. The service is
+the same engine, the same deterministic-first policy, and the same
+privacy contract as the app.</p>
+<p><strong>Endpoints.</strong> <code>GET /health</code> reports the
+service identity (open, for monitoring). <code>POST /parse</code>
+accepts one document — article PDF, Word manuscript, or spreadsheet —
+and returns the extracted baseline table. <code>POST /analyze</code>
+goes on to validate and run the Monte Carlo, returning a per-trial
+results CSV and the overall Stouffer P.</p>
+<p><strong>Authentication.</strong> Every data endpoint requires a
+bearer token issued by the service operator; a request without one is
+refused before any handler runs, and a service with no tokens configured
+refuses everything (fail closed).</p>
+<p><strong>A failed parse is a round trip, not a dead end.</strong>
+Failure responses (HTTP 422) carry <code>templateCsv</code> — the
+partial table in the app’s input layout, with what is wrong spelled out.
+Fix the flagged cells and POST that CSV straight back to
+<code>/analyze</code>: the failure payload is, by construction, valid
+input to the next call.</p>
+<p><strong>Nothing is retained.</strong> Each upload lives in a working
+directory created for that request and deleted when the request ends,
+success or failure; every response says <code>&quot;deleted&quot;: true</code>,
+because the contract requires confirming it.</p>
+<p><strong>The AI assist, per request.</strong> Sending an
+<code>X-Anthropic-Key</code> header engages the AI assist for that
+request only, under the caller’s own key — the same consent-and-billing
+model as the app’s key field, with the same guarantees (the key is never
+stored or logged, and Anthropic’s commercial terms bar training on API
+submissions).</p>
+<p>A publisher’s developer can try it in one line once the operator
+supplies a token:</p>
+<pre><code>curl -X POST https://&lt;service-host&gt;/analyze \
+  -H &quot;Authorization: Bearer &lt;token&gt;&quot; \
+  -F &quot;file=@manuscript.pdf&quot;</code></pre>
+<p>Public hosting is being stood up; publishers interested in running
+the service inside their own infrastructure can do so from the open
+source — <code>IntegrityAnalysis::runApiService()</code> starts it, and
+the endpoint definitions are <code>inst/api/plumber.R</code> in the
+repository.</p>
 <h1 id="notes-and-roadmap">Notes and roadmap</h1>
 <ul>
 <li><strong>Screening, then scrutiny.</strong> The method flags
