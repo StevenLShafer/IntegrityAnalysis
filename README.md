@@ -1,10 +1,49 @@
-Integrity Analysis examined the statistical properties of baseline study data for randomized controlled trials, as described in:
+# IntegrityAnalysis
 
-Carlisle JB. The analysis of 168 randomised controlled trials to test data integrity. Anaesthesia. 2012;67:521-537.
+Statistical screening of randomized controlled trials for fabricated or
+erroneous baseline data, by the Carlisle–Shafer Monte Carlo method: the
+baseline arms of an honest RCT are random samples of one population,
+and means that agree *too well*, variable after variable, are evidence
+that no randomization ever happened.
 
-Carlisle JB, Dexter F, Pandit JJ, Shafer SL, Yentis SM. Calculating the probability of random sampling for continuous variables in submitted or  published randomised controlled trials. Anaesthesia. 2015;70:848-58.
+**Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —
+upload an article PDF, a Word manuscript, a spreadsheet, or a zip of
+many; review the extracted table in an editable grid; analyze. The
+[user guide](https://integrityanalysis.io/guide.html) covers
+everything, including the privacy contract (nothing you upload is
+retained) and the optional bring-your-own-key AI assist for
+hard-to-read documents.
 
-Carlisle JB. Data fabrication and other reasons for non-random sampling in 5087 randomised, controlled trials in anaesthetic and general medical journals. Anaesthesia. 2017;72:944-952                                   #
+## What is here
+
+- **The Shiny app** (`R/app_*.R`) — the interactive screen above.
+- **The parse engine** (`R/parse*`, `R/tokenize.R`, `R/pageLayout.R`) —
+  deterministic extraction of baseline tables from PDFs (85% of a
+  1,865-trial journal corpus), Word manuscripts, and journal-style
+  spreadsheets, with tesseract OCR and an opt-in AI tier for scans.
+- **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
+  rounding treatment, median/IQR rows via a metalog null, one-sided p
+  toward homogeneity, Stouffer combination; validated against
+  Carlisle's 2017 analysis of 5,080 trials (r = 0.993, 99.0% alarm
+  concordance).
+- **The REST API** (`R/apiService.R`, `inst/api/`, `Dockerfile`) — the
+  same analysis for editorial systems: bearer-token auth, round-trip
+  failure payloads, per-request AI assist, nothing retained.
+- **The evidence** (`corpus/`, `tests/`) — the regression corpus
+  tooling and a test suite of 1,000+ assertions; every parser change
+  is measured against the corpus before it ships.
+
+## The method
+
+1. Carlisle JB. The analysis of 168 randomised controlled trials to
+   test data integrity. *Anaesthesia*. 2012;67:521–537.
+2. Carlisle JB, Dexter F, Pandit JJ, Shafer SL, Yentis SM. Calculating
+   the probability of random sampling for continuous variables in
+   submitted or published randomised controlled trials. *Anaesthesia*.
+   2015;70:848–858.
+3. Carlisle JB. Data fabrication and other reasons for non-random
+   sampling in 5087 randomised, controlled trials in anaesthetic and
+   general medical journals. *Anaesthesia*. 2017;72:944–952.
 
 ## Authorship
 
@@ -19,6 +58,8 @@ carries a provenance header saying who wrote it, when, and what
 verified it — the same auditability the app demands of the trials it
 screens. Credit where due, in both directions.
 
-Please contact Steve Shafer (steven.shafer@stanford.edu) with questions, comments, and suggestions. 
+## License and contact
 
-The code may be freely shared
+MIT (see `LICENSE`). Questions, comments, suggestions: Steve Shafer,
+<steven.shafer@stanford.edu>. A flag from this program is a screening
+signal, never an allegation — see the caveat in the app and the guide.

@@ -1,17 +1,23 @@
-# ParsePDF — Architecture
+# The parse engine — Architecture
 
-A visual version of this map is in [`architecture.html`](architecture.html) (open in a
-browser). This document is the GitHub-rendered equivalent.
+(Header refreshed 2026-08-26 by the repo audit: this document was
+written when the parser was the separate ParsePDF package, folded into
+IntegrityAnalysis 2026-08-17. The engine description below remains the
+canonical map of the parsing internals; the packaging facts are now
+these.)
 
-ParsePDF turns the baseline characteristics table ("Table 1") of a randomized controlled trial
-PDF into one row per baseline variable per treatment arm, in the input layout of the
-[Integrity-Analysis](https://github.com/StevenLShafer/Integrity-Analysis) Shiny app, which runs
-the Carlisle–Shafer Monte Carlo analysis of baseline data.
+The parse engine turns the baseline characteristics table ("Table 1")
+of a randomized controlled trial PDF — and, since 2026-08-21, Word
+manuscripts and journal-style spreadsheets — into one row per baseline
+variable per treatment arm, in the input layout of the
+[IntegrityAnalysis](https://github.com/StevenLShafer/IntegrityAnalysis)
+Shiny app, which runs the Carlisle–Shafer Monte Carlo analysis of
+baseline data.
 
 | | |
 |---|---|
 | Language | R — developed on 4.5.3 (min declared ≥ 4.1) |
-| Structure | R package, 9 files in `R/`, no `Collate:` |
+| Structure | part of the IntegrityAnalysis package (25 files in `R/`, explicit `Collate:`) |
 | PDF layer | `pdftools` (poppler) word coordinates |
 | AI layer | Anthropic Messages API over `httr2`, `claude-opus-5` |
 | Output | `openxlsx` → Integrity-Analysis template |
