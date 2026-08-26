@@ -212,7 +212,22 @@ the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
 csv/xls/xlsx/PDF/docx are skipped with a note, an archive inside the
 archive is not expanded, and a corrupt archive is reported rather than
-analyzed. Limits: 300 files and 300 MB uncompressed per archive.
+analyzed.
+
+The limits, and what they mean in practice:
+
+- **The zip file itself may be up to 50 MB** — the binding constraint
+  in practice. Journal PDFs run about 0.5–2 MB, so one archive holds
+  roughly 25–100 typical articles.
+- **Inside the archive: at most 300 files and 300 MB uncompressed**,
+  checked before anything is parsed.
+- **Each PDF gets 60 seconds to parse** (5 minutes when the AI assist
+  is on), so one pathological file can never stall the batch — it is
+  reported as failed and the rest continue.
+- **Uploads accumulate**: a collection larger than one zip goes up as
+  several zips in succession, and everything lands in the same
+  combined table, analyzed trial by trial. Expect a few minutes per
+  ~50 PDFs, with the progress bar ticking file by file.
 
 **An empty table.** Click **Start With an Empty Table** and type the
 data straight into the grid — eight empty rows and placeholder category
