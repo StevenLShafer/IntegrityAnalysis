@@ -26,14 +26,24 @@ medRxiv files into the nightly job using a snapshot-installed library
 in corpus children); (d) pull PubTables-1M (issue 20); (e) rerun the
 A&A assembly (command below) and report the gross rate.
 
-**CERTIFICATION ON HOLD - the numbers in the next paragraph are
-CONTAMINATED.** The regeneration's parse children load_all'ed the live
-working tree, which was being edited mid-run, so the cached chunks mix
-engine versions. A clean rerun against an R CMD INSTALL snapshot
-library is IN FLIGHT in the adjudication session; ITS numbers are
-authoritative and it will update this block when done. Until then do
-NOT cite 83.1% / +214 (the r = 0.9930 Carlisle-2017 validation and the
-AI-assist demo are unaffected and safe to cite).
+**RECERTIFIED 2026-08-25 late (branch caption-rescue): parse rate
+84.9%** (1,584 of 1,865), from a full single-engine rerun of all 1,865
+PDFs against an R CMD INSTALL snapshot of that branch; the committed
+corpus/ParseOutcomes.csv IS that run. Three same-day deltas: (a) vs a
+clean snapshot of TODAY'S MAIN (82.6%, 1,541): +43 newly parsed,
+0 newly failed - the branch's three caption fixes are purely
+additive - plus 83 winner changes that move toward demographics
+tables (mean variables 4.7 -> 7.2, continuous rows 2.9 -> 5.1,
+arms-with-N 1.0 -> 1.6, skips down); (b) vs the contaminated
+certified CSV: +47/-13, net +34; (c) the contamination measured:
+the certified CSV vs today's main disagree on 19 outcomes and 306
+diagnostics rows - the certification's 5 "newly failing" files all
+fail under today's main too (git bisect dates every flip to PR #51,
+and all five OLD successes were misparses - see the caption-rescue PR
+for the adjudication). Of the 214 files the certification called
+newly parsed, 212 survive recertification; the other 2 fail under
+today's main as well (stale cache, not engine). Safe to cite:
+84.9%, +43 vs main, and the r = 0.9930 Carlisle-2017 validation.
 
 **SUPERSEDED (contaminated - see above) 2026-08-25 evening - Carlisle
 regression: parse rate 71.9% -> 83.1%** (1,550 of

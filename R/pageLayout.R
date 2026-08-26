@@ -130,6 +130,23 @@
   textLeft <- stats::quantile(others$x, 0.10, names = FALSE)
   mid  <- pageWords$x + pageWords$width / 2
   rail <- isInt & mid < (textLeft - 6)
+  # FIX (2026-08-25, found on 5 corpus files that lost their captions):
+  # a rail number is the LEFTMOST word of its visual line - it stands
+  # alone in the margin. A table-caption digit is not: "Table 1" prints
+  # the word "Table" to its left. On published pages the caption digits
+  # of "Table 1".."Table 3" plus the numbered reference list at the
+  # page's foot lined up into a fake rail - ascending, left of the
+  # body text's 10th percentile, spanning the page - and stripping them
+  # deleted the numbers .ppCaptionAnchors() anchors on, so the
+  # document's REAL tables never became candidates (PMID_20952427).
+  # With caption digits excluded here, a reference list alone fails the
+  # half-page span test below.
+  for (i in which(rail)) {
+    sameLine <- abs(pageWords$y - pageWords$y[i]) <= 3
+    sameLine[i] <- FALSE
+    if (any(sameLine & pageWords$x + pageWords$width <= pageWords$x[i]))
+      rail[i] <- FALSE
+  }
   if (sum(rail) < 8) return(pageWords)
   ys <- pageWords$y[rail]
   if (diff(range(ys)) < 0.5 * diff(range(pageWords$y))) return(pageWords)

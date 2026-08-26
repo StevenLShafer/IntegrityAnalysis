@@ -144,13 +144,38 @@
   if (capIdx >= length(lines)) return(NULL)
   for (i in seq(capIdx + 1, length(lines))) {
     txt <- lineTexts[i]
-    if (grepl(stopPattern, txt, perl = TRUE) ||
-        grepl("(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt,
-              perl = TRUE)) {
+    newCaption <- grepl(
+      "(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt,
+      perl = TRUE)
+    if (grepl(stopPattern, txt, perl = TRUE) || newCaption) {
+      # FIX (2026-08-25): BEFORE the first data line, a footnote-shaped
+      # line is the caption's own continuation, not the table's end. Long
+      # captions wrap, and the wrapped text is exactly what the stop
+      # pattern hunts - "Table 1 Patient characteristics ..., / presented
+      # as mean ( SD ) or number." (PMID_20581215). Stopping there killed
+      # the block at its first line, the genuine Table 1 scored -Inf, and
+      # a results table won the document instead. Treated as a label the
+      # line still feeds footnoteInfo, so its "mean ( SD )" notation
+      # keeps informing the "a (b)" disambiguation below. A NEW caption
+      # still ends the block even before data: the table under THIS
+      # caption evidently has no body at all.
+      if (!seenData && !newCaption) {
+        kind[i] <- "label"
+        footnoteInfo <- c(footnoteInfo, txt)
+        next
+      }
       kind[i] <- "stop"
-      footnoteInfo <- c(footnoteInfo, txt)
-      extra <- seq(i + 1, min(i + 4, length(lines)))
-      footnoteInfo <- c(footnoteInfo, lineTexts[extra])
+      # FIX (2026-08-25): a new caption's text belongs to the NEXT table,
+      # not this one. Captured as footnote evidence, "Table 2 Pain scores
+      # ..., presented as median (inter-quartile range)" on the same page
+      # licensed the IQR reading of THIS table's "47 (21-65)" mean
+      # (range) cells, filing range bounds as quartiles (PMID_20581215).
+      # Only a genuine footnote feeds the notation evidence.
+      if (!newCaption) {
+        footnoteInfo <- c(footnoteInfo, txt)
+        extra <- seq(i + 1, min(i + 4, length(lines)))
+        footnoteInfo <- c(footnoteInfo, lineTexts[extra])
+      }
       break
     }
     if (grepl("(?i)\\(?\\s*n\\s*=\\s*\\d+", txt, perl = TRUE)) {
@@ -1289,14 +1314,35 @@ parseBaselineTableHeuristics <- function(pdfFile,
     cc <- cand[[i]]
     if (tried >= maxCandidates && bestScore > -Inf) break
     tried <- tried + 1L
+    # Narrate each candidate's fate (2026-08-25). Errors used to vanish
+    # into a silent NULL, so a document whose every candidate failed
+    # reported only "No usable baseline table" with no way to see WHY
+    # each table was rejected. The label identifies the candidate the
+    # way the winner is announced below: page, layout, caption snippet.
+    whoIs <- paste0("Candidate ", i, "/", length(cand), " (page ", cc$page,
+                    ", ", if (cc$mode == "columns")
+                      paste0("column ", cc$band) else "full width",
+                    if (!is.na(cc$caption))
+                      paste0(", \"", substr(.ppSquish(cc$caption), 1, 50), "\"")
+                    else "", ")")
     res <- tryCatch(
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
                     textCands = textCands, textTotals = textTotals,
                     pctApprox = pctApprox),
-      error = function(e) NULL)
+      error = function(e) e)
+    if (inherits(res, "error")) {
+      say(whoIs, ": parse error - ", conditionMessage(res))
+      res <- NULL
+    }
     sc <- .ppParseScore(res)
-    if (!is.finite(sc)) next
+    if (!is.finite(sc)) {
+      say(whoIs, ": no usable rows.")
+      next
+    }
+    say(whoIs, ": ", length(unique(res$data$ROW)), " variable(s) x ",
+        nrow(res$arms), " arm(s), ", nrow(res$skipped), " skipped, score ",
+        sc, " + caption ", 2 * cc$capScore, ".")
     sc <- sc + 2 * cc$capScore
     # A table whose caption announces baseline data beats any table whose
     # caption does not, however large the latter is. Only within one class
