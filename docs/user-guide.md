@@ -39,8 +39,11 @@ document content is ever sent to any third-party service — with one
 opt-in exception under your sole control: the **AI assist** (see below)
 engages only when you enter your own Anthropic API key, and entering it
 is your explicit consent to send your uploaded documents' text to that
-service for the session. Without a key, nothing you upload ever leaves
-this server.
+service for the session. Even then confidentiality holds: Anthropic's
+commercial terms bar it from training models on API submissions, and
+API data is deleted within about 30 days (see the AI-assist section for
+the specifics). Without a key, nothing you upload ever leaves this
+server.
 
 **Usage counting:** I tabulate the number of times IntegrityAnalysis is
 opened and the number of analyses run — simple counts, and nothing
@@ -232,6 +235,20 @@ The ground rules, each deliberate:
   leaves the server; entering one authorizes sending your uploads' text
   to the Anthropic API for this session — appropriate only when you
   have the right to share the document.
+- **The handoff stays confidential and is never used for model
+  training.** This is not something the app has to request on each
+  call — no such per-request instruction exists, and none is needed,
+  because it is the contractual default for every Anthropic API key:
+  under Anthropic's [Commercial Terms of
+  Service](https://www.anthropic.com/legal/commercial-terms), everything
+  sent through the API is the key holder's confidential information,
+  and "Anthropic may not train models on Customer Content." Anthropic
+  [automatically deletes API inputs and
+  outputs](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data)
+  within about 30 days (held longer only under legal requirements or a
+  trust-and-safety flag). A manuscript sent to the assist therefore
+  never enters any future model, and is deleted from Anthropic's
+  systems within a month.
 - **The key is never stored, never logged, and dies with the
   session.** It goes in a masked field, not a URL.
 - **The deterministic reader always runs first and its numbers always
