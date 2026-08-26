@@ -23,5 +23,14 @@ phases:
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
   post_build:
     commands:
+      # Every build pushes TWO tags: :latest (what App Runner deploys)
+      # and :<git sha> (immutable history - rollback is repointing the
+      # service at an old SHA tag; version control for the deployment,
+      # Steve's question 2026-08-26).
+      - GIT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-12)
+      - docker tag $IMAGE_REPO:latest
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:$GIT_SHA
+      - docker push
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:$GIT_SHA
       - docker push
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
