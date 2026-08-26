@@ -125,3 +125,52 @@ test_that("the key field validates on entry, with honest verdicts", {
     expect_null(aiKeyMsg())
   })
 })
+
+test_that("a key validating after a failed upload re-reads the failures automatically", {
+  # Steve's report (2026-08-26): upload fails, key goes in, green check
+  # appears - and the app just sat there. Now the validated key re-runs
+  # the failed files through the same pipeline with the assist on.
+  src  <- stageAi(syntheticPdfMeanSD())
+  real <- parseBaselineTableHeuristics(src, quiet = TRUE)
+  mockRow <- function(f, res) {
+    r <- if (is.null(res)) data.frame(
+      file = basename(f), ok = FALSE,
+      error = "No usable baseline table could be parsed from x.",
+      seconds = 0.1, page = NA_integer_, layout = NA_character_,
+      arms = NA_integer_, armsWithN = NA_integer_, lines = 0L,
+      variables = 0L, continuous = 0L, skipped = NA_integer_,
+      engine = NA_character_, stringsAsFactors = FALSE)
+    else data.frame(
+      file = basename(f), ok = TRUE, error = NA_character_,
+      seconds = 0.1, page = res$pages[1], layout = res$layout,
+      arms = nrow(res$arms), armsWithN = sum(!is.na(res$arms$N)),
+      lines = nrow(res$data), variables = length(unique(res$data$ROW)),
+      continuous = 1L, skipped = nrow(res$skipped),
+      engine = res$engine, stringsAsFactors = FALSE)
+    r$result <- I(list(res))
+    r
+  }
+  calls <- new.env(); calls$n <- 0L; calls$ai <- character(0)
+  testthat::local_mocked_bindings(
+    .ppKeyCheck = function(key) "valid",
+    parseBaselineTableFiles = function(files, ai = "never", ...) {
+      calls$n  <- calls$n + 1L
+      calls$ai <- c(calls$ai, ai)
+      mockRow(files, if (calls$n == 1L) NULL else real)
+    })
+  shiny::testServer(app_server, {
+    session$setInputs(upload = data.frame(
+      name = "hard.pdf", datapath = src, stringsAsFactors = FALSE))
+    expect_match(commentsLog(), "Could not extract")
+    session$setInputs(aiKey = "FAKE-KEY-retry-test-000000000000000")
+    expect_identical(calls$n, 2L)                     # the retry ran
+    expect_identical(calls$ai, c("never", "fallback")) # with the assist
+    log <- commentsLog()
+    expect_match(log, "re-reading")
+    expect_match(log, "hard.pdf")
+    expect_true("Age" %in% reactiveData()$ROW)        # and it landed
+    # the retry queue is consumed: validating again must not re-run it
+    session$setInputs(aiKey = "FAKE-KEY-retry-again-00000000000000")
+    expect_identical(calls$n, 2L)
+  })
+})

@@ -209,7 +209,10 @@ app_ui <- function(testNote = NULL)
           # app_server.R.
           uiOutput("aiKeyStatus"),
           HTML(paste0(
-            "<div style='font-size: 85%; color: #666; margin-top: -12px; ",
+            # margin-top must stay ZERO: with the old -12px this div
+            # climbed over the key verdict rendered above it, and
+            # neither could be read (Steve's report, 2026-08-26)
+            "<div style='font-size: 85%; color: #666; margin-top: 0; ",
             "margin-bottom: 8px;'>",
             "<b>AI assist (optional - bring your own key).</b> With a key ",
             "entered above, pages the deterministic reader cannot fully ",
