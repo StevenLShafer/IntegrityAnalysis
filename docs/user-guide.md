@@ -379,20 +379,40 @@ deliberately does not convert for you (the conversion needs N and is a
 decision about the analysis), and validation will point at the row — the
 SE cell paints blue, the SD cell yellow.
 
-## Median and quartiles
+## Median [IQR] variables (median with quartiles)
 
-Many papers report skewed variables as median [Q1, Q3]. Enter these
-with two additional columns, `Q1` and `Q3`. On a row where both
-quartiles are filled in, **the MEAN column holds the median**, and the
-SD and SE cells must be empty. The simulation for such rows draws from a
+Many papers report skewed variables as **median [IQR]** — printed as
+"median [Q1, Q3]", "median (IQR)", or "median [25th–75th percentile]";
+the interquartile range IS the span from the first quartile (Q1) to the
+third (Q3). Enter these with two additional columns, `Q1` and `Q3`. On
+a row where both quartiles are filled in, **the MEAN column holds the
+median**, and the SD and SE cells must be empty.
+
+A study reporting duration of surgery as median [Q1, Q3] in two arms:
+
+| ROW | MEAN | N | Q1 | Q3 | ROUND MEAN |
+|---|---|---|---|---|---|
+| Duration of surgery | 127 | 50 | 98  | 160 | 0 |
+| Duration of surgery | 133 | 50 | 101 | 155 | 0 |
+
+`ROUND MEAN` is the printed precision of the median, exactly as for a
+mean. The median must lie between its quartiles; N, the median, and
+both quartiles are required. The simulation for such rows draws from a
 distribution fitted to the three quartile values (a metalog
-distribution), so no normality assumption is imposed. The median must
-lie between its quartiles; N, the median, and both quartiles are
-required.
+distribution), so no normality assumption is imposed.
 
-Medians reported with a **range** rather than quartiles cannot be used —
-the range of a sample carries almost no information about the spread of
-the population. Such lines are refused with an explanation.
+Two printed forms that look similar cannot be used, and validation
+will say so rather than guess:
+
+- **median (range)** — a sample's min–max carries almost no
+  information about the population spread; such lines are refused with
+  an explanation. (This is also why the PDF and Word readers extract a
+  median row only when the table *says* the bracketed interval is an
+  IQR — an unlabeled `[a–b]` could be either.)
+- **median with a single IQR width** — "127 (IQR 62)" gives the span
+  but not where it sits around the median; the analysis needs the two
+  quartiles themselves. Recover Q1 and Q3 from the paper if printed
+  elsewhere, or leave the row out.
 
 ## Categorical variables (counts)
 
