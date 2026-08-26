@@ -151,15 +151,24 @@ app_ui <- function(testNote = NULL)
         }"
         )
       ),
-      fluidRow(
-        img(
-          src='www/Table.png', align = "right", width = "100%"
-        ),
-        style = 'border-bottom: 1px solid; padding-left: 5%; padding-right: 5%; padding-bottom: 2%'
-      ),  
+      # The template-format figure that sat here (Table.png) came from
+      # the original 2025 design, when users were expected to hand-build
+      # the input spreadsheet and needed the format explained up front.
+      # Now that the app parses PDFs, Word manuscripts, and journal-style
+      # tables itself, the figure is reference material - "more of a
+      # curiosity" (Steve, 2026-08-26) - and lives in the user guide's
+      # "Preparing your data" section instead.
+      #
+      # Layout (Steve's design, 2026-08-26): sidebar | workflow | data.
+      # The workflow column holds everything the user DOES - upload,
+      # options, the API key, and the action buttons as the analysis
+      # advances. The data column shows what came in: the editable
+      # grid, its color legend, and below them a message box narrating
+      # the upload. On a narrow window Bootstrap stacks the columns,
+      # workflow first.
       fluidRow(
         column(
-          12,
+          4,
           HTML(paste0(
             "<br>Select one or more data entry spreadsheets (csv, xls, ",
             "xlsx), journal-style baseline tables (variables as rows, ",
@@ -216,17 +225,9 @@ app_ui <- function(testNote = NULL)
             "key, nothing you upload ever leaves this server.</div>")),
           actionButton("blank", "Start With an Empty Table"),
           HTML("<br><br>"),
-          # The editable pre-analysis grid (Steve's request, 2026-08-17):
-          # whatever the upload produced - spreadsheet rows or a PDF
-          # extraction - is shown here for inspection and editing BEFORE
-          # any statistics run. Edits take effect through the "Apply
-          # Edits & Revalidate" button below the grid; for a parsed PDF
-          # this is where a missing arm N gets filled in directly.
-          rhandsontable::rHandsontableOutput("dataGrid"),
-          # Issue 13 (2026-08-18): color legend for problem cells, shown
-          # only when validation flagged something - yellow = missing,
-          # red = unreadable, blue = incongruent.
-          uiOutput("issueLegend"),
+          # The action buttons appear here as the analysis advances:
+          # Apply Edits & Revalidate, Analyze, the extracted-table and
+          # journal-view downloads, and the results download.
           uiOutput("validateButton"),
           uiOutput("GoButton"),
           # Appears after a PDF parse: the extracted table as a spreadsheet,
@@ -239,10 +240,31 @@ app_ui <- function(testNote = NULL)
           # rows, arms as columns, cells as journals print them - the
           # artifact an editor compares against the manuscript page.
           uiOutput("journalButton"),
-          uiOutput("logContent"),
-          uiOutput("downloadButton")
+          uiOutput("downloadButton"),
+          uiOutput("stopButton")
+        ),
+        column(
+          8,
+          # The editable pre-analysis grid (Steve's request, 2026-08-17):
+          # whatever the upload produced - spreadsheet rows or a PDF
+          # extraction - is shown here for inspection and editing BEFORE
+          # any statistics run. Edits take effect through the "Apply
+          # Edits & Revalidate" button in the workflow column; for a
+          # parsed PDF this is where a missing arm N gets filled in
+          # directly.
+          rhandsontable::rHandsontableOutput("dataGrid"),
+          # Issue 13 (2026-08-18): color legend for problem cells, shown
+          # only when validation flagged something - yellow = missing,
+          # red = unreadable, blue = incongruent, cyan = OCR.
+          uiOutput("issueLegend"),
+          # The message box (Steve's design, 2026-08-26): everything the
+          # upload narrates - files read, lines skipped, AI or OCR
+          # engagement - lands directly under the data it describes.
+          # The box itself (border, scroll) is built in app_server's
+          # logContent renderer, so nothing shows when there is nothing
+          # to say.
+          uiOutput("logContent")
         )
-      ),
-      uiOutput("stopButton")
+      )
     )
   )

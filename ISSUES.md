@@ -640,6 +640,15 @@ the parser optimization loop (AGENTS.md), both LOCAL CORPUS TOOLING
 ONLY - nothing here ever ships in the deployed app, which stays
 deterministic, offline, and R-only.
 
+**UPDATE 2026-08-26: the PubTables-1M data is DOWNLOADED** - the six
+annotation/word archives (8.0 GB: structure annotations
+train/val/test, table word boxes, filelists, per-PDF annotations; the
+~100 GB of rendered page images deliberately skipped - our engine
+consumes word boxes, which PubTables ships separately) are at
+C:/temp/pubtables1m, byte counts verified against the Hugging Face
+listing. Next: unpack, and mine test-split tables whose word boxes
+feed .ppParseBlock via the synthetic-coordinate seam.
+
 **Why the survey did not change the architecture.** The 2026 academic
 benchmark of nine table extractors (arxiv 2511.16134, ~44k scientific
 tables) puts the field's best - IBM Docling's detection + TableFormer

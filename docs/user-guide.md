@@ -300,6 +300,18 @@ A table with no colors and no legend validated cleanly, and the
 
 # Preparing your data
 
+You rarely need this section any more: the app parses PDFs, Word
+manuscripts, and journal-style tables into this format itself. It
+matters when you type data into an empty table, hand-build a template
+spreadsheet, or want to understand exactly what the simulation
+consumes — the internal data frame every input route produces. (This
+figure greeted every visitor at the top of the app in its first year,
+when hand-built spreadsheets were the only way in; it retired to this
+page in August 2026.)
+
+![How a printed baseline table maps onto the template's rows and
+columns.](inst/www/Table.png)
+
 Each line of the table is one cell of the manuscript's baseline table:
 one variable in one study arm. Lines that share a ROW label are the arms
 of that variable.
