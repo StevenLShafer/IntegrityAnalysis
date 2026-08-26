@@ -20,3 +20,4 @@ IntegrityAnalysis_*.tar.gz
 # the Boldt and Fujii working dirs (resolved PMIDs, manifests, PDFs)
 .Boldt/
 .Fujii/
+tests/testthat/_problems/
