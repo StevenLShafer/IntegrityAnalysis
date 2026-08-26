@@ -38,7 +38,7 @@ logged. The deployed analysis is fully deterministic and offline — no
 document content is ever sent to any third-party service — with one
 opt-in exception under your sole control: the **AI assist** (see below)
 engages only when you enter your own Anthropic API key, and entering it
-is your explicit consent to send your uploaded documents' text to that
+is your explicit consent to send your uploaded documents' content to that
 service for the session. Even then confidentiality holds: Anthropic's
 commercial terms bar it from training models on API submissions, and
 API data is deleted within about 30 days (see the AI-assist section for
@@ -161,10 +161,12 @@ footnote); a median with a min–max range, or with an unlabeled
 interval, is flagged for hand entry instead — the analysis needs
 quartiles, and the app will not guess. Extraction is imperfect by
 nature: table lines the reader could not use appear as red-flagged rows
-in the grid (fill them in from the paper, or delete them), and a
-scanned image with no text layer fails cleanly with a message. Whatever
-was extracted can be reviewed, corrected, and analyzed without leaving
-the app.
+in the grid (fill them in from the paper, or delete them). A scanned
+page with no text layer is beyond the deterministic reader — but with
+an API key entered, the AI assist reads the rendered page image
+directly (see the AI assist section); without one, it fails cleanly
+with a message. Whatever was extracted can be reviewed, corrected, and
+analyzed without leaving the app.
 
 **A Word manuscript (.docx).** A submission in Word format uploads the
 same way as a PDF: the app examines every table in the document —
@@ -215,9 +217,13 @@ roughly a third of the time. For the rest, an optional **AI assist**
 exists: enter your own Anthropic API key in the field above the upload
 box, and pages the deterministic reader cannot fully parse are sent to
 the Anthropic API — under *your* account, at roughly $0.06–0.11 per
-article. When even no table can be found, the assist also asks for
-baseline data stated in the article's running text (some trials report
-age, weight, and sex in a Methods sentence rather than a table).
+article. Pages with no text layer at all — scanned pages, or tables
+pasted into an otherwise digital manuscript as pictures — are sent as
+rendered page images, which the model reads directly; this is the only
+route in the app that can reach a scanned table. When even no table
+can be found, the assist also asks for baseline data stated in the
+article's running text (some trials report age, weight, and sex in a
+Methods sentence rather than a table).
 Measured against Carlisle's hand-extracted values, the assist recovers
 about 91% of known values on articles with no parseable table and 81%
 where the deterministic reader misread the table.
@@ -232,9 +238,11 @@ tells you which tab holds the live key.
 The ground rules, each deliberate:
 
 - **Your key is your consent.** Without a key, no document content ever
-  leaves the server; entering one authorizes sending your uploads' text
-  to the Anthropic API for this session — appropriate only when you
-  have the right to share the document.
+  leaves the server; entering one authorizes sending your uploads'
+  content — the text of unparseable pages, or, for pages with no text
+  layer (scanned tables, tables pasted in as pictures), the rendered
+  page image — to the Anthropic API for this session — appropriate only
+  when you have the right to share the document.
 - **The handoff stays confidential and is never used for model
   training.** This is not something the app has to request on each
   call — no such per-request instruction exists, and none is needed,

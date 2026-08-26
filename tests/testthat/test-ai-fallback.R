@@ -152,3 +152,62 @@ test_that("claudeAvailable reflects the environment without calling out", {
   expect_equal(.ppApiKey(), "sk-ant-test")
   expect_equal(.ppApiKey("explicit"), "explicit")
 })
+
+# ---- scanned pages travel as images (2026-08-26) --------------------------
+
+test_that("image content blocks are built in the API's shape", {
+  b64 <- jsonlite::base64_enc(as.raw(1:16))
+  body <- .ppClaudeRequestBody("", imagesB64 = c(b64, b64))
+  blocks <- body$messages[[1]]$content
+  expect_true(is.list(blocks))
+  expect_length(blocks, 3)                      # two images, then the text
+  expect_equal(blocks[[1]]$type, "image")
+  expect_equal(blocks[[1]]$source$type, "base64")
+  expect_equal(blocks[[1]]$source$media_type, "image/png")
+  expect_equal(blocks[[1]]$source$data, b64)
+  expect_equal(blocks[[3]]$type, "text")
+  expect_match(blocks[[3]]$text, "image")
+  # the image prompt carries no text fence - there is no text to fence
+  expect_false(grepl("BEGIN TEXT", blocks[[3]]$text))
+})
+
+test_that("without images the content stays a plain string", {
+  body <- .ppClaudeRequestBody("Table 1 ...")
+  expect_true(is.character(body$messages[[1]]$content))
+  expect_match(body$messages[[1]]$content, "BEGIN TEXT")
+})
+
+test_that("image-only pages are detected by their empty text layer", {
+  expect_equal(.ppImageOnlyPages(c(strrep("prose ", 50), "", " 17 ")),
+               c(2L, 3L))
+  expect_length(.ppImageOnlyPages(character(0)), 0)
+})
+
+test_that("a mixed PDF's image-only page is found and rendered", {
+  # page 1 is normal text; page 2 is a drawing with no text at all - the
+  # shape of a manuscript whose Table 1 was pasted in as a picture
+  f <- file.path(tempdir(), "mixed-scan.pdf")
+  grDevices::pdf(f, width = 8.5, height = 11, encoding = "WinAnsi.enc")
+  graphics::plot.new()
+  # enough text to clear the 100-character image-only floor - a real
+  # prose page, not a stray page number
+  for (i in 1:6)
+    graphics::text(0.5, 1 - i / 10,
+                   "A page of ordinary manuscript prose, line after line,")
+  graphics::plot.new()
+  graphics::rect(0.1, 0.1, 0.9, 0.9)
+  graphics::segments(0.1, 0.5, 0.9, 0.5)
+  grDevices::dev.off()
+  on.exit(unlink(f), add = TRUE)
+
+  txt <- .ppPdfText(f)
+  expect_length(txt, 2)
+  expect_equal(.ppImageOnlyPages(txt), 2L)
+
+  b64 <- .ppPageImagesB64(f, 2L)
+  expect_length(b64, 1)
+  expect_gt(nchar(b64), 1000)                   # a real rendered page
+  png <- jsonlite::base64_dec(b64)
+  expect_identical(as.integer(png[1:4]),        # PNG magic
+                   c(137L, 80L, 78L, 71L))
+})
