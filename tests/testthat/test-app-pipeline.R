@@ -37,7 +37,13 @@ test_that("app_ui() builds and points at the www/ resource prefix", {
   html <- paste(rendered$html, rendered$head)
   expect_match(html, "www/app.js", fixed = TRUE)
   expect_match(html, "www/app.css", fixed = TRUE)
-  expect_match(html, "www/Table.png", fixed = TRUE)
+  # the template-format figure left the app for the user guide in the
+  # 2026-08-26 UI restructure - its return here would mean a regression
+  expect_false(grepl("Table.png", html, fixed = TRUE))
+  # the workflow | data split: upload lives in the narrow column, the
+  # grid in the wide one
+  expect_match(html, "col-sm-4", fixed = TRUE)
+  expect_match(html, "col-sm-8", fixed = TRUE)
   # the test-note banner appears only when asked for
   expect_false(grepl("TEST DEPLOYMENT", html, fixed = TRUE))
   withNote <- paste(unlist(htmltools::renderTags(

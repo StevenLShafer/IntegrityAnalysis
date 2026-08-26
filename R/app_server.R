@@ -183,7 +183,18 @@ app_server <- function(input, output, session) {
   commentsLog <- reactiveVal(NULL)
   output$logContent <- renderUI({
     invalidateLater(1000)
-    HTML(commentsLog())
+    msg <- commentsLog()
+    if (is.null(msg) || !nzchar(msg)) return(NULL)
+    # The message box under the grid (UI restructure, 2026-08-26):
+    # bordered and scrollable, so a long multi-file upload narrative
+    # stays contained beside the data it describes. Built here rather
+    # than in app_ui so an empty log shows nothing at all - an empty
+    # bordered box would read as something missing.
+    div(style = paste0("border: 1px solid #bbb; border-radius: 4px; ",
+                       "background: #fafafa; padding: 8px 12px; ",
+                       "margin-top: 10px; max-height: 32vh; ",
+                       "overflow-y: auto; font-size: 13px;"),
+        tags$b("Messages"), tags$br(), HTML(msg))
   })
   # Register the comments log with this user's session, to use outside the server
   session$userData$commentsLog <- commentsLog
