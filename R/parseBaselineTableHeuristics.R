@@ -1265,25 +1265,38 @@ parseBaselineTableHeuristics <- function(pdfFile,
       capIdx = 0L, caption = lookCaption[[key]], capScore = lookScore[[key]])
   }
 
-  # No caption anywhere: fall back to the old behaviour of scoring pages by
-  # vocabulary and reading from the top of the best one.
+  # No caption anywhere: fall back to reading pages from the top. When the
+  # caller named the pages (the pages argument - a user aiming the parser,
+  # or the OCR rescue aiming at a document's image-only pages), try EVERY
+  # named page: a scanned Table 1 often carries no caption in its picture,
+  # and the vocabulary scorer can prefer a flow-diagram page over the
+  # table itself (found live 2026-08-26 on medRxiv 10.1101/19007195, where
+  # page 17's CONSORT diagram outscored the actual table on page 19).
+  # Unrestricted parses keep the old single-best-page behaviour - reading
+  # every page of a 30-page document from the top would be candidate soup.
   if (length(cand) == 0) {
-    scores <- vapply(allPages[pageIdx], .ppScorePage, numeric(1))
-    p      <- pageIdx[which.max(scores)]
-    say("No table caption found; falling back to page ", p,
-        " (highest baseline-vocabulary score).")
-    for (mode in modes) {
-      bands <- if (mode == "columns") .ppPageBands(allPages[[p]])
-               else data.frame(x0 = -Inf, x1 = Inf)
-      for (b in seq_len(nrow(bands))) {
-        bw <- .ppWordsInBand(allPages[[p]], bands[b, ])
-        if (nrow(bw) < 10) next
-        lines <- .ppBuildLines(bw)
-        if (length(lines) < 3) next
-        cand[[length(cand) + 1]] <- list(
-          page = p, mode = mode, band = b, lines = lines,
-          lineTexts = vapply(lines, .ppLineText, character(1)),
-          capIdx = 1L, caption = NA_character_, capScore = 0)
+    tryPages <- if (!is.null(pages)) pageIdx else {
+      scores <- vapply(allPages[pageIdx], .ppScorePage, numeric(1))
+      pageIdx[which.max(scores)]
+    }
+    say("No table caption found; reading page(s) ",
+        paste(tryPages, collapse = ","), " from the top",
+        if (is.null(pages)) " (highest baseline-vocabulary score)." else
+          " (the pages requested).")
+    for (p in tryPages) {
+      for (mode in modes) {
+        bands <- if (mode == "columns") .ppPageBands(allPages[[p]])
+                 else data.frame(x0 = -Inf, x1 = Inf)
+        for (b in seq_len(nrow(bands))) {
+          bw <- .ppWordsInBand(allPages[[p]], bands[b, ])
+          if (nrow(bw) < 10) next
+          lines <- .ppBuildLines(bw)
+          if (length(lines) < 3) next
+          cand[[length(cand) + 1]] <- list(
+            page = p, mode = mode, band = b, lines = lines,
+            lineTexts = vapply(lines, .ppLineText, character(1)),
+            capIdx = 1L, caption = NA_character_, capScore = 0)
+        }
       }
     }
   }
@@ -1415,12 +1428,19 @@ parseBaselineTableHeuristics <- function(pdfFile,
       say("  - ", best$skipped$label[s], ": ", best$skipped$reason[s])
   }
 
+  # Under ocr = TRUE every word box came from tesseract, not from the
+  # PDF's own text layer, so every row inherits OCR's digit-misread risk
+  # (3/8, 1/7). The distinct provenance drives the app's whole-table
+  # cyan shading and its verify-every-cell note (issue 22, tier 2).
+  eng <- if (isTRUE(ocr)) "heuristic-ocr" else "heuristic"
   structure(
     list(data       = best$data,
          arms       = best$arms,
          skipped    = best$skipped,
          provenance = data.frame(ROW = best$data$ROW,
-                                 ENGINE = rep("heuristic", nrow(best$data)),
+                                 ENGINE = rep(if (isTRUE(ocr)) "ocr"
+                                              else "heuristic",
+                                              nrow(best$data)),
                                  stringsAsFactors = FALSE),
          pages      = bestPages,
          caption    = bestCand$caption,
@@ -1431,6 +1451,6 @@ parseBaselineTableHeuristics <- function(pdfFile,
          derivedCounts = best$derivedCounts,
          approxCounts  = best$approxCounts,
          derivedCells  = best$derivedCells,
-         engine     = "heuristic"),
+         engine     = eng),
     class = "ParsePDFTable")
 }

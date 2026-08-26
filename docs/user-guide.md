@@ -164,9 +164,16 @@ nature: table lines the reader could not use appear as red-flagged rows
 in the grid (fill them in from the paper, or delete them). A scanned
 page with no text layer is beyond the deterministic reader — but with
 an API key entered, the AI assist reads the rendered page image
-directly (see the AI assist section); without one, it fails cleanly
-with a message. Whatever was extracted can be reviewed, corrected, and
-analyzed without leaving the app.
+directly (see the AI assist section). Without a key, the app tries
+local **optical character recognition** (tesseract) on the scanned
+page: when OCR reads the table usably, the whole extracted table is
+shaded **pale cyan** with a warning, because OCR can misread digits
+(3 vs 8, 1 vs 7) — carefully verify every cyan value against the
+manuscript before analyzing. A scan too degraded for OCR fails cleanly
+with a message; the AI assist reads such pages far more reliably, and
+everything OCR does happens on this server — nothing leaves it.
+Whatever was extracted can be reviewed, corrected, and analyzed
+without leaving the app.
 
 **A Word manuscript (.docx).** A submission in Word format uploads the
 same way as a PDF: the app examines every table in the document —
@@ -294,6 +301,11 @@ specific cell:
 - **Blue — incongruent.** The value conflicts with the type of its row:
   an SD on a median/IQR row, continuous entries on a category row, a
   median outside its own quartiles, an SE standing in for a missing SD.
+- **Pale cyan — read by OCR.** The whole table came from a scanned page
+  read by optical character recognition. OCR can misread digits (3 vs
+  8, 1 vs 7), and in a fraud screen a single silently wrong digit
+  matters — verify every value against the manuscript, or enter an
+  Anthropic API key and re-upload for the higher-accuracy AI read.
 
 A table with no colors and no legend validated cleanly, and the
 **Analyze** button appears.

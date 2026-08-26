@@ -133,22 +133,37 @@ locate the table page by caption score, then still sends the image
 BYOK consent language already covers it - the uploaded documents'
 content, text or image, goes only under the user's own key.
 
-**Tier 2 (OPEN) - tesseract OCR into the deterministic engine.** The
-plumbing exists and has since 2026-08-15: `.ppOcrData()` returns
-tesseract word boxes scaled to PDF points, and
-`parseBaselineTableHeuristics(ocr = TRUE)` feeds them through the
-ordinary engine. What remains: (a) automatic engagement - when
-candidate pages are image-only and no API key is present, retry them
-with `ocr = TRUE`; (b) provenance `"ocr"` on every row so the grid
-shades the whole OCR-read table in its own color - a pale cyan,
-deliberately distinct from the incongruent blue and the derived green
-- with a legend note that OCR misreads digits (3/8, 1/7) and each cell
-needs eye verification against the manuscript, or an API key for the
-higher-accuracy AI read; (c) validation harness - run tesseract and
-the AI assist over the same scanned pages and score tesseract's digit
-accuracy against the model's reading before trusting it in
-production (Steve's design: the AI assist validates tesseract during
-testing).
+**Tier 2 (IMPLEMENTED 2026-08-26) - tesseract OCR into the
+deterministic engine.** All three planned pieces landed: (a) automatic
+engagement - `parseBaselineTable` retries image-only pages with
+`ocr = TRUE` when the AI route is unavailable (no key, `ai = "never"`)
+or itself failed; (b) whole-table pale-cyan shading (`#d2ecef`,
+deliberately distinct from incongruent blue and derived green) driven
+by engine `"heuristic-ocr"` / provenance `"ocr"`, with the legend and
+hover note: OCR misreads digits (3/8, 1/7) - verify every cell, or
+enter a key for the higher-accuracy AI read; (c) the validation run
+(Steve's design: the AI assist validates tesseract). Three repairs
+were needed to make it real: tesseract reads the plus-minus sign as a
+plain "+" (three shapes; repaired in the OCR adapter only, never the
+global normalizer), `.ppOcrPages` had the pdf_convert filenames-
+template bug, and the engine's no-caption fallback collapsed
+explicitly-requested pages to one vocabulary-best page (a CONSORT
+diagram outscored the actual table).
+
+**Validation verdict (2026-08-26).** On a clean render (the synthetic
+suite page OCR'd at 300 dpi), tesseract-into-engine reproduces the
+text-layer parse EXACTLY - every variable, value, and rounding digit
+(pinned in test-ocr-tier2.R). On the real degraded scan
+(10.1101/19007195, the table the AI assist read correctly and
+completely), OCR produced noise: 34 of 286 cells, garbled labels,
+junk values, no arm identity. A quality gate now rejects any OCR
+result with no arm name and no arm N (the analysis could never run on
+one), so degraded scans fail cleanly toward the enter-a-key
+suggestion instead of surfacing garbage. Standing conclusion: OCR is
+the no-key fallback for CLEAN scans; the AI image route remains the
+quality path for real-world ones. OPEN want: a harvested scan clean
+enough for OCR, to pin the end-to-end cyan path in the app against a
+real file.
 
 ## 23. Layout repairs from the wild: statistic columns and superscript orphans
 
