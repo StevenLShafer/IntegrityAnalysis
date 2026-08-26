@@ -41,6 +41,20 @@ WORKDIR /build
 COPY renv.lock renv.lock
 RUN R -e "install.packages('renv'); renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
 
+# Rfast's PPM binary dies at load time in this image with an
+# unresolved oneTBB symbol (tbb::detail::r1::spawn) - it links TBB
+# through RcppParallel, and the prebuilt expectations do not line up
+# with the container's loader (two failed App Runner deploys,
+# 2026-08-26; installing libtbb12 alone did not cure it). Compiling
+# RcppParallel and Rfast FROM SOURCE inside the image makes the whole
+# TBB chain self-consistent. The locked versions are respected: the
+# version to build comes from renv.lock.
+RUN R -e "lk <- renv::lockfile_read('renv.lock')\$Packages; \
+          for (p in c('RcppParallel', 'Rfast')) \
+            renv::install(paste0(p, '@', lk[[p]]\$Version), \
+                          type = 'source', rebuild = TRUE, prompt = FALSE); \
+          library(Rfast); cat('Rfast loads OK\n')"
+
 # Then the package itself.
 COPY . /build
 RUN R CMD INSTALL --no-multiarch /build && rm -rf /build
