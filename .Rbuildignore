@@ -26,3 +26,6 @@
 ^.*\.tar\.gz$
 ^.*\.Rcheck$
 ^site$
+^Dockerfile$
+^\.dockerignore$
+^buildspec\.yml$

@@ -1,0 +1,27 @@
+# buildspec.yml - AWS CodeBuild recipe: build the API container and
+# push it to ECR (issue 1, phase 2; see Dockerfile's provenance note).
+#
+# The CodeBuild project supplies these environment variables:
+#   AWS_ACCOUNT_ID   196253397540
+#   AWS_REGION       us-east-1
+#   IMAGE_REPO       integrityanalysis-api
+# and runs with a service role allowed to push to that ECR repository.
+# App Runner watches the :latest tag with auto-deploy, so a successful
+# build IS a deployment.
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_REGION |
+        docker login --username AWS --password-stdin
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+  build:
+    commands:
+      - docker build -t $IMAGE_REPO:latest .
+      - docker tag $IMAGE_REPO:latest
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
+  post_build:
+    commands:
+      - docker push
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
