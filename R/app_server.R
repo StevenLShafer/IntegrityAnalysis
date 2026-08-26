@@ -1399,24 +1399,9 @@ app_server <- function(input, output, session) {
   # .md's header comment and AGENTS.md), and .github/workflows/pages.yaml
   # publishes that file as /guide.html.
 
-  output$template <- downloadHandler(
-    filename = function() {
-      "Template for Integrity Analysis.xlsx"
-    },
-    content = function(file) {
-      write.xlsx(read.xlsx(system.file("extdata", "Template.xlsx",
-                                       package = "IntegrityAnalysis")), file)
-    })
-
-
-    output$example <- downloadHandler(
-    filename = function() {
-      "Example for Integrity Analysis.xlsx"
-    },
-    content = function(file) {
-      write.xlsx(read.xlsx(system.file("extdata", "Example.xlsx",
-                                       package = "IntegrityAnalysis")), file)
-    })
+  # The Template / Example downloadHandlers that lived here left with
+  # their sidebar buttons (2026-08-26; see app_ui.R). The files stay in
+  # inst/extdata for the test suite.
 
   observeEvent(input$stop, {
     stopApp(returnValue = invisible())
