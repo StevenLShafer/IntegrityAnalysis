@@ -56,11 +56,13 @@ app_ui <- function(testNote = NULL)
         class = "btn btn-default",
         icon("book"), "View Documentation"
         ),
-      p(),
-      downloadButton("template", "Download Template"),
-      p(),
-      downloadButton("example", "Download Example"),
-      br(),
+      # The Template / Example download buttons that lived here were
+      # removed 2026-08-26 (Steve: "no longer useful - everyone will
+      # have PDFs to test with", and their absence steers users toward
+      # the upload-a-PDF workflow, which is now the intended one). The
+      # template FORMAT remains documented in the user guide's
+      # "Preparing your data" section, and inst/extdata keeps
+      # Template.xlsx / Example.xlsx for the test suite's format pins.
       br(),
       br(),
       h6(

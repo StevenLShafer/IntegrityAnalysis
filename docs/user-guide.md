@@ -116,10 +116,10 @@ results (see *Validation* below).
 # Quick start
 
 1. Open <https://steveshafer.shinyapps.io/IntegrityAnalysis/>.
-2. Get your baseline table into the app by any of the routes below
-   (template or journal-style spreadsheet upload, article PDF or Word
-   manuscript upload, several files at once, or typing into an empty
-   table).
+2. Get your baseline table into the app by any of the routes below —
+   for most users that simply means uploading the article PDF or Word
+   manuscript; spreadsheets, multi-file batches, and typing into an
+   empty table are also supported.
 3. Review the table in the editable grid. Fix anything colored (see
    *The data grid* below), then click **Apply Edits & Revalidate**.
 4. When the table validates, click **Analyze**. Each trial's p value
@@ -130,10 +130,13 @@ results (see *Validation* below).
 
 ## The seven ways in
 
-**A template spreadsheet.** Download the Template (sidebar), fill it in
-(Excel `.xlsx`/`.xls` or `.csv`), and upload it. The Example download
-shows a complete, working file. The format is described in *Preparing
-your data* below.
+**A template spreadsheet.** A spreadsheet in the app's own long format
+(Excel `.xlsx`/`.xls` or `.csv`) uploads directly. The column layout is
+described in *Preparing your data* below — but few users should ever
+need to build one by hand: upload the article itself, or use the
+journal-style route next, and note that the app's own table downloads
+are all valid input files. (The sidebar's Template and Example
+downloads were retired in August 2026 for the same reason.)
 
 **A journal-style baseline table.** A spreadsheet laid out the way
 journals print Table 1 — variables as rows, arms as columns with their
