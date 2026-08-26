@@ -121,12 +121,19 @@ app_server <- function(input, output, session) {
         nrow(failedParses) > 0) {
       retry <- unique(failedParses)
       failedParses <<- NULL
-      uploadPass(list(
-        files = retry, stamp = Sys.time(),
-        note = paste0(
-          "Key validated - re-reading ", nrow(retry), " file(s) that ",
-          "could not be parsed without the AI assist: ",
-          paste(retry$name, collapse = ", "), " ...")))
+      # Deferred to AFTER this flush (Steve's report, 2026-08-26): fired
+      # directly, the retry parse runs in the SAME flush as the verdict,
+      # so the green "Key validated" never paints until a possibly
+      # minutes-long parse finishes. onFlushed lets the browser show the
+      # verdict first; the retry starts on the next cycle.
+      session$onFlushed(function() {
+        uploadPass(list(
+          files = retry, stamp = Sys.time(),
+          note = paste0(
+            "Key validated - re-reading ", nrow(retry), " file(s) that ",
+            "could not be parsed without the AI assist: ",
+            paste(retry$name, collapse = ", "), " ...")))
+      }, once = TRUE)
     }
   })
   output$aiKeyStatus <- renderUI({

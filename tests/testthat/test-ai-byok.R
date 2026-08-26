@@ -163,6 +163,10 @@ test_that("a key validating after a failed upload re-reads the failures automati
       name = "hard.pdf", datapath = src, stringsAsFactors = FALSE))
     expect_match(commentsLog(), "Could not extract")
     session$setInputs(aiKey = "FAKE-KEY-retry-test-000000000000000")
+    # the retry is DEFERRED to after the flush that paints the verdict
+    # (so the green check shows before a minutes-long parse); in the
+    # mock, drive the extra flush cycles the browser would cause
+    session$flushReact(); session$flushReact()
     expect_identical(calls$n, 2L)                     # the retry ran
     expect_identical(calls$ai, c("never", "fallback")) # with the assist
     log <- commentsLog()
@@ -171,6 +175,7 @@ test_that("a key validating after a failed upload re-reads the failures automati
     expect_true("Age" %in% reactiveData()$ROW)        # and it landed
     # the retry queue is consumed: validating again must not re-run it
     session$setInputs(aiKey = "FAKE-KEY-retry-again-00000000000000")
+    session$flushReact(); session$flushReact()
     expect_identical(calls$n, 2L)
   })
 })
