@@ -41,10 +41,17 @@ $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 $log = Join-Path $repo 'tools\checkDeployedBuild.log'
 
+# Write-HOST, not Write-Output, and the distinction is load-bearing.
+# With Write-Output every narration line joins the RETURN VALUE of
+# whatever function is running, so `$problems += Compare-Build ...` was
+# adding an array of strings to an integer. PowerShell reported that as
+# "op_Addition" failing inside the try block, which the catch then
+# rendered as "UNREACHABLE" - a security check announcing the wrong
+# failure, which is worse than one that simply breaks. (2026-08-27)
 function Say([string] $msg) {
   $line = "[{0}] {1}" -f (Get-Date -Format 's'), $msg
   Add-Content $log $line
-  if (-not $Quiet) { Write-Output $line }
+  if (-not $Quiet) { Write-Host $line }
 }
 
 Say "===== deployed-build check ====="
@@ -107,7 +114,8 @@ try {
     $m = [regex]::Match($html,
          '<meta[^>]*content="([^"]*)"[^>]*name="integrity-build"')
   }
-  $problems += Compare-Build "app  $AppUrl" $(if ($m.Success) { $m.Groups[1].Value } else { '' })
+  $verdict = Compare-Build "app  $AppUrl" $(if ($m.Success) { $m.Groups[1].Value } else { '' })
+  $problems += @($verdict)[-1]
 } catch {
   Say "app  $AppUrl : UNREACHABLE - $($_.Exception.Message)"
   Say "  -> unreachable is not the same as compromised, but it is also not a pass."
@@ -118,7 +126,8 @@ try {
 if ($ApiUrl) {
   try {
     $h = Invoke-RestMethod -Uri $ApiUrl -TimeoutSec 60
-    $problems += Compare-Build "api  $ApiUrl" $h.commit
+    $verdict = Compare-Build "api  $ApiUrl" $h.commit
+    $problems += @($verdict)[-1]
   } catch {
     Say "api  $ApiUrl : UNREACHABLE - $($_.Exception.Message)"
     $problems++
