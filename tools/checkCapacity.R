@@ -29,15 +29,18 @@
 # shinyapps.io dashboard - minutes of work, and cheap next to an editor    #
 # finding the app offline.                                                #
 #                                                                          #
-# INTEGRITY_SHINY_HOURS sets the monthly allowance (default 500, the       #
-# Starter plan). Set it to match whatever plan is current.                 #
+# THE ALLOWANCE: Steve is on the shinyapps.io PROFESSIONAL plan, which    #
+# includes 10,000 active hours a month (confirmed against the published    #
+# pricing 2026-08-27). That is the default below. An earlier version       #
+# assumed 500 and cried wolf at 5% usage - if this figure is ever wrong    #
+# again, the fix is INTEGRITY_SHINY_HOURS, not ignoring the warning.       #
 ############################################################################
 
 suppressPackageStartupMessages(library(rsconnect))
 
 limit <- suppressWarnings(as.numeric(
-  Sys.getenv("INTEGRITY_SHINY_HOURS", "500")))
-if (is.na(limit) || limit <= 0) limit <- 500
+  Sys.getenv("INTEGRITY_SHINY_HOURS", "10000")))
+if (is.na(limit) || limit <= 0) limit <- 10000
 
 usage <- tryCatch(rsconnect::accountUsage(usageType = "hours"),
                   error = function(e) NULL)
@@ -67,7 +70,7 @@ for (app in names(usage$points)) {
 
 pct <- 100 * total / limit
 cat(sprintf("CAPACITY: %.1f active hours used this month across the ACCOUNT",
-            total), sprintf("(assuming a %.0f-hour plan: %.0f%%)\n",
+            total), sprintf("(%.0f-hour Professional plan: %.1f%%)\n",
                             limit, pct))
 # Per-app, because the allowance is shared: measured 2026-08-26, nearly
 # all of this account's hours belong to stanpumpR (a different project,
@@ -79,14 +82,14 @@ for (app in names(perApp))
     cat(sprintf("   %s: %.1f h\n", app, perApp[[app]]))
 
 if (pct >= 80) {
-  cat("CAPACITY WARNING: at or beyond 80% of the ASSUMED",
-      sprintf("%.0f-hour allowance.", limit),
-      "Confirm the real plan limit in the shinyapps.io dashboard and set",
-      "INTEGRITY_SHINY_HOURS to match. When the allowance runs out,",
-      "shinyapps.io takes the applications OFFLINE and visitors see",
-      "Posit's page - the app cannot show a message of its own.",
-      "The allowance is shared across every app on the account.\n")
+  cat("CAPACITY WARNING: at or beyond 80% of the",
+      sprintf("%.0f-hour monthly allowance.", limit),
+      "When it runs out, shinyapps.io takes the applications OFFLINE",
+      "and visitors see Posit's page - the app cannot show a message",
+      "of its own. The allowance is SHARED across every app on the",
+      "account, so a busy neighbour can take this one down.",
+      "(If the plan has changed, set INTEGRITY_SHINY_HOURS.)\n")
 } else if (pct >= 60) {
-  cat("CAPACITY NOTE: over 60% of the assumed allowance used; watch it",
+  cat("CAPACITY NOTE: over 60% of the monthly allowance used; watch it",
       "if outreach is under way.\n")
 }
