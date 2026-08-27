@@ -103,14 +103,23 @@
   # the dash must sit LAST in the class or it reads as a range (TRE:
   # "Invalid character range") - found by the test, 2026-08-26
   danger <- "^[=+@\t\r-]"
+  guard <- function(x) {
+    hit <- !is.na(x) & nzchar(x) & grepl(danger, x)
+    if (any(hit)) x[hit] <- paste0("'", x[hit])
+    x
+  }
   for (nm in names(data)) {
     v <- data[[nm]]
-    if (is.character(v)) {
-      hit <- !is.na(v) & grepl(danger, v)
-      if (any(hit)) v[hit] <- paste0("'", v[hit])
-      data[[nm]] <- v
-    }
+    if (is.character(v)) data[[nm]] <- guard(v)
   }
+  # COLUMN NAMES TOO (2026-08-27). write.csv emits names() as the header
+  # row, and in the journal-style table the ARM NAMES are the columns -
+  # parsed straight out of the uploaded manuscript, so attacker text. A
+  # trial with an arm labelled =cmd|'/c calc'!A1 otherwise ships an
+  # executable header to the editor who opens the file. Found when Steve
+  # asked whether the journalTables addition had been screened; it had
+  # not, and this was the hole.
+  names(data) <- guard(names(data))
   data
 }
 
@@ -165,6 +174,33 @@
 # largest are in the thousands).
 .apiMaxN    <- 100000L
 .apiMaxCols <- 200L
+# The journal-style tables expand one line per populated category
+# column, so their size is NOT bounded by the input gates above. This
+# caps the estimated emitted cells; a real baseline table is a few
+# hundred (tens of variables x a handful of arms), so 200,000 is far
+# above any honest document and far below anything that hurts.
+.apiMaxJournalCells <- 200000L
+
+# Estimate how many cells the journal-style tables would emit, WITHOUT
+# building them - a pure function so the bound is testable directly
+# rather than through validateData, which rejects most synthetic wide
+# tables before the journal logic is ever reached.
+#
+# The expansion driver: buildBaselineTables emits one line per
+# populated category column for every categorical variable, plus one
+# line per other row. Rows carrying any category value are the ones
+# that can expand.
+.apiJournalCells <- function(DATA, categoryNames) {
+  cells <- nrow(DATA)
+  if (length(categoryNames)) {
+    have <- intersect(categoryNames, names(DATA))
+    if (length(have)) {
+      catRows <- rowSums(!is.na(DATA[, have, drop = FALSE])) > 0
+      cells <- cells + as.integer(sum(catRows)) * length(have)
+    }
+  }
+  as.numeric(cells)
+}
 
 # A spreadsheet decompression bomb (security review H3): .xlsx and .xls
 # are zips, so a 25 MB upload (the H1 request cap) can inflate to
@@ -323,7 +359,26 @@
   # against the manuscript page, and returning it here saves a second
   # call. One CSV per trial, sanitized like every human-facing CSV
   # (these carry parsed row labels).
-  journal <- tryCatch({
+  # OUTPUT-SIZE BOUND (independent screen of this feature, 2026-08-27).
+  # The /analyze gate bounds the INPUT - rows, columns, trials, N - but
+  # journalTables is the one response element that expands SUPER-
+  # LINEARLY: a categorical variable emits one line per populated
+  # category column (see the CategoryNames loop in baselineTable.R), so
+  # a legal table of 5,000 categorical rows x ~190 category columns
+  # becomes ~950,000 emitted lines, and the labels are uncapped. That
+  # turns a few-MB request into a multi-hundred-MB response, built and
+  # then serialised again - a memory DoS on a single-threaded service.
+  # tryCatch cannot save us there: a cgroup OOM kills the process, it
+  # does not raise an R condition.
+  #
+  # So estimate the expansion from the validated frame BEFORE building
+  # anything, and omit the tables (with a reason the caller can read)
+  # rather than attempt them. Everything else in the response is O(input)
+  # and unaffected.
+  journalCells <- .apiJournalCells(v$DATA, v$CategoryNames)
+  journalSkipped <- journalCells > .apiMaxJournalCells
+
+  journal <- if (journalSkipped) NULL else tryCatch({
     tabs <- buildBaselineTables(v$DATA, v$CategoryNames)
     lapply(tabs, function(tb) {
       con <- textConnection("jout", "w", local = TRUE)
@@ -338,6 +393,13 @@
        results = OUTPUT, overallP = overall,
        trials = length(v$TRIALS),
        journalTables = journal,
+       # say WHY they are absent rather than returning a bare null the
+       # caller has to guess about
+       journalTablesOmitted = if (journalSkipped) paste0(
+         "the journal-style tables were omitted: this table would emit ",
+         "about ", format(journalCells, big.mark = ","), " cells, above ",
+         "the ", format(.apiMaxJournalCells, big.mark = ","),
+         "-cell limit. The analysis itself is unaffected.") else NULL,
        templateCsv = .apiTemplateCsv(v$DATA))
 }
 

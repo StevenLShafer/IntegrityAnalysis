@@ -172,10 +172,15 @@ app_ui <- function(testNote = NULL)
         column(
           4,
           HTML(paste0(
-            "<br>Select one or more data entry spreadsheets (csv, xls, ",
-            "xlsx), journal-style baseline tables (variables as rows, ",
-            "arms as columns - including this app's own Editor's View ",
-            "download), article PDFs, Word manuscripts (docx), or a ",
+            # Both spreadsheet routes accept the same three formats;
+            # the old wording attached "(csv, xls, xlsx)" to the first
+            # only, so a reader with a journal-style CSV could not tell
+            # it was supported (Steve, 2026-08-27).
+            "<br>Select one or more spreadsheets - csv, xls or xlsx - ",
+            "in either the data entry layout or a journal-style ",
+            "baseline table (variables as rows, arms as columns, ",
+            "including this app's own Editor's View download); ",
+            "article PDFs, Word manuscripts (docx), or a ",
             "zip of many such files - everything combines into one ",
             "table, distinguished by trial - or start with an empty ",
             "table and type the data in<br>")),

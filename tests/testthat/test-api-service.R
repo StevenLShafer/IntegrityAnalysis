@@ -403,3 +403,78 @@ test_that("/analyze returns the journal-style table per trial", {
   expect_true(is.character(first))
   expect_match(first, ",")          # it is CSV
 })
+
+test_that("CSV sanitizing covers COLUMN NAMES, not just cell values", {
+  # In the journal-style table the ARM NAMES are the column headers, and
+  # arm names are parsed from the uploaded manuscript - attacker text. A
+  # header is as executable as a cell when the editor opens the file in
+  # Excel. Found 2026-08-27 when the journalTables feature was screened.
+  d <- data.frame(a = "safe", b = "also safe", stringsAsFactors = FALSE)
+  names(d) <- c("Variable", "=cmd|'/c calc'!A1")
+  safe <- .apiCsvSafe(d)
+  expect_match(names(safe)[2], "^'=cmd", perl = TRUE)
+  expect_identical(names(safe)[1], "Variable")   # harmless names untouched
+  # and it survives the write: no bare "=" opening a header field
+  out <- capture.output(utils::write.csv(safe, row.names = FALSE, na = ""))
+  expect_match(out[1], "'=cmd", fixed = TRUE)
+  expect_false(grepl(",\"=cmd", out[1], fixed = TRUE))
+  # every trigger character, in a name
+  for (ch in c("=", "+", "-", "@")) {
+    dd <- data.frame(x = 1L)
+    names(dd) <- paste0(ch, "danger")
+    expect_match(names(.apiCsvSafe(dd))[1], paste0("^'\\", ch))
+  }
+})
+
+test_that("journalTables carry the sanitizing too", {
+  ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  skip_on_cran()
+  d <- openxlsx::read.xlsx(ex)
+  a <- .apiAnalyze(d)
+  expect_true(a$ok)
+  expect_true(length(a$journalTables) >= 1)
+  # no journal CSV may open a field with a formula trigger
+  for (csv in a$journalTables) {
+    lines <- strsplit(csv, "\n")[[1]]
+    for (ln in lines)
+      expect_false(grepl('(^|,)"?[=+@]', ln), label = substr(ln, 1, 40))
+  }
+})
+
+test_that("the journal-size estimate grows with category expansion", {
+  # The expansion driver, tested directly: buildBaselineTables emits one
+  # line per populated category column for each categorical variable, so
+  # a table that is short but WIDE in categories is a large output from
+  # a small input. Tested on the estimator rather than through
+  # .apiAnalyze because validateData rejects synthetic wide tables
+  # before the journal logic is reached - which would have made this
+  # test vacuous (it did; caught 2026-08-27).
+  plain <- data.frame(TRIAL = "T", ROW = c("Age", "Age"), N = 50L,
+                      MEAN = c(60, 61), SD = c(10, 10),
+                      stringsAsFactors = FALSE)
+  expect_identical(.apiJournalCells(plain, character(0)), 2)
+
+  wide <- plain
+  cats <- paste0("C", seq_len(80))
+  for (cn in cats) wide[[cn]] <- 1L
+  # 2 rows, each populated across 80 category columns: 2 + 2*80
+  expect_identical(.apiJournalCells(wide, cats), 162)
+
+  # the cap is what stands between that growth and the response
+  expect_true(.apiMaxJournalCells > 1000)
+  big <- wide[rep(1:2, 2000), ]
+  expect_gt(.apiJournalCells(big, cats), .apiMaxJournalCells)
+  # a category column absent from the frame must not be counted
+  expect_identical(.apiJournalCells(plain, c("Male", "Female")), 2)
+})
+
+test_that("an ordinary table still gets its journal tables", {
+  ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  skip_on_cran()
+  a <- .apiAnalyze(openxlsx::read.xlsx(ex))
+  expect_true(a$ok)
+  expect_true(length(a$journalTables) >= 1)
+  expect_null(a$journalTablesOmitted)
+})
