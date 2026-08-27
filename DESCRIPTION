@@ -19,6 +19,7 @@ Depends:
   R (>= 4.1)
 Imports:
   bslib,
+  digest,
   dqrng,
   foreach,
   httr2,

@@ -378,13 +378,14 @@ test_that("a custom error handler is registered, so 500s leak nothing", {
   # this harness (it stalled the suite for 10 minutes), and a test that
   # cannot finish is worse than one that reads the registration. The
   # handler body itself is three lines and returns a constant.
-  src <- readLines(test_path("..", "..", "R", "apiService.R"))
-  i <- grep("pr_set_error", src)
-  expect_true(length(i) > 0)
-  handler <- paste(src[i[1]:min(i[1] + 6, length(src))], collapse = " ")
-  expect_match(handler, "Internal error processing the request")
+  # Read the INSTALLED function, not the source file: under R CMD check
+  # the package is installed and R/ is not shipped, so a readLines() of
+  # the source passes locally and fails on CI (it did, 2026-08-26).
+  src <- paste(deparse(body(runApiService)), collapse = " ")
+  expect_match(src, "pr_set_error", fixed = TRUE)
+  expect_match(src, "Internal error processing the request", fixed = TRUE)
   # what the CALLER receives must be a constant, not the condition text
-  expect_match(handler, "list(ok = FALSE, error =", fixed = TRUE)
+  expect_match(src, "ok = FALSE", fixed = TRUE)
 })
 
 test_that("/analyze returns the journal-style table per trial", {
