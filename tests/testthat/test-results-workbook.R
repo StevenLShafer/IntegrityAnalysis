@@ -8,7 +8,7 @@ suppressWarnings(suppressPackageStartupMessages({
   library(MBESS); library(dqrng)
 }))
 
-test_that("the results download carries all three tabs, correctly filled", {
+test_that("the results download carries all four tabs, correctly filled", {
   # a two-trial table: trial A continuous, trial B continuous + category
   d <- data.frame(
     TRIAL = c("A", "A", "B", "B", "B", "B"),
@@ -32,8 +32,28 @@ test_that("the results download carries all three tabs, correctly filled", {
 
   f <- tempfile(fileext = ".xlsx")
   writeResultsWorkbook(OUTPUT, v$DATA, v$CategoryNames, f)
+  # Four tabs since 2026-08-27: Provenance was added so the artifact
+  # that leaves the building records WHICH ENGINE produced the verdict.
+  # This assertion is exact on purpose - it is how the addition was
+  # noticed rather than slipped in, and it is how the next one will be.
   expect_identical(openxlsx::getSheetNames(f),
-                   c("Test Results", "Baseline Tables", "Summary"))
+                   c("Test Results", "Baseline Tables", "Summary",
+                     "Provenance"))
+
+  # tab 4: provenance. Asserted on CONTENT, not just presence - a sheet
+  # that exists but says "unknown" for every field would satisfy a
+  # names-only check while defending nothing. The engine commit is the
+  # load-bearing field: without it a challenged finding cannot be traced
+  # to the code that produced it.
+  t4 <- openxlsx::read.xlsx(f, sheet = "Provenance")
+  expect_true(all(c("Item", "Value") %in% names(t4)))
+  expect_true("Engine commit" %in% t4$Item)
+  expect_true("IntegrityAnalysis version" %in% t4$Item)
+  expect_true("Analysis run" %in% t4$Item)
+  # every field says something
+  expect_true(all(nzchar(t4$Value)))
+  # and the reproduction instruction names where to get the code
+  expect_match(paste(t4$Value, collapse = " "), "github.com/StevenLShafer")
 
   # tab 1: the sheet as it always was
   t1 <- openxlsx::read.xlsx(f, sheet = "Test Results")
