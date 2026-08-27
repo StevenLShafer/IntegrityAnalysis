@@ -220,30 +220,36 @@ usable specimen from the nightly harvest).
 
 ---
 
-## 28. Nothing verifies that shinyapps is running our code
+## 28. Report the build commit, so an unauthorized deploy is visible
 
-**Status: open.** From Steve's question 2026-08-27: "do we have checks so
-that shinyapps.io itself doesn't become malware?"
+**Status: implemented 2026-08-27** (PR #97 — `R/buildInfo.R`,
+`tools/checkDeployedBuild.ps1`, scheduled task "IntegrityAnalysis
+deployed-build check", daily 21:30).
 
-**What exists.** Deploys come from GitHub, not a laptop — shinyapps can
-only fetch the package from the repository, so what ships is what is
-committed. `deploy-production.yaml` runs `tools/securityCheck.R` before
-deploying and a failure stops the deploy. Workflows trigger on
-`pull_request`, never `pull_request_target`, so a forked PR gets no
-secrets. The tripwire bans `eval`/`system`/`source` in `R/`.
+From Steve's question: "do we have checks so that shinyapps.io itself
+doesn't become malware?" Every control protected the *pipeline* — deploys
+install only from GitHub, `securityCheck.R` gates
+`deploy-production.yaml`, forks get no secrets, the tripwire bans
+code-execution primitives — and **nothing attested the artifact**.
 
-**What does not exist: any way to detect an unauthorized deploy.** The
-running app does not report which commit it was built from, so nobody —
-including Steve — can tell whether https://steveshafer.shinyapps.io is
-serving `main` or something a person with the rsconnect token pushed.
-Every control above protects the *pipeline*; none of them attests the
-*artifact*.
+**How.** The deploy installs with `remotes::install_github()`, which
+records the resolved commit as `RemoteSha` in the installed DESCRIPTION,
+so the app already knew its commit and nothing had to be injected at
+build time. Exposed as a `<meta name="integrity-build">` tag in the
+initial HTML and a `commit` field on `GET /health`;
+`checkDeployedBuild.ps1` compares both to `origin/main`.
 
-**Done looks like:** the app reports its build commit (a `GET /health`
-field for the API, a footer line or an About entry for the app), and a
-scheduled check compares it against `origin/main`'s HEAD and shouts
-when they diverge. Cheap, and it converts "we deploy carefully" into
-"we would notice."
+**Not attestation.** Anyone able to deploy arbitrary code can report an
+arbitrary commit. It catches the wrong branch, the stale deploy, the
+rollback that never rolled forward, the hand-applied fix, and tampering
+by anyone who did not think about it. The report distinguishes "behind
+main" (ordinary) from "not a commit in this repository" (alarming),
+because a check that cried wolf every time main moved would be ignored
+within a week — and then the alarming case would be ignored too.
+
+**Remaining:** production still reports no build commit until the next
+production deploy carries this code. The nightly check flags that, which
+is the honest behaviour rather than a false pass.
 
 ---
 

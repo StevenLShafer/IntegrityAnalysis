@@ -72,6 +72,19 @@ function() {
   list(ok = TRUE,
        service = "IntegrityAnalysis",
        version = as.character(utils::packageVersion("IntegrityAnalysis")),
+       # The commit this service was built from (issue 28), so an
+       # operator - or tools/checkDeployedBuild.ps1 - can compare what
+       # is RUNNING against what is in the repository. /health is the
+       # right home for it: open, unauthenticated, already the endpoint
+       # a monitor polls. The repository is public, so the hash reveals
+       # nothing. NOT attestation: anyone who can deploy arbitrary code
+       # can report an arbitrary commit. It catches the wrong branch,
+       # the stale deploy and the careless hand-edit, which is most of
+       # what actually goes wrong.
+       commit = {
+         s <- IntegrityAnalysis::buildCommit()
+         if (is.na(s)) "unknown" else s
+       },
        engine = "deterministic (Carlisle-Shafer Monte Carlo)")
 }
 

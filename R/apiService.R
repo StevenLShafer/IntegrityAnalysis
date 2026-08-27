@@ -229,13 +229,6 @@
 # baseline table (a 25-variable, 2-arm trial with N = 500 per arm comes
 # to 25,000 x 1e5 = 2.5e9... which is why the ceiling is not tighter).
 #
-# DELIBERATELY A REFUSAL, NOT A SILENT REPLICATE REDUCTION. Quietly
-# dropping to 10,000 replicates would keep large submissions working
-# while lowering the precision of a fraud verdict without telling the
-# caller - the worse failure in a tool whose output gets used to
-# question someone's data. A caller who is refused can split the
-# submission by trial; a caller silently given a coarser p-value
-# cannot know to.
 # RAISED from 6e9 to 1.2e10 on 2026-08-27. The first value was set from
 # the attack side alone and was too tight from the other: it refused a
 # 20-variable trial above N = 1,500 per arm, and a 30-variable trial
@@ -244,6 +237,10 @@
 # when Steve asked whether capping N would solve the compute problem -
 # the question sent me back to the numbers, and the numbers were about
 # the wrong risk.
+#
+# This is the knob the decision below explicitly names, used exactly as
+# it says: the ceiling proved too tight, so the ceiling moved. What did
+# NOT move is what the service does when it hits it.
 #
 # The gap is that this bounds the WORST case, where every row escalates
 # to the replicate ceiling, and the typical case is ~100x cheaper
@@ -262,6 +259,33 @@
 # request time; the honest fix is an asynchronous submit-and-poll API
 # (ISSUES.md issue 26). Until then a very large trial is refused here
 # and analysed in the app, which has no request timeout.
+#
+# ---------------------------------------------------------------------
+# A REFUSAL, NOT A REPLICATE REDUCTION - SETTLED, not a default.
+#
+# Dropping to 10,000 replicates would keep large submissions working
+# while lowering the precision of a fraud verdict. A caller who is
+# refused can split the submission by trial; a caller handed a coarser
+# p-value does not know to.
+#
+# Put to Steve as an open question when this gate was written, because
+# it is a statistical judgment rather than a security one, and the
+# alternative was defensible: a DISCLOSED reduction ("analyzed at
+# 10,000 replicates; p reported as < 1e-4") tells the caller what they
+# got, so the objection to a SILENT reduction would not apply to it.
+#
+# Steve's decision, 2026-08-27: "Keep the refusal - a coarser p-value is
+# worse than a refusal." The reasoning behind it is the tool's purpose:
+# these p-values are used to question whether someone's data are real,
+# and a number carrying less evidence than the reader assumes is more
+# dangerous than no number at all. Disclosure in a JSON field does not
+# fix that, because the p-value travels onward - into an email, an
+# editorial decision, a conversation with an author - long after the
+# field that qualified it has been left behind.
+#
+# So do not "improve" this into an adaptive reduction later. Widening
+# .apiMaxDrawBudget is the supported knob if the ceiling proves too
+# tight in practice.
 .apiMaxDrawBudget <- 1.2e10
 .apiReplicateCeiling <- 100000    # the global m in app_globals.R
 
