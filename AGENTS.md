@@ -370,6 +370,62 @@ PR, with the reasoning in comments.
 
 ## The parser optimization loop
 
+### Development and holdout (added 2026-08-27) — READ FIRST
+
+Steve asked whether refinements built on one corpus should be tested on
+another before being deployed and measured against Carlisle and A&A. Yes
+— and the question exposed a larger gap: **until 2026-08-27 there was no
+held-out set anywhere in this repository.** The loop below reads the
+failures in `ParseOutcomes.csv`, fixes the code, and re-measures on the
+same 1,865 articles. Every parse-rate number it ever produced, including
+the **84.9% being quoted to editors**, was measured on the corpus the
+fixes were developed against.
+
+`corpus/Holdout.csv` now freezes a 25% stratified holdout (465 articles;
+1,400 development). Stratified by source AND outcome, so both halves
+start at exactly 84.9% by construction and any later divergence is
+signal. `corpus/freezeHoldout.R` **refuses to redraw it** — a split that
+can be regenerated is not a holdout, and the accident to guard against is
+someone re-running a script, not anyone deciding to cheat.
+
+**Develop against `SET == "development"`. Report against
+`SET == "holdout"`, and only after the change is finished** — a holdout
+consulted during development is just a test set.
+
+**What freezing cannot do.** It protects the future, not the past. These
+articles have been read and their failures studied for weeks, so the
+holdout drawn today has already influenced the code. No number measured
+on it is clean until it has survived a development cycle it did not
+participate in.
+
+So the best *uncontaminated* estimate available today does not come from
+this corpus at all — it comes from corpora that have never driven a fix:
+medRxiv preprints and PubTables-1M. That is what makes the cross-corpus
+proposal more than hygiene.
+
+### Which corpus answers which question
+
+They differ in KIND, not just in sample, so "develop on A, test on B"
+changes domain as well as split — a drop can mean overfitting *or* a
+different kind of table, and symmetric A→B/B→A testing cannot tell them
+apart. Use each for what only it can answer:
+
+| corpus | ground truth | what it alone can answer |
+|---|---|---|
+| **PubTables-1M** (93,834) | structure only | geometry regression — does a fix break column clustering across 75k diverse tables? Cheap, broad, run FIRST |
+| **medRxiv** (growing) | none | real-PDF robustness, and wrong-table selection (issue 24), because it has whole articles |
+| **Carlisle** (1,865) | printed VALUES | the only corpus that can confirm *correctness* rather than yield. Guard its holdout hardest |
+| **A&A** (6,328) | none | population realism — what actually arrives at a journal |
+
+**The metric is the trap.** Parse RATE is not correctness. The misparse
+measurement found 9.6% of files returning a table with zero corroboration
+— a wrong table, confidently parsed. A refinement can raise parse rate
+*while* increasing wrong-table selection, and a cross-corpus gate scored
+on yield would reward exactly that. Score on correctness where truth
+exists (Carlisle values, PubTables structure) and on corroboration where
+it does not.
+
+
 The PDF parser (the `R/` files prefixed with parse*/tokenize/pageLayout/
 aiFallback, folded in from the ParsePDF package 2026-08-17, issue 9) is
 the hardest problem in this repository, and it is **deliberately set up to
