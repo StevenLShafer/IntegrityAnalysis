@@ -151,6 +151,15 @@ if (file.exists("R/apiService.R")) {
                  "without .apiCsvSafe - arm names become column headers",
                  "and would carry formulas to the editor"))
   }
+  # The journal tables expand super-linearly in the input (one line per
+  # populated category column), so the /analyze INPUT gates do not bound
+  # them - an output-size cap must exist or a legal table becomes a
+  # multi-hundred-MB response (independent screen, 2026-08-27).
+  if (!any(grepl("^[^#]*\\.apiMaxJournalCells", api)))
+    note(paste("R/apiService.R lost the journal output-size bound -",
+               "journalTables can be inflated into a memory DoS that",
+               "tryCatch cannot catch"))
+
   # ...and .apiCsvSafe must sanitize NAMES, not only values: a header is
   # as executable as a cell (found 2026-08-27 screening journalTables).
   csvFn <- fnBody(api, "\\.apiCsvSafe")
