@@ -41,6 +41,7 @@ Imports:
   xml2,
   zip
 Suggests:
+    callr,
     graphics,
     plumber,
     grDevices,

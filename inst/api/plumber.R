@@ -18,6 +18,53 @@ function(req, res) {
   plumber::forward()
 }
 
+# Request-size guard (security review H1, and its RE-REVIEW 2026-08-26).
+#
+# ORDER: this runs AFTER auth, deliberately. The body is fully buffered
+# before either filter executes (see below), so putting size first buys
+# no memory - while putting AUTH first means an unauthenticated caller
+# learns nothing about our policies and simply gets 401.
+#
+# HONEST SCOPE - read this before trusting it: httpuv buffers the entire
+# request into memory, and plumber's own default `body` filter parses it,
+# BEFORE any filter in this file runs. So this check does NOT prevent the
+# memory spike from a giant upload; by the time it executes the bytes are
+# already resident. What it does prevent is everything downstream - the
+# writeBin second copy, the parse, the simulation - and it makes the
+# refusal cheap and explicit.
+#
+# THE REAL BODY CAP MUST LIVE IN FRONT OF THE SERVICE (a proxy/WAF ahead
+# of App Runner). That is tracked in ISSUES.md issue 1; do not delete
+# this comment believing the filter alone closes H1.
+#
+# A request with NO Content-Length (chunked transfer-encoding) is
+# REFUSED rather than forwarded: the re-review found that falling open
+# there bypassed the cap entirely, and a legitimate multipart client
+# always declares a length.
+.apiMaxBytes <- 26214400L   # 25 MiB
+
+#* @filter sizelimit
+function(req, res) {
+  # thin wrapper: the decision lives in .apiSizeVerdict, a pure function
+  # the tests exercise branch by branch
+  verdict <- IntegrityAnalysis:::.apiSizeVerdict(req$REQUEST_METHOD,
+                                                 req$HTTP_CONTENT_LENGTH)
+  if (identical(verdict, "no_length")) {
+    res$status <- 411          # Length Required
+    return(list(ok = FALSE, error = paste(
+      "A Content-Length header is required. Chunked uploads are not",
+      "accepted by this service.")))
+  }
+  if (identical(verdict, "too_large")) {
+    res$status <- 413
+    return(list(ok = FALSE, error = paste0(
+      "Upload exceeds the ",
+      round(IntegrityAnalysis:::.apiMaxBytes / 1024^2),
+      " MB limit. Send one document per request.")))
+  }
+  plumber::forward()
+}
+
 #* Service health and identity
 #* @serializer unboxedJSON
 #* @get /health
@@ -96,9 +143,11 @@ function(req, res, file) {
   }
   list(ok = TRUE, file = name, trials = a$trials,
        overallP = a$overallP,
-       resultsCsv = paste0(paste(utils::capture.output(
-         utils::write.csv(a$results, row.names = FALSE, na = "")),
-         collapse = "\n"), "\n"),
+       # sanitized against spreadsheet formula injection (review M5)
+       resultsCsv = IntegrityAnalysis:::.apiResultsCsv(a$results),
+       # the reconstructed journal-style table per trial (issue 15) -
+       # what an editor compares against the manuscript page
+       journalTables = a$journalTables,
        templateCsv = a$templateCsv,
        deleted = TRUE)
 }

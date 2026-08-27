@@ -167,6 +167,47 @@ the author of a manuscript under investigation.** An editor can be
 induced to upload a file that author crafted, so every uploaded artifact
 - spreadsheet, PDF, file *name* - is hostile input.
 
+### The API surface (added 2026-08-26)
+
+The REST service (issue 1) widened the model: the adversary is now the
+manuscript author **plus anyone on the internet, with or without a
+token**. Three app-side guarantees did NOT extend to it automatically,
+and the review that found them is the reason the following are pinned
+by `tools/securityCheck.R` property group 5 - do not remove one without
+replacing the property:
+
+- **Request size**: the app's `shiny.maxRequestSize` does not apply to
+  plumber, which buffers a whole multipart body in memory before any
+  handler runs. `inst/api/plumber.R`'s `sizelimit` filter rejects
+  oversized bodies 413 by header, *before* auth, because the body
+  arrives before the handler does.
+- **Compute**: `/analyze` refuses a table above `.apiMaxRows` /
+  `.apiMaxTrials` before simulating. plumber is single-threaded and the
+  Monte Carlo escalates precisely on homogeneous-looking rows, so a
+  crafted table could otherwise pin the service past App Runner's
+  request timeout and starve `/health`.
+- **Spreadsheets**: `.xlsx` is a zip, and the API's read runs
+  in-process (unlike PDFs, which get the subprocess batcher).
+  `.apiZipInflationOK` reads the zip directory's declared uncompressed
+  sizes and refuses a bomb before a byte is inflated.
+- **Returned CSVs are formula-sanitized** (`.apiCsvSafe`): the "our
+  workbooks cannot smuggle formulas" property was proven for xlsx
+  string cells and does NOT hold for `write.csv`. A row label like
+  `=HYPERLINK(...)` parsed from a manuscript would execute when the
+  editor opens the file.
+- **The caller's AI key never touches disk**: `.ppSplitChildKey` keeps
+  it out of the child options RDS and it travels by environment
+  variable on the `system2` call (not argv, so invisible to `ps`).
+- **Errors say nothing**: `pr_set_error` returns a fixed 500 body;
+  plumber's default handler would return R condition text carrying
+  tempdir paths or upload fragments.
+
+Confirmed good and worth preserving: auth fails closed (no tokens
+configured = nothing authorized), zip *upload* handling is unreachable
+from the API (`expandZipUploads` is Shiny-only), filenames are
+`basename()`d into a per-request tempdir, and issued tokens are
+256-bit with only their hashes stored.
+
 The standing conclusions of the 2026-08-20 full-repository review:
 
 - **A malicious document cannot execute code here.** PDFs are parsed by
