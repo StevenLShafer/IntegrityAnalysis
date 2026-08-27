@@ -334,13 +334,7 @@ You rarely need this section any more: the app parses PDFs, Word
 manuscripts, and journal-style tables into this format itself. It
 matters when you type data into an empty table, hand-build a template
 spreadsheet, or want to understand exactly what the simulation
-consumes — the internal data frame every input route produces. (This
-figure greeted every visitor at the top of the app in its first year,
-when hand-built spreadsheets were the only way in; it retired to this
-page in August 2026.)
-
-![How a printed baseline table maps onto the template's rows and
-columns.](inst/www/Table.png)
+consumes — the internal data frame every input route produces.
 
 Each line of the table is one cell of the manuscript's baseline table:
 one variable in one study arm. Lines that share a ROW label are the arms
@@ -483,6 +477,67 @@ resources, or responsibility for investigating fraud. Journal editors
 should refer allegations of fraud to the institution under whose
 authority the research was conducted. Institutions are responsible for
 ethical conduct of research.**
+
+## What to do with a flag — Steve's recommendations
+
+*These are my recommendations, based on fifteen years of handling such
+cases as a journal editor. They are not a consensus guideline, and
+nothing here binds anyone. For formal guidance, see the
+[COPE flowcharts](https://publicationethics.org/guidance/flowcharts) on
+suspected fabricated data, which are the reference most journals
+follow. — Steve Shafer*
+
+1. **Verify the numbers before anything else.** Extraction is
+   imperfect. Check the flagged trial's values against the printed
+   table — especially any cell the app colored green (derived or
+   AI-read) or cyan (read by OCR). A flag built on a misread digit is
+   not a finding.
+2. **A single flagged paper is not evidence of misconduct.** One paper
+   at P ≤ 0.05 is expected once in twenty honest papers. What made the
+   Fujii and Boldt cases conclusive was the *pattern* across many
+   papers by the same author.
+3. **Consider the innocent explanations first**, because they are more
+   common than fraud: non-random allocation that was never described as
+   random, quasi-randomization, a mislabeled SEM, a transcription
+   error, or a table copied between manuscripts.
+4. **Contact the author before anything public.** Ask for the primary
+   data and the randomization method. Most cases resolve here.
+5. **If concern survives that exchange, refer it to the institution**
+   under whose authority the research was done. Journals do not have
+   the authority, the resources, or the responsibility to investigate
+   research fraud; institutions do.
+6. **Keep the analysis out of public claims.** A p value from this tool
+   is a screening signal that justified a question — never a
+   conclusion, and never something to publish about a named
+   investigator.
+
+## What this screen does not catch
+
+Stated plainly, because the method is public and an honest account
+serves editors better than an implied guarantee.
+
+The Carlisle–Shafer approach detects baseline data that are **too
+similar across arms** to be random samples of one population. It is
+effective against fabrication as it is usually committed: people
+inventing numbers by hand produce distributions that are too tidy.
+Human intuition about randomness is poor — a fabricator will avoid
+writing 187737 because three sevens "look non-random," when in truth
+one in ten digit pairs should repeat.
+
+It follows that a **sufficiently sophisticated fabricator would not be
+caught**: someone who simulates a trial from plausible distributions —
+the very thing this program does to build its null — produces baseline
+data that this screen cannot distinguish from honest data. Nor does it
+help that the method is open: the mechanics are published in the
+Carlisle papers and the source is on GitHub, so a determined person can
+also use this tool to check whether their fabricated table passes.
+
+That is an honest limitation, not a reason to keep the method secret.
+Screening raises the cost and the risk of fabrication; it does not make
+fabrication impossible. It is one instrument among several — structural
+checks such as GRIM/GRIMMER, statistical review, and above all the
+primary data — and it should be used as a reason to look more closely,
+never as a verdict on its own.
 
 ## How many simulations? (adaptive replicates)
 

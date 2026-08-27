@@ -340,7 +340,38 @@ five are recorded there (e.g. NEJM 670: ours 0.129 vs his 0.634).
 
 ---
 
-## 1. Build the API
+## 1. Build the API (BUILT and DEPLOYED 2026-08-26; hardening follow-ups open)
+
+**Shipped**: `POST /parse` and `POST /analyze` behind bearer-token auth,
+running on AWS App Runner from a container CodeBuild builds out of this
+repository. The contract below is honored, including the round-trip
+failure payload and confirmed deletion, and the per-request BYOK header.
+Live-verified end to end, including an AI rescue of a scanned table
+through the deployed service. Issuance is `tools/issueApiToken.R` (a
+256-bit token shown once; only its SHA-256 is recorded, in a private
+registry repository). Decisions and their reasoning:
+`docs/api-spec.md`.
+
+**OPEN follow-ups, in priority order** (from the 2026-08-26 security
+review and its independent re-review):
+
+1. **A real body cap in front of the service.** The in-app `sizelimit`
+   filter cannot prevent the memory spike it targets: httpuv buffers
+   the whole request and plumber parses it before any filter runs. The
+   filter still refuses the parse/compute (and now refuses a POST with
+   no Content-Length, which previously bypassed it entirely), but the
+   actual cap needs a proxy/WAF ahead of App Runner. Until that exists,
+   H1 is mitigated, not closed.
+2. **Per-token quotas.** Request size and compute are bounded per
+   request; nothing yet bounds how MANY requests one token may make.
+   Worth having before the token list grows beyond people Steve knows
+   by name.
+3. **Self-service issuance** (Cognito + WAF) if demand justifies it -
+   deliberately deferred; the design is in `docs/api-spec.md`.
+4. **Version in `/health`**: the deployed image predates the 0.2.0
+   bump, so `/health` still reports 0.1.0 until the next image build.
+
+## 1a. The API contract (as built)
 
 Expose the analysis so other programs can call it — the target is
 editorial systems such as Editorial Manager linking to it automatically
