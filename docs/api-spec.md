@@ -112,11 +112,47 @@ This document (machine-readable OpenAPI once implemented).
   ≈ 1–2 s per trial at m = 15000). No batch endpoint in v1 — editorial
   systems submit one manuscript per event.
 
-## Open decisions for Steve
+## Decisions (settled 2026-08-26)
 
-- Hosting (shinyapps.io cannot host plumber: a small VM/container or
-  Posit Connect).
-- Key issuance process and per-key quotas; whether a public
-  low-rate-limit demo key exists.
-- Whether the response includes the reconstructed journal-style baseline
-  table view (issue 15) for the editor email workflow.
+**Hosting: AWS App Runner.** shinyapps.io indeed cannot host plumber.
+The service runs as a container built by AWS CodeBuild from this
+repository (`Dockerfile`, `buildspec.yml`) and pushed to ECR; App
+Runner auto-deploys the `:latest` tag, and every build also pushes an
+immutable `:<git-sha>` tag so a rollback is repointing the service
+rather than rebuilding history. Posit Connect was considered and set
+aside as a paid product to buy only once demand exists.
+
+**Key issuance: an operator-issued bearer token, recorded as a hash.**
+`tools/issueApiToken.R issue "Partner" "contact"` generates a 256-bit
+token, prints it once, records only its SHA-256 in a private registry
+repository, and syncs the active hashes to the service. Revocation
+flips a row and re-syncs. No live token is stored anywhere after
+issuance; even the private registry leaking would compromise nothing.
+
+*Self-service issuance is deliberately deferred.* The architecture,
+when demand justifies it: Amazon Cognito for hosted signup and email
+verification (which is also the bot defense — a million automated
+requests become Cognito's problem, not ours), a `/token` endpoint that
+exchanges a verified Cognito identity for a bearer token, and AWS WAF
+in front of App Runner for raw throttling. At pilot scale — a handful
+of publishers, most of them personal contacts — the operator being in
+the loop is a relationship asset rather than a bottleneck, and
+issuance is a 30-second command.
+
+**No public demo key.** The service does real computation on uploaded
+documents; an open credential on a compute-metered endpoint invites
+exactly the abuse the 2026-08-26 security review was written to
+prevent. Interested parties get their own token, which also makes
+usage attributable per partner.
+
+**Per-key quotas: still open.** The size and compute ceilings added in
+the hardening pass (`.apiMaxBytes`, `.apiMaxRows`, `.apiMaxTrials`,
+`.apiMaxN`, `.apiMaxCols`) bound any single request, but nothing yet
+bounds how MANY requests one token may make. Worth adding before the
+token list grows beyond people Steve knows by name.
+
+**The journal-style table travels with the response.** For the editor
+email workflow, `/analyze` returns the reconstructed baseline table
+(issue 15) alongside the results — the artifact an editor compares
+against the manuscript page, without a second call or a spreadsheet
+download.

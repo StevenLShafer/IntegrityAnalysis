@@ -202,5 +202,21 @@ for (m in mecas) {
 }
 cat(sprintf("\nprocessed %d package(s): %d RCT pdf(s) kept, %d non-RCT, %d error(s)\n",
             length(mecas), kept, dropped, failed))
-cat("corpus now holds", length(list.files(outDir, pattern = "[.]pdf$")),
-    "PDF(s)\n")
+nPdf <- length(list.files(outDir, pattern = "[.]pdf$"))
+cat("corpus now holds", nPdf, "PDF(s)\n")
+
+# ---- heartbeat (Steve's request, 2026-08-26) ----------------------------
+# Every scheduled job on this machine is invisible when it stops: a
+# harvest that dies at 2 AM - expired AWS session, network, a change
+# upstream - would go unnoticed for weeks. Append one line per run; the
+# 03:00 backup task checks this file's age and complains into the
+# OneDrive-synced backup log if it is stale. Written LAST, so the line
+# means "the run completed", not "the run started".
+tryCatch({
+  hb <- file.path(outDir, "heartbeat.log")
+  cat(sprintf("%s  processed=%d kept=%d dropped=%d errors=%d corpus=%d\n",
+              format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+              length(mecas), kept, dropped, failed, nPdf),
+      file = hb, append = TRUE)
+}, error = function(e) message("heartbeat write failed: ",
+                               conditionMessage(e)))
