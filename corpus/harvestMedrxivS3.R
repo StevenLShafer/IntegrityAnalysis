@@ -23,10 +23,16 @@
 #   Phase 1 (S3): list the current and previous month folders, diff       #
 #     against the manifest, download up to maxFiles / maxGB NEW .meca     #
 #     packages into <outDir>/incoming. Uses the aws CLI with profile      #
-#     "steve" (Identity Center; the session refreshes itself for ~90     #
-#     days - when it finally expires this phase logs one clear line       #
-#     telling Steve to run `aws sso login --profile steve` and exits      #
-#     without touching the manifest).                                      #
+#     "steve" (Identity Center). CREDENTIAL LIFETIME - MEASURED, not     #
+#     assumed (2026-08-26): the token expired EIGHT HOURS after login,   #
+#     because this Identity Center instance uses the default 8-hour      #
+#     session duration. An earlier note here claimed ~90 days; that was  #
+#     wrong, and an unattended nightly job therefore FAILS unless the    #
+#     duration is raised (Identity Center console -> Settings ->         #
+#     Authentication, up to 90 days) and Steve logs in once after the    #
+#     change. Until then this phase logs one clear line telling him to   #
+#     run `aws sso login --profile steve`, and exits without touching    #
+#     the manifest.                                                       #
 #   Phase 2 (local): every .meca in incoming/ is a zip: unpack, read      #
 #     DOI + title + abstract + license from the JATS XML, apply the       #
 #     SHARED RCT filter (corpus/rctFilterPatterns.R - the abstract here   #

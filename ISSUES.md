@@ -43,8 +43,19 @@ results in C:/temp/AAW_20260825/ParseOutcomes_AA.csv).
 **AWS (new 2026-08-26)**: account 196253397540, Identity Center
 profile `steve` (root retired to break-glass), S3 bucket
 shafer-corpora-196253397540 (private, corpus backup candidate), $10
-monthly budget alarm. Used by the nightly medRxiv S3 harvest;
-~90-day session refresh, then `aws sso login --profile steve`.
+monthly budget alarm.
+
+> **ACTION NEEDED, first thing (found 2026-08-26 ~22:00 PT).** The
+> Identity Center access token expires **8 hours** after login - the
+> default session duration, NOT the ~90 days this note previously
+> claimed. Measured: login 15:35, expiry 23:35 UTC. Consequences: the
+> 02:00 medRxiv harvest **failed overnight**, and the hardened API
+> image cannot be rebuilt or deployed until you log in.
+> **One-time fix:** Identity Center console -> Settings ->
+> Authentication -> raise the session duration (up to 90 days), then
+> `aws sso login --profile steve`. Unattended jobs work from then on.
+> (Alternative, if that proves insufficient: a long-lived IAM access
+> key scoped to S3 read - trades a static credential for reliability.)
 
 **PubTables-1M (issue 20)**: 8.0 GB of annotations/word boxes
 downloaded and verified; test split (93,834 tables) extracted; mining
@@ -74,6 +85,84 @@ glyph session's PR #53 remains open (worktree C:/Temp/ia-glyphs and
 library C:/Temp/ia-lib are theirs).
 
 ---
+
+## 24. Silent misparse: the parser sometimes returns the WRONG TABLE
+
+**The measurement Steve asked for** (2026-08-26, from the "unknown
+unknowns" review): we measure the parse RATE, and the Monte Carlo is
+validated - but nobody had measured how often a parse SUCCEEDS WITH
+WRONG VALUES. A failed parse is safe: the editor sees red cells. A
+plausible misparse is the dangerous case, because an editor acts on it.
+
+`corpus/measureMisparse.R` scores every corpus PDF that maps to one of
+Carlisle's hand-entered trials. Each (MEAN, SD) pair we extract either
+matches one of his pairs for that trial within printed rounding
+("corroborated") or does not. Values, not labels: his row naming is his
+own, and a label join would manufacture disagreement.
+
+**RESULT - full run, 1,110 files mapped, 1,016 parsed (2026-08-26):**
+
+| | files | share |
+|---|---|---|
+| fully corroborated (every pair matches) | 496 | 48.8% |
+| partial (some match, some not) | 422 | 41.5% |
+| **ZERO corroboration** | **98** | **9.6%** |
+
+Also: 47.1% of parsed files have >= 80% of their pairs corroborated;
+67.8% have >= 50%; the median file has 75% of its pairs corroborated;
+and on the 767 files with >= 3 matches we recover 75.0% of Carlisle's
+pairs.
+
+**DO NOT quote the raw 43.7% uncorroborated as a misparse rate.**
+Carlisle recorded only the variables he chose to analyze; the parser
+extracts everything it finds, so most uncorroborated pairs are simply
+variables he never entered. The honest headline is the two ends:
+**about half of parsed files agree with the ground truth completely,
+and about one in ten agrees with it not at all.**
+
+**What the zero bucket actually is - the finding that matters.**
+Inspected by hand, those files are not misread digits. **The parser
+selected the wrong table.** Examples:
+
+- `PMID_11927472.pdf`: rows labelled "Staph epidermidis",
+  "Spore-bearing bacilli" - a microbiology RESULTS table. Carlisle's
+  baseline values (633.3 +/- 25.8, ...) appear nowhere in our output.
+- `PMID_11823394.pdf`: every row labelled "Group C", values 0/15/9/25 -
+  an adverse-event or outcomes table, not baseline characteristics.
+
+A wrong-table parse yields a confident p-value computed on data that
+are not baseline characteristics, with nothing flagged. That is
+precisely the failure this measurement existed to find.
+
+**Why it is tractable**: this is a SELECTION failure, not a reading
+failure, and selection can be gated on evidence. In order of expected
+value:
+
+1. **Refuse a winning candidate whose ROW LABELS do not look like
+   baseline characteristics.** A demographic table says age / sex /
+   weight / height / ASA / BMI; a microbiology table says Staph
+   epidermidis. A vocabulary test over the winner's row labels - not
+   the caption, which these files often lack - would refuse both
+   examples above.
+2. **Require positive baseline evidence to return anything at all.**
+   Today an unlabelled table can win on parse score alone. Returning
+   NOTHING is strictly better than returning the wrong table: the app
+   handles "no table found" gracefully, and the API's round-trip
+   payload covers it.
+3. **Flag low-confidence selections** (no caption, no baseline
+   vocabulary) so a human sees a warning rather than a silent verdict.
+   Cheap, and useful even after 1 and 2.
+
+**REMAINING**: classify the 98 zero-corroboration files properly
+(wrong table vs. trial-mapping error vs. genuine digit misreads - the
+three inspected were all wrong-table, but three is not a sample), then
+implement the gate. Data: `.NewCarlisle/misparse/` (misparse_rows.csv,
+misparse_files.csv sorted worst-first, run.log).
+
+**Expect the headline parse rate to FALL when this is fixed** - from
+84.9% toward something lower and truer, because some of today's
+"successes" are wrong-table parses. For a fraud screen that is the
+right trade, and it should be stated plainly when the number moves.
 
 ## 23. Layout repairs from the wild: statistic columns and superscript orphans
 
