@@ -210,8 +210,16 @@ reaching CSV headers as a live exploit when the headers were positional
 literals, and that overstatement cost real time. An empty report is a
 perfectly good result; do not manufacture findings to fill the page.
 
-Recommend a fix for each finding, but DO NOT EDIT ANY FILES. Write your
-report to standard output only.
+Recommend a fix for each finding, but DO NOT EDIT ANY FILES.
+
+OUTPUT FORMAT - THIS MATTERS. Only your FINAL message is captured;
+everything you say while working is discarded. Put the COMPLETE report
+in that final message: every finding in full, with its file, line,
+path, consequence, severity, and recommended fix. Do not end with a
+summary that refers back to findings you described earlier - those
+earlier words do not survive. If there are no findings, say so and say
+what you checked. (The first run of this screen ended with an ordered
+list of fixes for findings F1-F5 whose descriptions had all been lost.)
 "@
 
 # Resolve the CLI explicitly. A scheduled task does NOT inherit the
