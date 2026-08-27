@@ -148,6 +148,18 @@ function(req, res, file) {
        # the reconstructed journal-style table per trial (issue 15) -
        # what an editor compares against the manuscript page
        journalTables = a$journalTables,
+       # ...and WHY it is absent when it is. .apiAnalyze omits the
+       # tables above .apiMaxJournalCells and builds an explanation;
+       # this handler used to drop that explanation on the floor, so a
+       # caller saw journalTables: null with nothing to distinguish
+       # "too large" from "nothing to build" or an internal failure.
+       # PR #91's commit message claimed callers "read a reason instead
+       # of guessing at a null" - they did not, until here. (F2 of the
+       # 2026-08-27 screen: the gap was between the stated guarantee
+       # and the code, which is a kind of defect no test was asking
+       # about.) Omitted from the JSON entirely when there is nothing
+       # to say, so the ordinary response is unchanged.
+       journalTablesOmitted = a$journalTablesOmitted,
        templateCsv = a$templateCsv,
        deleted = TRUE)
 }

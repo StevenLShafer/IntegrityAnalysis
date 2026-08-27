@@ -35,13 +35,23 @@ test_that("the static tripwire passes on the committed tree", {
   skip_on_cran()
   root <- normalizePath(test_path("..", ".."), winslash = "/")
   skip_if_not(file.exists(file.path(root, "tools", "securityCheck.R")))
-  res <- suppressWarnings(system2(
+  # RUN IT FROM THE PACKAGE ROOT. This used to invoke
+  # "tools/securityCheck.R" as a relative path while testthat had the
+  # working directory set to tests/testthat, where no such file exists,
+  # so Rscript exited non-zero and the test failed locally. In CI it did
+  # not fail - R CMD check's layout has no tools/ either, but there the
+  # skip_if_not above fires first. The net effect was a test that failed
+  # on every developer machine and asserted NOTHING on the one machine
+  # that gates merges. Found 2026-08-27 while adding the compute-product
+  # assertion; the same vacuous-assertion pattern as the journal-bound
+  # test that passed because validateData rejected its fixture first.
+  res <- suppressWarnings(withr::with_dir(root, system2(
     file.path(R.home("bin"), "Rscript"),
     c("tools/securityCheck.R"),
-    stdout = TRUE, stderr = TRUE))
+    stdout = TRUE, stderr = TRUE)))
   status <- attr(res, "status")
-  # (run from the package root; under R CMD check the tree layout
-  # differs, so only assert when the script was actually found)
   expect_true(is.null(status) || status == 0,
               info = paste(res, collapse = "\n"))
+  # and it must actually have RUN, not silently produced nothing
+  expect_match(paste(res, collapse = "\n"), "Security check passed")
 })
