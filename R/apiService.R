@@ -103,14 +103,23 @@
   # the dash must sit LAST in the class or it reads as a range (TRE:
   # "Invalid character range") - found by the test, 2026-08-26
   danger <- "^[=+@\t\r-]"
+  guard <- function(x) {
+    hit <- !is.na(x) & nzchar(x) & grepl(danger, x)
+    if (any(hit)) x[hit] <- paste0("'", x[hit])
+    x
+  }
   for (nm in names(data)) {
     v <- data[[nm]]
-    if (is.character(v)) {
-      hit <- !is.na(v) & grepl(danger, v)
-      if (any(hit)) v[hit] <- paste0("'", v[hit])
-      data[[nm]] <- v
-    }
+    if (is.character(v)) data[[nm]] <- guard(v)
   }
+  # COLUMN NAMES TOO (2026-08-27). write.csv emits names() as the header
+  # row, and in the journal-style table the ARM NAMES are the columns -
+  # parsed straight out of the uploaded manuscript, so attacker text. A
+  # trial with an arm labelled =cmd|'/c calc'!A1 otherwise ships an
+  # executable header to the editor who opens the file. Found when Steve
+  # asked whether the journalTables addition had been screened; it had
+  # not, and this was the hole.
+  names(data) <- guard(names(data))
   data
 }
 

@@ -403,3 +403,41 @@ test_that("/analyze returns the journal-style table per trial", {
   expect_true(is.character(first))
   expect_match(first, ",")          # it is CSV
 })
+
+test_that("CSV sanitizing covers COLUMN NAMES, not just cell values", {
+  # In the journal-style table the ARM NAMES are the column headers, and
+  # arm names are parsed from the uploaded manuscript - attacker text. A
+  # header is as executable as a cell when the editor opens the file in
+  # Excel. Found 2026-08-27 when the journalTables feature was screened.
+  d <- data.frame(a = "safe", b = "also safe", stringsAsFactors = FALSE)
+  names(d) <- c("Variable", "=cmd|'/c calc'!A1")
+  safe <- .apiCsvSafe(d)
+  expect_match(names(safe)[2], "^'=cmd", perl = TRUE)
+  expect_identical(names(safe)[1], "Variable")   # harmless names untouched
+  # and it survives the write: no bare "=" opening a header field
+  out <- capture.output(utils::write.csv(safe, row.names = FALSE, na = ""))
+  expect_match(out[1], "'=cmd", fixed = TRUE)
+  expect_false(grepl(",\"=cmd", out[1], fixed = TRUE))
+  # every trigger character, in a name
+  for (ch in c("=", "+", "-", "@")) {
+    dd <- data.frame(x = 1L)
+    names(dd) <- paste0(ch, "danger")
+    expect_match(names(.apiCsvSafe(dd))[1], paste0("^'\\", ch))
+  }
+})
+
+test_that("journalTables carry the sanitizing too", {
+  ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  skip_on_cran()
+  d <- openxlsx::read.xlsx(ex)
+  a <- .apiAnalyze(d)
+  expect_true(a$ok)
+  expect_true(length(a$journalTables) >= 1)
+  # no journal CSV may open a field with a formula trigger
+  for (csv in a$journalTables) {
+    lines <- strsplit(csv, "\n")[[1]]
+    for (ln in lines)
+      expect_false(grepl('(^|,)"?[=+@]', ln), label = substr(ln, 1, 40))
+  }
+})

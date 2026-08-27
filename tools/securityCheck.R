@@ -138,6 +138,28 @@ if (file.exists("R/apiService.R")) {
   if (length(res5) && !any(grepl("\\.apiCsvSafe", res5)))
     note(paste("R/apiService.R: .apiResultsCsv no longer sanitizes -",
                "the editor-facing CSV can smuggle formulas (review M5)"))
+  # The journal-style tables (issue 15, returned by /analyze) are a
+  # THIRD human-facing CSV surface, and their COLUMN HEADERS are arm
+  # names parsed from the manuscript. The generic "is .apiCsvSafe used
+  # anywhere in this file" check would still pass if this one call site
+  # lost it, so pin the call site itself.
+  jline <- grep("^[^#]*buildBaselineTables", api)
+  if (length(jline)) {
+    win <- api[jline[1]:min(jline[1] + 8, length(api))]
+    if (!any(grepl("\\.apiCsvSafe", win)))
+      note(paste("R/apiService.R: the journal-style CSV is emitted",
+                 "without .apiCsvSafe - arm names become column headers",
+                 "and would carry formulas to the editor"))
+  }
+  # ...and .apiCsvSafe must sanitize NAMES, not only values: a header is
+  # as executable as a cell (found 2026-08-27 screening journalTables).
+  csvFn <- fnBody(api, "\\.apiCsvSafe")
+  # ^[^#]* so a COMMENTED-OUT assignment does not satisfy the check -
+  # the first version of this assertion passed on exactly that
+  if (length(csvFn) && !any(grepl("^[^#]*names\\(data\\)\\s*<-", csvFn)))
+    note(paste("R/apiService.R: .apiCsvSafe no longer sanitizes column",
+               "names - arm names reach the editor as live formulas"))
+
   if (length(tmpl) && any(grepl("^[^#]*\\.apiCsvSafe", tmpl)))
     note(paste("R/apiService.R: .apiTemplateCsv sanitizes - that renames",
                "variables and breaks the round-trip contract (issue 1)"))
