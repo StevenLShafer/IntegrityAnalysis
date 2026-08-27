@@ -22,17 +22,13 @@
 # independently testable and resumable:                                    #
 #   Phase 1 (S3): list the current and previous month folders, diff       #
 #     against the manifest, download up to maxFiles / maxGB NEW .meca     #
-#     packages into <outDir>/incoming. Uses the aws CLI with profile      #
-#     "steve" (Identity Center). CREDENTIAL LIFETIME - MEASURED, not     #
-#     assumed (2026-08-26): the token expired EIGHT HOURS after login,   #
-#     because this Identity Center instance uses the default 8-hour      #
-#     session duration. An earlier note here claimed ~90 days; that was  #
-#     wrong, and an unattended nightly job therefore FAILS unless the    #
-#     duration is raised (Identity Center console -> Settings ->         #
-#     Authentication, up to 90 days) and Steve logs in once after the    #
-#     change. Until then this phase logs one clear line telling him to   #
-#     run `aws sso login --profile steve`, and exits without touching    #
-#     the manifest.                                                       #
+#     packages into <outDir>/incoming. Uses the aws CLI with the         #
+#     "harvest" profile - a dedicated IAM user with a long-lived access  #
+#     key (see below). WHY NOT Identity Center: measured 2026-08-26,     #
+#     its token expired EIGHT HOURS after login (the default session     #
+#     duration), so an unattended 2 AM job either failed or demanded a   #
+#     daily browser login with MFA. A scheduled task cannot do that.     #
+#     The dedicated user removes the problem rather than managing it.    #
 #   Phase 2 (local): every .meca in incoming/ is a zip: unpack, read      #
 #     DOI + title + abstract + license from the JATS XML, apply the       #
 #     SHARED RCT filter (corpus/rctFilterPatterns.R - the abstract here   #
@@ -67,7 +63,17 @@ incoming <- file.path(outDir, "incoming")
 dir.create(incoming, showWarnings = FALSE, recursive = TRUE)
 
 bucket  <- "s3://medrxiv-src-monthly/Current_Content/"
-profile <- "steve"
+# The "harvest" profile is a dedicated IAM user with a long-lived access
+# key, NOT the Identity Center login (2026-08-27). Identity Center tokens
+# expire with the SSO session - 8 hours by default - so an unattended
+# nightly job either fails or demands a daily browser login with MFA,
+# which is not a thing a 2 AM task can do. This user can do exactly two
+# things (see the inline policy HarvestS3Access): read the public
+# medRxiv TDM bucket, and read/write Steve's own corpus bucket. It has
+# no console access and cannot touch the API service, IAM, or billing,
+# so the blast radius of the static key is far smaller than the
+# AdministratorAccess session it replaces.
+profile <- Sys.getenv("INTEGRITY_AWS_PROFILE", "harvest")
 manifestPath <- file.path(outDir, "s3Manifest.csv")
 manifest <- if (file.exists(manifestPath))
   read.csv(manifestPath, colClasses = "character") else
@@ -99,8 +105,11 @@ awsS3 <- function(...) {
   status <- attr(out, "status")
   if (!is.null(status) && status != 0) {
     if (any(grepl("sso|expired|credentials|token", out, ignore.case = TRUE)))
-      stop("AWS credentials need a refresh: run  aws sso login --profile ",
-           profile, "  and re-run this script.", call. = FALSE)
+      stop("AWS credentials for profile '", profile, "' are not working. ",
+           "This profile should hold a long-lived IAM access key that ",
+           "never expires - check `aws configure list --profile ", profile,
+           "`, and if the key was rotated or deleted, create a new one ",
+           "for the integrityanalysis-harvest user.", call. = FALSE)
     stop("aws s3 failed: ", paste(utils::tail(out, 2), collapse = " "),
          call. = FALSE)
   }

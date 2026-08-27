@@ -82,16 +82,20 @@ $capacity = & 'C:\Program Files\R\R-4.5.3\bin\Rscript.exe' `
     'C:\dev\IntegrityAnalysis\tools\checkCapacity.R' 2>&1
 Add-Content $log ($capacity | Out-String).TrimEnd()
 
-# The AWS Identity Center session expires ~90 days after login and the
-# harvest cannot renew it unattended; warn while there is still time.
-$ssoCache = Join-Path $env:USERPROFILE '.aws\sso\cache'
-if (Test-Path $ssoCache) {
-  $newest = Get-ChildItem $ssoCache -Filter *.json -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if ($newest) {
-    $ageDays = [math]::Round(((Get-Date) - $newest.LastWriteTime).TotalDays, 0)
-    if ($ageDays -gt 75) {
-      Add-Content $log "AWS SSO AGING: credentials last refreshed $ageDays days ago (expire near 90). Run: aws sso login --profile steve"
-    }
+# The harvest uses a dedicated IAM user with a LONG-LIVED access key
+# (profile "harvest", 2026-08-27), so there is no session to expire and
+# nothing to log into - the Identity Center route was abandoned after
+# its token proved to last 8 hours, which no 2 AM task can satisfy.
+# What CAN still break is the key being rotated, deleted, or the policy
+# changed, so prove the credential works rather than assuming it.
+$awsExe = Join-Path $env:LOCALAPPDATA 'Programs\Amazon\AWSCLIV2\aws.exe'
+if (-not (Test-Path $awsExe)) { $awsExe = 'C:\Program Files\Amazon\AWSCLIV2\aws.exe' }
+if (Test-Path $awsExe) {
+  $probe = & $awsExe sts get-caller-identity --profile harvest `
+             --region us-east-1 --query 'Arn' --output text 2>&1
+  if ($LASTEXITCODE -eq 0) {
+    Add-Content $log "aws harvest credential ok: $(($probe | Select-Object -First 1))"
+  } else {
+    Add-Content $log "AWS HARVEST CREDENTIAL FAILING - the nightly harvest cannot run: $(($probe | Select-Object -First 1))"
   }
 }
