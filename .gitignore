@@ -21,3 +21,14 @@ IntegrityAnalysis_*.tar.gz
 .Boldt/
 .Fujii/
 tests/testthat/_problems/
+
+# Security screen reports (tools/securityScreen.ps1).
+#
+# This repository is PUBLIC. A screen report describes findings BEFORE
+# they are fixed, so committing one would publish an unfixed
+# vulnerability with a map to it. The reports stay local; what gets
+# committed is the adjudication AFTER the fix lands - the code change,
+# its tripwire assertion, and a line in docs/security-screens/log.md.
+# The screen log names local files and diffs, so it stays local too.
+docs/security-screens/screen-*.md
+tools/securityScreen.log

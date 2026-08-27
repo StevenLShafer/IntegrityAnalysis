@@ -220,6 +220,59 @@ usable specimen from the nightly harvest).
 
 ---
 
+## 25. Standing security screen: change-gated, adjudicated, not looped
+
+**Status: implemented 2026-08-27** (`tools/securityScreen.ps1`, nightly
+scheduled task "IntegrityAnalysis security screen", 21:00). Recorded
+here because the *discipline* is the deliverable, not the script.
+
+Steve asked whether to schedule a security screen when the API or UI
+changes, and whether to re-run it after each patch "until it shows up
+with zero issues" — the treat-to-target loop a physician runs on a
+blood pressure. Both halves needed a qualified answer; AGENTS.md
+"Two instruments, two stopping rules" carries the full reasoning.
+
+**Scheduled, but change-gated.** Nightly at 21:00, doing nothing unless
+the watched surface moved since the last screened commit (a ledger in
+`tools/securityScreen.ledger`). A screen of an unchanged tree costs
+tokens and produces noise. The ledger advances only after a report is
+written, so a screen that dies leaves its range for the next run.
+
+**Re-run after patches — but "zero issues" is the wrong endpoint.** The
+tripwire (`securityCheck.R`) is a lab value: objective, defined normal,
+free to repeat, and "repeat until normal" is exactly right. The screen
+is a radiologist's read: it samples an *opinion*, so re-running always
+yields new speculative findings and never converges to empty. Chasing
+empty means patching what was never wrong — and **two of this project's
+worst defects were introduced by security patches** (the CSV sanitizer
+that broke issue 1's round-trip contract; the tripwire assertion that
+matched a commented-out line and so passed on a deliberate break). The
+endpoint is **every finding adjudicated** — fixed, or accepted with a
+written reason — with each fix carrying an assertion verified to fail
+on a deliberate break.
+
+**"Are the API and UI the only entry points?" No.** They are the only
+network-facing ones. The watched list also covers the parsers (a
+manuscript is written by the adversary), `zipUpload.R`,
+`outputComments.R`, and two that are easy to miss: `aiFallback.R`,
+because a hostile document steers model output that becomes row labels
+and CSV cells, and `.github/workflows/` + `renv.lock`, because
+compromising the pipeline or a dependency beats any application bug.
+
+**Found while writing this:** the standing conclusion in AGENTS.md that
+"the AI fallback is off in deployment, so manuscript text never reaches
+an LLM" had been false since the bring-your-own-key assist landed
+(issue 8, PR #67). The code was reviewed when it merged; the *documented
+conclusions it invalidated* were not. That drift is precisely what the
+standing screen exists to catch, and it is the best argument for having
+one.
+
+**Done looks like:** each report in `docs/security-screens/` ending with
+every finding marked fixed or accepted-with-reason before the next
+merge touching the watched surface.
+
+---
+
 ## 21. A medRxiv preprint stress-test corpus (no ground truth, by design)
 
 Steve's idea (2026-08-25): harvest randomized-controlled-trial
