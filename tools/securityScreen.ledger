@@ -1,0 +1,11 @@
+# Screened commits - see tools/securityScreen.ps1
+#
+# One line per completed screen: <commit>  <when>  <report>. The nightly
+# run screens the range from the last line here to HEAD, and appends only
+# after a report is actually written - a screen that dies leaves the range
+# unclaimed so the next run picks it up rather than silently skipping it.
+#
+# Seeded at the 2026-08-27 interactive screens (the API review and the
+# independent re-screen that found the journal amplification bug), which
+# covered everything up to this commit.
+37a13b29216b660ebe5b53cee4a111bd21cfc8c1  2026-08-27T08:00:00  interactive (API review + independent re-screen; see docs/security-screens/log.md)

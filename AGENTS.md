@@ -231,9 +231,23 @@ The standing conclusions of the 2026-08-20 full-repository review:
   character cells as strings; a grid cell starting with `=` stays text.
   `writeFormula()` is used only in local corpus tooling on our own
   strings, never on uploaded content.
-- **The AI fallback is off in deployment** (`ai = "never"`), so
-  manuscript text - and any prompt-injection payload inside it - never
-  reaches an LLM from the app.
+- **The AI fallback is off in deployment BY DEFAULT** (`ai = "never"`),
+  so manuscript text never reaches an LLM unless the uploader has
+  entered their own key. *Corrected 2026-08-27:* this bullet used to
+  read "is off in deployment... never reaches an LLM", which stopped
+  being true when the bring-your-own-key assist landed (issue 8, PR
+  #67) and nobody revisited it. With a key entered, page text and page
+  images DO go to Anthropic for that session, and two consequences
+  follow that the old wording hid:
+  - **A prompt-injection payload in a manuscript reaches a model.** It
+    cannot execute anything, but it can steer what comes back.
+  - **Model output is therefore untrusted input.** It becomes row
+    labels, grid cells and CSV values. Those paths are defended
+    (escaped into the log, formula-sanitized into CSVs) - but they are
+    defended *as untrusted input*, and must stay that way.
+  This is the drift the standing screen exists to catch: the code was
+  reviewed when it landed; the conclusions that the code invalidated
+  were not.
 - **Deploy secrets stay out of reach.** Workflows trigger on
   `pull_request`, never `pull_request_target`; forked PRs get no
   secrets. The API key lives only in the environment, never in code.
@@ -241,6 +255,62 @@ The standing conclusions of the 2026-08-20 full-repository review:
   refuse absolute paths and `..` components, extract by basename into a
   fresh directory, cap entry count and total uncompressed size, and
   never recurse into nested archives.
+
+### Two instruments, two stopping rules (added 2026-08-27)
+
+Steve asked whether the screen should be scheduled, and whether it
+should re-run after every patch "until it shows up with zero issues" -
+the treat-to-target loop a physician runs on a blood pressure. The
+answer is yes to re-measuring, but the two instruments here are not the
+same kind of measurement and do not share a stopping rule.
+
+- **`tools/securityCheck.R` is the lab value.** Hand-verified
+  properties, checked mechanically, defined normal range (exit 0), free
+  to repeat. Runs on every push and before every deploy. *Repeat until
+  normal is exactly right here* - if it is red, something a human
+  verified is now false.
+- **`tools/securityScreen.ps1` is the radiologist's read.** A model
+  reasoning over changed code, finding what no assertion encodes - the
+  journal-table amplification DoS (2026-08-27) was legal input, legal
+  code, every input gate passing, and a response that expanded
+  super-linearly on the way out.
+
+The screen samples an *opinion*, not a state. Re-running it draws a
+fresh sample containing new speculative findings whether or not the
+system changed, so "loop until it comes back empty" does not converge -
+and chasing an empty report means patching things that were never
+wrong. That is not hypothetical: **two of this project's worst defects
+were introduced by security patches.** The CSV sanitizer renamed
+variables and broke issue 1's round-trip contract. The tripwire
+assertion written to pin a fix matched a commented-out line, so it
+passed on a deliberate break - a test that tested nothing. Every
+intervention carries its own risk, and an asymptomatic finding can be
+worse treated than left alone.
+
+**So: re-screen after every patch, but the endpoint is EVERY FINDING
+ADJUDICATED - fixed, or accepted with a written reason in the report -
+not "the next screen returns empty."** A fix should also arrive with
+the assertion or test that would catch its regression, and that
+assertion must be verified to FAIL on a deliberate break before it is
+believed.
+
+**Scheduling:** nightly at 21:00, but change-gated. `securityScreen.ps1`
+compares HEAD against the last screened commit in
+`tools/securityScreen.ledger` and does nothing unless the watched
+surface moved; a screen of an unchanged tree costs tokens and produces
+noise. The ledger advances only after a report is actually written, so
+a screen that dies leaves its range unclaimed for the next run. Reports
+land in `docs/security-screens/`. **The screen never patches** - it
+reads and reports, and what to do about a finding stays a decision made
+with the whole system in view.
+
+**Entry points are not just the API and the UI.** Those are the only
+network-facing ones, but the watched list in `securityScreen.ps1`
+covers every place attacker-controlled bytes cross into trusted code,
+including two that are easy to forget: `aiFallback.R`, because model
+output steered by a hostile document is untrusted input, and
+`.github/workflows/` plus `renv.lock`, because compromising the
+pipeline or a dependency beats any application bug.
 
 **The gate:** `tools/securityCheck.R` mechanises the properties above
 that a one-line diff could silently break, and runs in both
