@@ -279,6 +279,48 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   openxlsx::setColWidths(wb, "Summary", cols = seq_along(s),
                          widths = "auto")
 
+  ## 4 -- Provenance: WHICH ENGINE PRODUCED THIS VERDICT
+  #
+  # Added 2026-08-27. AGENTS.md has justified renv since 2026-08-20 on
+  # the grounds that "an integrity finding may be challenged, and the
+  # exact computational environment is on record is part of the
+  # defense." The environment was on record in the REPOSITORY. It was
+  # not on record in the ARTIFACT - the workbook is what leaves the
+  # building, lands in an editorial file, and gets attached to an email
+  # six months later, and it carried no version of any kind.
+  #
+  # So an author disputing a finding could ask "which version produced
+  # this, and can you reproduce it?" and the honest answer was that
+  # nobody could tell. For a tool whose output is used to question
+  # whether someone's data are real, that is the wrong answer to be
+  # unable to give.
+  #
+  # A separate sheet rather than a header row: the three existing sheets
+  # have pinned shapes that tests and downstream readers depend on, and
+  # provenance should not be something a reader has to scroll past.
+  prov <- data.frame(
+    Item = c("Analysis run", "IntegrityAnalysis version", "Engine commit",
+             "R version", "Method",
+             "Reproducing this analysis"),
+    Value = c(
+      format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+      tryCatch(as.character(utils::packageVersion("IntegrityAnalysis")),
+               error = function(e) "unknown"),
+      tryCatch({ s <- buildCommit(); if (is.na(s)) "unknown" else s },
+               error = function(e) "unknown"),
+      paste(R.version$major, R.version$minor, sep = "."),
+      paste("Carlisle-Shafer Monte Carlo; one-sided toward excessive",
+            "homogeneity; mid-p; Stouffer combination across rows"),
+      paste("Install the engine commit above from",
+            "github.com/StevenLShafer/IntegrityAnalysis and re-run this",
+            "table. The commit pins the code; renv.lock at that commit",
+            "pins every package version.")),
+    stringsAsFactors = FALSE)
+  openxlsx::addWorksheet(wb, "Provenance")
+  openxlsx::writeData(wb, "Provenance", prov, headerStyle = headStyle)
+  openxlsx::setColWidths(wb, "Provenance", cols = 1:2,
+                         widths = c(28, 100))
+
   openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
   invisible(file)
 }
