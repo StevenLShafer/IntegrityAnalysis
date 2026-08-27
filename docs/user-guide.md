@@ -28,9 +28,11 @@ The application runs at
 <https://steveshafer.shinyapps.io/IntegrityAnalysis/>. The code is open
 source at <https://github.com/StevenLShafer/IntegrityAnalysis>.
 
-**Privacy: nothing you upload or enter is retained.** The uploaded PDF or
+**Privacy: nothing you upload or enter is retained on this server, and
+nothing leaves it unless you supply an AI key.** The uploaded PDF or
 spreadsheet, any data typed into the table, and the analysis results are
-all purged when the session closes. No record of the analysis is kept.
+all purged when the session closes. No record of the analysis is kept
+here.
 Manuscripts under review are confidential, and the app is built around
 that: uploaded files are deleted from disk when the session ends,
 downloads are generated straight into your browser, and nothing is
@@ -732,10 +734,13 @@ layout, with what is wrong spelled out. Fix the flagged cells and POST
 that CSV straight back to `/analyze`: the failure payload is, by
 construction, valid input to the next call.
 
-**Nothing is retained.** Each upload lives in a working directory
-created for that request and deleted when the request ends, success or
-failure; every response says `"deleted": true`, because the contract
-requires confirming it.
+**Nothing is retained by the service.** Each upload lives in a working
+directory created for that request and deleted when the request ends,
+success or failure; every response says `"deleted": true`, because the
+contract requires confirming it. As in the app, the one exception is a
+request that carries an `X-Anthropic-Key` header: that content goes to
+Anthropic under the caller's own account, and their retention terms
+apply to it.
 
 **The AI assist, per request.** Sending an `X-Anthropic-Key` header
 engages the AI assist for that request only, under the caller's own

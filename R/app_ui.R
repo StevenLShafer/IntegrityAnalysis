@@ -74,12 +74,35 @@ app_ui <- function(testNote = NULL)
       # The purge guarantee, stated where every user sees it before
       # uploading a confidential manuscript (Steve's requirement,
       # 2026-08-17; enforcement is in app_server's onSessionEnded).
+      # CORRECTED 2026-08-27. This block used to end "No record of the
+      # analysis is kept." full stop - an unqualified guarantee that
+      # stopped being true when the bring-your-own-key AI assist landed
+      # (issue 8, PR #67). With a key entered, page text and page images
+      # go to Anthropic, who retain API data for about 30 days.
+      #
+      # The AI-assist note further down said so; THIS block did not, and
+      # this is the one an editor reads immediately before uploading a
+      # confidential manuscript. Same drift as the stale conclusion found
+      # in AGENTS.md the same morning - but that was a note to a
+      # developer, and this is a promise to a person, so it matters more.
+      #
+      # The promise is kept accurate rather than weakened: without a key
+      # the original guarantee holds exactly as stated, and the exception
+      # is opt-in, per-session, and named.
       h6(
         strong("Privacy: "),
-        "nothing you upload or enter is retained. The uploaded PDF or",
-        "spreadsheet, any data typed into the table, and the analysis",
-        "results are all purged when this session closes. No record of",
-        "the analysis is kept."
+        "nothing you upload or enter is retained on this server. The",
+        "uploaded PDF or spreadsheet, any data typed into the table, and",
+        "the analysis results are all purged when this session closes.",
+        "No record of the analysis is kept here."
+        ),
+      h6(
+        strong("The one exception, and only if you choose it: "),
+        "if you enter an Anthropic API key below, the pages this app",
+        "cannot read on its own are sent to Anthropic under your account.",
+        "Anthropic's commercial terms bar training on API submissions and",
+        "their API data is deleted within about 30 days, but it does",
+        "leave this server. Without a key, nothing you upload ever does."
         ),
       br(),
       # The caveat (Steve's wording, 2026-08-19, from his experience as
