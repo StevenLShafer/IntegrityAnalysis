@@ -220,6 +220,39 @@ usable specimen from the nightly harvest).
 
 ---
 
+## 26. An asynchronous API, for trials the synchronous one must refuse
+
+**Status: open.** Surfaced 2026-08-27 when Steve asked whether capping
+N at 10,000 would solve the compute-product problem.
+
+The `/analyze` compute budget bounds the WORST case — every row
+escalating to 100,000 replicates. The typical case is about 100x
+cheaper, because rows stop at the first stage:
+
+| 25 variables, N = 10,000/arm | |
+|---|---|
+| typical (rows stop at 1,000) | ~5 seconds |
+| worst case (all rows escalate) | ~495 seconds |
+
+The bind: **the rows that escalate are the suspicious ones.** So the
+worst case is a fraudulent-looking mega-trial — precisely the
+submission most worth analyzing. No synchronous budget both admits that
+and bounds request time, which means the current design refuses its
+most interesting inputs.
+
+Steve's decision that a coarser p-value is worse than a refusal (issue
+25's log, 2026-08-27) closes off the easy escape of quietly reducing
+replicates. The remaining answer is to stop requiring an answer within
+one request: `POST /analyze` returns a job id, the caller polls, and
+the Monte Carlo runs to full precision however long it takes.
+
+**Done looks like:** a publisher can submit any trial the app can
+handle and get the same p-value the app would give, with no limit
+imposed by HTTP. Until then the refusal message routes large single
+trials to the web app, which has no request timeout.
+
+---
+
 ## 25. Standing security screen: change-gated, adjudicated, not looped
 
 **Status: implemented 2026-08-27** (`tools/securityScreen.ps1`, nightly

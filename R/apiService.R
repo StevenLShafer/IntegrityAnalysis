@@ -182,9 +182,26 @@
 # N = 1e9 passes a row gate and then asks for gigabytes. Category
 # variables allocate r2dtable over the category COLUMNS, so a table
 # that is short but very wide is the same attack. Both are capped.
-# 100,000 subjects per arm is far above any real trial (Carlisle's
-# largest are in the thousands).
-.apiMaxN    <- 100000L
+# The ceiling is 10,000 subjects per arm, and the reason is editorial
+# rather than computational (Steve, 2026-08-27):
+#
+#   "A 10,000 patient randomized controlled trial is huge. It is
+#    expensive, likely funded by a major pharmaceutical company or a
+#    government entity. The study would be audited extensively. There
+#    would be lots of statistical review prior to manuscript
+#    submission... enormous trials like that don't need independent
+#    screens for fraud."
+#
+# That is a better justification than the arithmetic one it replaced
+# (100,000, chosen only as "far above any real trial"). A limit
+# defended by what the tool is FOR survives review; a limit defended by
+# a round number invites someone to raise it because a caller asked.
+#
+# It is NOT, by itself, a fix for the compute-product problem below.
+# Measured at the 5,000-row ceiling with every row escalating, the
+# worst case falls from 5.7 days to 0.6 days - ten times better and
+# still far past any timeout. The draw budget still does that work.
+.apiMaxN    <- 10000L
 .apiMaxCols <- 200L
 
 # ...and the four limits above are still not enough, because they are
@@ -219,7 +236,33 @@
 # question someone's data. A caller who is refused can split the
 # submission by trial; a caller silently given a coarser p-value
 # cannot know to.
-.apiMaxDrawBudget <- 6e9
+# RAISED from 6e9 to 1.2e10 on 2026-08-27. The first value was set from
+# the attack side alone and was too tight from the other: it refused a
+# 20-variable trial above N = 1,500 per arm, and a 30-variable trial
+# above N = 1,000. Carlisle's corpus is full of trials in the
+# thousands, so the deployed service was refusing ordinary work. Found
+# when Steve asked whether capping N would solve the compute problem -
+# the question sent me back to the numbers, and the numbers were about
+# the wrong risk.
+#
+# The gap is that this bounds the WORST case, where every row escalates
+# to the replicate ceiling, and the typical case is ~100x cheaper
+# because rows stop at the first stage:
+#
+#   25 variables, N = 10,000/arm   typical 5 sec   worst case 495 sec
+#
+# 1.2e10 draws is about two minutes of worst-case simulation. It still
+# refuses the pathological many-thousand-row submission by orders of
+# magnitude, while leaving ordinary trials alone.
+#
+# WHAT THIS TRADE-OFF CANNOT SOLVE, and why the number is not simply
+# larger: the rows that escalate are the SUSPICIOUS ones, so the worst
+# case is a fraudulent-looking mega-trial - exactly the submission most
+# worth analysing. No synchronous budget both admits that and bounds
+# request time; the honest fix is an asynchronous submit-and-poll API
+# (ISSUES.md issue 26). Until then a very large trial is refused here
+# and analysed in the app, which has no request timeout.
+.apiMaxDrawBudget <- 1.2e10
 .apiReplicateCeiling <- 100000    # the global m in app_globals.R
 
 # The worst-case simulation cost of a payload, in drawn values: every
@@ -438,12 +481,15 @@
                     " simulated values at full precision, above the ",
                     format(.apiMaxDrawBudget, big.mark = ",",
                            scientific = FALSE),
-                    " this service allows in one request. Split the ",
-                    "submission - one trial per request is always ",
-                    "accepted if each trial is itself within the limits. ",
-                    "The precision of the analysis is not reduced to fit; ",
-                    "a coarser p-value you were not told about would be ",
-                    "worse than this refusal."),
+                    " this service allows in one request. If the ",
+                    "submission holds several trials, send them one per ",
+                    "request. If it is a SINGLE large trial, splitting ",
+                    "it would change the result - its rows are combined ",
+                    "into one p-value - so use the web app instead, ",
+                    "which has no request timeout. The precision of the ",
+                    "analysis is never reduced to fit: a coarser ",
+                    "p-value you were not told about would be worse ",
+                    "than this refusal."),
                   stringsAsFactors = FALSE),
                 templateCsv = .apiTemplateCsv(NULL)))
   }
