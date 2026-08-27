@@ -57,6 +57,7 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Collate:
   app_globals.R
+  buildInfo.R
   sumz.R
   outputComments.R
   validateData.R

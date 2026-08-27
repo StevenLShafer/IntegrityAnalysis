@@ -121,7 +121,12 @@ app_ui <- function(testNote = NULL)
         .
         </h6>
         </p>'
-        )
+        ),
+      # Build identity, visible to a human (issue 28). The machine-
+      # readable copy is the meta tag in the body; this line is so that
+      # a bug report can say WHICH build, and so anyone can compare the
+      # running app against the repository by eye.
+      h6(style = "opacity: 0.65;", buildLabel())
       ),
     dashboardBody(
       # Visible only on PR test deployments (run_app(testNote = ...)):
@@ -139,6 +144,23 @@ app_ui <- function(testNote = NULL)
       shinyjs::useShinyjs(),
       tags$script(src = "www/app.js"),
       tags$head(tags$link(href = "www/app.css", rel = "stylesheet")),
+      # The build commit, in the INITIAL HTML (issue 28). A meta tag
+      # rather than only a rendered line, because the point is to be
+      # readable by a plain HTTP GET: tools/checkDeployedBuild.ps1
+      # fetches this page and compares the value against origin/main,
+      # and anything painted later over the websocket would be
+      # invisible to that. Public repo, so the commit is not a secret.
+      #
+      # content must be a DEFINITE string. buildCommit() returns NA when
+      # it genuinely cannot tell, and htmltools DROPS an attribute whose
+      # value is NA - so the tag rendered as <meta name="integrity-build"/>
+      # with nothing to read, and the checker saw a page with no build
+      # information rather than a page saying "unknown". Caught by the
+      # served-HTML test, which is the only test that could catch it:
+      # the UI object looks identical either way.
+      tags$head(tags$meta(
+        name = "integrity-build",
+        content = { s <- buildCommit(); if (is.na(s)) "unknown" else s })),
       style = "max-height: 95vh; overflow-y: auto;" ,
       tags$head(
         tags$style(
