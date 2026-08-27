@@ -220,6 +220,59 @@ usable specimen from the nightly harvest).
 
 ---
 
+## 28. Nothing verifies that shinyapps is running our code
+
+**Status: open.** From Steve's question 2026-08-27: "do we have checks so
+that shinyapps.io itself doesn't become malware?"
+
+**What exists.** Deploys come from GitHub, not a laptop — shinyapps can
+only fetch the package from the repository, so what ships is what is
+committed. `deploy-production.yaml` runs `tools/securityCheck.R` before
+deploying and a failure stops the deploy. Workflows trigger on
+`pull_request`, never `pull_request_target`, so a forked PR gets no
+secrets. The tripwire bans `eval`/`system`/`source` in `R/`.
+
+**What does not exist: any way to detect an unauthorized deploy.** The
+running app does not report which commit it was built from, so nobody —
+including Steve — can tell whether https://steveshafer.shinyapps.io is
+serving `main` or something a person with the rsconnect token pushed.
+Every control above protects the *pipeline*; none of them attests the
+*artifact*.
+
+**Done looks like:** the app reports its build commit (a `GET /health`
+field for the API, a footer line or an About entry for the app), and a
+scheduled check compares it against `origin/main`'s HEAD and shouts
+when they diverge. Cheap, and it converts "we deploy carefully" into
+"we would notice."
+
+---
+
+## 27. renv.lock pins versions but not contents
+
+**Status: open.** Found 2026-08-27 while answering Steve's question
+about malware in returned files.
+
+All 125 package entries in `renv.lock` carry `Package`, `Version` and
+`Source` — and **no `Hash` field**. So a restore is reproducible only as
+far as the registry is honest: a hijacked re-release at the same version
+number, or a compromised mirror, installs silently and every guarantee
+built on package behaviour goes with it. The workbook-safety test
+(`test-workbook-safety.R`) states this limit explicitly, because
+"openxlsx writes strings, not formulas" is only as good as openxlsx
+being openxlsx.
+
+This matters more than it would in an ordinary app. The renv section of
+AGENTS.md justifies pinning on the grounds that "an integrity finding
+may be challenged, and the exact computational environment is on record
+is part of the defense." A version number without a hash is a weaker
+record than that sentence promises.
+
+**Done looks like:** `renv.lock` carries a `Hash` per package and
+`renv::restore()` verifies it, or the reason it cannot is written down
+where the reproducibility claim is made.
+
+---
+
 ## 26. An asynchronous API, for trials the synchronous one must refuse
 
 **Status: open.** Surfaced 2026-08-27 when Steve asked whether capping
