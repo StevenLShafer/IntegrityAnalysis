@@ -194,6 +194,15 @@ uploaded to the app:
 against the Carlisle ground truth (`buildTestSet.R` built it;
 `runMassTest.R` runs it; `compareResults.R` scores it on the log scale).
 
+*Status 2026-08-26: this loop is SUPERSEDED for routine measurement by
+`buildParseOutcomes.R` (the whole 1,865-file corpus, chunked and
+resumable) and by `measureMisparse.R` (value-level agreement against
+Carlisle's hand-entered numbers). The four scripts are kept because
+the 61-PDF subset is a different, useful question - end-to-end p-value
+agreement on files known to parse cleanly - but reach for the two
+newer tools first. The 2026-08-26 repo audit flagged them as possible
+removals; they were kept deliberately.*
+
 **The selection rule is SUBSET verification, and this matters when
 reading comparisons:** a PDF qualified if it parsed fully (all arms with
 N, ≥ 3 continuous variables) and **every extracted (MEAN, SD) pair
