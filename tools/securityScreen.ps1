@@ -121,7 +121,38 @@ $watched = @(
 )
 
 # --- the gate ------------------------------------------------------------
+# SCREEN MAIN, OR NOTHING. The scheduled task inherits whatever branch
+# the working tree happens to be sitting on, and the reviewer reads the
+# FILES, not the diff - so an evening that ends on a feature branch
+# would screen that branch's code and then record its commit in the
+# ledger as screened, marking as covered a range that never reached
+# main. Skipping instead is safe: the ledger does not advance, so the
+# next run on main screens everything that accumulated.
+#
+# Not fixed by diffing origin/main either - that would compare against
+# commits whose files are not the ones on disk for the reviewer to
+# read. Found 2026-08-27, right after registering the task, by asking
+# what the task actually sees at 21:00.
+$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+if ($branch -ne 'main') {
+  Say "on branch '$branch', not main - screen SKIPPED, ledger unchanged"
+  Say "(the next run on main will cover this range; screen a branch"
+  Say " deliberately with -Force, which screens whatever is checked out)"
+  if (-not $Force) { exit 0 }
+  Say "-Force given: screening branch '$branch' anyway"
+}
 $head = (git rev-parse HEAD).Trim()
+
+# A dirty tree is not fatal - the reviewer reads files, and uncommitted
+# work is real code worth looking at - but it must be SAID, because the
+# ledger will record $head as screened while what was actually read
+# includes changes that commit does not contain.
+$dirty = git status --porcelain --untracked-files=no
+if ($dirty) {
+  Say ("WARNING: uncommitted changes in " +
+       (($dirty | Measure-Object).Count) + " tracked file(s) - the screen")
+  Say "reads those, but the ledger records $($head.Substring(0,8)) as screened"
+}
 $last = if ($Since) { $Since }
         elseif (Test-Path $ledgerFile) {
           (Get-Content $ledgerFile | Where-Object { $_ -match '^[0-9a-f]{7,40}\s' } |
