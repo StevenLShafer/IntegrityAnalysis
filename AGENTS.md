@@ -4,8 +4,10 @@ Orientation for **all AI coding assistants** working in this repository
 (Claude Code, ChatGPT Codex, Gemini/Antigravity, ...). This is the
 canonical agent documentation — CLAUDE.md is only a pointer here, kept
 because Claude Code auto-loads that filename. Created 2026-08-16 as part
-of a session hand-off; see [`handoff/`](handoff/README.md) for the state
-of the two threads (app code-review, PDF parsing) that converge here, and
+of a session hand-off (the two threads that converged here - app
+code-review and PDF parsing - are described in the handoff documents
+removed 2026-08-26; `git log --diff-filter=D -- handoff/` recovers
+them), and
 [`ISSUES.md`](ISSUES.md) for the **canonical open-issues list** — read
 its "Where things stand" section before starting substantive work.
 
@@ -16,7 +18,8 @@ baseline data in randomized controlled trials, used in Steve Shafer's work
 as a journal editor detecting research fraud (references in README.md).
 This is a **standalone project, unrelated to any other repository on this
 machine**. Since the phase-1 restructure (2026-08-16, ISSUES.md issue 10,
-plan in [`docs/package-restructure-plan.md`](docs/package-restructure-plan.md))
+plan since completed and removed 2026-08-26 - `git log --diff-filter=D
+-- docs/package-restructure-plan.md` recovers it)
 it is an **R package**, modeled on stanpumpR: `R/app_globals.R` (constants,
 `sumz()`, `outputComments()` — was `global.R`), `R/app_ui.R` (`app_ui()`,
 shinydashboard page — was `ui.R`), `R/app_server.R` (`app_server`,
@@ -98,7 +101,8 @@ parsing challenge: `corpus/` (see its README).
   it, so the repository's production `app.R` is never edited. The note
   renders as an orange banner under the header, telling the tester which
   PR this is and what to look at without opening GitHub.
-  (The pre-package procedure, for history: `handoff/2026-08-16-merged-handoff.md`.)
+  (The pre-package procedure is in git history; the handoff documents
+  were removed 2026-08-26 as completed.)
 - Production: https://steveshafer.shinyapps.io/IntegrityAnalysis/
   (rsconnect account `steveshafer`).
 - Headless functional testing pattern (until a real suite exists): drive
