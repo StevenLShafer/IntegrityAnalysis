@@ -105,7 +105,29 @@ jobs:
               name   = Sys.getenv("SHINY_ACCOUNT"),
               token  = Sys.getenv("SHINY_TOKEN"),
               secret = Sys.getenv("SHINY_SECRET"))
-            rsconnect::deployApp(
+            # Same transient-collision retry as deploy-production.yaml -
+            # see the long note there. shinyapps.io serializes deploys
+            # per ACCOUNT, so this workflow and the production one
+            # collide whenever they overlap; the API says to try again,
+            # so this tries again. Deliberately NOT a shared concurrency
+            # group, which would let PR traffic cancel a pending
+            # production deploy.
+            deployWithRetry <- function(tries = 4, wait = 90, ...) {
+              for (k in seq_len(tries)) {
+                done <- tryCatch({ rsconnect::deployApp(...); TRUE },
+                  error = function(e) {
+                    msg <- conditionMessage(e)
+                    if (!grepl("in progress|try again", msg,
+                               ignore.case = TRUE) || k == tries) stop(e)
+                    cat("attempt", k, "hit a transient deploy collision;",
+                        "retrying in", wait, "seconds\n")
+                    Sys.sleep(wait)
+                    FALSE
+                  })
+                if (isTRUE(done)) return(invisible(TRUE))
+              }
+            }
+            deployWithRetry(
               appDir = appDir,
               appName = paste0(Sys.getenv("SHINY_APP_NAME"), "_PR_",
                                Sys.getenv("PR_NUMBER")),
