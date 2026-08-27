@@ -133,7 +133,39 @@ jobs:
             stage <- file.path(tempdir(), "deploy-stage")
             dir.create(stage)
             file.copy("app.R", stage)
-            rsconnect::deployApp(
+            # RETRY THE TRANSIENT COLLISION (2026-08-27). shinyapps.io
+            # serializes deploys per ACCOUNT, not per app, so a
+            # production deploy and a PR-app deploy that overlap fail
+            # with "another deploy is in progress... most likely a
+            # transient error. Please try again in a bit." That cost
+            # three manual re-runs on 2026-08-27 alone.
+            #
+            # A shared GitHub Actions concurrency group is the obvious
+            # fix and is the WRONG one: even with cancel-in-progress
+            # false, a newly queued run CANCELS the previously pending
+            # one, so a production deploy waiting behind PR traffic
+            # could be cancelled outright. Retrying does what the error
+            # message itself asks for, and cancels nothing.
+            #
+            # Retries ONLY on that signature. A real failure - bad
+            # credentials, a broken app - must surface on the first
+            # attempt rather than being masked by three more.
+            deployWithRetry <- function(tries = 4, wait = 90, ...) {
+              for (k in seq_len(tries)) {
+                done <- tryCatch({ rsconnect::deployApp(...); TRUE },
+                  error = function(e) {
+                    msg <- conditionMessage(e)
+                    if (!grepl("in progress|try again", msg,
+                               ignore.case = TRUE) || k == tries) stop(e)
+                    cat("attempt", k, "hit a transient deploy collision;",
+                        "retrying in", wait, "seconds\n")
+                    Sys.sleep(wait)
+                    FALSE
+                  })
+                if (isTRUE(done)) return(invisible(TRUE))
+              }
+            }
+            deployWithRetry(
               appDir = stage,
               appName = Sys.getenv("SHINY_APP_NAME"),
               appFiles = "app.R",
