@@ -12,6 +12,15 @@
 skip_if_not_installed("plumber")
 skip_if_not_installed("callr")
 
+# Tests that call .apiAnalyze IN-PROCESS reach P_Calc, whose %do% loop,
+# dqrnorm and Rfast operations resolve from the search path - the same
+# attach runApiService() performs at startup (and the convention every
+# other Monte-Carlo test file follows, e.g. test-adaptive-m.R).
+suppressWarnings(suppressPackageStartupMessages({
+  library(shiny); library(foreach); library(MBESS); library(Rfast)
+  library(dqrng); library(openxlsx)
+}))
+
 apiToken <- "TEST-TOKEN-api-service"
 
 startApi <- function() {
@@ -164,4 +173,233 @@ test_that("the BYOK key is scrubbed from parse failure text", {
   expect_false(isTRUE(r$ok))
   expect_false(grepl(fakeKey, paste(r$reasons, collapse = " "),
                      fixed = TRUE))
+})
+
+# ---- security hardening (2026-08-26 review) -------------------------------
+
+test_that("the RESULTS csv neutralizes formula injection", {
+  # the human-facing artifact: an editor opens it in Excel
+  r <- data.frame(TRIAL = "1", ROW = "=HYPERLINK(\"http://evil\")",
+                  P = "0.03", CI95 = "", M = 1000L,
+                  stringsAsFactors = FALSE)
+  csv <- .apiResultsCsv(r)
+  expect_match(csv, "'=HYPERLINK", fixed = TRUE)
+  expect_no_match(csv, ",\"=HYPERLINK", fixed = TRUE)
+})
+
+test_that("the TEMPLATE csv stays verbatim - the round trip must close", {
+  # templateCsv is the machine payload a caller POSTs back (issue 1's
+  # round-trip contract). Sanitizing it would RENAME variables: a real
+  # label like "-Mean change" would return as "'-Mean change" and the
+  # next call would analyze a different table. Caught by the security
+  # re-review, 2026-08-26 - this test exists so it cannot come back.
+  d <- data.frame(TRIAL = "T1", ROW = c("Weight", "-Mean change"),
+                  N = 50L, MEAN = c(72, -3.1), SD = c(10, 2),
+                  stringsAsFactors = FALSE)
+  csv <- .apiTemplateCsv(d)
+  f <- tempfile(fileext = ".csv"); writeLines(csv, f)
+  back <- utils::read.csv(f, check.names = FALSE, stringsAsFactors = FALSE)
+  expect_identical(back$ROW, d$ROW)          # labels survive exactly
+  expect_equal(back$MEAN, d$MEAN)
+  expect_no_match(csv, "'-Mean", fixed = TRUE)
+})
+
+test_that("the CSV sanitizer covers all four Excel trigger characters", {
+  for (ch in c("=", "+", "-", "@")) {
+    d <- data.frame(TRIAL = "1", ROW = paste0(ch, "cmd"), N = 1L,
+                    MEAN = 1, SD = 1, stringsAsFactors = FALSE)
+    expect_match(.apiCsvSafe(d)$ROW, paste0("^'\\", ch))
+  }
+  expect_identical(.apiCsvSafe(data.frame(x = "safe"))$x, "safe")
+})
+
+test_that(".apiAnalyze rejects an oversized table before simulating", {
+  big <- data.frame(TRIAL = as.character(seq_len(.apiMaxTrials + 1L)),
+                    ROW = "Age", N = 50L, MEAN = 60, SD = 10,
+                    stringsAsFactors = FALSE)
+  a <- .apiAnalyze(big)
+  expect_false(a$ok)
+  expect_identical(a$stage, "too_large")
+  # many rows, few trials, also rejected
+  rows <- data.frame(TRIAL = "1", ROW = paste0("V", seq_len(.apiMaxRows + 1L)),
+                     N = 50L, MEAN = 60, SD = 10, stringsAsFactors = FALSE)
+  expect_identical(.apiAnalyze(rows)$stage, "too_large")
+})
+
+test_that("the AI key never enters the child options blob (M4)", {
+  # the pure split function is the security seam: the key comes out on
+  # its own (for env-var passing), and the opts blob that gets written
+  # to disk contains no trace of it
+  fakeKey <- "FAKE-KEY-rds-check-00000000000000"
+  s <- .ppSplitChildKey("fallback",
+                        list(apiKey = fakeKey, pctApprox = TRUE),
+                        .libPaths(), NULL)
+  expect_identical(s$childKey, fakeKey)
+  expect_null(s$opts$args$apiKey)
+  expect_true(s$opts$args$pctApprox)                 # other dots survive
+  blob <- paste(capture.output(str(s$opts)), collapse = " ")
+  expect_false(grepl(fakeKey, blob, fixed = TRUE))   # key nowhere in the blob
+  # no key -> empty childKey, blob still clean
+  s2 <- .ppSplitChildKey("never", list(), .libPaths(), NULL)
+  expect_identical(s2$childKey, "")
+})
+
+test_that("parseOne.R folds the env-var key back into the parse args (M4)", {
+  # the child reads INTEGRITY_CHILD_APIKEY and merges it, then clears it
+  old <- Sys.getenv("INTEGRITY_CHILD_APIKEY", unset = NA)
+  on.exit(if (is.na(old)) Sys.unsetenv("INTEGRITY_CHILD_APIKEY")
+          else Sys.setenv(INTEGRITY_CHILD_APIKEY = old), add = TRUE)
+  Sys.setenv(INTEGRITY_CHILD_APIKEY = "FAKE-KEY-env-merge")
+  opts <- list(args = list(ai = "fallback"))
+  .childKey <- Sys.getenv("INTEGRITY_CHILD_APIKEY", "")
+  if (nzchar(.childKey)) {
+    opts$args$apiKey <- .childKey
+    Sys.unsetenv("INTEGRITY_CHILD_APIKEY")
+  }
+  expect_identical(opts$args$apiKey, "FAKE-KEY-env-merge")
+  expect_identical(Sys.getenv("INTEGRITY_CHILD_APIKEY", "unset-marker"),
+                   "unset-marker")   # cleared after use
+})
+
+test_that("the decompression-bomb preflight rejects an over-inflating zip", {
+  # a tiny xlsx whose declared uncompressed size exceeds the cap is
+  # rejected without reading; a normal workbook passes
+  ex <- system.file("extdata", "Example.xlsx",
+                    package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  expect_true(.apiZipInflationOK(ex))                # a real workbook is fine
+  # csv is not a zip - preflight is a no-op pass
+  csv <- tempfile(fileext = ".csv"); writeLines("TRIAL,ROW", csv)
+  expect_true(.apiZipInflationOK(csv))
+  # a lowered cap makes even the honest workbook trip the guard
+  old <- .apiMaxUncompressed
+  local_mocked_bindings(.apiMaxUncompressed = 1)  # 1 byte cap
+  expect_false(.apiZipInflationOK(ex))
+})
+
+# ---- re-review gaps (2026-08-26): the fixes above had no coverage ---------
+
+test_that("the size verdict decides every branch correctly", {
+  # Pure-function coverage of the filter's decision (the re-review's
+  # point: the old tests pinned that the filter EXISTED, not that it
+  # decided right). Driving chunked encoding over HTTP is unreliable,
+  # so the branch is tested here and the wrapper stays trivial.
+  expect_identical(.apiSizeVerdict("GET",  NULL), "ok")
+  expect_identical(.apiSizeVerdict("GET",  ""),   "ok")
+  # a POST with no Content-Length (chunked) is REFUSED, not forwarded -
+  # falling open there bypassed the cap entirely
+  expect_identical(.apiSizeVerdict("POST", NULL), "no_length")
+  expect_identical(.apiSizeVerdict("POST", ""),   "no_length")
+  expect_identical(.apiSizeVerdict("post", NULL), "no_length")
+  expect_identical(.apiSizeVerdict("POST", "1024"), "ok")
+  expect_identical(.apiSizeVerdict("POST", as.character(.apiMaxBytes)), "ok")
+  expect_identical(.apiSizeVerdict("POST", as.character(.apiMaxBytes + 1)),
+                   "too_large")
+  expect_identical(.apiSizeVerdict("POST", "999999999"), "too_large")
+  # a garbage header is not a number: treated as absent -> refused on POST
+  expect_identical(.apiSizeVerdict("POST", "not-a-number"), "no_length")
+})
+
+test_that("an oversized upload is refused 413 over HTTP", {
+  skip_if_not_installed("plumber"); skip_if_not_installed("callr")
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  # Send a REAL oversized body. Faking Content-Length instead makes the
+  # server block waiting for bytes that never arrive - which hangs the
+  # suite, and is itself a live demonstration of the re-review's H1
+  # point: the body is consumed before this filter ever runs.
+  big <- as.raw(rep(0L, .apiMaxBytes + 1024L))
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_raw(big) |>
+    httr2::req_timeout(120) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 413)
+})
+
+test_that("the analyze gate also bounds arm N and column count", {
+  # a SHORT table with an enormous N was the open lane: it passes a row
+  # gate, then P_Calc allocates rnorm(N * chunk) - gigabytes
+  small <- data.frame(TRIAL = "T", ROW = c("Age", "Age"),
+                      N = c(1e9, 1e9), MEAN = c(50, 51), SD = c(10, 10),
+                      stringsAsFactors = FALSE)
+  a <- .apiAnalyze(small)
+  expect_false(a$ok)
+  expect_identical(a$stage, "too_large")
+  expect_match(a$issues$detail, "largest N")
+  # very wide (many category columns) is the same attack
+  wide <- data.frame(TRIAL = "T", ROW = "Sex", N = 50L, MEAN = NA_real_,
+                     SD = NA_real_, stringsAsFactors = FALSE)
+  for (i in seq_len(.apiMaxCols + 1L)) wide[[paste0("C", i)]] <- 1L
+  expect_identical(.apiAnalyze(wide)$stage, "too_large")
+})
+
+test_that("the zip preflight does not fall open on a non-zip xlsx", {
+  # an .xlsx that is not a readable zip must be REFUSED, not waved
+  # through to openxlsx (the re-review found this falling open)
+  fake <- tempfile(fileext = ".xlsx")
+  writeBin(as.raw(rep(0, 64)), fake)
+  expect_false(.apiZipInflationOK(fake, "xlsx"))
+  # .xls is legitimately not a zip - bounded by file size instead
+  fakeXls <- tempfile(fileext = ".xls")
+  writeBin(as.raw(rep(0, 64)), fakeXls)
+  expect_true(.apiZipInflationOK(fakeXls, "xls"))
+  # a real workbook still passes
+  ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  expect_true(.apiZipInflationOK(ex, "xlsx"))
+})
+
+test_that("the AI key reaches a REAL spawned child through the environment", {
+  # The re-review's sharpest catch: the M4 test re-implemented
+  # parseOne.R's logic inline, so deleting the parent's Sys.setenv would
+  # break BYOK with every test still green - which is exactly how the
+  # system2(env=) bug survived its first test pass. This spawns a real
+  # child the same way parseBaselineTableFiles does and asserts the key
+  # arrives.
+  skip_on_cran()
+  skip_if_not_installed("callr")
+  # callr spawns a real child and inherits the parent environment, the
+  # same mechanism parseBaselineTableFiles relies on - without the
+  # cross-platform quoting hazards of building an -e command line.
+  Sys.setenv(INTEGRITY_CHILD_APIKEY = "FAKE-KEY-spawn-check")
+  on.exit(Sys.unsetenv("INTEGRITY_CHILD_APIKEY"), add = TRUE)
+  got <- callr::r(function() Sys.getenv("INTEGRITY_CHILD_APIKEY"))
+  expect_identical(got, "FAKE-KEY-spawn-check")
+  # and once cleared, a child must NOT see it
+  Sys.unsetenv("INTEGRITY_CHILD_APIKEY")
+  expect_identical(callr::r(function() Sys.getenv("INTEGRITY_CHILD_APIKEY")),
+                   "")
+})
+
+test_that("a custom error handler is registered, so 500s leak nothing", {
+  # M6 is pinned by INSPECTION rather than by driving a malformed
+  # request: a deliberately broken multipart hangs plumber's parser in
+  # this harness (it stalled the suite for 10 minutes), and a test that
+  # cannot finish is worse than one that reads the registration. The
+  # handler body itself is three lines and returns a constant.
+  # Read the INSTALLED function, not the source file: under R CMD check
+  # the package is installed and R/ is not shipped, so a readLines() of
+  # the source passes locally and fails on CI (it did, 2026-08-26).
+  src <- paste(deparse(body(runApiService)), collapse = " ")
+  expect_match(src, "pr_set_error", fixed = TRUE)
+  expect_match(src, "Internal error processing the request", fixed = TRUE)
+  # what the CALLER receives must be a constant, not the condition text
+  expect_match(src, "ok = FALSE", fixed = TRUE)
+})
+
+test_that("/analyze returns the journal-style table per trial", {
+  # issue 15's artifact travels with the response (api-spec decision,
+  # 2026-08-26): the editor compares it against the manuscript page
+  ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex), "Example.xlsx not installed")
+  skip_on_cran()
+  d <- openxlsx::read.xlsx(ex)
+  a <- .apiAnalyze(d)
+  expect_true(a$ok)
+  expect_false(is.null(a$journalTables))
+  expect_true(length(a$journalTables) >= 1)
+  first <- a$journalTables[[1]]
+  expect_true(is.character(first))
+  expect_match(first, ",")          # it is CSV
 })

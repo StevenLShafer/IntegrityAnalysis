@@ -19,6 +19,7 @@ Depends:
   R (>= 4.1)
 Imports:
   bslib,
+  digest,
   dqrng,
   foreach,
   httr2,
@@ -41,6 +42,7 @@ Imports:
   xml2,
   zip
 Suggests:
+    callr,
     graphics,
     plumber,
     grDevices,

@@ -60,6 +60,19 @@
 #' # The parsed table for one article
 #' res$result[[1]]$data
 #' }
+# Build the child-process options blob with the AI key REMOVED, and
+# return the key separately for out-of-band (env var) passing. Pure and
+# side-effect free, so the security property "the key is never in the
+# options blob" (security review M4, 2026-08-26) is directly testable.
+.ppSplitChildKey <- function(ai, dots, libPaths, devPath) {
+  childKey <- if (!is.null(dots$apiKey) && nzchar(dots$apiKey))
+    dots$apiKey else ""
+  dots$apiKey <- NULL
+  list(opts = list(libPaths = libPaths, devPath = devPath,
+                   args = c(list(ai = ai), dots)),
+       childKey = childKey)
+}
+
 #' @seealso [parseBaselineTable()]
 #' @export
 parseBaselineTableFiles <- function(files,
@@ -110,9 +123,14 @@ parseBaselineTableFiles <- function(files,
         pkgload::is_dev_package("IntegrityAnalysis"))
       pkgload::pkg_path() else NULL,
     error = function(e) NULL)
-  saveRDS(list(libPaths = .libPaths(),
-               devPath  = devPath,
-               args     = c(list(ai = ai), list(...))), optsRds)
+  # The AI key (if any) is pulled OUT of the options blob and passed to
+  # the child by environment variable instead (security review M4): a
+  # caller's Anthropic key must never be written to disk in the request
+  # tempdir. .ppSplitChildKey is a pure function so the guarantee is
+  # unit-testable without spawning anything.
+  split <- .ppSplitChildKey(ai, list(...), .libPaths(), devPath)
+  childKey <- split$childKey
+  saveRDS(split$opts, optsRds)
   on.exit(unlink(optsRds), add = TRUE)
 
   rows <- vector("list", length(files))
@@ -120,6 +138,17 @@ parseBaselineTableFiles <- function(files,
     f      <- files[i]
     outRds <- tempfile(fileext = ".rds")
     t0     <- Sys.time()
+    # The key reaches the child through the PROCESS environment, not the
+    # options RDS (M4) and not the argv. Set it around the call rather
+    # than through system2(env=): that argument REPLACES the child's
+    # whole environment, which strips PATH/R_HOME and makes every parse
+    # time out (found by the BYOK tests, 2026-08-26), and on Windows it
+    # is honored inconsistently. Sys.setenv + on.exit keeps the parent's
+    # environment clean either way.
+    if (nzchar(childKey)) {
+      Sys.setenv(INTEGRITY_CHILD_APIKEY = childKey)
+      on.exit(Sys.unsetenv("INTEGRITY_CHILD_APIKEY"), add = TRUE)
+    }
     status <- tryCatch(
       system2(rscript,
               c("--vanilla", shQuote(script), shQuote(optsRds),

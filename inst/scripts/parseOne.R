@@ -28,6 +28,20 @@
 args <- commandArgs(trailingOnly = TRUE)
 opts <- readRDS(args[1])
 
+# The BYOK API key travels via an ENVIRONMENT VARIABLE, never the
+# options RDS on disk (security review M4, 2026-08-26): a caller's
+# Anthropic key must not sit unencrypted in the request tempdir. The
+# parent sets INTEGRITY_CHILD_APIKEY with Sys.setenv before spawning
+# (NOT system2(env=), which replaces the child's whole environment and
+# strips PATH/R_HOME - that broke every parse when first tried), so the
+# child inherits it; it is not on the argv, and so invisible to ps.
+# Fold it into the parse arguments here, then clear it.
+.childKey <- Sys.getenv("INTEGRITY_CHILD_APIKEY", "")
+if (nzchar(.childKey)) {
+  opts$args$apiKey <- .childKey
+  Sys.unsetenv("INTEGRITY_CHILD_APIKEY")
+}
+
 # The parent's library paths must be adopted before the package is loaded:
 # the child starts with --vanilla, and both during R CMD check and on
 # shinyapps.io the package lives in a library the child would not

@@ -84,6 +84,86 @@ for (f in setdiff(tracked, "tools/securityCheck.R")) {
   }
 }
 
+## 5 - the API surface ----------------------------------------------------
+# Added 2026-08-26 after the API security review. Each assertion pins a
+# fix whose removal would silently reopen a finding; the review's
+# reasoning is in AGENTS.md "The API surface".
+if (file.exists("R/apiService.R")) {
+  api <- srcOf("R/apiService.R")
+  plum <- if (file.exists("inst/api/plumber.R"))
+    srcOf("inst/api/plumber.R") else character(0)
+
+  # H1: a request-size ceiling exists and runs as a filter
+  if (!any(grepl("\\.apiMaxBytes", plum)) ||
+      !any(grepl("@filter sizelimit", plum, fixed = TRUE)))
+    note(paste("inst/api/plumber.R lost its request-size filter -",
+               "an unbounded upload is buffered in memory (review H1)"))
+
+  # H2: /analyze refuses an oversized table before simulating
+  if (!any(grepl("\\.apiMaxRows", api)) ||
+      !any(grepl("\\.apiMaxTrials", api)) ||
+      !any(grepl("too_large", api, fixed = TRUE)))
+    note(paste("R/apiService.R lost the /analyze size gate - a crafted",
+               "table can pin the single-threaded service (review H2)"))
+
+  # H3: spreadsheets get a decompression-bomb preflight
+  if (!any(grepl("\\.apiZipInflationOK", api)))
+    note(paste("R/apiService.R lost the zip-inflation preflight -",
+               "an xlsx bomb is read in-process (review H3)"))
+
+  # M5: CSV output is formula-sanitized on every emit path
+  if (!any(grepl("\\.apiCsvSafe", api)))
+    note(paste("R/apiService.R lost .apiCsvSafe - returned CSVs can",
+               "smuggle spreadsheet formulas to the editor (review M5)"))
+  # The HUMAN-facing results CSV must be sanitized; the MACHINE-facing
+  # templateCsv must NOT be (sanitizing it renames variables and breaks
+  # issue 1's round-trip contract - caught in re-review 2026-08-26).
+  # Checked STRUCTURALLY, by reading each function's body: a line-by-line
+  # grep false-positived on "as.data.frame" the first time it ran, which
+  # is exactly the brittleness the re-review predicted.
+  fnBody <- function(src, name) {
+    i <- grep(paste0("^", name, "\\s*<-\\s*function"), src)
+    if (!length(i)) return(character(0))
+    depth <- 0; out <- character(0)
+    for (j in i[1]:length(src)) {
+      out <- c(out, src[j])
+      depth <- depth + lengths(regmatches(src[j], gregexpr("\\{", src[j]))) -
+                       lengths(regmatches(src[j], gregexpr("\\}", src[j])))
+      if (j > i[1] && depth <= 0) break
+    }
+    out
+  }
+  tmpl <- fnBody(api, "\\.apiTemplateCsv")
+  res5 <- fnBody(api, "\\.apiResultsCsv")
+  if (length(res5) && !any(grepl("\\.apiCsvSafe", res5)))
+    note(paste("R/apiService.R: .apiResultsCsv no longer sanitizes -",
+               "the editor-facing CSV can smuggle formulas (review M5)"))
+  if (length(tmpl) && any(grepl("^[^#]*\\.apiCsvSafe", tmpl)))
+    note(paste("R/apiService.R: .apiTemplateCsv sanitizes - that renames",
+               "variables and breaks the round-trip contract (issue 1)"))
+  plumEmit <- grep("^[^#]*(utils::)?write\\.csv\\(", plum)
+  for (i in plumEmit)
+    note(sprintf(paste("inst/api/plumber.R:%d: raw write.csv - emit",
+                       "through .apiResultsCsv/.apiTemplateCsv so the",
+                       "sanitize policy stays in one place (M5)"), i))
+
+  # M6: a custom error handler hides internal detail from callers
+  if (!any(grepl("pr_set_error", api, fixed = TRUE)))
+    note(paste("R/apiService.R lost pr_set_error - plumber's default",
+               "handler returns R condition text to callers (review M6)"))
+}
+
+# M4: the AI key must never be written into the child options blob
+if (file.exists("R/parseBaselineTableFiles.R")) {
+  pf <- srcOf("R/parseBaselineTableFiles.R")
+  if (!any(grepl("\\.ppSplitChildKey", pf)))
+    note(paste("R/parseBaselineTableFiles.R lost .ppSplitChildKey - the",
+               "caller's API key may be serialized to disk (review M4)"))
+  if (any(grepl("args\\s*=\\s*c\\(list\\(ai\\s*=\\s*ai\\), list\\(\\.\\.\\.\\)\\)", pf)))
+    note(paste("R/parseBaselineTableFiles.R writes list(...) into the",
+               "options blob again - that path carries apiKey (M4)"))
+}
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -93,5 +173,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "4 property groups.
+    "5 property groups.
 ")
