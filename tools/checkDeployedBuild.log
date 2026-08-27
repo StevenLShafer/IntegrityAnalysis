@@ -1,0 +1,33 @@
+[2026-08-27T09:42:32] ===== deployed-build check =====
+[2026-08-27T09:42:33] origin/main is e67ff3e8
+[2026-08-27T09:42:35] app  https://steveshafer.shinyapps.io/IntegrityAnalysis/ : reports NO build commit
+[2026-08-27T09:42:35]   -> a build older than issue 28, or something that is not our app.
+[2026-08-27T09:42:35]      Deploy current main and re-run before treating this as benign.
+[2026-08-27T09:42:35] app  https://steveshafer.shinyapps.io/IntegrityAnalysis/ : UNREACHABLE - Method invocation failed because [System.Object[]] does not contain a method named 'op_Addition'.
+[2026-08-27T09:42:35]   -> unreachable is not the same as compromised, but it is also not a pass.
+[2026-08-27T09:42:35] 1 problem(s) above - read the direction of the difference before acting
+[2026-08-27T09:42:56] ===== deployed-build check =====
+[2026-08-27T09:42:57] origin/main is e67ff3e8
+[2026-08-27T09:42:57] app  https://steveshafer.shinyapps.io/IntegrityAnalysis/ : reports NO build commit
+[2026-08-27T09:42:57]   -> a build older than issue 28, or something that is not our app.
+[2026-08-27T09:42:57]      Deploy current main and re-run before treating this as benign.
+[2026-08-27T09:42:57] 1 problem(s) above - read the direction of the difference before acting
+[2026-08-27T09:43:24] ===== deployed-build check =====
+[2026-08-27T09:43:25] origin/main is e67ff3e8
+[2026-08-27T09:43:25] app  http://127.0.0.1:8931/match.html : e67ff3e8 - matches origin/main
+[2026-08-27T09:43:25] OK - everything reachable is running origin/main
+[2026-08-27T09:43:26] ===== deployed-build check =====
+[2026-08-27T09:43:27] origin/main is e67ff3e8
+[2026-08-27T09:43:27] app  http://127.0.0.1:8931/behind.html : 97e5522d - DIFFERS from origin/main
+[2026-08-27T09:43:27]   -> it IS a commit in this repository, 3 commit(s) behind main.
+[2026-08-27T09:43:27]      Ordinary cause: main moved and no deploy has run. Check whether
+[2026-08-27T09:43:27]      a deploy is expected; this is not by itself evidence of tampering.
+[2026-08-27T09:43:27] 1 problem(s) above - read the direction of the difference before acting
+[2026-08-27T09:43:27] ===== deployed-build check =====
+[2026-08-27T09:43:28] origin/main is e67ff3e8
+[2026-08-27T09:43:28] app  http://127.0.0.1:8931/alien.html : deadbeef00000000000000000000000000000000 - NOT A COMMIT IN THIS REPOSITORY
+[2026-08-27T09:43:28]   -> This is the alarming case. Nothing in the deploy path can put
+[2026-08-27T09:43:28]      an unknown commit here. Treat the deployment as untrusted:
+[2026-08-27T09:43:28]      rotate the rsconnect token, redeploy from main, and check the
+[2026-08-27T09:43:28]      shinyapps account's activity log.
+[2026-08-27T09:43:28] 1 problem(s) above - read the direction of the difference before acting

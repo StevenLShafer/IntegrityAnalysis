@@ -220,6 +220,98 @@ usable specimen from the nightly harvest).
 
 ---
 
+## 28. Report the build commit, so an unauthorized deploy is visible
+
+**Status: implemented 2026-08-27** (PR #97 — `R/buildInfo.R`,
+`tools/checkDeployedBuild.ps1`, scheduled task "IntegrityAnalysis
+deployed-build check", daily 21:30).
+
+From Steve's question: "do we have checks so that shinyapps.io itself
+doesn't become malware?" Every control protected the *pipeline* — deploys
+install only from GitHub, `securityCheck.R` gates
+`deploy-production.yaml`, forks get no secrets, the tripwire bans
+code-execution primitives — and **nothing attested the artifact**.
+
+**How.** The deploy installs with `remotes::install_github()`, which
+records the resolved commit as `RemoteSha` in the installed DESCRIPTION,
+so the app already knew its commit and nothing had to be injected at
+build time. Exposed as a `<meta name="integrity-build">` tag in the
+initial HTML and a `commit` field on `GET /health`;
+`checkDeployedBuild.ps1` compares both to `origin/main`.
+
+**Not attestation.** Anyone able to deploy arbitrary code can report an
+arbitrary commit. It catches the wrong branch, the stale deploy, the
+rollback that never rolled forward, the hand-applied fix, and tampering
+by anyone who did not think about it. The report distinguishes "behind
+main" (ordinary) from "not a commit in this repository" (alarming),
+because a check that cried wolf every time main moved would be ignored
+within a week — and then the alarming case would be ignored too.
+
+**Remaining:** production still reports no build commit until the next
+production deploy carries this code. The nightly check flags that, which
+is the honest behaviour rather than a false pass.
+
+---
+
+## 27. renv.lock pins versions but not contents
+
+**Status: open.** Found 2026-08-27 while answering Steve's question
+about malware in returned files.
+
+All 125 package entries in `renv.lock` carry `Package`, `Version` and
+`Source` — and **no `Hash` field**. So a restore is reproducible only as
+far as the registry is honest: a hijacked re-release at the same version
+number, or a compromised mirror, installs silently and every guarantee
+built on package behaviour goes with it. The workbook-safety test
+(`test-workbook-safety.R`) states this limit explicitly, because
+"openxlsx writes strings, not formulas" is only as good as openxlsx
+being openxlsx.
+
+This matters more than it would in an ordinary app. The renv section of
+AGENTS.md justifies pinning on the grounds that "an integrity finding
+may be challenged, and the exact computational environment is on record
+is part of the defense." A version number without a hash is a weaker
+record than that sentence promises.
+
+**Done looks like:** `renv.lock` carries a `Hash` per package and
+`renv::restore()` verifies it, or the reason it cannot is written down
+where the reproducibility claim is made.
+
+---
+
+## 26. An asynchronous API, for trials the synchronous one must refuse
+
+**Status: open.** Surfaced 2026-08-27 when Steve asked whether capping
+N at 10,000 would solve the compute-product problem.
+
+The `/analyze` compute budget bounds the WORST case — every row
+escalating to 100,000 replicates. The typical case is about 100x
+cheaper, because rows stop at the first stage:
+
+| 25 variables, N = 10,000/arm | |
+|---|---|
+| typical (rows stop at 1,000) | ~5 seconds |
+| worst case (all rows escalate) | ~495 seconds |
+
+The bind: **the rows that escalate are the suspicious ones.** So the
+worst case is a fraudulent-looking mega-trial — precisely the
+submission most worth analyzing. No synchronous budget both admits that
+and bounds request time, which means the current design refuses its
+most interesting inputs.
+
+Steve's decision that a coarser p-value is worse than a refusal (issue
+25's log, 2026-08-27) closes off the easy escape of quietly reducing
+replicates. The remaining answer is to stop requiring an answer within
+one request: `POST /analyze` returns a job id, the caller polls, and
+the Monte Carlo runs to full precision however long it takes.
+
+**Done looks like:** a publisher can submit any trial the app can
+handle and get the same p-value the app would give, with no limit
+imposed by HTTP. Until then the refusal message routes large single
+trials to the web app, which has no request timeout.
+
+---
+
 ## 25. Standing security screen: change-gated, adjudicated, not looped
 
 **Status: implemented 2026-08-27** (`tools/securityScreen.ps1`, nightly

@@ -743,6 +743,31 @@ key — the same consent-and-billing model as the app's key field, with
 the same guarantees (the key is never stored or logged, and Anthropic's
 commercial terms bar training on API submissions).
 
+**Size limits, and why they are where they are.** The service refuses a
+submission rather than analyzing it slowly or coarsely. Two ceilings
+matter in practice:
+
+- **10,000 subjects per arm.** This is an editorial limit rather than a
+  computational one. A 10,000-patient randomized trial is enormous:
+  expensive, funded by a major pharmaceutical company or a government
+  entity, audited extensively, and heavily reviewed by statisticians
+  before the manuscript is ever submitted. Trials of that size do not
+  need an independent fraud screen, so the service declines them.
+- **A simulation budget** covering roughly two minutes of worst-case
+  computation. Ordinary baseline tables are nowhere near it — a
+  30-variable trial with 1,000 subjects per arm passes comfortably —
+  but a table engineered to make every row demand the maximum
+  100,000 replicates would not, and is refused before any simulation
+  starts.
+
+If a refused submission holds several trials, send them one per
+request. If it is a single very large trial, splitting it would change
+the result — its rows combine into one p-value — so use the web app,
+which has no request timeout. **The precision of the analysis is never
+reduced to fit a limit.** A p-value quietly computed from fewer
+replicates than the reader assumes would be worse than a refusal, in a
+tool whose output is used to question whether someone's data are real.
+
 A publisher's developer can try it in one line once the operator
 supplies a token:
 

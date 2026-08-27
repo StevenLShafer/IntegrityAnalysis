@@ -449,6 +449,29 @@ test_that("journalTables carry the sanitizing too", {
   }
 })
 
+test_that("ordinary trials in the thousands are ACCEPTED", {
+  # The gate must bound the attack WITHOUT refusing real work, and the
+  # first budget (6e9) failed that half: it refused a 20-variable trial
+  # above N = 1,500 per arm and a 30-variable trial above N = 1,000.
+  # Carlisle's corpus is full of trials in the thousands, so the
+  # deployed service was turning away ordinary submissions. Nothing
+  # tested that direction - every assertion pointed at the attack - so
+  # the over-restriction shipped. This test is the missing half.
+  trial <- function(nVar, nArm, N)
+    data.frame(TRIAL = "T", ROW = rep(paste0("V", seq_len(nVar)), each = nArm),
+               N = N, MEAN = 1, SD = 1, stringsAsFactors = FALSE)
+
+  # sizes drawn from real baseline tables, all must pass the budget
+  expect_lt(.apiDrawWork(trial(20,  2,  2000)), .apiMaxDrawBudget)
+  expect_lt(.apiDrawWork(trial(30,  2,  1000)), .apiMaxDrawBudget)
+  expect_lt(.apiDrawWork(trial(15,  3,  1000)), .apiMaxDrawBudget)
+  expect_lt(.apiDrawWork(trial(25,  2,   500)), .apiMaxDrawBudget)
+  expect_lt(.apiDrawWork(trial(40,  2,   200)), .apiMaxDrawBudget)
+
+  # and the N ceiling is Steve's editorial one, not the old round number
+  expect_identical(.apiMaxN, 10000L)
+})
+
 test_that("the compute-product gate refuses what the size gates allow", {
   # F4 of the 2026-08-27 screen. The four size limits are checked with
   # ||, so each can pass while the simulation cost - replicates x
@@ -468,8 +491,13 @@ test_that("the compute-product gate refuses what the size gates allow", {
                    30 * .apiReplicateCeiling)
 
   # a table INSIDE every individual limit but far outside the budget
+  # N sits at the ceiling, NOT above it, so this exercises the compute
+  # gate rather than tripping the N gate first (which it did when
+  # .apiMaxN was 100,000 and this fixture used that value - the test
+  # would have kept passing for the wrong reason after the 2026-08-27
+  # cap change, reporting "too_large" from a different gate)
   wide <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:100), each = 2),
-                     N = 100000, MEAN = 1, SD = 1,
+                     N = .apiMaxN, MEAN = 1, SD = 1,
                      stringsAsFactors = FALSE)
   expect_lt(nrow(wide), .apiMaxRows)          # rows: fine
   expect_lte(max(wide$N), .apiMaxN)           # N: fine
@@ -480,10 +508,13 @@ test_that("the compute-product gate refuses what the size gates allow", {
   expect_false(a$ok)
   expect_identical(a$stage, "too_large")
   expect_identical(a$issues$code[1], "too_much_compute")
-  # the refusal must tell the caller what to do about it
-  expect_match(a$issues$detail[1], "[Ss]plit the submission")
+  # the refusal must tell the caller what to do - and "split it" is
+  # useless advice for a SINGLE large trial, whose rows combine into one
+  # p-value, so the message routes those to the app instead
+  expect_match(a$issues$detail[1], "one per\\s+request")
+  expect_match(a$issues$detail[1], "web app")
   # ...and must NOT claim the analysis was quietly coarsened instead
-  expect_match(a$issues$detail[1], "precision .* is not reduced")
+  expect_match(a$issues$detail[1], "never reduced to fit")
   expect_false(is.null(a$templateCsv))
 
   # an ordinary trial is untouched: 20 variables, 2 arms, N = 500
