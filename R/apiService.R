@@ -112,13 +112,25 @@
     v <- data[[nm]]
     if (is.character(v)) data[[nm]] <- guard(v)
   }
-  # COLUMN NAMES TOO (2026-08-27). write.csv emits names() as the header
-  # row, and in the journal-style table the ARM NAMES are the columns -
-  # parsed straight out of the uploaded manuscript, so attacker text. A
-  # trial with an arm labelled =cmd|'/c calc'!A1 otherwise ships an
-  # executable header to the editor who opens the file. Found when Steve
-  # asked whether the journalTables addition had been screened; it had
-  # not, and this was the hole.
+  # COLUMN NAMES TOO (2026-08-27), as DEFENCE IN DEPTH - not because a
+  # live path is known to reach here.
+  #
+  # The rationale first written here was WRONG and is corrected in
+  # place rather than deleted, because the wrong version is the more
+  # instructive one. It claimed the journal table's headers are arm
+  # names parsed from the manuscript, hence attacker text. They are
+  # not: buildBaselineTables (baselineTable.R:127) builds them
+  # POSITIONALLY - "Arm 1 (n = 15)" - from an index and a number, so no
+  # manuscript string reaches names() by that route.
+  #
+  # The guard stays anyway. write.csv emits names() as the header row,
+  # nothing structural stops a future caller handing this function a
+  # frame whose names DID come from an upload, and the cost is one
+  # apostrophe. What changed is the claim: this is a cheap barrier
+  # against a plausible future path, not the closing of an open hole.
+  # (Re-screen finding F3, after the first version of this comment
+  # survived into the tripwire and a test and had to be chased down in
+  # three places.)
   names(data) <- guard(names(data))
   data
 }
@@ -174,6 +186,60 @@
 # largest are in the thousands).
 .apiMaxN    <- 100000L
 .apiMaxCols <- 200L
+
+# ...and the four limits above are still not enough, because they are
+# checked INDEPENDENTLY while the Monte Carlo cost is their PRODUCT
+# (screen finding F4, 2026-08-27 - the same shape as the journal-table
+# amplification: every gate passes, the product is catastrophic).
+#
+# Both P_Calc branches chunk by 1e8/N, which bounds per-chunk MEMORY
+# but not total work: one replicate of one row draws sum(N) over its
+# arms, so the request costs replicates x sum(N) draws. Measured at
+# 1.01e8 draws/sec:
+#
+#   one row, N = 100,000, 100,000 replicates    1.0e10 draws    199 sec
+#   the gate maxima, 5,000 rows x N = 100,000   1.0e14 draws    12 days
+#
+# A SINGLE row at the permitted maximum already exceeds the request
+# timeout on a single-threaded service. And it is reachable on purpose,
+# not a corner: the staged scheme escalates to 100,000 replicates
+# precisely on HOMOGENEOUS rows, which the submitter produces by making
+# arm means near-identical.
+#
+# The budget is expressed in draws so the reasoning stays visible. At
+# ~1e8 draws/sec, 6e9 draws is about a minute of simulation - inside a
+# typical request timeout with room to spare, and far above any real
+# baseline table (a 25-variable, 2-arm trial with N = 500 per arm comes
+# to 25,000 x 1e5 = 2.5e9... which is why the ceiling is not tighter).
+#
+# DELIBERATELY A REFUSAL, NOT A SILENT REPLICATE REDUCTION. Quietly
+# dropping to 10,000 replicates would keep large submissions working
+# while lowering the precision of a fraud verdict without telling the
+# caller - the worse failure in a tool whose output gets used to
+# question someone's data. A caller who is refused can split the
+# submission by trial; a caller silently given a coarser p-value
+# cannot know to.
+.apiMaxDrawBudget <- 6e9
+.apiReplicateCeiling <- 100000    # the global m in app_globals.R
+
+# The worst-case simulation cost of a payload, in drawn values: every
+# line contributes its N to one replicate, and the staged scheme can
+# escalate any row to the ceiling. Pure and separate so the bound is
+# testable directly - the journal-cell bound's first test went through
+# .apiAnalyze, where validateData rejected the fixture before the code
+# under test ran, and passed while testing nothing (2026-08-27).
+#
+# Worst case, not expected case: most rows stop early. A gate has to
+# bound what an adversary can force, and an adversary picks the input
+# that escalates every row.
+.apiDrawWork <- function(DATA) {
+  if (is.null(DATA) || !"N" %in% names(DATA) || nrow(DATA) == 0)
+    return(0)
+  n <- suppressWarnings(as.numeric(DATA$N))
+  n <- n[is.finite(n) & n > 0]
+  if (!length(n)) return(0)
+  sum(n) * .apiReplicateCeiling
+}
 # The journal-style tables expand one line per populated category
 # column, so their size is NOT bounded by the input gates above. This
 # caps the estimated emitted cells; a real baseline table is a few
@@ -181,15 +247,32 @@
 # above any honest document and far below anything that hurts.
 .apiMaxJournalCells <- 200000L
 
-# Estimate how many cells the journal-style tables would emit, WITHOUT
-# building them - a pure function so the bound is testable directly
-# rather than through validateData, which rejects most synthetic wide
-# tables before the journal logic is ever reached.
+# Estimate the size of the journal-style tables WITHOUT building them -
+# a pure function so the bound is testable directly rather than through
+# validateData, which rejects most synthetic wide tables before the
+# journal logic is ever reached.
 #
 # The expansion driver: buildBaselineTables emits one line per
 # populated category column for every categorical variable, plus one
 # line per other row. Rows carrying any category value are the ones
 # that can expand.
+#
+# WHAT THIS COUNTS, precisely (2026-08-27 screen, finding F1): LINES,
+# not cells. The emitted table is `Variable` plus one column per arm,
+# so the true cell count is lines x (1 + maxArms). The screen argued
+# this under-bounds by a maxArms factor. It does not, and the reason is
+# worth recording: nrow(DATA) is variables x arms, so the arm
+# multiplicity is ALREADY in the count, and the only shortfall is the
+# constant Variable column. Measured against buildBaselineTables:
+#
+#     arms      2      5     10     25     50
+#     actual/estimate  1.50   1.20   1.10   1.04   1.02
+#
+# The ratio FALLS toward 1 as arms grow - the opposite of the claim.
+# Worst case is few arms, ~1.5x, and 1.33x when categories widen. A
+# bounded 1.5x against a 200,000 threshold is a few MB, so the estimate
+# is fit for bounding an explosion; it is not, and does not claim to
+# be, an exact cell count.
 .apiJournalCells <- function(DATA, categoryNames) {
   cells <- nrow(DATA)
   if (length(categoryNames)) {
@@ -332,6 +415,35 @@
                     "; the service accepts at most ", .apiMaxRows,
                     " rows, ", .apiMaxCols, " columns, ", .apiMaxTrials,
                     " trials, and N of ", .apiMaxN, " per arm."),
+                  stringsAsFactors = FALSE),
+                templateCsv = .apiTemplateCsv(NULL)))
+  }
+  # The COMPUTE PRODUCT (F4) - see .apiMaxDrawBudget. Every limit above
+  # can pass while the simulation cost, replicates x sum(N), is days.
+  # Computed on the RAW frame, before validateData, because refusing is
+  # cheap and validating a 5,000-row table is not.
+  drawWork <- .apiDrawWork(DATA)
+  if (drawWork > .apiMaxDrawBudget) {
+    return(list(ok = FALSE, stage = "too_large",
+                issues = data.frame(row = NA_integer_, col = NA_character_,
+                  code = "too_much_compute",
+                  detail = paste0(
+                    "this table is within every individual limit, but the ",
+                    "simulation it asks for is not: ", nrow(DATA),
+                    " row(s) totalling ", format(sum(as.numeric(DATA$N),
+                      na.rm = TRUE), big.mark = ",", scientific = FALSE),
+                    " subjects would need about ",
+                    format(signif(drawWork, 2), big.mark = ",",
+                           scientific = FALSE),
+                    " simulated values at full precision, above the ",
+                    format(.apiMaxDrawBudget, big.mark = ",",
+                           scientific = FALSE),
+                    " this service allows in one request. Split the ",
+                    "submission - one trial per request is always ",
+                    "accepted if each trial is itself within the limits. ",
+                    "The precision of the analysis is not reduced to fit; ",
+                    "a coarser p-value you were not told about would be ",
+                    "worse than this refusal."),
                   stringsAsFactors = FALSE),
                 templateCsv = .apiTemplateCsv(NULL)))
   }

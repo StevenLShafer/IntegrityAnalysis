@@ -93,31 +93,6 @@ if (file.exists("R/apiService.R")) {
   plum <- if (file.exists("inst/api/plumber.R"))
     srcOf("inst/api/plumber.R") else character(0)
 
-  # H1: a request-size ceiling exists and runs as a filter
-  if (!any(grepl("\\.apiMaxBytes", plum)) ||
-      !any(grepl("@filter sizelimit", plum, fixed = TRUE)))
-    note(paste("inst/api/plumber.R lost its request-size filter -",
-               "an unbounded upload is buffered in memory (review H1)"))
-
-  # H2: /analyze refuses an oversized table before simulating
-  if (!any(grepl("\\.apiMaxRows", api)) ||
-      !any(grepl("\\.apiMaxTrials", api)) ||
-      !any(grepl("too_large", api, fixed = TRUE)))
-    note(paste("R/apiService.R lost the /analyze size gate - a crafted",
-               "table can pin the single-threaded service (review H2)"))
-
-  # H3: spreadsheets get a decompression-bomb preflight
-  if (!any(grepl("\\.apiZipInflationOK", api)))
-    note(paste("R/apiService.R lost the zip-inflation preflight -",
-               "an xlsx bomb is read in-process (review H3)"))
-
-  # M5: CSV output is formula-sanitized on every emit path
-  if (!any(grepl("\\.apiCsvSafe", api)))
-    note(paste("R/apiService.R lost .apiCsvSafe - returned CSVs can",
-               "smuggle spreadsheet formulas to the editor (review M5)"))
-  # The HUMAN-facing results CSV must be sanitized; the MACHINE-facing
-  # templateCsv must NOT be (sanitizing it renames variables and breaks
-  # issue 1's round-trip contract - caught in re-review 2026-08-26).
   # Checked STRUCTURALLY, by reading each function's body: a line-by-line
   # grep false-positived on "as.data.frame" the first time it ran, which
   # is exactly the brittleness the re-review predicted.
@@ -133,23 +108,93 @@ if (file.exists("R/apiService.R")) {
     }
     out
   }
+
+  # H1: a request-size ceiling exists and runs as a filter
+  if (!any(grepl("\\.apiMaxBytes", plum)) ||
+      !any(grepl("@filter sizelimit", plum, fixed = TRUE)))
+    note(paste("inst/api/plumber.R lost its request-size filter -",
+               "an unbounded upload is buffered in memory (review H1)"))
+
+  # H2: /analyze refuses an oversized table before simulating
+  if (!any(grepl("\\.apiMaxRows", api)) ||
+      !any(grepl("\\.apiMaxTrials", api)) ||
+      !any(grepl("too_large", api, fixed = TRUE)))
+    note(paste("R/apiService.R lost the /analyze size gate - a crafted",
+               "table can pin the single-threaded service (review H2)"))
+
+  # F4: the four size limits are checked independently while the Monte
+  # Carlo cost is their PRODUCT. Measured: one row at the permitted
+  # maximum (N = 100,000, 100,000 replicates) costs 199 seconds, and
+  # the gate maxima come to ~12 days of compute in a single request.
+  # Reachable deliberately - escalation fires on homogeneous rows, which
+  # the submitter controls. The independent gates LOOK sufficient, which
+  # is exactly why this needs pinning: someone tidying "redundant"
+  # checks would remove the one that is not.
+  #
+  # PIN THE ASSIGNMENT AND THE CALL SITE, not the mere appearance of the
+  # names. The first version of this assertion searched for
+  # "\\.apiMaxDrawBudget" anywhere on a non-comment line, and PASSED a
+  # deliberate break: the constant is also interpolated into the refusal
+  # MESSAGE, so commenting out its definition and hard-coding
+  # drawWork <- 0 left the grep perfectly happy. That is the second time
+  # an assertion here matched something other than what it meant to pin
+  # (the first matched a commented-out line). The lesson is not "write
+  # better greps" - it is that an assertion nobody has WATCHED FAIL is
+  # not evidence, so every one of these gets broken on purpose once.
+  if (!any(grepl("^[^#]*\\.apiMaxDrawBudget\\s*<-", api)) ||
+      !any(grepl("^[^#]*\\.apiDrawWork\\s*<-\\s*function", api)))
+    note(paste("R/apiService.R lost the compute-product gate's",
+               "definitions - rows, trials, N and columns can each pass",
+               "while the simulation they ask for runs for days (F4)"))
+  # ...and the gate must still be CONSULTED: a live call to .apiDrawWork
+  # compared against the budget, inside the analyze path.
+  anz <- fnBody(api, "\\.apiAnalyze")
+  if (length(anz) &&
+      (!any(grepl("^[^#]*<-\\s*\\.apiDrawWork\\s*\\(", anz)) ||
+       !any(grepl("^[^#]*>\\s*\\.apiMaxDrawBudget", anz))))
+    note(paste("R/apiService.R: .apiAnalyze no longer compares",
+               ".apiDrawWork() against .apiMaxDrawBudget - the",
+               "compute-product gate is defined but not enforced (F4)"))
+
+  # H3: spreadsheets get a decompression-bomb preflight
+  if (!any(grepl("\\.apiZipInflationOK", api)))
+    note(paste("R/apiService.R lost the zip-inflation preflight -",
+               "an xlsx bomb is read in-process (review H3)"))
+
+  # M5: CSV output is formula-sanitized on every emit path
+  if (!any(grepl("\\.apiCsvSafe", api)))
+    note(paste("R/apiService.R lost .apiCsvSafe - returned CSVs can",
+               "smuggle spreadsheet formulas to the editor (review M5)"))
+  # The HUMAN-facing results CSV must be sanitized; the MACHINE-facing
+  # templateCsv must NOT be (sanitizing it renames variables and breaks
+  # issue 1's round-trip contract - caught in re-review 2026-08-26).
   tmpl <- fnBody(api, "\\.apiTemplateCsv")
   res5 <- fnBody(api, "\\.apiResultsCsv")
   if (length(res5) && !any(grepl("\\.apiCsvSafe", res5)))
     note(paste("R/apiService.R: .apiResultsCsv no longer sanitizes -",
                "the editor-facing CSV can smuggle formulas (review M5)"))
   # The journal-style tables (issue 15, returned by /analyze) are a
-  # THIRD human-facing CSV surface, and their COLUMN HEADERS are arm
-  # names parsed from the manuscript. The generic "is .apiCsvSafe used
-  # anywhere in this file" check would still pass if this one call site
-  # lost it, so pin the call site itself.
+  # THIRD human-facing CSV surface, carrying manuscript-derived ROW
+  # LABELS. The generic "is .apiCsvSafe used anywhere in this file"
+  # check would still pass if this one call site lost it, so pin the
+  # call site itself.
+  #
+  # CORRECTED (F3, 2026-08-27): this comment used to justify the
+  # assertion by saying the COLUMN HEADERS are arm names parsed from
+  # the manuscript. They are not. buildBaselineTables
+  # (baselineTable.R:127) names columns POSITIONALLY - "Arm 1
+  # (n = 15)", from an index and a number - so no manuscript string
+  # reaches the header by that route. The assertion is kept on its true
+  # rationale, the row labels. An assertion should stand on a rationale
+  # that survives checking, or not at all: a false one invites the next
+  # reader to verify it, find it false, and delete the guard with it.
   jline <- grep("^[^#]*buildBaselineTables", api)
   if (length(jline)) {
     win <- api[jline[1]:min(jline[1] + 8, length(api))]
     if (!any(grepl("\\.apiCsvSafe", win)))
       note(paste("R/apiService.R: the journal-style CSV is emitted",
-                 "without .apiCsvSafe - arm names become column headers",
-                 "and would carry formulas to the editor"))
+                 "without .apiCsvSafe - its row labels come from the",
+                 "manuscript and would carry formulas to the editor"))
   }
   # The journal tables expand super-linearly in the input (one line per
   # populated category column), so the /analyze INPUT gates do not bound
@@ -161,13 +206,15 @@ if (file.exists("R/apiService.R")) {
                "tryCatch cannot catch"))
 
   # ...and .apiCsvSafe must sanitize NAMES, not only values: a header is
-  # as executable as a cell (found 2026-08-27 screening journalTables).
+  # as executable as a cell. DEFENCE IN DEPTH - no live path is known to
+  # put manuscript text in names() (see the F3 note above); the guard is
+  # one apostrophe against a plausible future one.
   csvFn <- fnBody(api, "\\.apiCsvSafe")
   # ^[^#]* so a COMMENTED-OUT assignment does not satisfy the check -
   # the first version of this assertion passed on exactly that
   if (length(csvFn) && !any(grepl("^[^#]*names\\(data\\)\\s*<-", csvFn)))
     note(paste("R/apiService.R: .apiCsvSafe no longer sanitizes column",
-               "names - arm names reach the editor as live formulas"))
+               "names - the header row loses its formula guard"))
 
   if (length(tmpl) && any(grepl("^[^#]*\\.apiCsvSafe", tmpl)))
     note(paste("R/apiService.R: .apiTemplateCsv sanitizes - that renames",

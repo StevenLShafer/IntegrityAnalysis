@@ -405,10 +405,17 @@ test_that("/analyze returns the journal-style table per trial", {
 })
 
 test_that("CSV sanitizing covers COLUMN NAMES, not just cell values", {
-  # In the journal-style table the ARM NAMES are the column headers, and
-  # arm names are parsed from the uploaded manuscript - attacker text. A
-  # header is as executable as a cell when the editor opens the file in
-  # Excel. Found 2026-08-27 when the journalTables feature was screened.
+  # A header is as executable as a cell when the editor opens the file
+  # in Excel, so .apiCsvSafe must guard names() as well as values.
+  #
+  # This is DEFENCE IN DEPTH, and the comment here originally said
+  # otherwise - that the journal table's headers are arm names parsed
+  # from the manuscript, hence attacker text. They are not:
+  # buildBaselineTables names columns positionally ("Arm 1 (n = 15)").
+  # Corrected as F3 of the 2026-08-27 screen, which found the wrong
+  # rationale had propagated into three places. The test still earns
+  # its keep: it pins the behaviour regardless of which caller one day
+  # hands this function names that DID come from an upload.
   d <- data.frame(a = "safe", b = "also safe", stringsAsFactors = FALSE)
   names(d) <- c("Variable", "=cmd|'/c calc'!A1")
   safe <- .apiCsvSafe(d)
@@ -440,6 +447,49 @@ test_that("journalTables carry the sanitizing too", {
     for (ln in lines)
       expect_false(grepl('(^|,)"?[=+@]', ln), label = substr(ln, 1, 40))
   }
+})
+
+test_that("the compute-product gate refuses what the size gates allow", {
+  # F4 of the 2026-08-27 screen. The four size limits are checked with
+  # ||, so each can pass while the simulation cost - replicates x
+  # sum(N) - is enormous. Measured: one row at N = 100,000 with 100,000
+  # replicates is 199 seconds on a single-threaded service.
+  #
+  # Tested on the pure estimator AND through .apiAnalyze, because the
+  # journal bound's first test went only through .apiAnalyze, where
+  # validateData rejected the fixture before the code under test ran -
+  # it passed while testing nothing.
+  expect_identical(.apiDrawWork(NULL), 0)
+  expect_identical(.apiDrawWork(data.frame(x = 1)), 0)          # no N
+  expect_identical(.apiDrawWork(data.frame(N = numeric(0))), 0) # no rows
+  # NA and non-positive N contribute nothing rather than propagating
+  expect_identical(.apiDrawWork(data.frame(N = c(NA, -5, 0))), 0)
+  expect_identical(.apiDrawWork(data.frame(N = c(10, 20))),
+                   30 * .apiReplicateCeiling)
+
+  # a table INSIDE every individual limit but far outside the budget
+  wide <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:100), each = 2),
+                     N = 100000, MEAN = 1, SD = 1,
+                     stringsAsFactors = FALSE)
+  expect_lt(nrow(wide), .apiMaxRows)          # rows: fine
+  expect_lte(max(wide$N), .apiMaxN)           # N: fine
+  expect_lt(ncol(wide), .apiMaxCols)          # columns: fine
+  expect_gt(.apiDrawWork(wide), .apiMaxDrawBudget)   # the product is not
+
+  a <- .apiAnalyze(wide)
+  expect_false(a$ok)
+  expect_identical(a$stage, "too_large")
+  expect_identical(a$issues$code[1], "too_much_compute")
+  # the refusal must tell the caller what to do about it
+  expect_match(a$issues$detail[1], "[Ss]plit the submission")
+  # ...and must NOT claim the analysis was quietly coarsened instead
+  expect_match(a$issues$detail[1], "precision .* is not reduced")
+  expect_false(is.null(a$templateCsv))
+
+  # an ordinary trial is untouched: 20 variables, 2 arms, N = 500
+  ok <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:20), each = 2),
+                   N = 500, MEAN = 1, SD = 1, stringsAsFactors = FALSE)
+  expect_lt(.apiDrawWork(ok), .apiMaxDrawBudget)
 })
 
 test_that("the journal-size estimate grows with category expansion", {
