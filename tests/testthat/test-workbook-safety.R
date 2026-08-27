@@ -117,3 +117,41 @@ test_that("the app's own results workbook is clean with hostile input", {
   expect_false(any(grepl("(?i)vba|externalLink|oleObject",
                          list.files(ex, recursive = TRUE), perl = TRUE)))
 })
+
+test_that("the graphs pptx carries no macro or external part", {
+  # The results download can be a ZIP holding the workbook AND
+  # "Integrity Analysis Graphs.pptx" (app_server.R:1345). The first
+  # version of this file tested only xlsx, which would have answered
+  # "is there malware in a returned file?" for one of the two things
+  # the app actually returns.
+  #
+  # Same distinction as above: .pptx cannot carry VBA (that is .pptm),
+  # so what is checked is that we emit no macro, OLE or external-link
+  # part - the routes by which an Office file fetches or runs something
+  # when opened.
+  skip_if_not_installed("officer")
+  skip_if_not(exists("writeGraphsPptx"))
+
+  ex0 <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
+  skip_if(!nzchar(ex0), "Example.xlsx not installed")
+  v <- validateData(openxlsx::read.xlsx(ex0))
+  D <- v$DATA
+  lab <- unique(D$ROW)
+  D$ROW <- hostileLabels[(match(D$ROW, lab) - 1) %% length(hostileLabels) + 1]
+
+  graphs <- list(rows = list())
+  results <- NULL
+  for (tr in v$TRIALS)
+    results <- rbind(results, P_Calc(tr, D, v$CategoryNames, 1000,
+                                     graphs = graphs))
+  f <- file.path(tempdir(), "graphs-hostile.pptx")
+  ok <- tryCatch({ writeGraphsPptx(results, graphs, f); TRUE },
+                 error = function(e) { message(conditionMessage(e)); FALSE })
+  skip_if(!ok || !file.exists(f), "writeGraphsPptx did not produce a file")
+
+  parts <- list.files(unzipWorkbook(f), recursive = TRUE)
+  expect_gt(length(parts), 0)
+  expect_false(any(grepl("(?i)vba|vbaProject|macro", parts, perl = TRUE)))
+  expect_false(any(grepl("(?i)oleObject|externalLink|activeX", parts,
+                         perl = TRUE)))
+})
