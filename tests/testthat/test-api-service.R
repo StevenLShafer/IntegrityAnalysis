@@ -522,7 +522,10 @@ test_that("ordinary trials in the thousands are ACCEPTED", {
   expect_lt(.apiDrawWork(trial(40,  2,   200)), .apiMaxDrawBudget)
 
   # and the N ceiling is Steve's editorial one, not the old round number
-  expect_identical(.apiMaxN, 10000L)
+  # 5,000 since 2026-08-28 (Steve): an editorial ceiling shared with the
+  # app via .iaMaxArmN, not an API-only number. See "Trials too large to
+  # analyze" in the user guide.
+  expect_identical(.apiMaxN, 5000L)
 })
 
 test_that("the compute-product gate refuses what the size gates allow", {

@@ -31,3 +31,20 @@ m <- 100000
 # in 5087 randomised, controlled trials in anaesthetic and general medical #
 # journals. Anaesthesia. 2017;72:944-952                                   #
 ############################################################################
+
+# The arm-size ceiling, shared by the app and the API so one number
+# governs both and the documentation can state it as a property of
+# IntegrityAnalysis rather than of one entry point (Steve, 2026-08-28).
+#
+# Two reasons, in his words: the Monte Carlo for a trial with more than
+# 5,000 subjects in an arm is computationally expensive; and trials that
+# large are "almost certainly funded by large companies or government
+# entities" which "typically institute detailed auditing and review of
+# manuscripts", so an independent fraud screen adds little.
+#
+# Enforcement is in validateData(), the gate BOTH surfaces run - the
+# ceiling previously existed only in apiService.R, so the app had no
+# limit and the documented claim would have been false for every web
+# user. R/P_Calc.R remains callable directly for anyone with the
+# computing horsepower and a reason.
+.iaMaxArmN <- 5000L

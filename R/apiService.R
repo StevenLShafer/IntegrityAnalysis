@@ -201,7 +201,7 @@
 # Measured at the 5,000-row ceiling with every row escalating, the
 # worst case falls from 5.7 days to 0.6 days - ten times better and
 # still far past any timeout. The draw budget still does that work.
-.apiMaxN    <- 10000L
+.apiMaxN    <- .iaMaxArmN   # one number, defined in app_globals.R
 .apiMaxCols <- 200L
 
 # ...and the four limits above are still not enough, because they are

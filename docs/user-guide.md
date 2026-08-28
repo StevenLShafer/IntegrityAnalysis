@@ -748,16 +748,37 @@ key — the same consent-and-billing model as the app's key field, with
 the same guarantees (the key is never stored or logged, and Anthropic's
 commercial terms bar training on API submissions).
 
+## Trials too large to analyze
+
+IntegrityAnalysis won't analyze trials with N > 5,000 in any arm, for
+two reasons.
+
+The Monte Carlo simulation for a trial with more than 5,000 subjects in
+an arm is computationally expensive. Every replicate draws N values per
+arm, so the work grows with the trial.
+
+Also, trials with more than 5,000 subjects in an arm are almost
+certainly funded by large companies or government entities, which
+typically institute detailed auditing and review of manuscripts before
+submission. An independent fraud screen adds little to a manuscript
+that has already had that scrutiny.
+
+Investigators interested in evaluating such trials — and who have
+adequate computing horsepower — can directly implement `P_Calc.R` to
+perform the Monte Carlo analysis:
+<https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R>
+
+The limit applies wherever IntegrityAnalysis runs: the web app flags the
+offending arm and declines to analyze, and the REST service refuses the
+submission. Both read one number, so neither can drift from this page.
+
 **Size limits, and why they are where they are.** The service refuses a
 submission rather than analyzing it slowly or coarsely. Two ceilings
 matter in practice:
 
-- **10,000 subjects per arm.** This is an editorial limit rather than a
-  computational one. A 10,000-patient randomized trial is enormous:
-  expensive, funded by a major pharmaceutical company or a government
-  entity, audited extensively, and heavily reviewed by statisticians
-  before the manuscript is ever submitted. Trials of that size do not
-  need an independent fraud screen, so the service declines them.
+- **5,000 subjects per arm** — the same ceiling the web app applies,
+  described under "Trials too large to analyze" above. It is a property
+  of IntegrityAnalysis, not of this service.
 - **A simulation budget** covering roughly two minutes of worst-case
   computation. Ordinary baseline tables are nowhere near it — a
   30-variable trial with 1,000 subjects per arm passes comfortably —
