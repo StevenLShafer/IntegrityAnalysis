@@ -47,6 +47,10 @@
 #               just process whatever is already in incoming/)             #
 #     maxGB     download budget per run (default 2)                        #
 #     outDir    default C:/temp/medrxiv_rct                                #
+#     months    which month folders to list (default "recent"):            #
+#                 "recent"  current + previous month - the NIGHTLY scope   #
+#                 "all"     every month folder in the bucket - BACKFILL    #
+#                 "2021-06" a single month, for a targeted top-up          #
 ############################################################################
 
 suppressPackageStartupMessages({library(xml2)})
@@ -59,6 +63,7 @@ args     <- commandArgs(trailingOnly = TRUE)
 maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 100L
 maxGB    <- if (length(args) >= 2) as.numeric(args[2]) else 2
 outDir   <- if (length(args) >= 3) args[3] else "C:/temp/medrxiv_rct"
+monthArg <- if (length(args) >= 4) args[4] else "recent"
 incoming <- file.path(outDir, "incoming")
 dir.create(incoming, showWarnings = FALSE, recursive = TRUE)
 
@@ -123,9 +128,46 @@ if (maxFiles > 0) {
   # the folder names are English regardless of the machine's locale.
   monthName <- function(d) paste0(month.name[as.integer(format(d, "%m"))],
                                   "_", format(d, "%Y"))
-  m1 <- monthName(Sys.Date())
-  m2 <- monthName(seq(Sys.Date(), length = 2, by = "-1 month")[2])
-  listing <- do.call(rbind, lapply(unique(c(m1, m2)), function(m) {
+
+  # WHICH MONTHS TO LIST - the fix for a silent 16-hour underrun.
+  #
+  # This listed the current + previous month ONLY, which is exactly right
+  # for the nightly incremental job: catch the preprints that landed
+  # today, and tolerate a month rollover. It is wrong for a BACKFILL, and
+  # nothing said so. On 2026-08-27 an 18-hour bulk window consumed both
+  # months in 1h55m, correctly reported "0 new", and stopped - having
+  # touched 2 of the bucket's 72 month folders. The wrapper faithfully
+  # concluded medRxiv was exhausted. It was not; the SCOPE was.
+  #
+  # The lesson is not "list everything by default": the nightly job
+  # SHOULD stay narrow, because listing 72 folders every night to find
+  # yesterday's papers is waste. The lesson is that the scope was
+  # implicit, so a caller with a different intent could not express it
+  # and could not see what they were getting.
+  months <- if (identical(monthArg, "all")) {
+    # Every month folder the bucket actually has, asked rather than
+    # assumed - the archive starts in 2021 and grows a folder a month.
+    ls <- tryCatch(awsS3("ls", bucket), error = function(e) character(0))
+    m <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
+    m <- sub("/$", "", m)
+    m <- m[nzchar(m)]
+    # Newest first: a backfill interrupted halfway should have collected
+    # the most recent papers, not the oldest.
+    ord <- order(as.Date(paste0("01_", m), format = "%d_%B_%Y"),
+                 decreasing = TRUE)
+    m[ord]
+  } else if (grepl("^[0-9]{4}-[0-9]{2}$", monthArg)) {
+    d <- as.Date(paste0(monthArg, "-01"))
+    monthName(d)
+  } else {
+    unique(c(monthName(Sys.Date()),
+             monthName(seq(Sys.Date(), length = 2, by = "-1 month")[2])))
+  }
+  cat("month scope '", monthArg, "': ", length(months), " folder(s)
+",
+      sep = "")
+
+  listing <- do.call(rbind, lapply(months, function(m) {
     ls <- tryCatch(awsS3("ls", paste0(bucket, m, "/")),
                    error = function(e) {
                      if (grepl("sso login", conditionMessage(e)))

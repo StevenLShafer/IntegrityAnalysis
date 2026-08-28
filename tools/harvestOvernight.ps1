@@ -31,6 +31,18 @@
 # run will approach or cross. It NOTIFIES; it does not stop anything.
 # Expect the email; it is not a fault.
 #
+# MONTH SCOPE - the fix for a silent 16-hour underrun on 2026-08-27.
+# corpus/harvestMedrxivS3.R lists the current + previous month only,
+# which is exactly right for the NIGHTLY job and wrong for a backfill.
+# The first overnight run consumed both months in 1h55m, correctly
+# reported "0 new", and this wrapper concluded medRxiv was exhausted.
+# It was not - the SCOPE was. The bucket has 71 month folders and
+# 90,478 packages this corpus has never seen.
+#
+# So the wrapper now passes -Months explicitly, defaulting to 'all'.
+# The harvester keeps its narrow default, because listing 71 folders
+# every night to find yesterday's papers would be waste.
+#
 # NOTHING IS DELETED. The harvester only adds; non-RCT packages are
 # discarded from the incoming staging area, never from the corpus.
 #
@@ -44,7 +56,11 @@ param(
   [double] $BudgetGB  = 150,
   [int]    $BatchFiles = 250,
   [double] $BatchGB    = 4,
-  [string] $OutDir    = 'C:/temp/medrxiv_rct'
+  [string] $OutDir    = 'C:/temp/medrxiv_rct',
+  # 'all' walks every month folder in the bucket, newest first. This
+  # wrapper exists for BULK BACKFILL, so that is its default - see the
+  # note below for why the harvester's own default is different.
+  [string] $Months    = 'all'
 )
 
 $ErrorActionPreference = 'Continue'
@@ -89,6 +105,7 @@ $deadline = (Get-Date).AddHours($Hours)
 Say "===== overnight harvest ====="
 Say ("window : {0:s} -> {1:s} ({2} h)" -f (Get-Date), $deadline, $Hours)
 Say ("budget : {0} GB (about `${1:N2} at 0.09/GB)" -f $BudgetGB, ($BudgetGB * 0.09))
+Say ("months : {0}" -f $Months)
 
 function CorpusCount { (Get-ChildItem $OutDir -Filter *.pdf -ErrorAction SilentlyContinue | Measure-Object).Count }
 $startCount = CorpusCount
@@ -103,7 +120,7 @@ while ((Get-Date) -lt $deadline -and $spentGB -lt $BudgetGB) {
   if ($thisGB -le 0.01) { break }
   $before = CorpusCount
 
-  $out = & $rscript 'corpus/harvestMedrxivS3.R' $BatchFiles $thisGB $OutDir 2>&1 | Out-String
+  $out = & $rscript 'corpus/harvestMedrxivS3.R' $BatchFiles $thisGB $OutDir $Months 2>&1 | Out-String
   $line = ($out -split "`r?`n" | Where-Object { $_ -match 'processed \d+ package' }) -join ' '
   if (-not $line) { $line = ($out -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1) }
 
