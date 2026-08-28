@@ -50,7 +50,7 @@
 
 suppressMessages(library(openxlsx))
 root    <- "C:/dev/IntegrityAnalysis"
-workDir <- "C:/temp/e2e_work_cont"
+workDir <- Sys.getenv("E2E_WORKDIR", "C:/temp/e2e_work_cont")
 outCsv  <- file.path(root, "corpus", "EndToEndValidation.csv")
 dir.create(workDir, showWarnings = FALSE, recursive = TRUE)
 
@@ -99,12 +99,18 @@ cat("eligible:", nrow(elig), "PDFs (corpus/TEST has 61, value-filtered)\n")
 if (maxFiles > 0) elig <- utils::head(elig, maxFiles)
 
 ## ---- run the real pipeline, one checkpoint per PDF ---------------------
+# PARALLEL since 2026-08-28. This loop was sequential, using one core of
+# sixteen; per-PDF checkpointing already made the work independent, so
+# the only thing missing was a cluster. Worker count is physical cores
+# minus two (Steve's rule) - see corpus/parallelHelper.R for why
+# physical rather than logical, and for the RNG handling.
+source(file.path(root, "corpus", "parallelHelper.R"))
 pdfRoot <- "C:/temp/journals"
-done <- 0L
-for (i in seq_len(nrow(elig))) {
+
+oneFile <- function(i) {
   ck <- file.path(workDir, paste0(gsub("[^A-Za-z0-9]", "_", elig$PDF[i]),
                                   ".rds"))
-  if (file.exists(ck)) { done <- done + 1L; next }
+  if (file.exists(ck)) return("cached")
   path <- file.path(pdfRoot, elig$PDF[i])
   rec <- list(PDF = elig$PDF[i], PMID = elig$PMID[i], TRIAL = elig$TRIAL[i],
               SET = elig$SET[i], curated = elig$ours[i],
@@ -171,9 +177,16 @@ for (i in seq_len(nrow(elig))) {
     if (identical(r$status, "ok")) rec$parsedP <- r$p
   }
   saveRDS(rec, ck)
-  done <- done + 1L
-  if (done %% 25 == 0) cat("  ", done, "/", nrow(elig), "\n", sep = "")
+  rec$status
 }
+
+t0 <- Sys.time()
+invisible(iaParallel(seq_len(nrow(elig)), oneFile,
+                     export = c("elig", "workDir", "pdfRoot")))
+cat("pipeline pass took",
+    round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
+    "min
+")
 
 ## ---- assemble and report ------------------------------------------------
 recs <- lapply(list.files(workDir, pattern = "[.]rds$", full.names = TRUE),

@@ -156,9 +156,12 @@ tableBox <- function(annFile) {
   as.numeric(xml_text(xml_children(xml_find_first(tb[1], ".//bndbox"))))
 }
 
-rows <- vector("list", length(files))
-t0 <- Sys.time()
-for (i in seq_along(files)) {
+# PARALLEL (2026-08-28). 93,834 independent JSON reads, each scored on
+# its own - the textbook case, and it ran on one core for 29 minutes.
+# Nothing is written until the end, so there is no write contention to
+# design around; the workers just return rows.
+source(file.path("C:/dev/IntegrityAnalysis", "corpus", "parallelHelper.R"))
+scoreOne <- function(i) {
   f <- files[i]
   stem <- sub("_words[.]json$", "", basename(f))
   w <- tryCatch(fromJSON(f), error = function(e) NULL)
@@ -169,7 +172,7 @@ for (i in seq_along(files)) {
     LINES_EMIT = 0L, LINES_RANGE = 0L, LINES_UNLABELLED = 0L,
     stringsAsFactors = FALSE)
   if (is.null(w) || !is.data.frame(w) || !"text" %in% names(w) ||
-      !nrow(w)) { rows[[i]] <- blank; next }
+      !nrow(w)) return(blank)
 
   box <- tableBox(file.path(annDir, paste0(stem, ".xml")))
   keep <- rep(TRUE, nrow(w))
@@ -223,7 +226,7 @@ for (i in seq_along(files)) {
            else if (hasRange)            "skip-range"
            else                          "skip-unlabelled"
 
-  rows[[i]] <- data.frame(
+  out <- data.frame(
     KEY = stem, WORDS = nrow(w), IN_TABLE = sum(keep), MEDIAN_CELLS = nMed,
     HAS_MEDIAN = grepl(medWord, txt, perl = TRUE, ignore.case = TRUE),
     HAS_IQR = hasIQR, HAS_RANGE = hasRange,
@@ -232,12 +235,13 @@ for (i in seq_along(files)) {
     LINES_EMIT = nEmit, LINES_RANGE = nRange, LINES_UNLABELLED = nUnlab,
     stringsAsFactors = FALSE)
 
-  if (i %% 5000 == 0)
-    cat("  ", format(i, big.mark = ","), "/",
-        format(length(files), big.mark = ","), " (",
-        round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
-        " min)\n", sep = "")
+  out
 }
+rows <- iaParallel(seq_along(files), scoreOne,
+                   export = c("files", "annDir", "BAND", "medianCell",
+                              "spaceCell", "iqrWord", "rangeWord",
+                              "medWord", "rctWord", "tableBox"),
+                   packages = c("jsonlite", "xml2"))
 scan <- do.call(rbind, rows)
 
 # ---- join the engine's verdict ------------------------------------------

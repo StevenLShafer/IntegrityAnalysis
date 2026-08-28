@@ -54,7 +54,19 @@ filePath <- file.path(outDir, "misparse_files.csv")
 args     <- commandArgs(trailingOnly = TRUE)
 maxFiles <- if (length(args) >= 1) as.integer(args[1]) else NA_integer_
 
-pkgload::load_all(root, quiet = TRUE)
+# INSTALLED package, not load_all (corrected 2026-08-28). This script
+# produces the corroboration figure quoted alongside the parse rate, and
+# it was loading the LIVE TREE - the exact pattern that contaminated the
+# 2026-08-25 Carlisle certification, where parse children absorbed
+# mid-run edits. A number defended in public must come from a build that
+# could not have changed underneath it.
+if (!requireNamespace("IntegrityAnalysis", quietly = TRUE))
+  stop("IntegrityAnalysis is not installed in THIS R - install it first; ",
+       "a corroboration figure from a live tree is not defensible.",
+       call. = FALSE)
+library(IntegrityAnalysis)
+library(shiny)
+source(file.path(root, "corpus", "parallelHelper.R"))
 suppressWarnings(suppressPackageStartupMessages({
   library(foreach); library(Rfast); library(MBESS); library(dqrng)
 }))
@@ -129,9 +141,14 @@ near <- function(a, b, dec) {
   abs(a - b) <= tol
 }
 
+# PARALLEL BY BATCH (2026-08-28). Each worker parses and scores its own
+# 25 files and RETURNS the rows; the PARENT does all the writing.
+# Workers must never append to one CSV concurrently - interleaved writes
+# corrupt it, and corrupted rows would look like data rather than damage.
 batch <- 25L
-for (start in seq(1, max(nrow(work), 1), by = batch)) {
-  if (nrow(work) == 0) break
+starts <- seq(1, max(nrow(work), 1), by = batch)
+scoreBatch <- function(start) {
+  if (nrow(work) == 0) return(NULL)
   idx <- start:min(start + batch - 1L, nrow(work))
   res <- parseBaselineTableFiles(work$pdf[idx], ai = "never",
                                  timeout = 90, quiet = TRUE)
@@ -178,11 +195,18 @@ for (start in seq(1, max(nrow(work), 1), by = batch)) {
       CORROBORATED = sum(corro), UNCORROBORATED = sum(!corro),
       MISSED = sum(missed), stringsAsFactors = FALSE)
   }
-  chunk <- do.call(rbind, outRows)
-  write.table(chunk, rowsPath, sep = ",", row.names = FALSE,
-              col.names = !file.exists(rowsPath), append = file.exists(rowsPath))
-  cat(sprintf("scored %d / %d\n", min(start + batch - 1L, nrow(work)),
-              nrow(work)))
+  do.call(rbind, outRows)
+}
+
+chunks <- iaParallel(starts, scoreBatch,
+                     export = c("work", "os", "near", "batch"))
+allRows <- do.call(rbind, Filter(Negate(is.null), chunks))
+if (!is.null(allRows) && nrow(allRows)) {
+  write.table(allRows, rowsPath, sep = ",", row.names = FALSE,
+              col.names = !file.exists(rowsPath),
+              append = file.exists(rowsPath))
+  cat(sprintf("scored %d file(s)
+", nrow(allRows)))
 }
 
 ## ---- report --------------------------------------------------------------
