@@ -552,6 +552,86 @@ should be designed with it. Profile before changing anything, and keep
 issue 3's validation green throughout. Trials are independent, so
 trial-level parallelism is the easiest large win for whole-corpus runs.
 
+### First optimisation attempt found nothing worth taking (2026-08-28)
+
+Profiled and measured at Steve's suggestion, using his method: a fixed
+seed makes candidate rewrites verifiable, since identical draws must
+give identical results. **No meaningful speed improvement was found.**
+The loop is already close to what base R can do.
+
+Where the time goes, for one chunk of 20,000 replicates x 2 arms x
+N = 500:
+
+| component | time | share |
+|---|---|---|
+| `rnorm` with the `rep()` mean | 0.894 s | 65% |
+| `round(M, ROUND_OBSERVATION)` on the full matrix | 0.387 s | 28% |
+| everything else | ~0.02 s | 2% |
+
+`Nmat` / `rowsums` — the parts that look expensive — are about 1%.
+Replacing them with a matrix-vector product measured *slower*.
+
+Four rewrites were tried. All are **bit-identical**, which validates the
+method; none is faster:
+
+| rewrite | identical | speed |
+|---|---|---|
+| `rnorm(n)*sd + mu` instead of a vectorised mean | yes, max diff 0 | 1.00x |
+| column recycling instead of `rep(meansim, N)` | yes | 0.91x |
+| `round(M*10^d)/10^d` instead of `round(M, d)` | yes | 0.57x |
+| `MCMean %*% N` instead of `Nmat` + `rowsums` | yes | slower |
+
+**What would be faster, and what it costs.** `dqrnorm` draws ~3x faster
+than base `rnorm`, but requires a SCALAR mean - which is exactly why the
+code uses `rnorm` here. Rewriting as
+`matrix(dqrnorm(N*ch), ch) * sd + meansim` (scale-and-add, column
+recycling) measures **1.82x** on the full loop body. It is not
+bit-identical: a different RNG stream moves every pinned Monte Carlo
+value, so it would require re-baselining the known-answer fixtures and
+re-running issue 3's validation.
+
+**C was prototyped and is NOT faster.** A fused C kernel using R's own
+`norm_rand()` - draw, round and accumulate in one pass, never
+materialising the ch x N matrix - measured **0.94x**, slightly slower.
+There is no interpreter overhead to remove: the loop is already three C
+calls over ten-million-element vectors, and R's internals are better
+optimised than a naive hand-written loop.
+
+C also cannot be bit-identical here, for a reason worth recording.
+`Rfast::rowmeans` does not sum in sequential order (pairwise or SIMD):
+
+```
+Rfast::rowmeans == base rowSums/n : FALSE, max|diff| 4.3e-14
+after round(, 1): 8 of 1000 rows differ
+```
+
+A difference in the fourteenth decimal is arithmetically nothing, but
+the code ROUNDS immediately afterwards, so it flips a value across a
+`.05` boundary in about 1% of rows. Any fused implementation would have
+to replicate Rfast's exact summation order to preserve pinned values.
+
+**The one thing C buys unambiguously is memory**: 0.16 MB instead of
+80 MB for that chunk, because nothing materialises the matrix. At the
+current `1e8` chunk target the per-arm matrix is ~400 MB. That matters
+for the OOM work in the 2026-08-28 screen, but it is a different goal
+from speed and costs the package its first compiled dependency - and
+`P_Calc.R` is the artifact the user guide now points investigators to,
+so readable R has value beyond convenience.
+
+Chunk size is also NOT a free parameter: with more than one arm the
+per-arm `rnorm` calls interleave differently across chunks, so changing
+`1e8` changes results. Verified on the real computation.
+
+**Conclusion: leave it alone** (Steve, 2026-08-28). If the Monte Carlo
+ever becomes the practical bottleneck, issue 26's async API buys more
+than 1.82x by removing the request timeout altogether. Trial-level
+parallelism remains the largest untried win and does not touch the
+draws at all.
+
+**Provenance worth recording**: this loop was written and optimised by
+Steve in 2025. Four independent attempts to improve it produced nothing
+faster, which is the useful measure of how well it was done.
+
 ---
 
 ## 3. Validate against Carlisle 2017 (COMPLETE; outlier adjudication open)
