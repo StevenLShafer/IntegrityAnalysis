@@ -67,6 +67,70 @@ monthArg <- if (length(args) >= 4) args[4] else "recent"
 incoming <- file.path(outDir, "incoming")
 dir.create(incoming, showWarnings = FALSE, recursive = TRUE)
 
+# ---- single-instance lock ------------------------------------------------
+# Two harvesters sharing an outDir share s3Manifest.csv and incoming/.
+# The manifest is read, appended and rewritten wholesale, so concurrent
+# runs can lose each other's rows or re-download what the other already
+# has - and both would be right about what they saw.
+#
+# This became reachable the moment a long BACKFILL existed: it runs for
+# hours and the nightly 02:00 job fires straight into it. It is also the
+# leading suspect for the unexplained exit-1 of the 2026-08-27 nightly
+# run, which was never diagnosed.
+#
+# REFUSE, DO NOT QUEUE. A nightly job that skips one night because a
+# backfill is running has lost nothing: the backfill's "all" scope
+# already covers everything the nightly would have fetched. A queued job
+# would still be waiting when the next night's copy started.
+#
+# TWO BUGS FOUND WRITING THIS, both of which made an earlier version
+# non-functional while looking correct, and each caught only by testing
+# the state a lock exists for:
+#
+#   1. R's default TRE engine does not support \b, so
+#      grepl("\b20280\b", out) is FALSE even with the pid plainly in
+#      the line. The lock judged every LIVE holder dead and broke itself
+#      on every call. Whitespace delimiters work in TRE and say what is
+#      meant: the pid as its own column, not a substring of a bigger
+#      number.
+#   2. on.exit() at script TOP LEVEL never runs - it registers against a
+#      function frame, and a script body is not one. The lock was taken
+#      and never released. reg.finalizer(onexit = TRUE) does run;
+#      verified by marker file before this was written.
+#
+#   Together those two CANCELLED OUT: the lock appeared to work because
+#   its own failure to release was undone by its own failure to detect.
+lockPath <- file.path(outDir, "harvest.lock")
+lockAlive <- function(path) {
+  if (!file.exists(path)) return(FALSE)
+  info <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (is.null(info) || is.null(info$pid)) return(FALSE)
+  alive <- tryCatch({
+    out <- suppressWarnings(system2("tasklist",
+      c("/FI", shQuote(paste0("PID eq ", info$pid)), "/NH"),
+      stdout = TRUE, stderr = FALSE))
+    any(grepl(paste0("(^|[[:space:]])", info$pid, "([[:space:]]|$)"), out))
+  }, error = function(e) FALSE)
+  if (!alive) {
+    cat("stale lock from pid", info$pid, "- breaking it\n")
+    unlink(path)
+    return(FALSE)
+  }
+  cat("another harvest is running (pid ", info$pid, ", scope '",
+      if (is.null(info$scope)) "?" else info$scope,
+      "') - EXITING.\n", sep = "")
+  cat("  Not an error: the running job's scope covers this one.\n")
+  TRUE
+}
+if (lockAlive(lockPath)) quit(status = 0)
+saveRDS(list(pid = Sys.getpid(), started = Sys.time(), scope = monthArg),
+        lockPath)
+.lockGuard <- new.env()
+reg.finalizer(.lockGuard, function(e) {
+  info <- tryCatch(readRDS(lockPath), error = function(err) NULL)
+  if (!is.null(info) && identical(info$pid, Sys.getpid())) unlink(lockPath)
+}, onexit = TRUE)
+
 bucket  <- "s3://medrxiv-src-monthly/Current_Content/"
 # The "harvest" profile is a dedicated IAM user with a long-lived access
 # key, NOT the Identity Center login (2026-08-27). Identity Center tokens
