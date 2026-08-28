@@ -248,9 +248,38 @@
 #
 #   25 variables, N = 10,000/arm   typical 5 sec   worst case 495 sec
 #
-# 1.2e10 draws is about two minutes of worst-case simulation. It still
-# refuses the pathological many-thousand-row submission by orders of
-# magnitude, while leaving ordinary trials alone.
+# WHAT 1.2e10 ACTUALLY BUYS - corrected 2026-08-28 (screen F3). This
+# comment used to say "about two minutes", from a measured 1.01e8
+# draws/sec. That figure benchmarked dqrnorm IN ISOLATION, which is not
+# what the loop runs. Re-measured against the exact body of
+# P_Calc.R:334-346 - dqrnorm, then rnorm with a VECTORISED mean, then
+# round/rowmeans/round/rowsums around it:
+#
+#     dqrnorm alone (the wrong benchmark)        7.6e7 draws/sec
+#     rnorm with a vectorised mean               2.0e7 draws/sec
+#     the full continuous loop body              1.0e7 draws/sec
+#
+# So the budget is ~20 MINUTES of worst-case CPU, not two. The
+# median/IQR branch is dearer still (metalog: dqrunif, log, arithmetic,
+# rowMedians), so treat 20 minutes as a floor on that path.
+#
+# THE BUDGET IS NOT LOWERED TO MATCH THE OLD CLAIM, and the reason
+# belongs here rather than in a commit message. Two minutes of worst
+# case is 1.2e9 draws, which at 25 variables x 2 arms would refuse any
+# trial above N = 240 - useless. The number stays; the CLAIM is what
+# was wrong.
+#
+# What makes 20 minutes tolerable is that the worst case assumes EVERY
+# row escalates to the replicate ceiling, and the staged scheme stops
+# non-alarming rows at 1,000. A real trial at this budget costs about
+# 12 seconds, not 20 minutes. The worst case is reached only by a table
+# engineered so every row looks alarming - which is also, uncomfortably,
+# what a fabricated table looks like.
+#
+# That is the honest argument for ISSUES.md issue 26 (submit-and-poll):
+# a synchronous request cannot both admit real trials and promise a
+# bounded response time, and the more suspicious the data, the longer
+# it takes.
 #
 # WHAT THIS TRADE-OFF CANNOT SOLVE, and why the number is not simply
 # larger: the rows that escalate are the SUSPICIOUS ones, so the worst

@@ -988,14 +988,22 @@ page.</p>
 service refuses a submission rather than analyzing it slowly or
 coarsely. Two ceilings matter in practice:</p>
 <ul>
-<li><strong>5,000 subjects per arm</strong> — the same ceiling the web
-app applies, described under “Trials too large to analyze” above. It is
-a property of IntegrityAnalysis, not of this service.</li>
-<li><strong>A simulation budget</strong> covering roughly two minutes of
-worst-case computation. Ordinary baseline tables are nowhere near it — a
-30-variable trial with 1,000 subjects per arm passes comfortably — but a
-table engineered to make every row demand the maximum 100,000 replicates
-would not, and is refused before any simulation starts.</li>
+<li><p><strong>5,000 subjects per arm</strong> — the same ceiling the
+web app applies, described under “Trials too large to analyze” above. It
+is a property of IntegrityAnalysis, not of this service.</p></li>
+<li><p><strong>A simulation budget.</strong> Ordinary baseline tables
+are nowhere near it — a 30-variable trial with 1,000 subjects per arm
+passes comfortably, and costs a few seconds — but a table engineered so
+that every row demands the maximum 100,000 replicates is refused before
+any simulation starts.</p>
+<p>Stated precisely, because an earlier version of this page understated
+it tenfold: the budget admits up to about <strong>twenty
+minutes</strong> of worst-case computation, not two. A typical trial
+that fits inside it finishes in seconds; the worst case arises only when
+<em>every</em> row looks homogeneous enough to demand full precision.
+That is an uncomfortable property — the more suspicious the data, the
+longer the analysis takes — and it is why the service is better suited
+to submit-and-poll than to a single blocking request.</p></li>
 </ul>
 <p>If a refused submission holds several trials, send them one per
 request. If it is a single very large trial, splitting it would change

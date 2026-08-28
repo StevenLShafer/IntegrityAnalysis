@@ -779,12 +779,20 @@ matter in practice:
 - **5,000 subjects per arm** — the same ceiling the web app applies,
   described under "Trials too large to analyze" above. It is a property
   of IntegrityAnalysis, not of this service.
-- **A simulation budget** covering roughly two minutes of worst-case
-  computation. Ordinary baseline tables are nowhere near it — a
-  30-variable trial with 1,000 subjects per arm passes comfortably —
-  but a table engineered to make every row demand the maximum
-  100,000 replicates would not, and is refused before any simulation
-  starts.
+- **A simulation budget.** Ordinary baseline tables are nowhere near
+  it — a 30-variable trial with 1,000 subjects per arm passes
+  comfortably, and costs a few seconds — but a table engineered so that
+  every row demands the maximum 100,000 replicates is refused before any
+  simulation starts.
+
+  Stated precisely, because an earlier version of this page understated
+  it tenfold: the budget admits up to about **twenty minutes** of
+  worst-case computation, not two. A typical trial that fits inside it
+  finishes in seconds; the worst case arises only when *every* row looks
+  homogeneous enough to demand full precision. That is an uncomfortable
+  property — the more suspicious the data, the longer the analysis takes
+  — and it is why the service is better suited to submit-and-poll than
+  to a single blocking request.
 
 If a refused submission holds several trials, send them one per
 request. If it is a single very large trial, splitting it would change
