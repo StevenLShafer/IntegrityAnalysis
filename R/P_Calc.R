@@ -293,9 +293,34 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           } else {
           E <- outer(rowSums(tab), colSums(tab)) / sum(tab)
           statObs <- sum((tab - E)^2 / E)
-          simulate <- function(n)
-            vapply(r2dtable(n, rowSums(tab), colSums(tab)),
-                   function(s) sum((s - E)^2 / E), numeric(1))
+          # CHUNKED (2026-08-28 screen, F1). This called r2dtable with
+          # the FULL stage size - up to 100,000 tables in one
+          # allocation - while the other two branches chunk by 1e8/N.
+          # Cost here is driven by arms x categories, not by N, so a
+          # 100-arm x 190-category table asks for 6 GB at full
+          # escalation and the gate maxima reach ~330 GB. tryCatch
+          # cannot catch a cgroup OOM.
+          #
+          # RNG-IDENTICAL, verified rather than assumed: r2dtable draws
+          # one table at a time from the stream, so r2dtable(1000) and
+          # 10 x r2dtable(100) produce the same 1,000 tables under the
+          # same seed. Checked at 2-way and 3-way splits before this
+          # was written, because the known-answer tests pin Monte Carlo
+          # values and a changed RNG consumption pattern would silently
+          # move every categorical p.
+          simulate <- function(n) {
+            cells <- max(1, nrow(tab) * ncol(tab))
+            ch <- max(1, floor(1e7 / cells))
+            out <- numeric(0); left <- n
+            while (left > 0) {
+              k <- min(left, ch)
+              out <- c(out, vapply(r2dtable(k, rowSums(tab), colSums(tab)),
+                                   function(s) sum((s - E)^2 / E),
+                                   numeric(1)))
+              left <- left - k
+            }
+            out
+          }
           sc <- .stagedTail(simulate, statObs, m,
                             keepDraws = !is.null(graphs))
           rep <- .rowReport(sc)

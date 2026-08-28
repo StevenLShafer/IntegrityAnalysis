@@ -299,13 +299,103 @@
 # Worst case, not expected case: most rows stop early. A gate has to
 # bound what an adversary can force, and an adversary picks the input
 # that escalates every row.
-.apiDrawWork <- function(DATA) {
-  if (is.null(DATA) || !"N" %in% names(DATA) || nrow(DATA) == 0)
-    return(0)
-  n <- suppressWarnings(as.numeric(DATA$N))
-  n <- n[is.finite(n) & n > 0]
-  if (!length(n)) return(0)
-  sum(n) * .apiReplicateCeiling
+# NORMALISE THE NAMES BEFORE GATING (2026-08-28 screen, F2).
+#
+# Both /analyze size gates read the frame exactly as read.csv produced
+# it, matching "N" EXACTLY and CASE-SENSITIVELY - while validateData
+# uppercases names and applies the Carlisle-2016 aliases AFTERWARDS.
+#
+# So a header spelled "n" made the gates see no N column at all:
+# max(as.numeric(NULL)) is -Inf, !is.finite fires, maxN becomes 0, and
+# .apiDrawWork returned 0 because it read "column absent" as "no work".
+# VERIFIED: a two-row table declaring n = 200,000 - twenty times the
+# ceiling - passed both gates and ran the analysis. .apiMaxN was not
+# raised, it was ABSENT, which reinstates the exact attack the
+# 2026-08-26 re-review believed it had closed (see the comment above
+# .apiMaxN, still describing it).
+#
+# Names only - no data mutation. validateData does the rest and is
+# idempotent under this, since uppercasing an uppercase name is a
+# no-op and NUMBER has already become N.
+.apiNormalizeNames <- function(DATA) {
+  if (is.null(DATA) || is.null(names(DATA)) || !length(names(DATA)))
+    return(DATA)
+  names(DATA) <- toupper(trimws(names(DATA)))
+  nm <- names(DATA)
+  if (!("N" %in% nm)) {
+    i <- grep("NUMBER", nm)
+    if (length(i)) names(DATA)[i[1]] <- "N"
+  }
+  if (!("ROW" %in% nm)) {
+    i <- grep("MEASURE", nm)
+    if (!length(i)) i <- grep("GROUP", nm)
+    if (length(i)) names(DATA)[i[1]] <- "ROW"
+  }
+  DATA
+}
+
+# Which columns look like category columns, on the RAW frame - the gate
+# runs before validateData has computed CategoryNames, so it has to
+# make the same judgement itself. Anything that is not a base column
+# and holds a number is a candidate; over-counting here is safe (it
+# only makes the budget stricter), under-counting is not.
+.apiCategoryGuess <- function(DATA) {
+  if (is.null(DATA) || !length(names(DATA))) return(character(0))
+  base <- c(.ppBaseColumns(), "GROUP", "DECM", "DECSD", "MEASURE", "NUMBER")
+  cand <- setdiff(names(DATA), base)
+  cand[vapply(cand, function(k)
+    is.numeric(DATA[[k]]) || all(is.na(DATA[[k]])) ||
+      !any(is.na(suppressWarnings(as.numeric(
+        DATA[[k]][!is.na(DATA[[k]])])))), logical(1))]
+}
+
+.apiDrawWork <- function(DATA, categoryNames = NULL) {
+  if (is.null(DATA) || nrow(DATA) == 0) return(0)
+
+  # CONTINUOUS / MEDIAN work: one replicate of one row draws sum(N)
+  # over its arms.
+  cont <- 0
+  if ("N" %in% names(DATA)) {
+    n <- suppressWarnings(as.numeric(DATA$N))
+    n <- n[is.finite(n) & n > 0]
+    if (length(n)) cont <- sum(n)
+  }
+
+  # CATEGORICAL work, missing entirely until the 2026-08-28 screen (F1)
+  # and missing STRUCTURALLY rather than by oversight. P_Calc has THREE
+  # branches, not the two this function's comment described. The third
+  # simulates a contingency table with r2dtable, whose cost is driven by
+  # arms x categories and NOT by N at all - and validateData REQUIRES
+  # that any line carrying a category value has N = NA, so every row
+  # that reaches it is one the continuous term above drops. A wholly
+  # categorical payload therefore scored zero and the budget refused
+  # nothing, on a path that allocates unchunked.
+  #
+  # Worse, the test written to document careful NA handling -
+  #   expect_identical(.apiDrawWork(data.frame(N = c(NA, -5, 0))), 0)
+  # - pinned that hole as INTENDED BEHAVIOUR. A test can encode a bug
+  # as a guarantee, and this one did.
+  #
+  # Cost per replicate is the table's cell count: lines x populated
+  # categories, per TRIAL x ROW group, which is the unit P_Calc builds
+  # a table for.
+  cat_ <- 0
+  have <- intersect(categoryNames, names(DATA))
+  if (length(have) && all(c("TRIAL", "ROW") %in% names(DATA))) {
+    M <- as.matrix(DATA[, have, drop = FALSE])
+    populated <- !is.na(M)
+    rowsWithCat <- rowSums(populated) > 0
+    if (any(rowsWithCat)) {
+      grp <- paste(DATA$TRIAL, DATA$ROW)[rowsWithCat]
+      pc  <- populated[rowsWithCat, , drop = FALSE]
+      for (g in unique(grp)) {
+        sel <- grp == g
+        nCats <- sum(colSums(pc[sel, , drop = FALSE]) > 0)
+        cat_ <- cat_ + sum(sel) * nCats
+      }
+    }
+  }
+  (cont + cat_) * .apiReplicateCeiling
 }
 # The journal-style tables expand one line per populated category
 # column, so their size is NOT bounded by the input gates above. This
@@ -464,6 +554,8 @@
 
 # The /analyze pipeline after reading: validate, then Monte Carlo.
 .apiAnalyze <- function(DATA) {
+  # Gate a frame whose names mean what they say - see .apiNormalizeNames.
+  DATA <- .apiNormalizeNames(DATA)
   # Size gate BEFORE any simulation (H2): a crafted oversized table
   # would otherwise run the escalating Monte Carlo on the single
   # service thread past App Runner's request timeout, orphaning work.
@@ -489,7 +581,7 @@
   # can pass while the simulation cost, replicates x sum(N), is days.
   # Computed on the RAW frame, before validateData, because refusing is
   # cheap and validating a 5,000-row table is not.
-  drawWork <- .apiDrawWork(DATA)
+  drawWork <- .apiDrawWork(DATA, .apiCategoryGuess(DATA))
   if (drawWork > .apiMaxDrawBudget) {
     return(list(ok = FALSE, stage = "too_large",
                 issues = data.frame(row = NA_integer_, col = NA_character_,
