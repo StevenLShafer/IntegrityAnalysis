@@ -449,6 +449,59 @@ test_that("journalTables carry the sanitizing too", {
   }
 })
 
+test_that("the compute budget covers CATEGORICAL work too", {
+  # F1 of the 2026-08-28 screen. P_Calc has THREE branches; the budget
+  # modelled two. The categorical one simulates with r2dtable, whose
+  # cost is arms x categories and NOT N - and validateData REQUIRES
+  # N = NA on any line carrying a category value, so every row reaching
+  # it was one the continuous term dropped. A wholly categorical payload
+  # scored zero and the gate refused nothing.
+  d <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:20), each = 100),
+                  N = NA_real_, MEAN = NA_real_, SD = NA_real_,
+                  stringsAsFactors = FALSE)
+  for (k in 1:190) d[[paste0("C", k)]] <- 5L
+  d$C190[1] <- NA
+
+  cats <- .apiCategoryGuess(d)
+  expect_gt(length(cats), 100)                 # the columns are seen
+  expect_gt(.apiDrawWork(d, cats), .apiMaxDrawBudget)
+  # ...and it is the CATEGORICAL term doing it: the continuous term is 0
+  expect_identical(.apiDrawWork(d, character(0)), 0)
+
+  a <- .apiAnalyze(d)
+  expect_false(a$ok)
+  expect_identical(a$stage, "too_large")
+})
+
+test_that("the size gates see N whatever the header calls it", {
+  # F2. Both gates matched "N" exactly and case-sensitively while
+  # validateData uppercases and applies the Carlisle aliases AFTERWARDS,
+  # so a header spelled "n" made the gates see no N column - and
+  # .apiDrawWork read "column absent" as "no work". A two-row table
+  # declaring n = 200,000, twenty times the ceiling, ran the analysis.
+  lower <- data.frame(TRIAL = "T", ROW = c("A", "A"), n = 200000,
+                      MEAN = c(1, 2), SD = 1,
+                      check.names = FALSE, stringsAsFactors = FALSE)
+  expect_identical(names(.apiNormalizeNames(lower))[3], "N")
+  a <- .apiAnalyze(lower)
+  expect_false(a$ok)
+  expect_identical(a$stage, "too_large")
+
+  # the NUMBER alias bypassed the budget the same way
+  alias <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:2500), each = 2),
+                      NUMBER = 10000, MEAN = 1, SD = 1,
+                      stringsAsFactors = FALSE)
+  expect_identical(names(.apiNormalizeNames(alias))[3], "N")
+  b <- .apiAnalyze(alias)
+  expect_false(b$ok)
+  expect_identical(b$stage, "too_large")
+
+  # normalising must not disturb a frame that was already correct
+  fine <- data.frame(TRIAL = "T", ROW = "A", N = 50, MEAN = 1, SD = 1,
+                     stringsAsFactors = FALSE)
+  expect_identical(names(.apiNormalizeNames(fine)), names(fine))
+})
+
 test_that("ordinary trials in the thousands are ACCEPTED", {
   # The gate must bound the attack WITHOUT refusing real work, and the
   # first budget (6e9) failed that half: it refused a 20-variable trial
@@ -469,7 +522,10 @@ test_that("ordinary trials in the thousands are ACCEPTED", {
   expect_lt(.apiDrawWork(trial(40,  2,   200)), .apiMaxDrawBudget)
 
   # and the N ceiling is Steve's editorial one, not the old round number
-  expect_identical(.apiMaxN, 10000L)
+  # 5,000 since 2026-08-28 (Steve): an editorial ceiling shared with the
+  # app via .iaMaxArmN, not an API-only number. See "Trials too large to
+  # analyze" in the user guide.
+  expect_identical(.apiMaxN, 5000L)
 })
 
 test_that("the compute-product gate refuses what the size gates allow", {
@@ -486,6 +542,14 @@ test_that("the compute-product gate refuses what the size gates allow", {
   expect_identical(.apiDrawWork(data.frame(x = 1)), 0)          # no N
   expect_identical(.apiDrawWork(data.frame(N = numeric(0))), 0) # no rows
   # NA and non-positive N contribute nothing rather than propagating
+  # NA and non-positive N contribute nothing FROM THE CONTINUOUS TERM.
+  # This assertion used to read as though zero were the whole answer,
+  # and in doing so it pinned the F1 hole as intended behaviour: a
+  # categorical payload has N = NA on every line by validateData's own
+  # rule, so "NA costs nothing" silently meant "categorical costs
+  # nothing". The frame below has no category columns, which is now the
+  # reason the answer is zero - and the categorical case is asserted
+  # separately in its own test.
   expect_identical(.apiDrawWork(data.frame(N = c(NA, -5, 0))), 0)
   expect_identical(.apiDrawWork(data.frame(N = c(10, 20))),
                    30 * .apiReplicateCeiling)

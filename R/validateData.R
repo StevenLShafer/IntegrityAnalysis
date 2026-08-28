@@ -150,6 +150,51 @@ validateData <- function(DATA) {
     FAIL <- TRUE
   }
 
+  # ---- the arm-size ceiling (Steve, 2026-08-28) ---------------------------
+  # IntegrityAnalysis refuses a trial with more than .iaMaxArmN subjects
+  # in any arm, for two reasons, both of which belong here rather than in
+  # the API alone:
+  #
+  #   1. The Monte Carlo is expensive in N. Every replicate of a
+  #      continuous row draws N values per arm, so cost is
+  #      replicates x sum(N) - a large trial can occupy the only thread
+  #      for many minutes.
+  #   2. Trials that large are funded by major companies or government
+  #      entities, which institute detailed auditing and statistical
+  #      review before submission. An independent fraud screen adds
+  #      little to a manuscript that has already had one.
+  #
+  # ENFORCED HERE, NOT IN apiService.R, because the documentation says
+  # "IntegrityAnalysis won't analyze trials with N > 5000 in any arm" -
+  # a statement about the PROGRAM. The ceiling used to live only in the
+  # API, so the app had no limit at all and the sentence would have been
+  # false for every user who opened the web page. Writing documentation
+  # that the code does not honour is the same defect corrected in the
+  # privacy statement on 2026-08-27; the fix is to make the code true,
+  # not to soften the sentence.
+  #
+  # An investigator who genuinely needs a larger trial analysed can call
+  # P_Calc() directly - the escape hatch is named in the user guide.
+  if (!is.null(DATA$N))
+  {
+    tooBig <- which(!is.na(suppressWarnings(as.numeric(DATA$N))) &
+                    suppressWarnings(as.numeric(DATA$N)) > .iaMaxArmN)
+    if (length(tooBig))
+    {
+      for (i in tooBig)
+        addIssue(i, "N", "too_large",
+                 paste0("arm N exceeds ", format(.iaMaxArmN, big.mark = ","),
+                        " - see the user guide"))
+      outputComments(paste0(
+        "This trial has an arm with more than ",
+        format(.iaMaxArmN, big.mark = ","),
+        " subjects. IntegrityAnalysis does not analyze trials that ",
+        "large - see the documentation for why, and for how to run the ",
+        "Monte Carlo directly if you need to."))
+      FAIL <- TRUE
+    }
+  }
+
   if (is.null(DATA$MEAN))
   {
     outputComments("Missing column labeled MEAN")

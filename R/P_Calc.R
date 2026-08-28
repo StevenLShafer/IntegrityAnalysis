@@ -103,11 +103,104 @@
 #' combine across the trial with Stouffer's [sumz()] - unfloored, with a
 #' parametric-bootstrap 95% Monte Carlo interval when small.
 #'
-#' @param TRIAL the trial identifier (matched against `DATA$TRIAL`).
-#' @param DATA the validated data table (all trials; see [validateData()]).
-#' @param CategoryNames names of the category (count) columns, or `NULL`.
-#' @param m maximum replicates per row (the final stage; default global
-#'   is 100,000 - typical rows stop at 1,000).
+#' @section Calling P_Calc directly:
+#'
+#' IntegrityAnalysis declines trials with more than 5,000 subjects in any
+#' arm (see the user guide, "Trials too large to analyze"). An
+#' investigator with adequate computing horsepower can run the same
+#' Monte Carlo by calling this function themselves - it has no
+#' dependency on Shiny, on the parser, or on the size ceiling, which is
+#' enforced in `validateData()` rather than here. Source this file, or
+#' the package, and call it directly.
+#'
+#' The four arguments are described below. `DATA` is the one that
+#' repays attention: everything else is a scalar or a name list.
+#'
+#' @param TRIAL the trial identifier. `P_Calc` analyses ONE trial per
+#'   call and selects its rows with `DATA$TRIAL == TRIAL`, so `DATA` may
+#'   hold many trials; loop over `unique(DATA$TRIAL)` for a whole file.
+#'
+#' @param DATA a data frame, **one row per variable per arm**. A
+#'   two-arm trial reporting age, weight and sex is six rows: age twice,
+#'   weight twice, sex twice. Rows are grouped by `ROW` within `TRIAL`,
+#'   and the rows sharing a `ROW` value ARE the arms of that variable -
+#'   there is no separate arm column, and arm order is the order the
+#'   rows appear.
+#'
+#'   Required columns:
+#'   \describe{
+#'     \item{`TRIAL`}{trial identifier; matched against the `TRIAL` argument.}
+#'     \item{`ROW`}{the variable name, e.g. "Age". Its repeats are the arms.}
+#'     \item{`N`}{subjects in that arm for that variable.}
+#'     \item{`MEAN`}{the arm mean - or, for a median row, the MEDIAN
+#'       (see the row kinds below; the column is reused, not renamed).}
+#'     \item{`SD`}{the arm standard deviation. `NA` for median and
+#'       categorical rows.}
+#'   }
+#'
+#'   Optional columns:
+#'   \describe{
+#'     \item{`SE`}{standard error, if the paper printed SE rather than
+#'       SD; converted internally. Give one or the other, not both.}
+#'     \item{`Q1`, `Q3`}{the quartiles, for a median row.}
+#'     \item{`ROUND_MEAN`}{decimal places the MEAN was PRINTED to. This
+#'       is not cosmetic - the whole method rests on rounding simulated
+#'       values exactly as the paper rounded its own. 0 means integers.}
+#'     \item{`ROUND_DISPERSION`}{decimals printed for SD/SE.}
+#'     \item{`ROUND_OBSERVATION`}{decimals the UNDERLYING OBSERVATIONS
+#'       were recorded to, which is often finer than the printed mean -
+#'       ages recorded whole but a mean printed to one decimal.}
+#'     \item{category columns}{one column per category level, holding
+#'       COUNTS, named in `CategoryNames`. See below.}
+#'   }
+#'
+#'   **The three kinds of row, and how they are told apart** - by which
+#'   columns are filled, never by a type flag:
+#'   \describe{
+#'     \item{continuous}{every arm has a non-NA `N`, and `MEAN`/`SD` are
+#'       filled. Simulates rounded per-arm means under one common
+#'       population.}
+#'     \item{median / IQR}{`Q1` and `Q3` are filled and every arm has an
+#'       `N`; `MEAN` carries the MEDIAN and `SD` is `NA`. Fits a 3-term
+#'       metalog to the pooled quartiles and compares rounded arm
+#'       medians.}
+#'     \item{categorical}{the category columns hold counts and `N`,
+#'       `MEAN`, `SD` are all `NA` on those rows. Simulates contingency
+#'       tables under fixed margins and takes the LOWER chi-square tail.
+#'       `validateData()` enforces the exclusivity: a line carrying a
+#'       category value must not also carry N/MEAN/SD.}
+#'   }
+#'
+#'   A minimal two-arm continuous example:
+#'   \preformatted{
+#'   DATA <- data.frame(
+#'     TRIAL = "T1",
+#'     ROW   = c("Age", "Age", "Weight", "Weight"),
+#'     N     = c(50, 52, 50, 52),
+#'     MEAN  = c(60.1, 60.3, 72.4, 72.9),
+#'     SD    = c(10.2, 9.8, 12.1, 11.7),
+#'     ROUND_MEAN = 1, ROUND_OBSERVATION = 1,
+#'     stringsAsFactors = FALSE)
+#'   P_Calc("T1", DATA, NULL, 100000)
+#'   }
+#'
+#'   Running `DATA` through [validateData()] first is recommended but not
+#'   required - it normalises column names, checks the contract, and
+#'   returns `$DATA` and `$CategoryNames` ready for this function. It
+#'   also applies the 5,000 ceiling, so callers who deliberately want a
+#'   larger trial should skip it and supply a well-formed frame directly.
+#'
+#' @param CategoryNames character vector naming the category (count)
+#'   columns in `DATA`, or `NULL` when the trial has none. These are the
+#'   columns treated as contingency-table counts; any column not named
+#'   here and not a base column is ignored. `validateData()` returns the
+#'   right value in `$CategoryNames`.
+#'
+#' @param m maximum replicates per row - the final stage of the adaptive
+#'   scheme. The app uses 100,000. Rows resolve at 1,000 unless they look
+#'   alarming, so this is a ceiling, not a cost: typical rows never
+#'   approach it. Lower it to trade precision for speed on a large trial;
+#'   the reported `M` column says what each row actually used.
 #' @return a data.frame with columns TRIAL, ROW, P, CI95, M: one row per
 #'   data ROW (M = replicates actually used; CI95 = upper bound, shown
 #'   when P < 0.001), then a "Summary" row with the combined p and its
@@ -293,9 +386,34 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           } else {
           E <- outer(rowSums(tab), colSums(tab)) / sum(tab)
           statObs <- sum((tab - E)^2 / E)
-          simulate <- function(n)
-            vapply(r2dtable(n, rowSums(tab), colSums(tab)),
-                   function(s) sum((s - E)^2 / E), numeric(1))
+          # CHUNKED (2026-08-28 screen, F1). This called r2dtable with
+          # the FULL stage size - up to 100,000 tables in one
+          # allocation - while the other two branches chunk by 1e8/N.
+          # Cost here is driven by arms x categories, not by N, so a
+          # 100-arm x 190-category table asks for 6 GB at full
+          # escalation and the gate maxima reach ~330 GB. tryCatch
+          # cannot catch a cgroup OOM.
+          #
+          # RNG-IDENTICAL, verified rather than assumed: r2dtable draws
+          # one table at a time from the stream, so r2dtable(1000) and
+          # 10 x r2dtable(100) produce the same 1,000 tables under the
+          # same seed. Checked at 2-way and 3-way splits before this
+          # was written, because the known-answer tests pin Monte Carlo
+          # values and a changed RNG consumption pattern would silently
+          # move every categorical p.
+          simulate <- function(n) {
+            cells <- max(1, nrow(tab) * ncol(tab))
+            ch <- max(1, floor(1e7 / cells))
+            out <- numeric(0); left <- n
+            while (left > 0) {
+              k <- min(left, ch)
+              out <- c(out, vapply(r2dtable(k, rowSums(tab), colSums(tab)),
+                                   function(s) sum((s - E)^2 / E),
+                                   numeric(1)))
+              left <- left - k
+            }
+            out
+          }
           sc <- .stagedTail(simulate, statObs, m,
                             keepDraws = !is.null(graphs))
           rep <- .rowReport(sc)
