@@ -44,8 +44,8 @@ limit <- NA_integer_
 i <- match("--limit", args)
 if (!is.na(i) && length(args) > i) limit <- as.integer(args[i + 1])
 
-root <- "C:/dev/IntegrityAnalysis"
-corpusDir <- "C:/temp/journals"
+root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+corpusDir <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 mapPath <- file.path(root, "corpus", "pmid_map.csv")
 outPath <- file.path(root, ".NewCarlisle", "corpusPmidCandidates.csv")
 
@@ -166,7 +166,14 @@ inText <- function(v, txt)
 # this loop stalls the whole scan with no way out - which is what
 # happened on the first full run, dead on file 26 of 379.
 # corpus/buildParseOutcomes.R learned the same lesson and says so.
-RSCRIPT <- file.path(R.home("bin"), "Rscript.exe")
+# "Rscript.exe" on Windows, "Rscript" everywhere else - the same branch
+# the package's own subprocess batcher makes at
+# R/parseBaselineTableFiles.R:103. Hardcoding the .exe was the single
+# piece of LIVE code in corpus/ that could not run off Windows; every
+# other Rscript.exe in this folder is inside a usage comment.
+RSCRIPT <- file.path(R.home("bin"),
+                     if (.Platform$OS.type == "windows") "Rscript.exe"
+                     else "Rscript")
 HELPER  <- file.path(root, "corpus", "pdfTextOne.R")
 
 pdfText2 <- function(path, seconds = 25) {

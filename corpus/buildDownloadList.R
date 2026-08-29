@@ -26,11 +26,11 @@ suppressPackageStartupMessages({
   library(openxlsx)
 })
 
-root    <- "C:/dev/IntegrityAnalysis"
+root    <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 outDir  <- file.path(root, ".NewCarlisle")
 outPath <- file.path(outDir, "DownloadPriorityList.xlsx")
 # Where the already-owned corpus PDFs live (see corpus/README.md).
-corpusDir <- "C:/temp/journals"
+corpusDir <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 dir.create(outDir, showWarnings = FALSE)
 
 # Excel stores these strings HTML-escaped ("Anesthesia &amp; Analgesia",

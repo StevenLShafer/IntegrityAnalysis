@@ -36,7 +36,7 @@
 # Usage:  Rscript corpus/corroborationReport.R                             #
 ############################################################################
 
-root <- "C:/dev/IntegrityAnalysis"
+root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 mf <- file.path(root, ".NewCarlisle", "misparse", "misparse_files.csv")
 e2 <- file.path(root, "corpus", "EndToEndValidation.csv")
 hp <- file.path(root, "corpus", "Holdout.csv")

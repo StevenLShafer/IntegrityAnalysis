@@ -47,7 +47,7 @@
 #         It REFUSES to overwrite an existing Holdout.csv - see below.     #
 ############################################################################
 
-repo <- "C:/dev/IntegrityAnalysis"
+repo <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 outFile <- file.path(repo, "corpus", "Holdout.csv")
 
 args <- commandArgs(trailingOnly = TRUE)

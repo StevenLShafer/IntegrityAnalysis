@@ -30,6 +30,46 @@ concrete failures in hand.
   Rscript corpus/buildParseOutcomes.R C:/temp/journals C:/temp/ParseOutcomes_work
   ```
 
+## Where these scripts look for things
+
+Every script here reads its locations from the environment, falling back
+to Steve's Windows paths. **Nothing changes on the desktop** — the
+defaults are exactly the literals that used to be hardcoded — but the
+same scripts now run unmodified on the Linux compute node, which simply
+sets the variables.
+
+| Variable | Default | What it is |
+|---|---|---|
+| `INTEGRITY_ROOT` | `C:/dev/IntegrityAnalysis` | the repository working copy |
+| `INTEGRITY_CORPUS` | `C:/temp/journals` | the tree of article PDFs |
+| `INTEGRITY_WORK` | `C:/temp` | parent for scratch and checkpoint dirs |
+
+So on the compute node:
+
+```
+export INTEGRITY_ROOT=$HOME/IntegrityAnalysis
+export INTEGRITY_CORPUS=$HOME/journals
+export INTEGRITY_WORK=$HOME/work
+export INTEGRITY_WORKERS=8          # headless: use every physical core
+Rscript corpus/measureMisparse.R
+```
+
+These join the variables the tooling already honoured:
+`INTEGRITY_WORKERS` (see `parallelHelper.R`), `INTEGRITY_SNAPSHOT_LIB`,
+`INTEGRITY_AWS_PROFILE`, `INTEGRITY_OPS_DIR`, and `E2E_WORKDIR`.
+
+**Usage comments are deliberately still Windows-shaped.** The `Rscript`
+invocation examples at the top of each script show the command Steve
+actually types, and rewriting them would make the documentation wrong
+for the machine most likely to be reading it.
+
+Two paths are intentionally NOT parameterised. `buildTestSet.R` reads a
+one-off scratch directory from a retired project — it is a historical
+rebuild script, not part of any pipeline. And the AWS CLI location in
+`harvestMedrxivS3.R` needs no change: it already tries `Sys.which("aws")`
+first, which is how it will be found on Linux, with the Windows install
+paths as fallbacks.
+
 ## Growing the corpus: the acquisition pipeline
 
 The 1,865 PDFs on hand cover about a third of Carlisle's 5,088 trials.

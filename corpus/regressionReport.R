@@ -48,7 +48,7 @@
 #   Rscript corpus/regressionReport.R --snapshot   (make current the base) #
 ############################################################################
 
-repo <- "C:/dev/IntegrityAnalysis"
+repo <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 args <- commandArgs(trailingOnly = TRUE)
 
 maxBroken <- NA_integer_

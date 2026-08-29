@@ -9,7 +9,7 @@
 # per-variable values from the One Sheet, Carlisle's stored per-variable p
 # (V columns) and trial p from the repaired wide file.
 suppressMessages(library(openxlsx))
-repo <- "C:/dev/IntegrityAnalysis"
+repo <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 old  <- "C:/Users/steve/AppData/Local/Temp/claude/C--dev-stanpumpR/538a0e78-bd25-420c-81ef-4fe378af46d5/scratchpad"
 
 ## inputs ------------------------------------------------------------------

@@ -57,11 +57,11 @@ if (!is.na(i) && length(args) > i) {
   if (is.na(days)) stop("--days needs a number")
   args <- args[-c(i, i + 1)]
 }
+root   <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 srcDir <- setdiff(args, c("--dry-run", "--copy"))
 srcDir <- if (length(srcDir)) srcDir[1] else
-  "C:/dev/IntegrityAnalysis/.NewCarlisle/inbox"
+  file.path(root, ".NewCarlisle", "inbox")
 
-root   <- "C:/dev/IntegrityAnalysis"
 outDir <- file.path(root, ".NewCarlisle")
 dir.create(outDir, showWarnings = FALSE)
 

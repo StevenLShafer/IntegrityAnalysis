@@ -34,11 +34,11 @@ which_ <- tolower(args[1])
 if (!length(args) || !which_ %in% c("boldt", "fujii"))
   stop("say which corpus: boldt or fujii")
 
-root <- "C:/dev/IntegrityAnalysis"
+root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 dir_ <- file.path(root, if (which_ == "boldt") ".Boldt" else ".Fujii")
 outPath <- file.path(dir_, "DownloadList.xlsx")
 newCarlisle <- file.path(root, ".NewCarlisle")
-corpusDir <- "C:/temp/journals"
+corpusDir <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 
 d <- read.csv(file.path(dir_, "pmids.csv"), colClasses = "character")
 cat(which_, "rows:", nrow(d), "\n")
