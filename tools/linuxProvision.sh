@@ -49,6 +49,31 @@
 
 set -euo pipefail
 
+# REFUSE TO RUN AS ROOT.
+#
+# This script runs as the ORDINARY user and calls sudo only for the
+# steps that genuinely need it (apt, the R .deb, the site profile).
+# Three things must land in the INVOKING user's home: the repository
+# clone, the renv library, and the package cache. Running the whole
+# script under `sudo bash` puts all three under /root, where the user's
+# own account cannot reach them.
+#
+# The failure is SILENT, which is what makes it worth a guard: every
+# step still reports success, R still installs correctly system-wide,
+# and nothing looks wrong until you try to use the machine and find no
+# repository in your home directory. That happened while provisioning
+# the second compute node on 2026-08-30 and cost a full re-run.
+if [ "$(id -u)" -eq 0 ]; then
+  echo "ERROR: do not run this with sudo." >&2
+  echo >&2
+  echo "  Run it as your normal user:   bash $0" >&2
+  echo >&2
+  echo "It calls sudo itself where root is needed. Running the whole" >&2
+  echo "script as root clones the repository and builds the renv" >&2
+  echo "library under /root, where your account cannot use them." >&2
+  exit 1
+fi
+
 R_VERSION="4.5.3"
 REPO_URL="https://github.com/StevenLShafer/IntegrityAnalysis.git"
 REPO_DIR="${HOME}/IntegrityAnalysis"
