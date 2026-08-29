@@ -62,8 +62,14 @@ iaWorkers <- function() {
 # checkpointed work: fn should write its own per-item artifact and return
 # something small. That keeps the parent's memory flat and means a killed
 # run resumes exactly as the sequential versions already do.
+# libDir: the library workers load `packages` from. Defaults to the
+# PARENT'S OWN path for the package, so a parent running from a snapshot
+# library cannot end up with workers running a different build. Getting
+# this wrong is silent: the run completes, the numbers are wrong, and
+# nothing says which engine produced them.
 iaParallel <- function(items, fn, export = character(0), seed = 1L,
-                       packages = "IntegrityAnalysis", quiet = FALSE) {
+                       packages = "IntegrityAnalysis", quiet = FALSE,
+                       libDir = NULL) {
   n <- iaWorkers()
   if (n <= 1 || length(items) < 2) {
     if (!quiet) cat("running sequentially (", n, " worker)\n", sep = "")
@@ -80,11 +86,16 @@ iaParallel <- function(items, fn, export = character(0), seed = 1L,
   parallel::clusterSetRNGStream(cl, seed)
 
   # Workers attach the INSTALLED package, never the live tree.
-  parallel::clusterExport(cl, "packages", envir = environment())
+  if (is.null(libDir) && "IntegrityAnalysis" %in% packages) {
+    f <- find.package("IntegrityAnalysis", quiet = TRUE)
+    if (length(f)) libDir <- dirname(f[1])
+  }
+  parallel::clusterExport(cl, c("packages", "libDir"), envir = environment())
   parallel::clusterEvalQ(cl, {
     for (p in packages)
       suppressWarnings(suppressPackageStartupMessages(
-        library(p, character.only = TRUE)))
+        if (is.null(libDir)) library(p, character.only = TRUE)
+        else library(p, character.only = TRUE, lib.loc = libDir)))
     # shiny FIRST and non-negotiably: validateData() calls isolate(),
     # which is Shiny's. Omitting it made every worker fail with
     # 'could not find function "isolate"' on exactly the files that

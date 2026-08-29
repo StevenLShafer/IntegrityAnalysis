@@ -80,55 +80,19 @@ validateData <- function(DATA) {
     do.call(rbind, issues)
   }
 
-  names(DATA) <- toupper(trimws(names(DATA)))
-  ColumnNames <- names(DATA)
+  # ONE normalizer, shared with the API gates (.iaNormalizeNames in
+  # app_globals.R). This block used to live here inline, and the
+  # 2026-08-28 API fix copied a SUBSET of it into apiService.R - which
+  # the overnight screen then took apart: every rule the copy missed was
+  # a gate bypass (a "ROWS" header, a NUMBER+N pair). Two
+  # implementations of one rule set was the defect; there is now one.
+  DATA <- .iaNormalizeNames(DATA)
 
-  # Add trial number if necessary
-  # FIX: the rename is now inside an else branch. It previously ran
-  # unconditionally, so with no TRIAL column present it indexed
-  # names(DATA) with NA. (Also renamed the local from TRIALS to
-  # TrialColumns: it held column indexes, not trial IDs, and shadowed
-  # the session-level TRIALS list.)
-  TrialColumns <- grep("TRIAL", ColumnNames)
-  if (length(TrialColumns) == 0)
-  {
-    DATA$TRIAL <- 1
-  } else {
-    names(DATA)[TrialColumns[1]] <- "TRIAL"
-  }
-  ColumnNames <- names(DATA)
-
-  ################################################
-  # Adjust names to accept Carlisle 2016 input file
-  MEASURES <- grep("MEASURE", ColumnNames)
-  if (length(MEASURES) > 0)
-  {
-    names(DATA)[MEASURES[1]] <- "ROW"
-    DATA$GROUP <- NULL
-    DATA$DECSD <- NULL
-    ColumnNames <- names(DATA)
-  }
-  DECMS <- grep("DECM", ColumnNames)
-  if (length(DECMS) > 0)
-  {
-    names(DATA)[DECMS[1]] <- "ROUND_MEAN"
-    ColumnNames <- names(DATA)
-  }
-  NUMBERS <-grep("NUMBER", names(DATA))
-  if (length(NUMBERS) > 0)
-  {
-    names(DATA)[NUMBERS[1]] <- "N"
-    ColumnNames <- names(DATA)
-  }
-  if (length(grep("ROW", ColumnNames)) == 0)
-  {
-    GROUPS <- grep("GROUP", ColumnNames)
-    if (length(GROUPS)> 0)
-    {
-      names(DATA)[GROUPS[1]] <- "ROW"
-    }
-  }
-
+  # The one thing the normalizer does NOT do, because it mutates data
+  # rather than names: default a missing TRIAL to 1. Kept here so the
+  # shared function stays a pure renaming and the API gates cannot
+  # acquire a hidden column as a side effect of being gated.
+  if (!("TRIAL" %in% names(DATA))) DATA$TRIAL <- 1
   ColumnNames <- names(DATA)
 
   ##############################################
@@ -144,7 +108,26 @@ validateData <- function(DATA) {
     ColumnNames <- names(DATA)
   }
 
-  if (is.null(DATA$N))
+  # DUPLICATE NAMES AFTER NORMALIZING (screen F2, 2026-08-29). NUMBER
+  # and N both present collapse onto two columns called N; R's $ and
+  # [[ ]] silently take the FIRST, so the API's gate scored one column
+  # while P_Calc simulated the other. Refuse rather than pick.
+  dupNames <- .iaDuplicateNames(DATA)
+  if (length(dupNames))
+  {
+    outputComments(paste0(
+      "Two columns normalize to the same name (",
+      paste(dupNames, collapse = ", "),
+      "). Rename or remove one - which column is meant is ambiguous."))
+    FAIL <- TRUE
+  }
+
+  # [["N"]] not $N (screen F4): $ partial-matches SILENTLY, so a
+  # "Notes" column made this test pass with no N present, skipping the
+  # structural failure and crashing later at DATA[i, c("N","MEAN","SD")]
+  # with "undefined columns selected" - an uncaught error in the app's
+  # reactive instead of a coloured cell report.
+  if (is.null(DATA[["N"]]))
   {
     outputComments("Missing column labeled N")
     FAIL <- TRUE
@@ -175,10 +158,10 @@ validateData <- function(DATA) {
   #
   # An investigator who genuinely needs a larger trial analysed can call
   # P_Calc() directly - the escape hatch is named in the user guide.
-  if (!is.null(DATA$N))
+  if (!is.null(DATA[["N"]]))
   {
-    tooBig <- which(!is.na(suppressWarnings(as.numeric(DATA$N))) &
-                    suppressWarnings(as.numeric(DATA$N)) > .iaMaxArmN)
+    tooBig <- which(!is.na(suppressWarnings(as.numeric(DATA[["N"]]))) &
+                    suppressWarnings(as.numeric(DATA[["N"]])) > .iaMaxArmN)
     if (length(tooBig))
     {
       for (i in tooBig)

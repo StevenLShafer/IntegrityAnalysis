@@ -64,8 +64,27 @@ if (!requireNamespace("IntegrityAnalysis", quietly = TRUE))
   stop("IntegrityAnalysis is not installed in THIS R - install it first; ",
        "a corroboration figure from a live tree is not defensible.",
        call. = FALSE)
-library(IntegrityAnalysis)
+# SNAPSHOT LIBRARY, named explicitly. INTEGRITY_SNAPSHOT_LIB points at a
+# library built by `R CMD INSTALL --library=<dir> .` from a known commit;
+# without it the script falls back to the ordinary path, which is how a
+# STALE build (0.1.0, months old) silently produced the figure before.
+libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
+if (nzchar(libDir)) {
+  library(IntegrityAnalysis, lib.loc = libDir)
+} else {
+  libDir <- NULL
+  library(IntegrityAnalysis)
+}
 library(shiny)
+engineVersion <- as.character(
+  utils::packageVersion("IntegrityAnalysis",
+                        lib.loc = if (is.null(libDir)) NULL else libDir))
+engineCommit <- tryCatch({
+  s <- IntegrityAnalysis::buildCommit(); if (is.na(s)) "unknown" else s
+}, error = function(e) "unknown")
+cat("engine: version", engineVersion, " commit",
+    substr(engineCommit, 1, 8), "
+")
 source(file.path(root, "corpus", "parallelHelper.R"))
 suppressWarnings(suppressPackageStartupMessages({
   library(foreach); library(Rfast); library(MBESS); library(dqrng)
@@ -199,7 +218,8 @@ scoreBatch <- function(start) {
 }
 
 chunks <- iaParallel(starts, scoreBatch,
-                     export = c("work", "os", "near", "batch"))
+                     export = c("work", "os", "near", "batch"),
+                     libDir = libDir)
 allRows <- do.call(rbind, Filter(Negate(is.null), chunks))
 if (!is.null(allRows) && nrow(allRows)) {
   write.table(allRows, rowsPath, sep = ",", row.names = FALSE,
@@ -227,8 +247,26 @@ if (file.exists(rowsPath)) {
         sum(p$UNCORROBORATED > 0),
         sprintf(" (%.1f%% of parsed files)\n",
                 100 * mean(p$UNCORROBORATED > 0)))
-    cat("files fully corroborated:", sum(p$UNCORROBORATED == 0),
-        sprintf(" (%.1f%%)\n", 100 * mean(p$UNCORROBORATED == 0)))
+  # VACUOUS CASES EXCLUDED (2026-08-29). "Fully corroborated" was
+  # UNCORROBORATED == 0 over every parsed file - which counts a file
+  # that extracted NOTHING as perfect, because a file with no pairs has
+  # no uncorroborated pairs. 101 of 988 parsed files were in that state,
+  # inflating the headline from 42.8% to 48.7%.
+  #
+  # That is the same error as quoting a parse rate without asking
+  # whether the table was right: it rewards extracting nothing. This
+  # figure exists to be the honest companion to the parse rate, so it
+  # reports over files that actually produced values, and states the
+  # vacuous count rather than hiding it.
+  hasPairs <- p$OURS > 0
+  vacuous  <- sum(!hasPairs)
+  q <- p[hasPairs, , drop = FALSE]
+  cat("files that extracted no pairs at all:", vacuous,
+      "(excluded below - nothing to corroborate)\n")
+  cat("files fully corroborated:", sum(q$UNCORROBORATED == 0), "of",
+      nrow(q), sprintf(" (%.1f%%)\n", 100 * mean(q$UNCORROBORATED == 0)))
+  cat("files with >=1 UNCORROBORATED pair:", sum(q$UNCORROBORATED > 0),
+      sprintf(" (%.1f%%)\n", 100 * mean(q$UNCORROBORATED > 0)))
     cat("his pairs we missed:", sum(p$MISSED),
         sprintf(" (%.1f%% of his)\n",
                 100 * sum(p$MISSED) / max(sum(p$THEIRS), 1)), "\n")

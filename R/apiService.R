@@ -328,40 +328,21 @@
 # Worst case, not expected case: most rows stop early. A gate has to
 # bound what an adversary can force, and an adversary picks the input
 # that escalates every row.
-# NORMALISE THE NAMES BEFORE GATING (2026-08-28 screen, F2).
+# NORMALISE THE NAMES BEFORE GATING - via the SHARED rule set.
 #
-# Both /analyze size gates read the frame exactly as read.csv produced
-# it, matching "N" EXACTLY and CASE-SENSITIVELY - while validateData
-# uppercases names and applies the Carlisle-2016 aliases AFTERWARDS.
+# The gates must read the frame validateData will actually see. The
+# 2026-08-28 fix wrote a SECOND normalizer here that matched a subset of
+# validateData's rules, and the overnight screen found every missed rule
+# was a bypass: a label column named "ROWS" zeroed the categorical
+# budget term (F1), and NUMBER+N together made the gate read N=1 while
+# P_Calc got N=5000 (F2). Both are now impossible by construction -
+# there is one implementation, in app_globals.R, and both callers use
+# it.
 #
-# So a header spelled "n" made the gates see no N column at all:
-# max(as.numeric(NULL)) is -Inf, !is.finite fires, maxN becomes 0, and
-# .apiDrawWork returned 0 because it read "column absent" as "no work".
-# VERIFIED: a two-row table declaring n = 200,000 - twenty times the
-# ceiling - passed both gates and ran the analysis. .apiMaxN was not
-# raised, it was ABSENT, which reinstates the exact attack the
-# 2026-08-26 re-review believed it had closed (see the comment above
-# .apiMaxN, still describing it).
-#
-# Names only - no data mutation. validateData does the rest and is
-# idempotent under this, since uppercasing an uppercase name is a
-# no-op and NUMBER has already become N.
-.apiNormalizeNames <- function(DATA) {
-  if (is.null(DATA) || is.null(names(DATA)) || !length(names(DATA)))
-    return(DATA)
-  names(DATA) <- toupper(trimws(names(DATA)))
-  nm <- names(DATA)
-  if (!("N" %in% nm)) {
-    i <- grep("NUMBER", nm)
-    if (length(i)) names(DATA)[i[1]] <- "N"
-  }
-  if (!("ROW" %in% nm)) {
-    i <- grep("MEASURE", nm)
-    if (!length(i)) i <- grep("GROUP", nm)
-    if (length(i)) names(DATA)[i[1]] <- "ROW"
-  }
-  DATA
-}
+# Duplicate names after normalizing are REFUSED rather than resolved:
+# R's $ takes the first silently, so the gate and the simulator can
+# otherwise mean different columns.
+.apiNormalizeNames <- function(DATA) .iaNormalizeNames(DATA)
 
 # Which columns look like category columns, on the RAW frame - the gate
 # runs before validateData has computed CategoryNames, so it has to
