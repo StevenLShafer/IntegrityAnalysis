@@ -60,15 +60,41 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 0L
 # The engine must come from an INSTALLED library, never load_all of the
 # live tree: the 2026-08-25 Carlisle certification was contaminated by
 # parse children absorbing mid-run edits (AGENTS.md, corpus README).
-if (!requireNamespace("IntegrityAnalysis", quietly = TRUE))
-  stop("IntegrityAnalysis is not installed in THIS R", call. = FALSE)
 # SNAPSHOT LIBRARY, named explicitly (2026-08-29), same discipline as
 # measureMisparse. INTEGRITY_SNAPSHOT_LIB points at a library built by
 # `R CMD INSTALL --library=<dir> .` from a known commit. Without it the
 # run silently uses whatever is on .libPaths(), which is how a STALE
 # build produced the corroboration figure for two days.
+#
+# READ IT BEFORE THE CHECK BELOW. The check has to look in the library
+# the run will actually load from (fixed 2026-08-30): with no lib.loc,
+# requireNamespace() searches only the default .libPaths(), so on a
+# machine where the package is installed ONLY in the snapshot library -
+# the recommended setup - this refused to start; and on a machine that
+# also had a copy on the default path it passed by finding THAT one,
+# which is the stale-build hazard the paragraph above warns about.
 libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
+# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-30). Two things
+# depend on it being there, and lib.loc reaches neither:
+#
+#   1. The check below, which must ask about the library this run will
+#      actually load from - not "is some copy installed anywhere".
+#   2. THE SUBPROCESS CHILDREN. parseBaselineTableFiles() hands each
+#      child the PARENT'S .libPaths(); with the snapshot library absent
+#      from it, every child failed to load the package and returned
+#      NULL, and the run reported "parsed: 0" with no error anywhere.
+#
+# Both symptoms were invisible on a machine that also had a copy on the
+# default path - which is exactly the stale-build hazard described
+# above, silently doing the work the snapshot library was meant to do.
+if (nzchar(libDir)) .libPaths(c(libDir, .libPaths()))
 if (!nzchar(libDir)) libDir <- NULL
+if (!requireNamespace("IntegrityAnalysis", quietly = TRUE,
+                      lib.loc = libDir))
+  stop("IntegrityAnalysis is not installed in ",
+       if (is.null(libDir)) "THIS R's library path" else libDir,
+       " - install it there first (R CMD INSTALL --library=<dir> .)",
+       call. = FALSE)
 suppressWarnings(suppressPackageStartupMessages({
   if (is.null(libDir)) library(IntegrityAnalysis)
   else library(IntegrityAnalysis, lib.loc = libDir)
