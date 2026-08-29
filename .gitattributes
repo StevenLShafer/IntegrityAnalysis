@@ -1,0 +1,16 @@
+# Shell scripts must keep LF endings even in a Windows working tree.
+#
+# Added 2026-08-30 after a real failure. tools/linuxProvision.sh is
+# COPIED to a Linux compute node straight from this working tree, and a
+# Windows checkout had rewritten it with CRLF. bash then died on the
+# first brace group it met:
+#
+#   /home/steve/provision.sh: line 88: syntax error near unexpected
+#   token `||'
+#
+# The committed blob was fine - LF, as it should be - so nothing was
+# wrong in the repository, and cloning on Linux always worked. The
+# corruption happened on checkout, which makes it invisible in a diff
+# and easy to misdiagnose as a bug in the script. Pinning eol=lf stops
+# the conversion for the files that can never tolerate it.
+*.sh text eol=lf
