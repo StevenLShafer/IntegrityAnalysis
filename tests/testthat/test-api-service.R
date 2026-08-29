@@ -449,6 +449,61 @@ test_that("journalTables carry the sanitizing too", {
   }
 })
 
+test_that("gate bypasses via column NAMING are closed", {
+  # The 2026-08-28 fix added a SECOND name normalizer to apiService.R
+  # that matched a subset of validateData's rules. The overnight screen
+  # found every missed rule was a bypass. Both callers now use one
+  # shared .iaNormalizeNames, so these cannot diverge again.
+  mkCat <- function(labelCol) {
+    d <- data.frame(TRIAL = "T", X = rep(paste0("V", 1:20), each = 50),
+                    N = NA_real_, MEAN = NA_real_, SD = NA_real_,
+                    stringsAsFactors = FALSE)
+    names(d)[2] <- labelCol
+    for (k in 1:190) d[[paste0("C", k)]] <- 5L
+    d$C190[1] <- NA
+    d
+  }
+  # F1: validateData greps "ROW", so ANY of these becomes the label
+  # column - and the gate must recognise all of them. "ROWS" scored
+  # drawWork 0 against 1.9e10 for "ROW", and was analysed anyway.
+  for (lab in c("ROW", "ROWS", "ROW LABEL", "MEASURE")) {
+    a <- .apiAnalyze(mkCat(lab))
+    expect_identical(a$stage, "too_large",
+                     info = paste("label column:", lab))
+  }
+
+  # F2: NUMBER and N BOTH present. validateData renames NUMBER -> N
+  # unconditionally, leaving two columns called N; R's $ takes the
+  # first, so the gate read N=1 while P_Calc got N=5000.
+  both <- data.frame(TRIAL = "T", ROW = rep(paste0("V", 1:100), each = 2),
+                     NUMBER = 5000, N = 1, MEAN = 1, SD = 1,
+                     stringsAsFactors = FALSE)
+  expect_false(isTRUE(.apiAnalyze(both)$ok))
+  v <- shiny::isolate(validateData(both))
+  expect_true(isTRUE(v$FAIL))          # duplicate normalized names refused
+
+  # and the single-column aliases stay closed
+  for (nm in c("n", "NUMBER")) {
+    d <- data.frame(TRIAL = "T", ROW = c("A", "A"), Z = 200000,
+                    MEAN = c(1, 2), SD = 1,
+                    check.names = FALSE, stringsAsFactors = FALSE)
+    names(d)[3] <- nm
+    expect_identical(.apiAnalyze(d)$stage, "too_large", info = nm)
+  }
+})
+
+test_that("a partial-matching column name cannot crash validation", {
+  # F4: $ partial-matches SILENTLY, so DATA$N found a "Notes" column,
+  # is.null(DATA$N) was FALSE, the structural failure never fired, and
+  # execution reached DATA[i, c("N","MEAN","SD")] - "undefined columns
+  # selected", an UNCAUGHT error in the app's reactive rather than a
+  # coloured-cell report.
+  d <- data.frame(TRIAL = "T", ROW = c("a", "a"), Notes = c("x", "y"),
+                  MEAN = c(1, 2), SD = c(1, 1), stringsAsFactors = FALSE)
+  v <- expect_no_error(shiny::isolate(validateData(d)))
+  expect_true(isTRUE(v$FAIL))
+})
+
 test_that("the compute budget covers CATEGORICAL work too", {
   # F1 of the 2026-08-28 screen. P_Calc has THREE branches; the budget
   # modelled two. The categorical one simulates with r2dtable, whose
