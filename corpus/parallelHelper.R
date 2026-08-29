@@ -125,6 +125,21 @@ iaParallel <- function(items, fn, export = character(0), seed = 1L,
   }
   parallel::clusterExport(cl, c("packages", "libDir"), envir = environment())
   parallel::clusterEvalQ(cl, {
+    # PUT libDir ON THE WORKER'S .libPaths(), not just lib.loc
+    # (2026-08-30). lib.loc affects only that one library() call. It
+    # does NOT make the library visible to anything the worker itself
+    # spawns - and these workers spawn GRANDCHILDREN:
+    # parseBaselineTableFiles() runs one subprocess per PDF and hands
+    # each the WORKER's .libPaths(). Without this line every
+    # grandchild failed to load IntegrityAnalysis, returned NULL, and
+    # measureMisparse reported "parsed: 0" over 1,110 files with no
+    # error anywhere - while the same script on 12 files (one batch,
+    # so the SEQUENTIAL path) parsed 11 of them correctly.
+    #
+    # That asymmetry is the tell, and it is worth remembering: a smoke
+    # test small enough to stay sequential does not exercise this at
+    # all. Test the parallel path with more items than `batch`.
+    if (!is.null(libDir)) .libPaths(c(libDir, .libPaths()))
     for (p in packages)
       suppressWarnings(suppressPackageStartupMessages(
         if (is.null(libDir)) library(p, character.only = TRUE)
