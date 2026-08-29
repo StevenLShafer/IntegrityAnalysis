@@ -47,14 +47,47 @@
 # session with only the package attached and whatever `export` names it.   #
 ############################################################################
 
+# Physical cores, asking the KERNEL rather than trusting R.
+#
+# Added 2026-08-29. parallel::detectCores(logical = FALSE) is not
+# reliable everywhere: on the Ubuntu 26.04 compute node (Ryzen 7 4800U)
+# it returns 16 for a CPU the kernel reports as 8 physical cores with 8
+# hyperthreads - verified against both `lscpu -p=Core,Socket` and
+# /proc/cpuinfo's "cpu cores" field. Believing R there would have
+# started 14 workers on 8 cores: nearly 2x oversubscription, and the
+# exact opposite of the headroom rule below. The failure is silent -
+# the run completes, just slower and with the machine unusable - so
+# nothing would have pointed at the cause.
+#
+# Order of preference: /proc/cpuinfo (authoritative on Linux, no
+# subprocess), then R's guess, then a conservative 2.
+.iaPhysicalCores <- function() {
+  if (file.exists("/proc/cpuinfo")) {
+    n <- tryCatch({
+      info    <- readLines("/proc/cpuinfo", warn = FALSE)
+      perPkg  <- as.integer(sub(".*:[[:space:]]*", "",
+                                grep("^cpu cores", info, value = TRUE)))
+      sockets <- unique(sub(".*:[[:space:]]*", "",
+                            grep("^physical id", info, value = TRUE)))
+      if (length(perPkg) && !anyNA(perPkg))
+        perPkg[1] * max(1L, length(sockets)) else NA_integer_
+    }, error = function(e) NA_integer_)
+    if (!is.na(n) && n >= 1L) return(as.integer(n))
+  }
+  phys <- tryCatch(parallel::detectCores(logical = FALSE),
+                   error = function(e) NA_integer_)
+  if (is.na(phys) || phys < 1L) 2L else as.integer(phys)
+}
+
 # How many workers this machine should use.
+#
+# The minus-two rule is Steve's, and it is about a machine someone is
+# SITTING AT. On a headless node nobody is competing for those cores,
+# so set INTEGRITY_WORKERS to the full physical count there.
 iaWorkers <- function() {
   env <- suppressWarnings(as.integer(Sys.getenv("INTEGRITY_WORKERS", "")))
   if (!is.na(env) && env > 0) return(env)
-  phys <- tryCatch(parallel::detectCores(logical = FALSE),
-                   error = function(e) NA_integer_)
-  if (is.na(phys) || phys < 1) phys <- 2L
-  max(1L, phys - 2L)          # Steve's rule: leave two for the desktop
+  max(1L, .iaPhysicalCores() - 2L)   # leave two for the desktop
 }
 
 # Run fn over items across a cluster. Returns a list in item order.

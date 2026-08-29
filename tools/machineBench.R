@@ -7,7 +7,19 @@ cat("=========== IntegrityAnalysis machine benchmark ===========\n")
 si <- Sys.info()
 cat("host    :", si[["nodename"]], "\n")
 cat("R       :", R.version.string, "\n")
-nc <- parallel::detectCores(logical = FALSE)
+# PHYSICAL CORES: ask the kernel, not R. detectCores(logical = FALSE)
+# returns 16 on the Ubuntu compute node for a CPU with 8 physical cores
+# (verified against lscpu and /proc/cpuinfo), which inflated this
+# script's own "~13.6x if parallel" projection to nearly double the
+# truth. corpus/parallelHelper.R carries the one implementation; source
+# it when it is reachable rather than keeping a second copy in step.
+# Run as `Rscript tools/machineBench.R` from the repo root, so the
+# relative path holds; the fallback keeps this script standalone if it
+# is ever copied to a bare machine to size it up.
+nph <- "corpus/parallelHelper.R"
+if (file.exists(nph)) source(nph, local = TRUE)
+nc <- if (exists(".iaPhysicalCores")) .iaPhysicalCores() else
+        parallel::detectCores(logical = FALSE)
 nl <- parallel::detectCores(logical = TRUE)
 cat("cores   :", nc, "physical /", nl, "logical\n\n")
 
