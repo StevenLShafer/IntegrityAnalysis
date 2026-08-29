@@ -62,10 +62,26 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 0L
 # parse children absorbing mid-run edits (AGENTS.md, corpus README).
 if (!requireNamespace("IntegrityAnalysis", quietly = TRUE))
   stop("IntegrityAnalysis is not installed in THIS R", call. = FALSE)
+# SNAPSHOT LIBRARY, named explicitly (2026-08-29), same discipline as
+# measureMisparse. INTEGRITY_SNAPSHOT_LIB points at a library built by
+# `R CMD INSTALL --library=<dir> .` from a known commit. Without it the
+# run silently uses whatever is on .libPaths(), which is how a STALE
+# build produced the corroboration figure for two days.
+libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
+if (!nzchar(libDir)) libDir <- NULL
 suppressWarnings(suppressPackageStartupMessages({
-  library(IntegrityAnalysis); library(shiny); library(openxlsx)
+  if (is.null(libDir)) library(IntegrityAnalysis)
+  else library(IntegrityAnalysis, lib.loc = libDir)
+  library(shiny); library(openxlsx)
   library(foreach); library(MBESS); library(Rfast); library(dqrng)
 }))
+cat("engine: version",
+    as.character(utils::packageVersion("IntegrityAnalysis",
+                                       lib.loc = libDir)),
+    " commit ",
+    tryCatch({ s <- IntegrityAnalysis::buildCommit()
+               if (is.na(s)) "unknown" else substr(s, 1, 8) },
+             error = function(e) "unknown"), "\n")
 options(ECHO_OUTPUT_COMMENTS = NA)
 
 ## ---- build the eligible set --------------------------------------------
@@ -182,7 +198,8 @@ oneFile <- function(i) {
 
 t0 <- Sys.time()
 invisible(iaParallel(seq_len(nrow(elig)), oneFile,
-                     export = c("elig", "workDir", "pdfRoot")))
+                     export = c("elig", "workDir", "pdfRoot"),
+                     libDir = libDir))
 cat("pipeline pass took",
     round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
     "min
