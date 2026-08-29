@@ -62,7 +62,7 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else NA_integer_
 # could not have changed underneath it.
 # Read the snapshot library FIRST, because the check below has to look
 # in it. Getting this order wrong made the guard test the wrong library
-# (fixed 2026-08-30): requireNamespace() with no lib.loc searches only
+# (fixed 2026-08-29): requireNamespace() with no lib.loc searches only
 # the default .libPaths(), so on a machine where the package is
 # installed ONLY in the snapshot library - which is the recommended
 # setup - the script refused to start. Worse, on a machine that also
@@ -71,7 +71,7 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else NA_integer_
 # when the question is "is the build I am about to load present".
 # That is precisely the stale-0.1.0 hazard described just above.
 libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
-# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-30). Two things
+# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-29). Two things
 # depend on it being there, and lib.loc reaches neither:
 #
 #   1. The check below, which must ask about the library this run will

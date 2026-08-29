@@ -9,7 +9,7 @@ holds copyrighted PDFs — so the corroboration figure quoted beside the
 parse rate is inspectable. The file carries only PDF basenames, PMIDs
 and counts; no article content.
 
-**Generated 2026-08-30** on the Linux compute node `surface`, from a
+**Generated 2026-08-29** on the Linux compute node `surface`, from a
 snapshot library built by `R CMD INSTALL --library=<dir> .` at commit
 `c202d55`, version 0.2.0, with 10 parallel workers.
 
@@ -40,7 +40,7 @@ in public and its chain of custody is part of the claim.
 plus a stale 0.1.0 build. Reported 44.4% fully corroborated and 10.5%
 zero-corroboration.
 
-**2026-08-29 — also unsound, discovered 2026-08-30.** Reported 42.8%.
+**2026-08-29 (earlier the same day) — also unsound.** Reported 42.8%.
 It was run with an explicit snapshot library and *looked* clean: the
 script printed `engine: version 0.2.0` and that was true — **of the
 parent process only.**
