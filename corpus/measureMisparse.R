@@ -62,7 +62,7 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else NA_integer_
 # could not have changed underneath it.
 # Read the snapshot library FIRST, because the check below has to look
 # in it. Getting this order wrong made the guard test the wrong library
-# (fixed 2026-08-30): requireNamespace() with no lib.loc searches only
+# (fixed 2026-08-29): requireNamespace() with no lib.loc searches only
 # the default .libPaths(), so on a machine where the package is
 # installed ONLY in the snapshot library - which is the recommended
 # setup - the script refused to start. Worse, on a machine that also
@@ -71,7 +71,7 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else NA_integer_
 # when the question is "is the build I am about to load present".
 # That is precisely the stale-0.1.0 hazard described just above.
 libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
-# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-30). Two things
+# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-29). Two things
 # depend on it being there, and lib.loc reaches neither:
 #
 #   1. The check below, which must ask about the library this run will
@@ -281,6 +281,12 @@ if (file.exists(rowsPath)) {
   # that extracted NOTHING as perfect, because a file with no pairs has
   # no uncorroborated pairs. 101 of 988 parsed files were in that state,
   # inflating the headline from 42.8% to 48.7%.
+  #
+  # (Those two percentages are from the 2026-08-29 run, since SUPERSEDED:
+  # its parse subprocesses were running the stale 0.1.0 engine - see
+  # corpus/CorroborationByFile.README.md and PR #115. The exclusion
+  # described here is unaffected and still correct; only the numbers
+  # moved. Current figures: 1,047 parsed, 81 vacuous, 44.8%.)
   #
   # That is the same error as quoting a parse rate without asking
   # whether the table was right: it rewards extracting nothing. This
