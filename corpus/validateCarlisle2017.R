@@ -53,7 +53,7 @@ options(ECHO_OUTPUT_COMMENTS = NA)   # P_Calc narrates; a 5,088-trial run must n
 args  <- commandArgs(trailingOnly = TRUE)
 pilot <- "--pilot" %in% args
 mMax  <- if (pilot) 15000 else 100000
-root  <- "C:/dev/IntegrityAnalysis"
+root  <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 outDir <- file.path(root, ".NewCarlisle", "validation2017")
 dir.create(outDir, recursive = TRUE, showWarnings = FALSE)
 resPath <- file.path(outDir, if (pilot) "pilot.csv" else "results.csv")

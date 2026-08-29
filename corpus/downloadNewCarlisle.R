@@ -41,7 +41,7 @@ suppressPackageStartupMessages({
 })
 
 args   <- commandArgs(trailingOnly = TRUE)
-root   <- "C:/dev/IntegrityAnalysis"
+root   <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 srcArg <- if (length(args) >= 1) args[1] else
   file.path(root, "Carlisle PMID to DOI lookup.xlsx")
 outDir <- if (length(args) >= 2) args[2] else file.path(root, ".NewCarlisle")

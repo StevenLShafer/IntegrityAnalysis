@@ -14,7 +14,7 @@
 #        corpus/ExpectedResults.xlsx (built from the Carlisle files alone)
 # Writes corpus/Comparison.xlsx and prints the agreement summary.
 suppressMessages(library(openxlsx))
-repo <- "C:/dev/IntegrityAnalysis"
+repo <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 
 # Optional args: [actualFile] [comparisonOut] (paths under corpus/),
 # so the continuous-only run compares without clobbering the full-table

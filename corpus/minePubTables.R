@@ -34,8 +34,8 @@
 #   runs, so a nightly loop just calls it with no cap until done.)        #
 ############################################################################
 
-libDir  <- "C:/Temp/ia-pubtables-lib"
-dataDir <- "C:/temp/pubtables1m"
+libDir  <- file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ia-pubtables-lib")
+dataDir <- file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "pubtables1m")
 outDir  <- file.path(dataDir, "mining")
 chunkDir <- file.path(outDir, "chunks")
 dir.create(chunkDir, showWarnings = FALSE, recursive = TRUE)
@@ -45,7 +45,7 @@ suppressPackageStartupMessages(
 suppressPackageStartupMessages({library(jsonlite); library(xml2)})
 
 engineCommit <- tryCatch(
-  system2("git", c("-C", "C:/Temp/ia-pubtables", "rev-parse", "--short",
+  system2("git", c("-C", file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ia-pubtables"), "rev-parse", "--short",
                    "HEAD"), stdout = TRUE)[1],
   error = function(e) NA_character_)
 

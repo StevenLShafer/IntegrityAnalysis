@@ -84,7 +84,7 @@ from   <- if (length(args) >= 2) args[2] else
   format(Sys.Date() - 365, "%Y-%m-%d")
 maxN   <- if (length(args) >= 4) as.integer(args[4]) else 300L
 outDir <- if (length(args) >= 5) args[5] else
-  file.path("C:/temp", paste0(server, "_rct"))
+  file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), paste0(server, "_rct"))
 pauseSec <- if (length(args) >= 6) as.numeric(args[6]) else 6
 dir.create(outDir, showWarnings = FALSE, recursive = TRUE)
 manifestPath <- file.path(outDir, "manifest.csv")

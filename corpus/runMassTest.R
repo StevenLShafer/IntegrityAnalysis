@@ -37,11 +37,11 @@ suppressWarnings(suppressPackageStartupMessages({
   library(dqrng)
 }))
 a <- commandArgs(TRUE)
-workDir <- if (length(a) >= 1) a[1] else "C:/temp/MassTest_work"
+workDir <- if (length(a) >= 1) a[1] else file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "MassTest_work")
 mode <- if (length(a) >= 2) a[2] else "all"
 stopifnot(mode %in% c("all", "continuous"))
 dir.create(workDir, showWarnings = FALSE, recursive = TRUE)
-testDir <- file.path("C:/dev/IntegrityAnalysis", "corpus", "TEST")
+testDir <- file.path(Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis"), "corpus", "TEST")
 pdfs <- list.files(testDir, "[.]pdf$", full.names = TRUE)
 cat("TEST corpus:", length(pdfs), "PDFs; checkpoints in", workDir, "\n")
 
@@ -120,7 +120,7 @@ outName <- if (mode == "continuous") {
 } else {
   "ActualResults.xlsx"
 }
-saveWorkbook(wb, file.path("C:/dev/IntegrityAnalysis", "corpus",
+saveWorkbook(wb, file.path(Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis"), "corpus",
                            outName), overwrite = TRUE)
 cat("written corpus/", outName, " -",
     sum(vapply(trials, function(t) t$STATUS[1] == "analyzed", logical(1))),

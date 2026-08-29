@@ -39,7 +39,7 @@ suppressPackageStartupMessages({
 })
 
 args    <- commandArgs(trailingOnly = TRUE)
-root    <- "C:/dev/IntegrityAnalysis"
+root    <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 absolute <- function(p) if (grepl("^([A-Za-z]:|/)", p)) p else file.path(root, p)
 # Default .NewCarlisle; takes an argument so the same pass runs over the
 # Boldt and Fujii corpora, which keep their own directories.

@@ -62,7 +62,7 @@ source(file.path(scriptDir, "rctFilterPatterns.R"))
 args     <- commandArgs(trailingOnly = TRUE)
 maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 100L
 maxGB    <- if (length(args) >= 2) as.numeric(args[2]) else 2
-outDir   <- if (length(args) >= 3) args[3] else "C:/temp/medrxiv_rct"
+outDir   <- if (length(args) >= 3) args[3] else file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "medrxiv_rct")
 monthArg <- if (length(args) >= 4) args[4] else "recent"
 incoming <- file.path(outDir, "incoming")
 dir.create(incoming, showWarnings = FALSE, recursive = TRUE)

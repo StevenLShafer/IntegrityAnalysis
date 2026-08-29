@@ -58,7 +58,7 @@
 # Usage:  Rscript corpus/bucketPubTables.R [maxTables]                     #
 ############################################################################
 
-dataDir  <- "C:/temp/pubtables1m"
+dataDir  <- file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "pubtables1m")
 wordsDir <- file.path(dataDir, "words_test")
 annDir   <- file.path(dataDir, "annotations_test")
 outDir   <- file.path(dataDir, "buckets")
@@ -160,7 +160,8 @@ tableBox <- function(annFile) {
 # its own - the textbook case, and it ran on one core for 29 minutes.
 # Nothing is written until the end, so there is no write contention to
 # design around; the workers just return rows.
-source(file.path("C:/dev/IntegrityAnalysis", "corpus", "parallelHelper.R"))
+source(file.path(Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis"),
+                 "corpus", "parallelHelper.R"))
 scoreOne <- function(i) {
   f <- files[i]
   stem <- sub("_words[.]json$", "", basename(f))

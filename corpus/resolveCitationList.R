@@ -51,11 +51,11 @@ if (!length(which_) || !which_[1] %in% c("boldt", "fujii"))
   stop("say which list: boldt or fujii")
 which_ <- which_[1]
 
-root <- "C:/dev/IntegrityAnalysis"
+root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 outDir <- file.path(root, if (which_ == "boldt") ".Boldt" else ".Fujii")
 dir.create(outDir, showWarnings = FALSE)
 newCarlisle <- file.path(root, ".NewCarlisle")
-corpusDir <- "C:/temp/journals"
+corpusDir <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 
 email <- "steven.shafer@stanford.edu"
 tool  <- "IntegrityAnalysis"

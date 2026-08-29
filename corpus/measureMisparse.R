@@ -44,8 +44,8 @@ suppressPackageStartupMessages({
   library(openxlsx)
 })
 
-root    <- "C:/dev/IntegrityAnalysis"
-corpus  <- "C:/temp/journals"
+root    <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+corpus  <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 outDir  <- file.path(root, ".NewCarlisle", "misparse")
 dir.create(outDir, recursive = TRUE, showWarnings = FALSE)
 rowsPath <- file.path(outDir, "misparse_rows.csv")

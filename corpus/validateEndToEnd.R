@@ -49,8 +49,8 @@
 ############################################################################
 
 suppressMessages(library(openxlsx))
-root    <- "C:/dev/IntegrityAnalysis"
-workDir <- Sys.getenv("E2E_WORKDIR", "C:/temp/e2e_work_cont")
+root    <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+workDir <- Sys.getenv("E2E_WORKDIR", file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "e2e_work_cont"))
 outCsv  <- file.path(root, "corpus", "EndToEndValidation.csv")
 dir.create(workDir, showWarnings = FALSE, recursive = TRUE)
 
@@ -121,7 +121,7 @@ if (maxFiles > 0) elig <- utils::head(elig, maxFiles)
 # minus two (Steve's rule) - see corpus/parallelHelper.R for why
 # physical rather than logical, and for the RNG handling.
 source(file.path(root, "corpus", "parallelHelper.R"))
-pdfRoot <- "C:/temp/journals"
+pdfRoot <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
 
 oneFile <- function(i) {
   ck <- file.path(workDir, paste0(gsub("[^A-Za-z0-9]", "_", elig$PDF[i]),
