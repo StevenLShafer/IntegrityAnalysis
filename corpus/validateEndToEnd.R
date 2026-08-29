@@ -67,14 +67,14 @@ maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 0L
 # build produced the corroboration figure for two days.
 #
 # READ IT BEFORE THE CHECK BELOW. The check has to look in the library
-# the run will actually load from (fixed 2026-08-30): with no lib.loc,
+# the run will actually load from (fixed 2026-08-29): with no lib.loc,
 # requireNamespace() searches only the default .libPaths(), so on a
 # machine where the package is installed ONLY in the snapshot library -
 # the recommended setup - this refused to start; and on a machine that
 # also had a copy on the default path it passed by finding THAT one,
 # which is the stale-build hazard the paragraph above warns about.
 libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
-# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-30). Two things
+# PUT IT ON .libPaths(), not just lib.loc (fixed 2026-08-29). Two things
 # depend on it being there, and lib.loc reaches neither:
 #
 #   1. The check below, which must ask about the library this run will

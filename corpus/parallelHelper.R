@@ -126,7 +126,7 @@ iaParallel <- function(items, fn, export = character(0), seed = 1L,
   parallel::clusterExport(cl, c("packages", "libDir"), envir = environment())
   parallel::clusterEvalQ(cl, {
     # PUT libDir ON THE WORKER'S .libPaths(), not just lib.loc
-    # (2026-08-30). lib.loc affects only that one library() call. It
+    # (2026-08-29). lib.loc affects only that one library() call. It
     # does NOT make the library visible to anything the worker itself
     # spawns - and these workers spawn GRANDCHILDREN:
     # parseBaselineTableFiles() runs one subprocess per PDF and hands

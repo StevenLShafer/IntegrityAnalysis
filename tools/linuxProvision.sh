@@ -62,7 +62,7 @@ set -euo pipefail
 # step still reports success, R still installs correctly system-wide,
 # and nothing looks wrong until you try to use the machine and find no
 # repository in your home directory. That happened while provisioning
-# the second compute node on 2026-08-30 and cost a full re-run.
+# the second compute node on 2026-08-29 and cost a full re-run.
 if [ "$(id -u)" -eq 0 ]; then
   echo "ERROR: do not run this with sudo." >&2
   echo >&2
