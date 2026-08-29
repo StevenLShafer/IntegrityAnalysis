@@ -282,6 +282,12 @@ if (file.exists(rowsPath)) {
   # no uncorroborated pairs. 101 of 988 parsed files were in that state,
   # inflating the headline from 42.8% to 48.7%.
   #
+  # (Those two percentages are from the 2026-08-29 run, since SUPERSEDED:
+  # its parse subprocesses were running the stale 0.1.0 engine - see
+  # corpus/CorroborationByFile.README.md and PR #115. The exclusion
+  # described here is unaffected and still correct; only the numbers
+  # moved. Current figures: 1,047 parsed, 81 vacuous, 44.8%.)
+  #
   # That is the same error as quoting a parse rate without asking
   # whether the table was right: it rewards extracting nothing. This
   # figure exists to be the honest companion to the parse rate, so it
