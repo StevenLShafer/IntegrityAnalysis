@@ -63,20 +63,33 @@ iaIdSalt <- function(root = Sys.getenv("INTEGRITY_ROOT",
   readLines(f, warn = FALSE)[1]
 }
 
-#' Stable pseudonym for a study.
+#' Stable pseudonym for a study or a publication.
 #'
-#' @param key character vector of PMIDs (or any stable study key).
-#' @return "IA-" followed by 10 hex characters.
+#' @param key character vector of PMIDs, NCT numbers, or any stable key.
+#' @param prefix identifier namespace. Distinct prefixes keep the ID
+#'   spaces separate and self-describing:
+#'   \describe{
+#'     \item{`IA`}{a trial in the Carlisle validation set (keyed by PMID)}
+#'     \item{`TR`}{a ClinicalTrials.gov trial (keyed by NCT)}
+#'     \item{`PUB`}{a publication (keyed by PMID)}
+#'   }
+#'   The prefix is part of the hashed string, so the same PMID appearing
+#'   as both a trial key and a publication key does NOT collide into one
+#'   identifier - which matters, because those are different objects and
+#'   linking them should require the crosswalk.
+#' @return the prefix, a hyphen, and 10 hex characters.
 iaPseudonym <- function(key, root = Sys.getenv("INTEGRITY_ROOT",
-                                               "C:/dev/IntegrityAnalysis")) {
+                                               "C:/dev/IntegrityAnalysis"),
+                        prefix = "IA") {
   if (!requireNamespace("digest", quietly = TRUE))
     stop("package 'digest' is required for pseudonymous identifiers",
          call. = FALSE)
   salt <- iaIdSalt(root)
   vapply(as.character(key), function(k)
     if (is.na(k) || !nzchar(k)) NA_character_ else
-      paste0("IA-", substr(digest::digest(paste0(salt, "|", k),
-                                          algo = "sha256"), 1, 10)),
+      paste0(prefix, "-", substr(digest::digest(paste0(salt, "|", prefix,
+                                                       "|", k),
+                                                algo = "sha256"), 1, 10)),
     character(1), USE.NAMES = FALSE)
 }
 
