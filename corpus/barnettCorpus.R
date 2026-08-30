@@ -58,6 +58,7 @@
 #   Rscript corpus/barnettCorpus.R [outDir] [maxTrials]                    #
 #     outDir     default <INTEGRITY_WORK>/ctgov_corpus                     #
 #     maxTrials  0 = all (default); a small number for a smoke test        #
+#     --report-only   rebuild the comparison from an existing barnett.csv  #
 #                                                                          #
 # OUTPUT                                                                   #
 #   barnett.csv       one row per trial: nStat, pDispersed, epsilon, ...   #
@@ -67,7 +68,8 @@
 args   <- commandArgs(trailingOnly = TRUE)
 outDir <- if (length(args) >= 1) args[1] else
   file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ctgov_corpus")
-maxN   <- if (length(args) >= 2) as.integer(args[2]) else 0L
+maxN   <- if (length(args) >= 2) suppressWarnings(as.integer(args[2])) else 0L
+if (is.na(maxN)) maxN <- 0L
 
 root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 
@@ -164,6 +166,20 @@ oneTrial <- function(nct) {
 
   ts <- barnettTStats(DATA, CategoryNames = unname(categoryNames))
   r  <- barnettDispersion(ts)
+
+  # THE SAME TEST ON EACH HALF OF THE EVIDENCE, separately. This is not
+  # decoration. Barnett names correlated summary statistics as the one
+  # way his method produces false positives, and the registry's
+  # categorical rows are exactly where correlation would live: a
+  # three-level category is one multinomial split into three binomials
+  # that the model then treats as independent. If a dispersion signal
+  # appears only in the categorical half, it is a property of that
+  # approximation. If it appears in the continuous half too - where the
+  # rows are separate measurements of separate things - it is a property
+  # of the trials.
+  rc <- barnettDispersion(ts[ts$statistic == "continuous", , drop = FALSE])
+  rk <- barnettDispersion(ts[ts$statistic == "categorical", , drop = FALSE])
+
   data.frame(TRIAL = nct,
              nStat   = r$nStat,
              nCont   = sum(ts$statistic == "continuous"),
@@ -174,19 +190,35 @@ oneTrial <- function(nct) {
              gamma   = r$gamma,
              direction = r$direction,
              multiplier = r$multiplier,
+             pCont   = rc$pDispersed, epsCont = rc$epsilon,
+             pCat    = rk$pDispersed, epsCat  = rk$epsilon,
              stringsAsFactors = FALSE)
 }
 
-cat("\nrunning the dispersion test\n")
-t0 <- Sys.time()
-res <- iaParallel(trials, function(nct)
-         tryCatch(oneTrial(nct), error = function(e) NULL),
-       export = c("contBy", "catsBy", "oneTrial"))
-res <- do.call(rbind, Filter(Negate(is.null), res))
-cat("  done in", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
-    "min;", nrow(res), "trials returned\n")
-utils::write.csv(res, outCsv, row.names = FALSE)
-cat("  written:", outCsv, "\n")
+# --report-only regenerates the comparison from an existing barnett.csv
+# without recomputing it. The dispersion pass is deterministic and
+# depends only on the baseline tables, while the screen it is compared
+# against takes over an hour and lands later; separating them means the
+# report can be refreshed the moment the screen finishes, instead of
+# either waiting for both or recomputing what has not changed. Same
+# reasoning as --map-only in buildCtgovCorpus.R.
+reportOnly <- "--report-only" %in% args
+if (reportOnly && file.exists(outCsv)) {
+  cat("\n--report-only: reading", outCsv, "\n")
+  res <- utils::read.csv(outCsv, stringsAsFactors = FALSE)
+} else {
+  cat("\nrunning the dispersion test\n")
+  t0 <- Sys.time()
+  res <- iaParallel(trials, function(nct)
+           tryCatch(oneTrial(nct), error = function(e) NULL),
+         export = c("contBy", "catsBy", "oneTrial"))
+  res <- do.call(rbind, Filter(Negate(is.null), res))
+  cat("  done in",
+      round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
+      "min;", nrow(res), "trials returned\n")
+  utils::write.csv(res, outCsv, row.names = FALSE)
+  cat("  written:", outCsv, "\n")
+}
 
 ## ---- the comparison ------------------------------------------------------
 con <- file(repTxt, open = "w", encoding = "UTF-8")
@@ -244,6 +276,36 @@ if (file.exists(scrPath)) {
       sprintf("%+.3f", stats::cor(m$P, m$epsilon, method = "spearman")))
   say("  (negative means our HIGH p goes with his over-dispersion,")
   say("   which is the two instruments agreeing)")
+  say("")
+  say("THE SAME QUESTION, asked of each half of the evidence separately.")
+  say("Barnett names correlated statistics as the way his method produces")
+  say("false positives, and the registry's categorical rows are where")
+  say("correlation would live. If the pattern is only in the categorical")
+  say("column it is an artefact of that approximation; if it is in the")
+  say("continuous column too, it is a property of the trials.")
+  say("")
+  say(sprintf("  %-22s %7s %10s %10s %9s", "our trial p", "n",
+              "med eps", "med contin", "med categ"))
+  for (b in bands) {
+    s <- m[m$P >= b[1] & m$P < b[2], ]
+    if (!nrow(s)) next
+    mc <- suppressWarnings(stats::median(s$epsCont, na.rm = TRUE))
+    mk <- suppressWarnings(stats::median(s$epsCat,  na.rm = TRUE))
+    say(sprintf("  [%.2f, %.2f)%-10s %7d %+10.3f %+10.3f %+9.3f",
+                b[1], b[2], "", nrow(s), stats::median(s$epsilon),
+                if (is.finite(mc)) mc else NA_real_,
+                if (is.finite(mk)) mk else NA_real_))
+  }
+  ok <- is.finite(m$epsCont)
+  if (sum(ok) > 30)
+    say("\n  Spearman, continuous statistics only (n = ", sum(ok), "): ",
+        sprintf("%+.3f", stats::cor(m$P[ok], m$epsCont[ok],
+                                    method = "spearman")))
+  ok <- is.finite(m$epsCat)
+  if (sum(ok) > 30)
+    say("  Spearman, categorical statistics only (n = ", sum(ok), "): ",
+        sprintf("%+.3f", stats::cor(m$P[ok], m$epsCat[ok],
+                                    method = "spearman")))
   say("")
   say("agreement on alarms:")
   ourAlarm <- m$P < 0.01
