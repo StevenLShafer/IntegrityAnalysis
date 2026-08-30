@@ -58,6 +58,7 @@ suppressPackageStartupMessages({library(xml2)})
 scriptDir <- dirname(sub("--file=", "", grep("^--file=",
   commandArgs(FALSE), value = TRUE)[1]))
 source(file.path(scriptDir, "rctFilterPatterns.R"))
+source(file.path(scriptDir, "mecaPrefixScreen.R"))
 
 args     <- commandArgs(trailingOnly = TRUE)
 maxFiles <- if (length(args) >= 1) as.integer(args[1]) else 100L
@@ -254,20 +255,77 @@ if (maxFiles > 0) {
     cat(nrow(listing), "package(s) listed;", nrow(new), "new\n")
   }
   if (!is.null(new) && nrow(new) > 0) {
-    new <- new[cumsum(new$bytes) <= maxGB * 1024^3, , drop = FALSE]
     new <- utils::head(new, maxFiles)
-    cat("downloading", nrow(new), "package(s), ",
-        round(sum(new$bytes) / 1024^2), "MB\n")
+
+    # PREFIX SCREENING (2026-08-29). Before this, every listed package
+    # was downloaded whole and classified after unpacking - and about
+    # 97% of the bytes paid for were then discarded as non-RCT. The
+    # JATS record sits in the FIRST zip entry, so a 64 KB ranged GET is
+    # enough to run classifyRct() and skip the ones that cannot qualify.
+    # See corpus/mecaPrefixScreen.R for the measurement (40/40 agreement
+    # with this pipeline's own manifest) and the fail-open rule.
+    #
+    # BUDGET NOW MEANS ACTUAL EGRESS. maxGB used to be applied to the
+    # LISTED size of candidates before any were fetched; with screening
+    # the listed size is no longer what gets paid for, so the budget is
+    # charged as the run proceeds - screen bytes plus full downloads.
+    # maxFiles still caps packages CONSIDERED, so a caller wanting the
+    # saving raises it: screening 2,000 costs roughly what downloading
+    # 12 used to.
+    screenOn <- !identical(Sys.getenv("INTEGRITY_MECA_SCREEN"), "0")
+    bareBucket <- sub("^s3://([^/]+)/.*$", "\\1", bucket)
+    keyPrefix  <- sub("^s3://[^/]+/", "", bucket)
+    budgetBytes <- maxGB * 1024^3
+    spent <- 0; nScreen <- 0L; nSkip <- 0L; nGet <- 0L; nUndecided <- 0L
+    cat("considering ", nrow(new), " package(s); ",
+        round(sum(new$bytes) / 1024^2), " MB if every one were downloaded",
+        if (screenOn) " (screening first)" else " (screening DISABLED)",
+        "\n", sep = "")
     for (i in seq_len(nrow(new))) {
+      if (spent >= budgetBytes) {
+        cat("budget reached after ", i - 1L, " package(s)\n", sep = ""); break
+      }
+      key <- paste0(keyPrefix, new$month[i], "/", new$name[i])
+      scr <- if (screenOn)
+        screenMecaPrefix(awsExe, profile, bareBucket, key) else
+        list(decided = FALSE)
+      if (screenOn) {
+        nScreen <- nScreen + 1L
+        spent <- spent + min(.mpsWindow, new$bytes[i])
+      }
+      if (isTRUE(scr$decided) && !isTRUE(scr$isRct)) {
+        # Recorded so the package is never reconsidered. `bytes` keeps
+        # its meaning - the package's size - even though we did not pay
+        # for all of it; what was actually spent is reported per run.
+        manifest <- rbind(manifest, data.frame(
+          meca = new$name[i], doi = scr$doi, verdict = "not-rct",
+          license = substr(gsub("[\r\n,]+", " ", scr$license), 1, 60),
+          title = scr$title, pdf = NA_character_,
+          bytes = as.character(new$bytes[i]),
+          date = format(Sys.Date()), stringsAsFactors = FALSE))
+        saveManifest()
+        nSkip <- nSkip + 1L
+        next
+      }
+      if (!isTRUE(scr$decided)) nUndecided <- nUndecided + 1L
       dst <- file.path(incoming, new$name[i])
       if (!file.exists(dst))
-        tryCatch(awsS3("cp", paste0(bucket, new$month[i], "/", new$name[i]),
-                       dst, "--only-show-errors"),
-                 error = function(e) message("download failed: ",
-                                             new$name[i], " - ",
-                                             conditionMessage(e)))
+        tryCatch({
+          awsS3("cp", paste0(bucket, new$month[i], "/", new$name[i]),
+                dst, "--only-show-errors")
+          spent <- spent + new$bytes[i]
+          nGet <- nGet + 1L
+        }, error = function(e) message("download failed: ",
+                                       new$name[i], " - ",
+                                       conditionMessage(e)))
       Sys.sleep(1)
     }
+    if (screenOn)
+      cat(sprintf(paste0("screened %d, skipped %d as non-RCT without ",
+                         "downloading, fetched %d (%d undecided)\n"),
+                  nScreen, nSkip, nGet, nUndecided))
+    cat(sprintf("egress this run: %.0f MB (budget %.0f MB)\n",
+                spent / 1024^2, budgetBytes / 1024^2))
   }
 }
 
