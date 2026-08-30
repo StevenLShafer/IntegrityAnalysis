@@ -150,7 +150,7 @@ simTrial <- function(nct, rho) {
                            d$ROUND_DISPERSION[i])
       }
       parts$cont <- data.frame(
-        TRIAL = nct, ROW = d$ROW, N = d$N, MEAN = d$MEAN, SD = d$SD,
+        TRIAL = nct, ROW = paste0("N|", d$ROW), N = d$N, MEAN = d$MEAN, SD = d$SD,
         SE = NA_real_, Q1 = NA_real_, Q3 = NA_real_,
         ROUND_MEAN = d$ROUND_MEAN, ROUND_DISPERSION = d$ROUND_DISPERSION,
         ROUND_OBSERVATION = d$ROUND_OBSERVATION, stringsAsFactors = FALSE)
@@ -164,7 +164,16 @@ simTrial <- function(nct, rho) {
     lev <- unique(ct$CATEGORY)
     categoryNames <- paste0("C", seq_along(lev)); names(categoryNames) <- lev
     key <- paste(ct$ROW, ct$ARM, sep = "\r"); ord <- !duplicated(key)
-    w <- data.frame(TRIAL = nct, ROW = ct$ROW[ord], N = NA_real_,
+    # NAMESPACE THE TITLES PER BLOCK. barnettTStats() groups by ROW,
+    # so a trial that uses one title for BOTH a continuous and a
+    # categorical measure would merge them into a single group, the
+    # group would be classified categorical, the continuous arms
+    # would contribute all-zero counts, and the whole group would be
+    # dropped with nothing recording the loss. Measured at 36 of
+    # 67,758 trial-title keys (0.053%) in the registry corpus - rare
+    # enough not to move any aggregate, common enough to be wrong.
+    # (CodeRabbit, PR #125.)
+    w <- data.frame(TRIAL = nct, ROW = paste0("K|", ct$ROW[ord]), N = NA_real_,
                     MEAN = NA_real_, SD = NA_real_, SE = NA_real_,
                     Q1 = NA_real_, Q3 = NA_real_, ROUND_MEAN = NA_real_,
                     ROUND_DISPERSION = NA_real_, ROUND_OBSERVATION = NA_real_,

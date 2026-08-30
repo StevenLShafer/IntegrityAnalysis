@@ -96,6 +96,18 @@ test_that("numerically identical arms are found, not lost off the grid", {
   expect_identical(r$direction, "under-dispersed")
 })
 
+test_that("an even `points` cannot silently corrupt the quadrature", {
+  # Simpson's weights c(1, 4, 2, ..., 4, 1) are a quadrature rule only for
+  # an odd number of points. An even count would return numbers that look
+  # fine and are wrong, so it is rounded up rather than accepted.
+  d <- data.frame(t = stats::rt(12, 99), df = 99)
+  expect_equal(barnettDispersion(d, points = 512L)$pDispersed,
+               barnettDispersion(d, points = 513L)$pDispersed)
+  expect_error(barnettDispersion(d, points = 4L), "odd integer")
+  expect_error(barnettDispersion(d, points = c(101L, 201L)), "odd integer")
+  expect_error(barnettDispersion(d, points = NA_integer_), "odd integer")
+})
+
 test_that("too few statistics is a refusal, not a number", {
   expect_equal(barnettDispersion(data.frame(t = 1.2, df = 99))$nStat, 1L)
   expect_true(is.na(barnettDispersion(data.frame(t = 1.2, df = 99))$pDispersed))

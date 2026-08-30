@@ -66,6 +66,11 @@
 ############################################################################
 
 args   <- commandArgs(trailingOnly = TRUE)
+# Strip the flag FIRST. Left in place it would be taken as the
+# positional outDir and the run would die on the missing baseline
+# files before ever reaching the branch. (CodeRabbit, PR #125.)
+reportOnly <- "--report-only" %in% args
+args   <- args[args != "--report-only"]
 outDir <- if (length(args) >= 1) args[1] else
   file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ctgov_corpus")
 maxN   <- if (length(args) >= 2) suppressWarnings(as.integer(args[2])) else 0L
@@ -124,7 +129,7 @@ oneTrial <- function(nct) {
   parts <- list(); categoryNames <- character(0)
 
   if (!is.null(cn) && nrow(cn)) {
-    d <- data.frame(TRIAL = nct, ROW = cn$ROW, N = cn$N, MEAN = cn$MEAN,
+    d <- data.frame(TRIAL = nct, ROW = paste0("N|", cn$ROW), N = cn$N, MEAN = cn$MEAN,
                     SD = cn$SD, SE = cn$SE, Q1 = cn$Q1, Q3 = cn$Q3,
                     ROUND_MEAN = cn$ROUND_MEAN,
                     ROUND_DISPERSION = cn$ROUND_DISPERSION,
@@ -141,7 +146,16 @@ oneTrial <- function(nct) {
     names(categoryNames) <- lev
     key <- paste(ct$ROW, ct$ARM, sep = "\r")
     ord <- !duplicated(key)
-    w <- data.frame(TRIAL = nct, ROW = ct$ROW[ord],
+    # NAMESPACE THE TITLES PER BLOCK. barnettTStats() groups by ROW,
+    # so a trial that uses one title for BOTH a continuous and a
+    # categorical measure would merge them into a single group, the
+    # group would be classified categorical, the continuous arms
+    # would contribute all-zero counts, and the whole group would be
+    # dropped with nothing recording the loss. Measured at 36 of
+    # 67,758 trial-title keys (0.053%) in the registry corpus - rare
+    # enough not to move any aggregate, common enough to be wrong.
+    # (CodeRabbit, PR #125.)
+    w <- data.frame(TRIAL = nct, ROW = paste0("K|", ct$ROW[ord]),
                     N = NA_real_, MEAN = NA_real_, SD = NA_real_,
                     SE = NA_real_, Q1 = NA_real_, Q3 = NA_real_,
                     ROUND_MEAN = NA_real_, ROUND_DISPERSION = NA_real_,
@@ -167,16 +181,24 @@ oneTrial <- function(nct) {
   ts <- barnettTStats(DATA, CategoryNames = unname(categoryNames))
   r  <- barnettDispersion(ts)
 
-  # THE SAME TEST ON EACH HALF OF THE EVIDENCE, separately. This is not
-  # decoration. Barnett names correlated summary statistics as the one
-  # way his method produces false positives, and the registry's
-  # categorical rows are exactly where correlation would live: a
-  # three-level category is one multinomial split into three binomials
-  # that the model then treats as independent. If a dispersion signal
-  # appears only in the categorical half, it is a property of that
-  # approximation. If it appears in the continuous half too - where the
-  # rows are separate measurements of separate things - it is a property
-  # of the trials.
+  # THE SAME TEST ON EACH HALF OF THE EVIDENCE, separately. Barnett names
+  # correlated summary statistics as the one way his method produces
+  # false positives, and the registry's categorical rows are one place
+  # correlation lives: a three-level category is one multinomial split
+  # into three binomials that the model then treats as independent.
+  #
+  # WHAT THIS SPLIT DOES AND DOES NOT SHOW. It shows whether a signal is
+  # SPECIFIC to the categorical approximation. It does NOT give a
+  # correlation-free control, and an earlier version of this comment
+  # wrongly claimed it did. barnettTStats() emits every arm PAIR, so in a
+  # three-arm trial the continuous t-statistics for A-B, A-C and B-C
+  # share arms and are correlated too (CodeRabbit, PR #125). The
+  # continuous half is less correlated, not uncorrelated.
+  #
+  # The honest baseline comes from corpus/correlationNull.R instead,
+  # which simulates trials carrying the real geometry - all-pairs
+  # comparisons included - and so prices in exactly this correlation.
+  # Read the two together; neither is sufficient alone.
   rc <- barnettDispersion(ts[ts$statistic == "continuous", , drop = FALSE])
   rk <- barnettDispersion(ts[ts$statistic == "categorical", , drop = FALSE])
 
@@ -202,17 +224,34 @@ oneTrial <- function(nct) {
 # report can be refreshed the moment the screen finishes, instead of
 # either waiting for both or recomputing what has not changed. Same
 # reasoning as --map-only in buildCtgovCorpus.R.
-reportOnly <- "--report-only" %in% args
 if (reportOnly && file.exists(outCsv)) {
   cat("\n--report-only: reading", outCsv, "\n")
   res <- utils::read.csv(outCsv, stringsAsFactors = FALSE)
 } else {
   cat("\nrunning the dispersion test\n")
   t0 <- Sys.time()
+  # Return the ERROR, do not swallow it. A handler that maps every
+  # failure to NULL makes a crashed trial indistinguishable from one with
+  # no usable rows, and this session has already been bitten twice by
+  # exactly that (a missing ::: recorded as a refusal, and 255 HTTP 400s
+  # reported as "request failed"). (CodeRabbit, PR #125.)
   res <- iaParallel(trials, function(nct)
-           tryCatch(oneTrial(nct), error = function(e) NULL),
+           tryCatch(oneTrial(nct),
+                    error = function(e) conditionMessage(e)),
          export = c("contBy", "catsBy", "oneTrial"))
-  res <- do.call(rbind, Filter(Negate(is.null), res))
+  bad <- vapply(res, is.character, logical(1))
+  if (any(bad)) {
+    tb <- sort(table(unlist(res[bad])), decreasing = TRUE)
+    cat("  errors:", sum(bad), "trial(s)
+")
+    for (k in seq_len(min(5L, length(tb))))
+      cat(sprintf("    %-58s %d
+", substr(names(tb)[k], 1, 58), tb[k]))
+  }
+  empty <- vapply(res, is.null, logical(1))
+  if (any(empty)) cat("  no usable rows:", sum(empty), "trial(s)
+")
+  res <- do.call(rbind, res[!bad & !empty])
   cat("  done in",
       round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
       "min;", nrow(res), "trials returned\n")

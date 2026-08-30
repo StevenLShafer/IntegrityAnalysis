@@ -327,6 +327,14 @@ barnettDispersion <- function(tstats, prior = 0.5, slabVar = .bdSlabVar,
                       direction = NA_character_, multiplier = NA_real_,
                       multiplierLo = NA_real_, multiplierHi = NA_real_,
                       stringsAsFactors = FALSE)
+  # Simpson's rule needs an odd number of points; with an even number the
+  # weight pattern below is not a quadrature rule at all and every number
+  # returned would be quietly wrong. The roxygen said so; nothing
+  # enforced it. (CodeRabbit, PR #125.)
+  points <- as.integer(points)
+  if (length(points) != 1L || is.na(points) || points < 9L)
+    stop("`points` must be a single odd integer of at least 9", call. = FALSE)
+  if (points %% 2L == 0L) points <- points + 1L
   if (is.null(tstats) || !nrow(tstats)) return(empty)
   ok <- is.finite(tstats$t) & is.finite(tstats$df) & tstats$df > 0
   t  <- tstats$t[ok]
