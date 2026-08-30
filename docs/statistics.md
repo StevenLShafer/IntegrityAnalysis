@@ -78,3 +78,56 @@ challenged, so it reports only what the simulation actually supports.
 Every "<" statement this tool prints is licensed by an exact upper
 confidence bound on its own simulation, not by a point estimate — the
 number reported is the one the tool is prepared to defend.
+
+## A second, independent instrument: Barnett's dispersion test
+
+The package also implements the Bayesian test for under- and
+over-dispersion published by Adrian Barnett (*F1000Research* 2022,
+**11**:783), exported as `barnettTStats()` and `barnettDispersion()`.
+It is not a variant of the method above. It is a different instrument,
+and the difference is the point of having it.
+
+**What it tests.** Every table row, for every pair of arms, is reduced
+to a two-sample t-statistic — categorical rows included, via the normal
+approximation to a difference in proportions. Under honest
+randomisation those t-statistics follow a t-distribution. The model asks
+one question of them: is their *spread* the spread that distribution
+predicts? A spike-and-slab prior puts a posterior probability on the
+answer, together with a multiplier saying by how much. Arms that are too
+alike read as under-dispersion; arms too far apart read as
+over-dispersion.
+
+**How that differs from ours.** The method described above tests the
+*shape* of a whole distribution. Barnett's tests *one moment* of it.
+That distinction matters because a shape test fires on skew, on
+categorical data and on rounding, none of which is misconduct, while a
+variance test largely does not. So the two disagreeing about the same
+table is diagnostic rather than embarrassing: it localises the anomaly
+to the shape of the distribution rather than the spread of the data.
+
+Their agreement should not be over-read either. Both compute from the
+same table and both assume the rows are independent — ours in the
+`sqrt(k)` denominator of Stouffer's combination, his in treating each
+t-statistic as a separate draw. That is a *common-mode* assumption, so
+the two agreeing says nothing about whether it holds.
+
+**Why it is quadrature and not MCMC.** For a single trial the model has
+exactly two unknowns: a binary switch and one continuous parameter.
+Everything else is data. A posterior over one continuous parameter is a
+one-dimensional integral, so it is evaluated directly rather than
+sampled. That is deterministic, needs no C++ toolchain at run time, and
+is more precise than a finite chain — at the 0.95 flag threshold, 1,000
+kept draws carry a Monte Carlo standard error near 0.007, which is the
+same order as the distance being judged. `tests/testthat/test-dispersion.R`
+pins the equivalence against Barnett's own model file run under nimble;
+across eight scenarios the worst disagreement was 0.0024 against a
+sampler standard error of 0.0018.
+
+**Two limits worth knowing.** A single row yields one t-statistic and
+the model needs several, so this is a trial-level test and cannot judge
+one variable alone. And it does not model rounding: when the reported
+precision is coarse relative to the standard error of the arm mean —
+integer-reported means in a large trial, say — the t-statistics
+concentrate at zero and honest data reads as under-dispersed. Ours
+models the rounding explicitly and fails the other way, becoming
+conservative instead. Neither is uniform under those conditions.

@@ -32,3 +32,18 @@ tests/testthat/_problems/
 # The screen log names local files and diffs, so it stays local too.
 docs/security-screens/screen-*.md
 tools/securityScreen.log
+
+# Secrets that must never be committed, even by accident.
+#
+# .Renviron holds the ANTHROPIC_API_KEY the corpus adjudication uses.
+# It is normally in the home directory, not here - but it was copied to
+# three compute nodes on 2026-08-30, and a stray copy landing in the
+# repository root is precisely the kind of accident that gets a key
+# published. The salt and the crosswalk are already covered by the
+# .NewCarlisle exclusion above; this closes the remaining hole.
+.Renviron
+.Renviron.*
+*.pem
+*.key
+id_ed25519*
+id_rsa*
