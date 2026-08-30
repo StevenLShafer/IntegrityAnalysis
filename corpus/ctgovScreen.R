@@ -93,6 +93,7 @@ ctgFetch <- function(want) {
   got <- list(); token <- NULL
   fields <- paste("protocolSection.identificationModule.nctId",
                   "protocolSection.identificationModule.briefTitle",
+                  "protocolSection.designModule",
                   "resultsSection.baselineCharacteristicsModule", sep = ",")
   while (length(got) < want) {
     url <- paste0(API, "?aggFilters=results:with,studyType:int",
@@ -111,6 +112,63 @@ ctgFetch <- function(want) {
   }
   cat("\n")
   utils::head(got, want)
+}
+
+## ---- design filter -------------------------------------------------------
+# WHY A FILTER IS NEEDED AT ALL, measured rather than assumed. An
+# unfiltered run of 1,338 trials produced a p-value distribution that was
+# uniform in the lower tail and middle but piled up near 1:
+#
+#   arms   n     p<0.05   p>0.95        (5% expected in each)
+#   2      929    4.6%      8.8%
+#   4+     218    4.6%     21.1%   <- median 0.685
+#
+# The cause, found by reading one of the worst cases (NCT03542149): it is
+# a DOSE-ESCALATION study whose "arms" are Cohort 1 Groups A-D, Cohort 2
+# Groups A-B, Cohort 3 Groups A-B, with 2 to 6 subjects each. Those
+# cohorts were enrolled SEQUENTIALLY and were never randomized against
+# one another - randomization happens within a cohort. Carlisle's method
+# assumes every compared group came from ONE allocation, so comparing
+# across cohorts guarantees more between-group variation than
+# randomization predicts, and p goes to 1. Not fraud, and not a coding
+# error: the wrong trials in the sample.
+#
+# NOTE WHAT DOES NOT CATCH IT. That study is labelled
+# `interventionModel: PARALLEL` and `allocation: RANDOMIZED`. The
+# structural design fields alone are not sufficient, which is why the
+# group titles are inspected too.
+#
+# Set INTEGRITY_CTG_NOFILTER=1 to disable, which is how the before/after
+# contrast above was produced.
+ctgDesignVeto <- function(st) {
+  dm <- tryCatch(st$protocolSection$designModule, error = function(e) NULL)
+  di <- dm$designInfo %||% list()
+  im <- toupper(di$interventionModel %||% "")
+  # CROSSOVER compares periods, not independent arms; FACTORIAL,
+  # SEQUENTIAL and SINGLE_GROUP are not one two-way allocation either.
+  if (nzchar(im) && im != "PARALLEL")
+    return(paste0("design: ", tolower(im)))
+  ph <- unlist(dm$phases %||% list())
+  if (any(toupper(ph) == "PHASE1"))
+    return("phase 1 (dose escalation risk)")
+  bm <- tryCatch(st$resultsSection$baselineCharacteristicsModule,
+                 error = function(e) NULL)
+  gt <- paste(vapply(bm$groups %||% list(), function(g) g$title %||% "", ""),
+              collapse = " | ")
+  # The direct signature of the failure above: groups named as cohorts,
+  # parts or stages are enrolment strata, not co-randomized arms.
+  if (grepl("(?i)\\bcohort\\b|dose[- ]escalat|\\bpart [0-9A-C]\\b|\\bstage [0-9]\\b",
+            gt, perl = TRUE))
+    return("groups are cohorts/parts, not co-randomized arms")
+  ttl <- tryCatch(st$protocolSection$identificationModule$briefTitle %||% "",
+                  error = function(e) "")
+  # Cluster randomization inflates between-arm variation by design: the
+  # unit of allocation is a clinic or village, not a patient, so arm
+  # means differ more than individual randomization predicts. The
+  # registry has no structured field for it, so the title is all there is.
+  if (grepl("(?i)cluster[- ]?random", paste(ttl, gt), perl = TRUE))
+    return("cluster randomized")
+  NA_character_
 }
 
 ## ---- map a baseline module onto the template ----------------------------
@@ -255,8 +313,16 @@ cat("fetching", nTrials, "randomized interventional trial(s) with results\n")
 studies <- ctgFetch(nTrials)
 cat("got", length(studies), "study record(s)\n\n")
 
-res <- list(); skipped <- character(0)
+useFilter <- !identical(Sys.getenv("INTEGRITY_CTG_NOFILTER"), "1")
+cat("design filter:",
+    if (useFilter) "ON" else "OFF (INTEGRITY_CTG_NOFILTER=1)", "\n\n")
+
+res <- list(); skipped <- character(0); vetoed <- character(0)
 for (i in seq_along(studies)) {
+  if (useFilter) {
+    v <- tryCatch(ctgDesignVeto(studies[[i]]), error = function(e) NA_character_)
+    if (!is.na(v)) { vetoed <- c(vetoed, v); next }
+  }
   m <- tryCatch(ctgToTemplate(studies[[i]]),
                 error = function(e) list(trial = NA, data = NULL,
                                          why = conditionMessage(e)))
@@ -285,6 +351,11 @@ utils::write.csv(out, outCsv, row.names = FALSE)
 
 cat("=============== CLINICALTRIALS.GOV BASELINE SCREEN ===============\n")
 cat("studies fetched :", length(studies), "\n")
+cat("design-vetoed   :", length(vetoed), "\n")
+if (length(vetoed)) {
+  tv <- sort(table(vetoed), decreasing = TRUE)
+  for (k in seq_along(tv)) cat(sprintf("    %-46s %d\n", names(tv)[k], tv[k]))
+}
 cat("analysed        :", nrow(out), "\n")
 cat("skipped         :", length(skipped), "\n")
 if (length(skipped)) {
