@@ -45,6 +45,10 @@
 #                                                                          #
 # Usage:                                                                   #
 #   Rscript corpus/syntheticAgeCheck.R [outDir] [trialsPerCell] [mcReps]   #
+#                                      [reportDecimals]                    #
+#     reportDecimals  comma-separated, default "1,2". Pass "0" for the     #
+#                     integer-reported-mean case, which is where both      #
+#                     methods break down.                                  #
 ############################################################################
 
 args   <- commandArgs(trailingOnly = TRUE)
@@ -52,6 +56,7 @@ outDir <- if (length(args) >= 1) args[1] else
   file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ctgov_corpus")
 nPer   <- if (length(args) >= 2) as.integer(args[2]) else 5000L
 mcReps <- if (length(args) >= 3) as.integer(args[3]) else 100000L
+# REPORT (4th arg) is set below, after the constants it belongs with.
 
 root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 libDir <- Sys.getenv("INTEGRITY_SNAPSHOT_LIB", "")
@@ -71,7 +76,8 @@ ARM_NS   <- c(20L, 100L, 500L, 1000L)
 # Decimals the mean and SD are REPORTED to. Observations are always
 # integers. One decimal is the registry norm; two is the sanity check
 # that any effect really is the rounding.
-REPORT   <- c(1L, 2L)
+REPORT   <- if (length(args) >= 4)
+  as.integer(strsplit(args[4], ",")[[1]]) else c(1L, 2L)
 
 cat("synthetic age check\n")
 cat("  age ~ Normal(", AGE_MEAN, ",", AGE_SD, "), rounded to integers\n")
