@@ -530,14 +530,42 @@ across arms.
   agreement across arms. Natural fit as a per-row plausibility flag
   (with GRIM/GRIMMER) in validation — cheap, deterministic.
 - **Barnett's Bayesian baseline method**
-  (https://f1000research.com/articles/11-783): a Bayesian
-  re-formulation of the Carlisle approach — same evidence, different
-  inferential wrapper, so a cross-check rather than an independent
-  signal.
+  (https://f1000research.com/articles/11-783): **IMPLEMENTED
+  2026-08-30** — `barnettTStats()` and `barnettDispersion()` in
+  `R/dispersionTest.R`.
+
+  The characterisation recorded here on 2026-08-17 was wrong, and the
+  correction is the reason the method is worth having. It is not "a
+  Bayesian re-formulation of the Carlisle approach — same evidence,
+  different inferential wrapper". It uses **different evidence** (a
+  two-sample t-statistic per row per *pair* of arms, categorical rows
+  included, where ours uses continuous rows only) and it tests a
+  **different quantity**: ours tests the shape of a whole distribution,
+  his tests one moment of it — the variance of the t-statistics.
+
+  That distinction is the whole value. Barnett's own simulation study
+  found that a distribution-shape test — his "uniform test", the family
+  ours belongs to — fires on skew, on categorical data and on rounding,
+  none of which is fraud, while a variance test does not. So the two
+  disagreeing on the same table is diagnostic rather than embarrassing:
+  it localises the anomaly to the shape of the distribution rather than
+  to the spread of the data.
+
+  Implemented by exact quadrature rather than MCMC. For a single trial
+  his model has one binary switch and one continuous parameter, so the
+  posterior is a one-dimensional integral; evaluating it directly is
+  deterministic, dependency-free, and more accurate than the reference
+  app's 1,000 kept draws (whose Monte Carlo error near his 0.95 flag
+  threshold is about 0.007). `tests/testthat/test-dispersion.R` pins
+  the agreement against nimble running his own model file.
 
 Evaluation plan when picked up: run Carlisle–Shafer, Barnett, and
 SPRITE/GRIM flags over corpus/TEST; compare per-trial calls; adopt
 what adds discrimination, report what merely agrees as corroboration.
+`corpus/barnettCorpus.R` does the first two over the 47,813-trial
+ClinicalTrials.gov registry corpus, where the numbers are typed by
+sponsors rather than parsed from PDFs and our parser is therefore out
+of the loop entirely.
 
 ---
 

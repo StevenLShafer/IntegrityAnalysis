@@ -80,6 +80,7 @@ Collate:
   aiFallback.R
   parseBaselineTable.R
   parseBaselineTableFiles.R
+  dispersionTest.R
   writeIntegrityTemplate.R
   apiService.R
 Config/roxygen2/version: 8.1.0
