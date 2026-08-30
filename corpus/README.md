@@ -70,6 +70,45 @@ rebuild script, not part of any pipeline. And the AWS CLI location in
 first, which is how it will be found on Linux, with the Windows install
 paths as fallbacks.
 
+## Study identifiers in committed files
+
+`EndToEndValidation.csv` carries a **pseudonym**, `IA-<10 hex>`, not a
+PMID.
+
+Every row of that file joins a trial to a baseline-homogeneity p-value.
+Published with identifiers it is an implicit accusation with no
+opportunity to reply — the objection Steve raised against the identifying
+tables in Carlisle's 2017 paper, and it applied to this repository too:
+457 rows were public, eleven with a Carlisle p below 0.01 and four with
+ours.
+
+The validation statistics — correlation, alarm concordance, the holdout
+split — need **paired values, not identities**. Nothing is lost.
+
+| | |
+|---|---|
+| committed | `IA-…`, the p-values, the holdout split |
+| local only | `.NewCarlisle/validation/crosswalk.csv` (ID → PMID/PDF) |
+| local only | `.NewCarlisle/validation/idSalt.txt` (**back this up**) |
+
+**The salt matters.** A PMID is eight digits, so an unsalted hash is not
+a pseudonym — the whole table inverts by enumeration in seconds. The salt
+is secret, lives outside the repository, and **the cross-reference cannot
+be rebuilt without it**. Row order in the public file is also shuffled
+with a salt-derived seed, because opaque identifiers in the original
+order still leak the mapping.
+
+An investigator asking *"which trial is IA-3f2a9c1b04?"* can be told —
+and heard. That is the difference between a finding and an accusation.
+
+`corpus/pseudonymize.R` holds the one implementation; scripts that need
+the identity re-attach it from the crosswalk and degrade gracefully in a
+clone that has none.
+
+Other committed files (`ParseOutcomes.csv`, `CorroborationByFile.csv`)
+keep real PMIDs deliberately: they record **parse quality**, not a
+verdict about a trial, and they carry no p-value to join to.
+
 ## Growing the corpus: the acquisition pipeline
 
 The 1,865 PDFs on hand cover about a third of Carlisle's 5,088 trials.
