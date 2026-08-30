@@ -39,6 +39,8 @@
 # the reported precision is ample.                                         #
 ############################################################################
 
+.libPaths(c(file.path(Sys.getenv("HOME"), "Rlib_barnett"),
+            readLines(file.path(Sys.getenv("HOME"), "deps_lib.txt"))[1],
             .libPaths()))
 d <- file.path(Sys.getenv("HOME"), "work", "ctgov_corpus")
 cont <- read.csv(file.path(d, "baselineContinuous.csv"), stringsAsFactors = FALSE)
