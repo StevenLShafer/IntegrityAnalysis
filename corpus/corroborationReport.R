@@ -84,6 +84,23 @@ if (!file.exists(e2)) {
   quit(status = 0)
 }
 v <- utils::read.csv(e2, stringsAsFactors = FALSE)
+# EndToEndValidation.csv is PSEUDONYMOUS as committed (2026-08-29): it
+# carries IA-<hash> rather than a PMID, so that a public table never
+# joins a named trial to a homogeneity p-value. The joins below need the
+# filename, so re-attach it from the local cross-reference. A clone
+# without .NewCarlisle/ simply loses this section rather than failing.
+if (is.null(v$PDF) && !is.null(v$ID)) {
+  xref <- file.path(root, ".NewCarlisle", "validation", "crosswalk.csv")
+  if (file.exists(xref)) {
+    v <- merge(v, utils::read.csv(xref, stringsAsFactors = FALSE),
+               by = "ID", all.x = TRUE)
+  } else {
+    cat("\n(EndToEndValidation.csv is pseudonymous and no local\n")
+    cat(" cross-reference is present, so corroboration cannot be joined\n")
+    cat(" to verdicts. The correlation and concordance above are unaffected.)\n")
+    quit(status = 0)
+  }
+}
 v <- v[v$status == "ok" & is.finite(v$parsedP) & is.finite(v$carlisle) &
        v$parsedP > 0 & v$carlisle > 0, ]
 

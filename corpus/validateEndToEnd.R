@@ -237,8 +237,24 @@ recs <- lapply(list.files(workDir, pattern = "[.]rds$", full.names = TRUE),
 res <- do.call(rbind, lapply(recs, function(x)
   data.frame(x[c("PDF","PMID","TRIAL","SET","curated","carlisle",
                  "parsedP","status")], stringsAsFactors = FALSE)))
-write.csv(res, outCsv, row.names = FALSE)
-cat("\nwritten:", outCsv, "  rows:", nrow(res), "\n\n")
+# IDENTITY STAYS LOCAL (2026-08-29). Every row of this table joins a
+# trial to a baseline-homogeneity p-value. Published with identifiers -
+# as it was, 457 rows in a public repository - that is an implicit
+# accusation with no opportunity to reply, which is exactly what Steve
+# argued should have been withdrawn from Carlisle's 2017 paper. The
+# validation statistics need PAIRED values, not identities, so the
+# public copy carries a pseudonym and loses nothing.
+#
+# The cross-reference lives under .NewCarlisle/ (gitignored) so that an
+# investigator who asks "which trial is IA-...?" can be told - and heard.
+source(file.path(root, "corpus", "pseudonymize.R"))
+idDir <- iaIdDir(root)
+dir.create(idDir, recursive = TRUE, showWarnings = FALSE)
+write.csv(res, file.path(idDir, "EndToEndValidation_identified.csv"),
+          row.names = FALSE)
+write.csv(iaDeidentify(res, idFrom = "PMID"), outCsv, row.names = FALSE)
+cat("\nwritten:", outCsv, "  rows:", nrow(res), " (pseudonymous)\n")
+cat("identified copy + cross-reference:", idDir, "\n\n")
 
 ok <- res[res$status == "ok" & is.finite(res$parsedP) &
           is.finite(res$carlisle) & res$parsedP > 0 & res$carlisle > 0, ]
