@@ -78,6 +78,46 @@ function Say([string] $m) {
 $rscript = 'C:\Program Files\R\R-4.5.3\bin\Rscript.exe'
 if (-not (Test-Path $rscript)) { Say "ERROR: Rscript not found"; exit 1 }
 
+# ---- RUN FROM A SNAPSHOT, NOT THE LIVE TREE -----------------------------
+#
+# This loop re-invokes the harvester ONCE PER BATCH - forty-odd times
+# across a thirteen-hour window - so the repository is being read for the
+# whole run, not once at launch. Editing it mid-run therefore corrupts
+# the job, and on 2026-08-29 it did, three ways in one evening:
+#
+#   * an edit landed while a batch was reading the file: "Execution
+#     halted", 250 packages downloaded and left unclassified
+#   * `gh pr merge --delete-branch` switched branches underneath the run
+#     and DELETED a file the harvester sources; every later batch would
+#     have died on "cannot open file", reporting nothing useful
+#   * the merge also silently changed the harvester's stdout wording,
+#     which this wrapper parses (see the egress accounting below)
+#
+# The project already knew this lesson for the ENGINE - corpus runs load
+# an installed snapshot library precisely so a live edit cannot reach a
+# running analysis - and simply had not applied it to the SCRIPTS. This
+# does. The scripts are copied once, at launch, and every batch runs the
+# copy, so the working tree can be edited, branched or merged freely
+# while a harvest is in flight.
+$snapRoot = Join-Path $OutDir '.runsnapshot'
+$snapDir  = Join-Path $snapRoot (Get-Date -Format 'yyyyMMdd-HHmmss')
+New-Item -ItemType Directory -Force -Path $snapDir | Out-Null
+$needed = @('corpus/harvestMedrxivS3.R',
+            'corpus/rctFilterPatterns.R',
+            'corpus/mecaPrefixScreen.R')
+foreach ($f in $needed) {
+  if (-not (Test-Path $f)) { Say "ERROR: missing $f"; exit 1 }
+  Copy-Item $f $snapDir
+}
+$snapScript = Join-Path $snapDir 'harvestMedrxivS3.R'
+$commit = (& git rev-parse --short HEAD 2>$null)
+if (-not $commit) { $commit = 'unknown' }
+Say ("snapshot: {0} (commit {1})" -f $snapDir, $commit)
+# Keep the last few for provenance - which code produced which night's
+# corpus - and prune the rest so this never becomes a disk problem.
+Get-ChildItem $snapRoot -Directory | Sort-Object Name -Descending |
+  Select-Object -Skip 5 | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
 # The harvester resolves the aws CLI itself, but say up front whether the
 # credential is alive: an 18-hour run that fails on batch 1 for a stale
 # key is 18 hours of nothing. The harvest profile is a permanent IAM key
@@ -120,42 +160,71 @@ while ((Get-Date) -lt $deadline -and $spentGB -lt $BudgetGB) {
   if ($thisGB -le 0.01) { break }
   $before = CorpusCount
 
-  $out = & $rscript 'corpus/harvestMedrxivS3.R' $BatchFiles $thisGB $OutDir $Months 2>&1 | Out-String
+  $out = & $rscript $snapScript $BatchFiles $thisGB $OutDir $Months 2>&1 | Out-String
   $line = ($out -split "`r?`n" | Where-Object { $_ -match 'processed \d+ package' }) -join ' '
   if (-not $line) { $line = ($out -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1) }
 
-  # "downloading N package(s),  M MB" tells us what was actually spent
+  # WHAT WAS ACTUALLY SPENT. The harvester reports "egress this run: N MB"
+  # since prefix screening landed (#118): the listed size of candidates is
+  # no longer what gets paid for, because most packages are now screened
+  # on a 64 KB prefix and never fetched. The older "downloading N
+  # package(s), M MB" line is still emitted when screening is disabled
+  # with INTEGRITY_MECA_SCREEN=0, so both are read - newest first.
+  #
+  # Reading only the old wording was a live bug for one evening: every
+  # batch scored 0 MB, the budget never advanced, and the stall heuristic
+  # below fired on every batch. A wrapper that parses another program's
+  # prose is coupled to its wording, and this comment is here so the next
+  # person changing either one knows it.
   $mb = 0.0
-  if ($out -match 'downloading\s+\d+\s+package\(s\),\s+([\d.]+)\s*MB') {
+  if ($out -match 'egress this run:\s+([\d.]+)\s*MB') {
     $mb = [double]$Matches[1]
+  } elseif ($out -match 'downloading\s+\d+\s+package\(s\),\s+([\d.]+)\s*MB') {
+    $mb = [double]$Matches[1]
+  }
+  # Screening counts, so "did this batch make progress" can be answered
+  # without reference to bytes - under screening, near-zero egress is the
+  # DESIRED outcome, not a stall.
+  $screened = 0; $fetched = 0
+  if ($out -match 'screened\s+(\d+),\s+skipped\s+\d+[^,]*,\s+fetched\s+(\d+)') {
+    $screened = [int]$Matches[1]; $fetched = [int]$Matches[2]
   }
   $spentGB += $mb / 1024
   $after = CorpusCount
   Say ("batch {0}: {1} | +{2} kept | {3:N0} MB | {4:N2}/{5} GB spent" -f
        $batch, $line.Trim(), ($after - $before), $mb, $spentGB, $BudgetGB)
 
-  # Distinguish "nothing left to fetch" from "the batch cap was too
-  # small for the next package". The harvester filters with
-  # cumsum(bytes) <= maxGB, which returns ZERO rows when the very next
-  # package is larger than the remaining batch budget - so a small
-  # -BatchGB stalls at 0 downloaded while thousands remain. Found in the
-  # 2026-08-27 smoke test at BatchGB 0.05; it does not arise at the 4 GB
-  # default, but a stall must never be misreported as "done".
+  # Distinguish "nothing left to fetch" from "this batch could not make
+  # progress". Three states, and prefix screening (#118) added the third:
+  #
+  #   nothing listed        -> genuinely idle; three in a row means done
+  #   screened but fetched  -> PROGRESS, even at near-zero egress. Most
+  #     few or none            batches now download almost nothing, which
+  #                            is the entire point of screening.
+  #   nothing screened AND  -> the old stall: with screening disabled the
+  #     nothing downloaded     harvester used to filter candidates by
+  #                            cumsum(bytes) <= maxGB, returning zero rows
+  #                            when the next package exceeded the batch
+  #                            cap. That filter is gone, but the guard is
+  #                            kept for INTEGRITY_MECA_SCREEN=0 runs.
+  #
+  # Judging progress by megabytes alone quadrupled BatchGB on every batch
+  # of a screened run - the batch was working perfectly and the wrapper
+  # read its efficiency as failure.
   $listedNew = 0
   if ($out -match '(\d+)\s+new') { $listedNew = [int]$Matches[1] }
-  if ($mb -lt 0.5) {
-    if ($listedNew -gt 0) {
-      Say ("  batch downloaded nothing though {0} package(s) remain - the next one" -f $listedNew)
-      Say ("  exceeds the {0} GB batch cap; raising this batch to {1} GB" -f $thisGB, ($BatchGB * 4))
-      $BatchGB = $BatchGB * 4
-      $idle = 0
-    } else {
-      $idle++
-      if ($idle -ge 3) {
-        Say "no new packages listed in three batches - medRxiv exhausted, stopping"
-        break
-      }
+  $madeProgress = ($screened -gt 0) -or ($mb -ge 0.5)
+  if ($listedNew -le 0) {
+    $idle++
+    if ($idle -ge 3) {
+      Say "no new packages listed in three batches - medRxiv exhausted, stopping"
+      break
     }
+  } elseif (-not $madeProgress) {
+    Say ("  batch did nothing though {0} package(s) remain - the next one" -f $listedNew)
+    Say ("  exceeds the {0} GB batch cap; raising this batch to {1} GB" -f $thisGB, ($BatchGB * 4))
+    $BatchGB = $BatchGB * 4
+    $idle = 0
   } else { $idle = 0 }
 
   Start-Sleep -Seconds 5     # be a polite client
