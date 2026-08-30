@@ -140,6 +140,26 @@ for (i in seq_along(lines)) {
   # present - it is the paper the registry itself says reports the trial.
   pmidResult <- unique(unlist(lapply(refs, function(r)
     if (identical(r$type, "RESULT")) r$pmid else NULL)))
+  # RECORD WHICH KIND WE ACTUALLY GOT (2026-08-30). The preference above
+  # is unfalsifiable to a reader who cannot tell how often it was
+  # available, and it turns out to matter a great deal. Of the 24,330
+  # linked articles fetched from PubMed:
+  #
+  #   37%   are NOT marked "Randomized Controlled Trial" by NLM
+  #   8.8%  were published BEFORE 2008, when results posting began -
+  #         a smooth ramp back to 1950, which is a citation age curve,
+  #         not a parsing artefact
+  #
+  # Those are the trial's BACKGROUND literature and the reviews that
+  # later included it, swept in by NLM's automatic DERIVED linkage.
+  # Cochrane Database Syst Rev alone accounts for 332 of them, and
+  # appears zero times among the papers PubMed does call trials.
+  #
+  # So a linked PMID is frequently NOT the trial's own report, and any
+  # journal- or year-level analysis has to be able to say which links it
+  # trusted. PMID_TYPE is that column.
+  pmidType <- if (length(pmidResult)) "RESULT" else
+    if (length(pmids)) "DERIVED" else NA_character_
   rows[[i]] <- data.frame(
     NCT        = ps$identificationModule$nctId %||% NA_character_,
     PHASES     = paste(unlist(dm$phases %||% list()), collapse = "/"),
@@ -160,7 +180,9 @@ for (i in seq_along(lines)) {
                               collapse = "; "), 1, 200),
     PMID       = if (length(pmidResult)) pmidResult[1] else
                  if (length(pmids)) pmids[1] else NA_character_,
+    PMID_TYPE  = pmidType,
     N_PMID     = length(pmids),
+    N_RESULT   = length(pmidResult),
     stringsAsFactors = FALSE)
   if (i %% 2000L == 0L) cat("\r  ", i)
 }
@@ -172,6 +194,9 @@ cat("\n================ TRIAL METADATA ================\n")
 cat("trials            :", nrow(md), "\n")
 cat("with a PMID       :", sum(!is.na(md$PMID)),
     sprintf("(%.0f%%)\n", 100 * mean(!is.na(md$PMID))))
+cat("  sponsor-declared (RESULT):", sum(md$PMID_TYPE %in% "RESULT"), "\n")
+cat("  NLM-derived only         :", sum(md$PMID_TYPE %in% "DERIVED"),
+    " <- may not be the trial's own report\n")
 cat("with MeSH terms   :", sum(md$N_MESH > 0),
     sprintf("(%.0f%%)\n", 100 * mean(md$N_MESH > 0)))
 cat("\ndiscipline:\n")
