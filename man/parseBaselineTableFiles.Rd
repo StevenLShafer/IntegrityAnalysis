@@ -14,8 +14,8 @@ parseBaselineTableFiles(
 )
 }
 \arguments{
-\item{files}{A directory (every \code{.pdf} and \code{.docx} under it is parsed,
-recursively) or a character vector of PDF / .docx paths.}
+\item{files}{A directory (every \code{.pdf}, \code{.docx} and \code{.xml} under it is
+parsed, recursively) or a character vector of such paths.}
 
 \item{outputDir}{If given, each successful parse is also written there as
 \verb{<file>.xlsx} by \code{\link[=writeIntegrityTemplate]{writeIntegrityTemplate()}}. Created if missing.}

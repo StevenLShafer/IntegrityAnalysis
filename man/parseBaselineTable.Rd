@@ -2,7 +2,7 @@
 % Please edit documentation in R/parseBaselineTable.R
 \name{parseBaselineTable}
 \alias{parseBaselineTable}
-\title{Parse the baseline demographic table of a trial PDF}
+\title{Parse the baseline demographic table of a trial document}
 \usage{
 parseBaselineTable(
   pdfFile,
@@ -67,8 +67,8 @@ An object of class \code{ParsePDFTable}. \verb{$engine} is \code{"heuristic"},
 }
 \description{
 Reads the baseline characteristics table ("Table 1") out of a randomized
-controlled trial PDF and returns it as one line per baseline variable per
-treatment arm, in the input layout of the Integrity-Analysis app.
+controlled trial and returns it as one line per baseline variable per
+treatment arm, in the input layout of the Integrity-Analysis app. The document may be a PDF, a Word manuscript (\code{.docx}) or JATS XML (\code{.xml}); the file extension selects the reader.
 }
 \details{
 The deterministic engine (\code{\link[=parseBaselineTableHeuristics]{parseBaselineTableHeuristics()}}) always runs
@@ -84,6 +84,11 @@ mechanical, or when there is no API key.
 \item \code{"always"} skips the deterministic pass and asks the model to read the
 whole table. Useful for comparing the two engines against each other.
 }
+
+\code{.docx} and \code{.xml} are an exception to all three: the AI engine reads
+RENDERED PDF PAGES, which neither format has. For those two, \code{ai} is forced
+to \code{"never"} with a message and parsing proceeds deterministically,
+including when \code{"always"} was asked for.
 
 If no table can be read by either engine and \code{prose = TRUE}, a last attempt
 asks the model to find baseline characteristics in the article's running

@@ -36,8 +36,8 @@
 #' pass `ai = "fallback"`, the number of files that will be sent is reported
 #' before any call is made.
 #'
-#' @param files A directory (every `.pdf` and `.docx` under it is parsed,
-#'   recursively) or a character vector of PDF / .docx paths.
+#' @param files A directory (every `.pdf`, `.docx` and `.xml` under it is
+#'   parsed, recursively) or a character vector of such paths.
 #' @param outputDir If given, each successful parse is also written there as
 #'   `<file>.xlsx` by [writeIntegrityTemplate()]. Created if missing.
 #' @param timeout Seconds allowed per file before its process is killed.

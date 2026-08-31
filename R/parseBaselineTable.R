@@ -91,11 +91,13 @@ reviewFlags <- function(x) {
   flags
 }
 
-#' Parse the baseline demographic table of a trial PDF
+#' Parse the baseline demographic table of a trial document
 #'
 #' Reads the baseline characteristics table ("Table 1") out of a randomized
-#' controlled trial PDF and returns it as one line per baseline variable per
-#' treatment arm, in the input layout of the Integrity-Analysis app.
+#' controlled trial and returns it as one line per baseline variable per
+#' treatment arm, in the input layout of the Integrity-Analysis app. The
+#' document may be a PDF, a Word manuscript (`.docx`) or JATS XML (`.xml`);
+#' the file extension selects the reader.
 #'
 #' The deterministic engine ([parseBaselineTableHeuristics()]) always runs
 #' first and its rows always win. What happens next depends on `ai`:
@@ -109,6 +111,13 @@ reviewFlags <- function(x) {
 #'   mechanical, or when there is no API key.
 #' * `"always"` skips the deterministic pass and asks the model to read the
 #'   whole table. Useful for comparing the two engines against each other.
+#'
+#' `.docx` and `.xml` are an exception to all three: the AI engine reads
+#' RENDERED PDF PAGES, which neither format has. For those two, `ai` is
+#' forced to `"never"` with a message and parsing proceeds deterministically
+#' — including when `"always"` was asked for. Failing outright instead would
+#' be worse: a mixed folder uploaded with the assist on would lose its Word
+#' and XML files for no reason.
 #'
 #' If no table can be read by either engine and `prose = TRUE`, a last attempt
 #' asks the model to find baseline characteristics in the article's running
