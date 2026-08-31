@@ -76,6 +76,20 @@ foreach ($n in $nodes) {
                "tar czf /tmp/ingest_$tag.tgz --newer-mtime='$since' . 2>/dev/null; " +
                "echo EXIT:`$?; ls -l /tmp/ingest_$tag.tgz 2>/dev/null | awk '{print `$5}'"
   $out = & ssh -o BatchMode=yes $n.Node $remoteCmd 2>&1
+  # CHECK THE REMOTE EXIT STATUS BEFORE TRUSTING THE ARCHIVE. tar can fail
+  # part-way - disk full, a file yanked mid-read - and still leave a
+  # readable /tmp/ingest_*.tgz with a plausible size. Reading only the
+  # size would extract that truncated archive, then advance the stamp past
+  # files it never contained, and those files would never be fetched
+  # again: a permanent silent hole in the corpus. The remote command emits
+  # EXIT:<status> for exactly this reason.
+  $exit = ($out | Select-String -Pattern '^EXIT:(\d+)' |
+           Select-Object -Last 1).Matches.Groups[1].Value
+  if ($exit -and [int]$exit -ne 0) {
+    Say ("FAILED {0}: remote tar exited {1} - stamp NOT advanced, will retry" -f $tag, $exit)
+    & ssh -o BatchMode=yes $n.Node "rm -f /tmp/ingest_$tag.tgz" 2>&1 | Out-Null
+    continue
+  }
   $size = ($out | Where-Object { $_ -match '^\d+$' } | Select-Object -Last 1)
 
   if (-not $size) {
@@ -129,8 +143,15 @@ Say 'reindexing'
 # fetchCorpusIdentity.R fills only blank rows, so this is self-limiting;
 # on a night with no new accessions it makes two positive-control calls
 # and stops.
-if ($changed) {
-  Say 'resolving identities for new accessions'
+# Run it after EVERY reindex, not only after a node transfer. The reindex
+# above also picks up local additions - a PDF hand-downloaded into
+# .NewCarlisle, which is Steve's daily handful - and those create blank
+# identity rows too. Gating on $changed would leave them unresolved until
+# some unrelated node happened to deliver something. The script fills only
+# blank rows, so on a genuinely quiet night this costs two positive-control
+# calls and stops.
+if ($true) {
+  Say 'resolving identities for any unresolved accessions'
   & $rscript 'C:\dev\IntegrityAnalysis\corpus\fetchCorpusIdentity.R' 2>&1 |
     Select-Object -Last 12 | ForEach-Object { Say ('  ' + $_) }
 }

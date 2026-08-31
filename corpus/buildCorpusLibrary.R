@@ -323,6 +323,38 @@ scan1 <- function(k) {
 files <- do.call(rbind, lapply(seq_len(nrow(sources)), scan1))
 message(sprintf("  TOTAL %d files", nrow(files)))
 
+# A SOURCE THAT VANISHES MUST STOP THE BUILD, NOT SHRINK THE INDEX.
+# scan1() returns NULL for a missing directory, and everything below
+# rewrites master.csv, works.csv and identity.csv from whatever survived -
+# so an unplugged drive, a renamed folder, or a node share that did not
+# mount would silently delete thousands of works from the index while
+# their files sat untouched in master/. That matters more now that this
+# runs unattended at 04:00: nobody would see it until a later question
+# came back with a smaller answer. Compare against the LAST BUILD and
+# refuse to proceed if a source that previously contributed has gone
+# quiet. INTEGRITY_ALLOW_SHRINK=1 is the deliberate override, for the
+# genuine case of retiring a collection.
+priorMaster <- file.path(indexDir, "master.csv")
+if (file.exists(priorMaster)) {
+  pm <- utils::read.csv(priorMaster, colClasses = "character")
+  was <- table(pm$SOURCE_ID)
+  now <- table(files$SOURCE_ID)
+  lost <- setdiff(names(was), names(now))
+  shrunk <- names(was)[!is.na(match(names(was), names(now))) &
+                       as.integer(now[names(was)]) < as.integer(was) * 0.9]
+  shrunk <- shrunk[!is.na(shrunk)]
+  bad <- c(lost, setdiff(shrunk, lost))
+  if (length(bad) && !nzchar(Sys.getenv("INTEGRITY_ALLOW_SHRINK"))) {
+    for (b in bad)
+      message(sprintf("  !! %s: %s files last build, %s now", b, was[b],
+                      if (is.na(now[b])) "0 (source MISSING)" else now[b]))
+    stop("a source lost more than 10% of its files since the last build. ",
+         "NOTHING WAS WRITTEN - the index still describes the last good ",
+         "state. Fix the source, or set INTEGRITY_ALLOW_SHRINK=1 if the ",
+         "collection is genuinely being retired.")
+  }
+}
+
 ## ---------------------------------------------------------------------
 ## 5. HASH - the bytes, so provenance is provable and duplicates collapse
 ## ---------------------------------------------------------------------
@@ -353,6 +385,22 @@ if (length(todo))
   files$SHA256[todo] <- vapply(files$ORIGINAL_PATH[todo], function(p)
     tryCatch(digest::digest(file = p, algo = "sha256"),
              error = function(e) NA_character_), character(1), USE.NAMES = FALSE)
+# A FAILED HASH CANNOT BE TOLERATED, because of what it does two steps
+# later. An anonymous file with no PMID/PMCID/DOI falls back to
+# paste0("sha:", SHA256) for its work key - so every file whose hash
+# failed becomes the key "sha:NA", and they all collapse into ONE
+# accession. On this corpus that would merge unrelated confidential
+# manuscripts under a single number, which is the precise opposite of
+# what the accession is for. Stop and name the files instead.
+files$HASH_FRESH <- seq_len(nrow(files)) %in% todo
+badHash <- which(is.na(files$SHA256))
+if (length(badHash)) {
+  for (p in head(files$ORIGINAL_PATH[badHash], 10)) message("  !! ", p)
+  stop(length(badHash), " file(s) could not be hashed (listed above). ",
+       "NOTHING WAS WRITTEN: an unhashable anonymous file would key as ",
+       "\"sha:NA\" and collapse with every other such file into one ",
+       "accession.")
+}
 message(sprintf("  %d files: %d cached, %d hashed, %.0f s", nrow(files),
                 nrow(files) - length(todo), length(todo),
                 as.numeric(difftime(Sys.time(), t0, units = "secs"))))
@@ -367,6 +415,31 @@ utils::write.csv(files[, c("ORIGINAL_PATH", "BYTES", "MTIME", "SHA256")],
 # exist; anything anonymous (the A&A manuscripts) falls back to its
 # content hash, which correctly merges byte-identical duplicates and
 # correctly separates revisions.
+# RESOLVE ALIASES FIRST, OR THE DEDUP SILENTLY FAILS. A PMC file knows
+# only its PMCID; a Carlisle journal PDF knows only its PMID. Keyed as
+# they arrive, the SAME PAPER gets "pmcid:PMC154321" from one source and
+# "pmid:12492668" from the other - two accessions, two halves of one work,
+# and the multi-source overlap that is supposed to reveal parser
+# disagreement reads as near zero. (It read 18 before this was fixed,
+# which was the tell: two collections of the same literature should
+# overlap far more than that.)
+#
+# fetchCorpusIdentity.R does resolve PMCID -> PMID, but it runs AFTER
+# accessions are assigned, so it cannot merge what has already been split.
+# The mapping has to happen here, before the key is formed. The local
+# table covers most of it; anything unresolved simply keeps its PMCID key,
+# which is correct - an unmergeable pair is better than a wrong merge.
+pmcMap <- file.path(staging, "ctgov", "pmidToPmcid.csv")
+if (file.exists(pmcMap)) {
+  mp <- utils::read.csv(pmcMap, colClasses = "character")
+  nrm <- function(x) toupper(sub("^pmcid:", "", trimws(x)))
+  i <- safeMatch(nrm(files$PMCID), nrm(mp$PMCID))
+  fill <- is.na(files$PMID) & !is.na(i)
+  files$PMID[fill] <- mp$PMID[i][fill]
+  message(sprintf("  alias resolution: %d PMCIDs mapped to PMIDs before keying",
+                  sum(fill)))
+}
+
 files$WORK_KEY <- with(files, ifelse(
   !is.na(PMID),  paste0("pmid:",  PMID),
   ifelse(!is.na(PMCID), paste0("pmcid:", PMCID),
@@ -392,6 +465,38 @@ today <- format(Sys.Date(), "%Y-%m-%d")
 # one built on a coarse but true date.
 if (is.null(prior$FIRST_SEEN)) prior$FIRST_SEEN <- rep(today, nrow(prior))
 prior$FIRST_SEEN[is.na(prior$FIRST_SEEN) | !nzchar(prior$FIRST_SEEN)] <- today
+
+# MIGRATE PRIOR KEYS THROUGH THE SAME ALIAS MAP. Accessions already
+# assigned under a "pmcid:" key must follow the work when that PMCID
+# resolves to a PMID, or every merged work would be issued a brand new
+# number and its old one would dangle. When two prior accessions turn out
+# to be the same work, the LOWER number wins - it is the earlier
+# observation, and FIRST_SEEN must reflect the earliest sighting, not the
+# rebuild that noticed the duplication.
+if (nrow(prior) && exists("mp")) {
+  isPmcid <- grepl("^pmcid:", prior$WORK_KEY)
+  if (any(isPmcid)) {
+    j <- safeMatch(nrm(sub("^pmcid:", "", prior$WORK_KEY[isPmcid])), nrm(mp$PMCID))
+    newk <- ifelse(is.na(j), prior$WORK_KEY[isPmcid],
+                   paste0("pmid:", mp$PMID[j]))
+    moved <- sum(newk != prior$WORK_KEY[isPmcid])
+    prior$WORK_KEY[isPmcid] <- newk
+    if (moved) message(sprintf("  migrated %d prior accession(s) onto their PMID key",
+                               moved))
+  }
+  dup <- duplicated(prior$WORK_KEY)
+  if (any(dup)) {
+    o <- order(prior$WORK_KEY, prior$ACCESSION)
+    prior <- prior[o, ]
+    keepFirst <- !duplicated(prior$WORK_KEY)
+    message(sprintf("  %d prior accession(s) retired as duplicates of a merged work",
+                    sum(!keepFirst)))
+    utils::write.csv(prior[!keepFirst, ],
+                     file.path(indexDir, "accessionsRetired.csv"),
+                     row.names = FALSE)
+    prior <- prior[keepFirst, ]
+  }
+}
 keys <- unique(files$WORK_KEY)
 newKeys <- setdiff(keys, prior$WORK_KEY)
 if (length(newKeys)) {
@@ -446,13 +551,41 @@ files$MASTER_PATH <- with(files, file.path(
 for (d in unique(dirname(files$MASTER_PATH)))
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
+# "ALREADY THERE" IS NOT THE SAME AS "CORRECT". If a source file is
+# replaced at the same path - a publisher reissues a PDF, a download is
+# retried - and it still resolves to the same identifier, then the master
+# path already exists while its bytes are the OLD ones. Taking the
+# shortcut would write the NEW hash into master.csv beside the OLD file,
+# and extractShareable.R would then hand a collaborator a file that does
+# not match the hash we published for it. Verify size first (cheap) and
+# fall back to the recorded hash only when size matches but the cache
+# says the content moved.
 files$STORED <- vapply(seq_len(nrow(files)), function(k) {
   to <- files$MASTER_PATH[k]; from <- files$ORIGINAL_PATH[k]
-  if (file.exists(to)) return("present")
+  if (file.exists(to)) {
+    # Only files whose SOURCE changed this run need checking. A hash
+    # served from the cache means path, size and mtime all matched, so
+    # the source did not move and master/ cannot have gone stale. Without
+    # this test the verification would re-read all 24 GB every night and
+    # undo the entire point of the cache.
+    if (!files$HASH_FRESH[k]) return("present")
+    same <- isTRUE(file.info(to)$size == files$BYTES[k]) &&
+            identical(digest::digest(file = to, algo = "sha256"),
+                      files$SHA256[k])
+    if (same) return("present")
+    # Stale. Replace the link so the tree matches the index again.
+    unlink(to)
+    if (isTRUE(suppressWarnings(file.link(from, to)))) return("relink")
+    if (isTRUE(suppressWarnings(file.copy(from, to)))) return("recopy")
+    return("FAILED")
+  }
   if (isTRUE(suppressWarnings(file.link(from, to)))) return("link")
   if (isTRUE(suppressWarnings(file.copy(from, to)))) return("copy")
   "FAILED"
 }, character(1))
+if (any(files$STORED == "FAILED"))
+  stop(sum(files$STORED == "FAILED"), " file(s) could not be stored in ",
+       "master/. The index would describe files that are not there.")
 message("  ", paste(names(table(files$STORED)), table(files$STORED),
                     sep = "=", collapse = "  "))
 

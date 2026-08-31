@@ -72,11 +72,15 @@ if (-not (Test-Path (Join-Path $corpus 'index\master.csv'))) {
 # back up 24 GB would cost as much as the backup. The library's own
 # content hashes live in index/master.csv and are archived with it, so a
 # restore can still be verified byte-for-byte.
+# The signature covers the FULL path, not just the leaf name, so that a
+# change in how entries are laid out inside the archive also invalidates
+# the volume. Signing the leaf alone would leave a stale zip in place
+# after a layout fix, because the file list looks identical.
 function Get-Signature($files) {
   if ($files.Count -eq 0) { return 'empty' }
   $sb = New-Object System.Text.StringBuilder
-  foreach ($f in ($files | Sort-Object Name)) {
-    [void]$sb.AppendLine($f.Name + '|' + $f.Length + '|' + $f.LastWriteTimeUtc.Ticks)
+  foreach ($f in ($files | Sort-Object FullName)) {
+    [void]$sb.AppendLine($f.FullName + '|' + $f.Length + '|' + $f.LastWriteTimeUtc.Ticks)
   }
   $sha = [System.Security.Cryptography.SHA256]::Create()
   $h = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($sb.ToString()))
@@ -87,7 +91,7 @@ function Get-Signature($files) {
 # success. A half-written zip that replaced a good one would be a backup
 # that looks present and restores nothing - the worst failure mode a
 # backup has.
-function Write-Volume($name, $files, $level) {
+function Write-Volume($name, $files, $level, $root) {
   if ($Only -ne '' -and $name -notlike $Only) { return $false }
   $sig = Get-Signature $files
   $stampFile = Join-Path $stamps "$name.stamp"
@@ -108,9 +112,21 @@ function Write-Volume($name, $files, $level) {
   try {
     $za = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create)
     try {
+      # Entry names must keep the path RELATIVE TO THE VOLUME ROOT, not
+      # collapse to the bare filename. The registry volumes are gathered
+      # recursively, so flattening would drop their directory structure -
+      # a restore could not rebuild registry/ctgov, and two files sharing
+      # a name in different subdirectories would collide inside the zip,
+      # with the second silently overwriting the first on extraction.
       foreach ($f in $files) {
+        $rel = $f.FullName
+        if ($root -and $f.FullName.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+          $rel = $f.FullName.Substring($root.Length).TrimStart('\', '/')
+        } else {
+          $rel = $f.Name
+        }
         [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
-          $za, $f.FullName, $f.Name, $mode)
+          $za, $f.FullName, $rel, $mode)
       }
     } finally { $za.Dispose() }
   } finally { $fs.Dispose() }
@@ -127,14 +143,14 @@ $wrote = 0
 # Always re-zipped, because it is a few hundred KB and it is the map.
 $idx = @(Get-ChildItem (Join-Path $corpus 'index') -File)
 $idx += @(Get-ChildItem $corpus -File -Filter '*.md')
-if (Write-Volume 'index' $idx 'optimal') { $wrote++ }
+if (Write-Volume 'index' $idx 'optimal' $corpus) { $wrote++ }
 
 # --- registry: ClinicalTrials.gov baseline data and Carlisle's tables.
 $regDir = Join-Path $corpus 'registry'
 if (Test-Path $regDir) {
   foreach ($d in (Get-ChildItem $regDir -Directory)) {
     $f = @(Get-ChildItem $d.FullName -File -Recurse)
-    if (Write-Volume ("registry-" + $d.Name) $f 'optimal') { $wrote++ }
+    if (Write-Volume ("registry-" + $d.Name) $f 'optimal' $d.FullName) { $wrote++ }
   }
 }
 
@@ -147,7 +163,7 @@ foreach ($d in (Get-ChildItem (Join-Path $corpus 'master') -Directory)) {
   if ($d.Name -eq 'pdf') { continue }      # sharded separately, below
   $f = @(Get-ChildItem $d.FullName -File)
   if ($f.Count -eq 0) { continue }
-  if (Write-Volume $d.Name $f 'optimal') { $wrote++ }
+  if (Write-Volume $d.Name $f 'optimal' $d.FullName) { $wrote++ }
 }
 
 # --- pdf: sharded by accession range, stored uncompressed.
@@ -164,7 +180,7 @@ if (Test-Path $pdfDir) {
     } else { 'other' }
   }
   foreach ($g in ($groups | Sort-Object Name)) {
-    if (Write-Volume ("pdf-" + $g.Name) @($g.Group) 'store') { $wrote++ }
+    if (Write-Volume ("pdf-" + $g.Name) @($g.Group) 'store' $pdfDir) { $wrote++ }
   }
 }
 

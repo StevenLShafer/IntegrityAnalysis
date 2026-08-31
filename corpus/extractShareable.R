@@ -55,6 +55,17 @@ message("  tiers  : ", paste(tiers, collapse = ", "))
 # Shipped for every tier, because a bag of accession-named files with no
 # index is unusable - and because it carries the licence of each file, so
 # the recipient inherits the terms rather than having to guess them.
+# The index ships with ANY payload. A bag of accession-named files with
+# no index is not just inconvenient, it is unusable and slightly
+# dangerous: the recipient has no licence, no hash and no provenance for
+# anything they were sent, so they cannot tell a CC BY article from a
+# CC BY-NC-ND one. Asking for --tier=files alone is always a mistake.
+if (any(c("files", "derived") %in% tiers) && !("index" %in% tiers)) {
+  message("  note: adding the index tier - a payload without licences, ",
+          "hashes and provenance cannot be used safely.")
+  tiers <- c(tiers, "index")
+}
+
 if ("index" %in% tiers) {
   n <- nrow(master)
   message(sprintf("  index  : %d file rows, %d works", n, nrow(works)))

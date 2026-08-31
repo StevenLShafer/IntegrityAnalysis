@@ -407,7 +407,7 @@ proposal more than hygiene.
 
 All of them, as of 2026-08-31, are one archive: **`C:/dev/Corpus`**, built
 by [`corpus/buildCorpusLibrary.R`](corpus/buildCorpusLibrary.R) and
-described by [its README](file:///C:/dev/Corpus/README.md). 17,032 works,
+described by its own `README.md` at that path. 17,032 works,
 36,842 files, one `IA######` accession per work, `master/<format>/<accession>.<ext>`.
 
 Two things follow that did not hold before. **Formats join on the
