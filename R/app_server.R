@@ -813,7 +813,7 @@ app_server <- function(input, output, session) {
         files <- files[!lock, , drop = FALSE]
       }
 
-      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx")
+      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx", "xml")
       for (nm in files$name[bad])
         outputComments(paste0(nm, " is not a supported file type."))
       files <- files[!bad, , drop = FALSE]
@@ -853,7 +853,7 @@ app_server <- function(input, output, session) {
       # survived the allowlist above and is not a parsed-document type
       # falls into readSheet(). A new document format must be excluded
       # here too, or it lands in the spreadsheet readers (issue 19).
-      for (i in which(!files$ext %in% c("pdf", "docx"))) {
+      for (i in which(!files$ext %in% c("pdf", "docx", "xml"))) {
         # Journal-style wide tables first (issue 17): a sheet laid out
         # the way journals print Table 1 - including the Editor's View
         # workbook this app itself generates - parses into template
@@ -912,7 +912,7 @@ app_server <- function(input, output, session) {
       # real PDFs; a crafted docx can stall libxml2 - the author of a
       # manuscript under investigation is the threat model), engine
       # dispatch by extension inside parseBaselineTableHeuristics().
-      pdfIdx <- which(files$ext %in% c("pdf", "docx"))
+      pdfIdx <- which(files$ext %in% c("pdf", "docx", "xml"))
       if (length(pdfIdx) > 0) {
         # ---- The AI assist: bring your own key (ISSUES.md issue 8) ----
         # The deployed default stays ai = "never": manuscripts are
@@ -1021,7 +1021,7 @@ app_server <- function(input, output, session) {
           outputComments(paste0(
             "Extracted the baseline table from ", files$name[i],
             # for a .docx, `page` is the table's ordinal in the document
-            if (identical(r$layout, "docx"))
+            if (identical(r$layout, "docx") || identical(r$layout, "jats"))
               paste0(": table ", res$page[k], " of the document, ")
             else paste0(": table page ", res$page[k], ", "),
             res$arms[k], " arm(s) (",

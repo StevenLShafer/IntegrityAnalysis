@@ -77,6 +77,7 @@ Collate:
   armNRecovery.R
   parseBaselineTableHeuristics.R
   parseDocx.R
+  parseJats.R
   aiFallback.R
   parseBaselineTable.R
   parseBaselineTableFiles.R

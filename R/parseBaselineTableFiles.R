@@ -85,7 +85,7 @@ parseBaselineTableFiles <- function(files,
   say <- function(...) if (!quiet) message(...)
 
   if (length(files) == 1 && dir.exists(files))
-    files <- list.files(files, pattern = "[.](pdf|docx)$", full.names = TRUE,
+    files <- list.files(files, pattern = "[.](pdf|docx|xml)$", full.names = TRUE,
                         recursive = TRUE, ignore.case = TRUE)
   files <- files[nzchar(files)]
   if (length(files) == 0) stop("No PDF or Word files to parse.")

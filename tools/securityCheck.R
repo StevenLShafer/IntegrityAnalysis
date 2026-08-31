@@ -37,7 +37,18 @@ banned <- c("\\bsystem\\s*\\(",
             "\\beval\\s*\\(",
             "\\bparse\\s*\\(\\s*text",
             "\\bsource\\s*\\(",
-            "\\bReduce\\s*\\(\\s*get\\b")
+            "\\bReduce\\s*\\(\\s*get\\b",
+            # XML parser options that switch off libxml2's own defences
+            # (issue 29). NOENT and DTDLOAD enable external entities -
+            # XXE, which reads local files or forwards requests. HUGE
+            # lifts the entity-expansion cap, which is what makes a
+            # billion-laughs bomb work. libxml2 is safe by DEFAULT; the
+            # entire risk is someone adding one of these to get past a
+            # "document too large" complaint, so it is banned in R/
+            # rather than left to review.
+            "[\"']HUGE[\"']",
+            "[\"']NOENT[\"']",
+            "[\"']DTDLOAD[\"']")
 for (f in rFiles) {
   src <- srcOf(f)
   code <- sub("#.*$", "", src)          # comments may NAME the patterns
