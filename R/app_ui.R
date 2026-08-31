@@ -225,12 +225,13 @@ app_ui <- function(testNote = NULL)
             "in either the data entry layout or a journal-style ",
             "baseline table (variables as rows, arms as columns, ",
             "including this app's own Editor's View download); ",
-            "article PDFs, Word manuscripts (docx), or a ",
+            "article PDFs, Word manuscripts (docx), JATS XML from a ",
+              "publisher or PubMed Central (xml), or a ",
             "zip of many such files - everything combines into one ",
             "table, distinguished by trial - or start with an empty ",
             "table and type the data in<br>")),
           fileInput("upload", NULL, multiple = TRUE,
-                    accept = c(".csv", ".xls", ".xlsx", ".pdf", ".docx",
+                    accept = c(".csv", ".xls", ".xlsx", ".pdf", ".docx", ".xml",
                                ".zip")),
           # Opt-in approximation (Steve, 2026-08-21): percent-only cells
           # whose printed rounding cannot pin a unique count fall back to

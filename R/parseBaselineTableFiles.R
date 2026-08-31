@@ -13,9 +13,10 @@
 # produce the validation figures quoted in README.md.                      #
 ############################################################################
 
-#' Parse every PDF and Word manuscript in a directory
+#' Parse every PDF, Word manuscript and JATS XML file in a directory
 #'
-#' Runs [parseBaselineTable()] over many PDFs and `.docx` manuscripts and
+#' Runs [parseBaselineTable()] over many PDFs, `.docx` manuscripts and
+#' `.xml` (JATS) articles and
 #' returns one row per file describing what happened, with the parsed
 #' table itself kept in a list column.
 #'
@@ -85,10 +86,10 @@ parseBaselineTableFiles <- function(files,
   say <- function(...) if (!quiet) message(...)
 
   if (length(files) == 1 && dir.exists(files))
-    files <- list.files(files, pattern = "[.](pdf|docx)$", full.names = TRUE,
+    files <- list.files(files, pattern = "[.](pdf|docx|xml)$", full.names = TRUE,
                         recursive = TRUE, ignore.case = TRUE)
   files <- files[nzchar(files)]
-  if (length(files) == 0) stop("No PDF or Word files to parse.")
+  if (length(files) == 0) stop("No PDF, Word or XML files to parse.")
   if (!is.null(outputDir) && !dir.exists(outputDir))
     dir.create(outputDir, recursive = TRUE)
 

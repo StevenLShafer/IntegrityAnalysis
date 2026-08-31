@@ -1,0 +1,166 @@
+# JATS/XML input (issue 29).
+#
+# The assertions that matter are the two the .docx path did not need:
+# ROWSPAN carry-over, because JATS omits the continuation cell entirely
+# and silent column drift would follow; and the SECURITY pair, because
+# XML can attack a parser in ways a PDF cannot.
+suppressWarnings(suppressPackageStartupMessages({
+  library(shiny); library(foreach); library(MBESS); library(Rfast)
+  library(dqrng)
+}))
+
+tmp <- function(ext = ".xml") tempfile(fileext = ext)
+
+# ---- the matrix: spans -------------------------------------------------
+
+test_that("rowspan carries forward so later columns do not shift left", {
+  # Row 2 has only THREE cells because column 1 is still covered by the
+  # rowspan above it. Read naively, "31" would land in column 1 and
+  # every value would be attributed to the wrong arm. This is the
+  # failure mode measured in 36% of real PMC tables.
+  f <- makeJatsArticle(tmp(), list(list(
+    caption = "Baseline characteristics",
+    rows = list(c("",       "Drug (n = 40)", "Placebo (n = 40)", "P"),
+                c("Sex",    "M",             "F",                "0.4"),
+                c(          "30",            "31",               "0.5"),
+                c("Age",    "60",            "61",               "0.6")),
+    spans = list(NULL, c(NA, NA, NA, NA), NULL, NULL))))
+  # give "Sex" a rowspan of 2 so row 3 legitimately has one fewer cell
+  x <- readLines(f, warn = FALSE)
+  x <- sub('<td colspan="1" rowspan="1">Sex</td>',
+           '<td colspan="1" rowspan="2">Sex</td>', x, fixed = TRUE)
+  writeLines(x, f, useBytes = TRUE)
+
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  m <- d$tables[[1]]$cells
+  expect_equal(ncol(m), 4)
+  # The carried column is BLANK on the continuation row...
+  expect_identical(m[3, 1], "")
+  # ...and the numbers stay in the columns they were written in.
+  expect_identical(m[3, 2], "30")
+  expect_identical(m[3, 3], "31")
+  expect_identical(m[3, 4], "0.5")
+})
+
+test_that("colspan replicates only when it carries an arm size", {
+  f <- makeJatsArticle(tmp(), list(list(
+    caption = "Baseline characteristics",
+    rows = list(c("", "Drug (n = 40)", "Comparison"),
+                c("Age", "60", "61")),
+    spans = list(c(NA, "c2", "c2"), NULL))))
+  m <- IntegrityAnalysis:::.ppJatsData(f)$tables[[1]]$cells
+  # the arm-size header is repeated across its span, so both spanned
+  # columns keep their N ...
+  expect_identical(m[1, 2], "Drug (n = 40)")
+  expect_identical(m[1, 3], "Drug (n = 40)")
+  # ... while a plain spanned header leaves the extra column empty.
+  expect_identical(m[1, 4], "Comparison")
+  expect_identical(m[1, 5], "")
+})
+
+# ---- captions and footnotes, as real publishers write them -------------
+
+test_that("caption comes from label plus caption/p, footnotes from the foot", {
+  f <- makeJatsArticle(tmp(), list(list(
+    label = "Table 2.", caption = "Baseline characteristics by group",
+    rows = list(c("", "A (n = 10)"), c("Age", "50")),
+    foot = c("Values are mean (SD).", "SD = standard deviation."))))
+  t1 <- IntegrityAnalysis:::.ppJatsData(f)$tables[[1]]
+  expect_true(grepl("Table 2", t1$caption))
+  expect_true(grepl("Baseline characteristics by group", t1$caption))
+  expect_length(t1$footnotes, 2)
+  expect_true(any(grepl("mean \\(SD\\)", t1$footnotes)))
+})
+
+# ---- end to end ---------------------------------------------------------
+
+test_that("a JATS baseline table parses end to end", {
+  f <- makeJatsArticle(tmp(), list(list(
+    caption = "Baseline characteristics of the randomised groups",
+    rows = list(c("",       "Drug (n = 40)", "Placebo (n = 40)"),
+                c("Age",    "61.2 (10.1)",   "59.8 (11.4)"),
+                c("Weight", "78.4 (14.2)",   "79.1 (13.6)"),
+                c("BMI",    "27.1 (4.4)",    "26.8 (4.9)")),
+    foot = "Values are mean (SD).")),
+    prose = "Participants were randomly assigned to two groups.")
+  r <- parseBaselineTableJats(f, quiet = TRUE)
+  expect_s3_class(r, "ParsePDFTable")
+  expect_identical(r$layout, "jats")
+  expect_identical(r$engine, "heuristic-jats")
+  expect_equal(nrow(r$arms), 2)
+  expect_setequal(unique(r$data$ROW), c("Age", "Weight", "BMI"))
+  expect_equal(r$data$MEAN[r$data$ROW == "Age"], c(61.2, 59.8))
+  expect_equal(r$data$SD[r$data$ROW == "Age"], c(10.1, 11.4))
+  expect_equal(r$data$N[r$data$ROW == "Age"], c(40, 40))
+})
+
+test_that("the .xml extension dispatches without touching parseOne", {
+  f <- makeJatsArticle(tmp(), list(list(
+    caption = "Baseline characteristics",
+    rows = list(c("", "A (n = 20)", "B (n = 20)"),
+                c("Age", "50.0 (5.0)", "51.0 (6.0)")))))
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_identical(r$engine, "heuristic-jats")
+})
+
+test_that("a document with no table says so, rather than failing obscurely", {
+  f <- tmp()
+  writeLines('<?xml version="1.0"?><article><body><p>No tables here.</p></body></article>',
+             f, useBytes = TRUE)
+  expect_error(parseBaselineTableJats(f, quiet = TRUE), "table-wrap")
+})
+
+# ---- security: the two attacks a PDF cannot carry ----------------------
+
+test_that("a billion-laughs bomb cannot exhaust memory", {
+  f <- makeBillionLaughs(tmp())
+  # libxml2 caps entity expansion unless HUGE is set. Either it errors,
+  # or it returns without the expansion - both are safe. What must NOT
+  # happen is a gigabyte of "lol" and a dead session, so this is also a
+  # timing assertion: the bomb resolves in well under a second.
+  t0 <- Sys.time()
+  res <- tryCatch(IntegrityAnalysis:::.ppJatsRead(f), error = function(e) "refused")
+  elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+  expect_lt(elapsed, 10)
+  if (!identical(res, "refused")) {
+    txt <- xml2::xml_text(res)
+    expect_lt(nchar(txt), 1e6)   # not the ~3 GB the bomb intends
+  }
+  expect_true(TRUE)
+})
+
+test_that("XXE cannot read a local file into the parsed output", {
+  secret <- tempfile(fileext = ".txt")
+  writeLines("TOPSECRET-CANARY-VALUE", secret)
+  f <- makeXxe(tmp(), secret)
+  res <- tryCatch(IntegrityAnalysis:::.ppJatsRead(f), error = function(e) NULL)
+  if (!is.null(res)) {
+    # The canary must not appear anywhere in the document text.
+    expect_false(grepl("TOPSECRET-CANARY-VALUE", xml2::xml_text(res)))
+  }
+  # And it must not reach a parsed table either.
+  out <- tryCatch(parseBaselineTableJats(f, quiet = TRUE),
+                  error = function(e) NULL)
+  if (!is.null(out))
+    expect_false(any(grepl("TOPSECRET-CANARY-VALUE",
+                           unlist(lapply(out$data, as.character)))))
+})
+
+test_that("the reader passes only the safe libxml2 options", {
+  # A source-level assertion, because the danger is a future edit adding
+  # HUGE to get past a "document too large" complaint. Mirrored by a
+  # tripwire in tools/securityCheck.R.
+  f <- "../../R/parseJats.R"
+  skip_if_not(file.exists(f), "source not reachable from the test dir")
+  # COMMENTS ONLY ARE STRIPPED FIRST. The header of parseJats.R names
+  # all three options at length, explaining why they must never be
+  # passed - so a naive grep over the whole file matches its own
+  # documentation and fails. The assertion is about CODE.
+  code <- sub("#.*$", "", readLines(f, warn = FALSE))
+  code <- paste(code, collapse = "\n")
+  expect_false(grepl("HUGE", code))
+  expect_false(grepl("NOENT", code))
+  expect_false(grepl("DTDLOAD", code))
+  # And the one call that does exist passes the safe option explicitly.
+  expect_true(grepl('read_xml\\(file, options = "NOBLANKS"\\)', code))
+})

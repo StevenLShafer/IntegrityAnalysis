@@ -1154,6 +1154,15 @@ parseBaselineTableHeuristics <- function(pdfFile,
                                   roundObsDelta = roundObsDelta,
                                   maxCandidates = maxCandidates,
                                   pctApprox = pctApprox, quiet = quiet))
+  # JATS XML (issue 29). Same reasoning as the .docx branch above: the
+  # dispatch lives inside the exported function, so inst/scripts/parseOne.R
+  # and every other caller need no change.
+  if (grepl("[.]xml$", pdfFile, ignore.case = TRUE))
+    return(parseBaselineTableJats(pdfFile, trial = trial,
+                                  parenIsSD = parenIsSD,
+                                  roundObsDelta = roundObsDelta,
+                                  maxCandidates = maxCandidates,
+                                  pctApprox = pctApprox, quiet = quiet))
   if (!requireNamespace("pdftools", quietly = TRUE))
     stop("Package 'pdftools' is required: install.packages('pdftools')")
   say <- function(...) if (!quiet) message(...)
