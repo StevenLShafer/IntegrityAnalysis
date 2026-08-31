@@ -43,12 +43,30 @@ Say '===== node ingest ====='
 
 # What each node produces, and where it lands locally. Add a row when a
 # node starts a new harvest; nothing else needs to change.
+# THERE ARE TWO COMPUTE NODES, not three. "newryzen" is THIS Windows
+# machine - the one the corpus lives on - and was listed here in error
+# when this script was written. It resolves (to a link-local IPv6 address)
+# and answers ping, so the mistake looked like a node that was merely
+# down; what gave it away is that it runs no sshd and has no entry in
+# ~/.ssh/config. Pulling the archive to itself is meaningless.
 $nodes = @(
   @{ Node = 'oldryzen'; Remote = 'work/pmc_corpus';   Local = 'pmc_corpus' },
   @{ Node = 'oldryzen'; Remote = 'journals';          Local = 'oldryzen_journals' },
-  @{ Node = 'i5';       Remote = 'work/ctgov_corpus'; Local = 'ctgov' },
-  @{ Node = 'newryzen'; Remote = 'work/pmc_corpus';   Local = 'newryzen_pmc' }
+  @{ Node = 'i5';       Remote = 'work/ctgov_corpus'; Local = 'ctgov' }
 )
+
+# Guard the class of mistake rather than just the instance. A node entry
+# naming this machine would ssh to itself, and if an sshd were ever
+# installed here it would "succeed" - tarring the corpus and extracting it
+# back over itself. Refuse by name before anything is copied.
+$selfNames = @($env:COMPUTERNAME, [System.Net.Dns]::GetHostName()) |
+             ForEach-Object { $_.ToLower() } | Select-Object -Unique
+$nodes = @($nodes | Where-Object {
+  if ($selfNames -contains $_.Node.ToLower()) {
+    Say ("SKIP {0}: that is this machine, not a compute node" -f $_.Node)
+    $false
+  } else { $true }
+})
 
 $changed = $false
 
