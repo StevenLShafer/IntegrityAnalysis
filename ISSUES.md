@@ -220,6 +220,111 @@ usable specimen from the nightly harvest).
 
 ---
 
+## 29. JATS/XML input — the format publishers already have
+
+Accept JATS XML as a fourth input type, alongside PDF, .docx and the
+spreadsheet formats.
+
+**Why, and the first reason is a measurement rather than an argument.**
+Of the 13,113 registry-linked papers that exist in PubMed Central
+(measured 2026-08-30 against the PMC Cloud Service metadata objects):
+
+| | n | with a PDF |
+|---|---|---|
+| Open Access subset | 7,277 | 6,863 (94%) |
+| **author manuscripts** | **3,208** | **160 (5%)** |
+| absent from the bucket | 2,788 | — |
+
+**Author manuscripts are XML-only.** Without XML support those 3,208
+papers are unreachable, and they are the ones worth reaching: an author
+manuscript carries the baseline table as submitted, and the registry
+holds the sponsor's own structured values for the same trial. That is
+ground truth by construction for the parser itself — parse the table,
+compare against what was typed into ClinicalTrials.gov. The protocol
+PDFs measured in the false-positive work had no ground truth at all.
+
+**Second, the API.** Steve's point, 2026-08-30: a publisher integrating
+with the API already has JATS, because that is what their production
+system emits. Asking them to render a PDF so that we can reconstruct
+the table geometry we just destroyed is backwards. Manuscript systems
+hold structured text; the API should accept it.
+
+**Third, XML is simply better input.** No column clustering, no caption
+scoring, no OCR, no decimal recovered from a glyph. The entire class of
+defect that issues 24, 23 and 22 exist to chase does not arise: a JATS
+table is real `<tr>`/`<td>`, and the only interpretation left is the one
+we actually want to test — what the numbers mean.
+
+### What it costs, which is less than it looks
+
+The .docx work already built the seam. `R/parseDocx.R` has
+
+```r
+.ppDocxLines(mat, caption = NULL, footnotes = character(0))
+```
+
+which turns a cell matrix into the synthetic coordinates `.ppParseBlock()`
+expects, so every existing behaviour — mean±SD, n (%), footnote-driven
+SD-vs-SE disambiguation, arm-N recovery, skip reasons — works unchanged.
+A JATS `<table-wrap>` is the same shape. `xml2` is already in
+`DESCRIPTION`. The work is extraction and plumbing, not a new engine.
+
+### Scope
+
+- `R/parseJats.R`: `.ppJatsData()` (locate `<table-wrap>`, read with SAFE
+  parser options), a cell matrix builder that expands `colspan`/`rowspan`,
+  caption from `<label>`/`<caption>`, footnotes from `<table-wrap-foot>`;
+  then hand all of it to `.ppDocxLines()`.
+- Candidate loop over every table in the document, scored by
+  `.ppParseScore()` + caption score, exactly as the .docx path does.
+- Dispatch on `[.]xml$` inside `parseBaselineTableHeuristics()`; keep the
+  `pdfFile` parameter name for API stability.
+- **Route through `parseBaselineTableFiles()`** — the per-file subprocess
+  with an OS timeout. This matters more for XML than it did for .docx;
+  see security below.
+- Extension plumbing: `app_server.R` allowlist and the non-PDF branch,
+  `app_ui.R` accept list and blurb, `zipUpload.R`; `DESCRIPTION` Collate.
+
+### Security — not optional, and the reason for the subprocess
+
+XML carries two attacks a PDF does not:
+
+- **Billion laughs**: nested entity definitions that expand a sub-kilobyte
+  file into gigabytes. Resource exhaustion, not theft.
+- **XXE**: `<!ENTITY x SYSTEM "file:///etc/passwd">` makes the parser read
+  local files, or `SYSTEM "http://…"` turns the server into a request
+  forwarder.
+
+libxml2 defends against both **by default**. The danger is entirely in
+options that switch the defence off — `NOENT`, `DTDLOAD` and above all
+`HUGE`, which is the one someone adds at 2am to get past a "document too
+large" complaint. So: read with defaults, never `HUGE`, and pin it in
+`tools/securityCheck.R` as a tripwire rather than a convention. The
+per-file subprocess contains what is left: a memory bomb kills the child,
+not the app.
+
+### Done looks like
+
+- Synthetic JATS fixtures (mirroring `helper-syntheticDocx.R`): mean±SD,
+  n (%) with complement columns, median [Q1, Q3], merged header cells,
+  a decoy results table out-scored by the real Table 1, no caption.
+- A **real PMC author manuscript** parses end to end.
+- A billion-laughs fixture and an XXE fixture are both refused without
+  reading a file or exhausting memory, asserted in tests.
+- `tools/securityCheck.R` fails if `HUGE`/`NOENT`/`DTDLOAD` appear.
+- **The ground-truth test**: for a sample of author manuscripts, the
+  parsed table matches the registry's own baseline values. This is the
+  point of the issue, not a bonus.
+
+### Punts, recorded so they are not rediscovered
+
+Multi-part tables split across sibling `<table-wrap>` elements are not
+stitched. Tables supplied only as `<graphic>` fall to the existing OCR
+path (issue 22), not here. Publisher DTDs that are not JATS are out of
+scope; JATS covers PMC, Europe PMC and MECA, which is the whole corpus.
+
+---
+
 ## 28. Report the build commit, so an unauthorized deploy is visible
 
 **Status: implemented 2026-08-27** (PR #97 — `R/buildInfo.R`,
