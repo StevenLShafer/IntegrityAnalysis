@@ -171,9 +171,14 @@ parseBaselineTable <- function(pdfFile,
   # legitimately arrives here with ai = "fallback", and a docx failing
   # OUTRIGHT because the assist was on would be strictly worse than the
   # docx parse the user gets with it off.
-  if (grepl("[.]docx$", pdfFile, ignore.case = TRUE) && ai != "never") {
-    say("The AI fallback reads rendered PDF pages, which a .docx does ",
-        "not have - parsing this file deterministically.")
+  # .xml is here for the same reason (issue 29, found by CodeRabbit on
+  # PR #129): JATS has no pages to render either, and without this an
+  # ai = "always" call would reach parseBaselineTableAI() and fail
+  # having never tried the JATS parser at all.
+  if (grepl("[.](docx|xml)$", pdfFile, ignore.case = TRUE) && ai != "never") {
+    say("The AI fallback reads rendered PDF pages, which a ",
+        if (grepl("[.]xml$", pdfFile, ignore.case = TRUE)) ".xml" else ".docx",
+        " does not have - parsing this file deterministically.")
     ai <- "never"
   }
 

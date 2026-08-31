@@ -2,7 +2,7 @@
 % Please edit documentation in R/parseBaselineTableFiles.R
 \name{parseBaselineTableFiles}
 \alias{parseBaselineTableFiles}
-\title{Parse every PDF and Word manuscript in a directory}
+\title{Parse every PDF, Word manuscript and JATS XML file in a directory}
 \usage{
 parseBaselineTableFiles(
   files,
@@ -37,7 +37,8 @@ A data frame with one row per file: \code{file}, \code{ok}, \code{error},
 each \code{ParsePDFTable}, or \code{NULL} where parsing failed.
 }
 \description{
-Runs \code{\link[=parseBaselineTable]{parseBaselineTable()}} over many PDFs and \code{.docx} manuscripts and
+Runs \code{\link[=parseBaselineTable]{parseBaselineTable()}} over many PDFs, \code{.docx} manuscripts and
+\code{.xml} (JATS) articles and
 returns one row per file describing what happened, with the parsed
 table itself kept in a list column.
 }

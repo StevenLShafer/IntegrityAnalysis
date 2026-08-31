@@ -71,6 +71,8 @@ test_that("an explicit vector of paths works, and an empty one is an error", {
   res <- parseBaselineTableFiles(c(f), quiet = TRUE)
   expect_equal(nrow(res), 1)
   expect_true(res$ok)
+  # Message updated when JATS XML joined the batcher (issue 29); the
+  # assertion pins the refusal, not the exact wording of the list.
   expect_error(parseBaselineTableFiles(character(0)),
-               "No PDF or Word files")
+               "No PDF, Word or XML files")
 })
