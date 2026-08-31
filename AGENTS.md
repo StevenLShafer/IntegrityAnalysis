@@ -403,6 +403,23 @@ this corpus at all — it comes from corpora that have never driven a fix:
 medRxiv preprints and PubTables-1M. That is what makes the cross-corpus
 proposal more than hygiene.
 
+### Where the corpora live
+
+All of them, as of 2026-08-31, are one archive: **`C:/dev/Corpus`**, built
+by [`corpus/buildCorpusLibrary.R`](corpus/buildCorpusLibrary.R) and
+described by its own `README.md` at that path. 17,032 works,
+36,842 files, one `IA######` accession per work, `master/<format>/<accession>.<ext>`.
+
+Two things follow that did not hold before. **Formats join on the
+filename** — `master/pdf/IA004512.pdf` and `master/xml/IA004512.xml` are
+the same work by construction, and 6,565 works hold both. And **sharing is
+decided by the index, not by a person**: `index/master.csv` carries
+`FILE_SHAREABLE` and `DERIVED_SHAREABLE` per file, and
+[`corpus/extractShareable.R`](corpus/extractShareable.R) copies only what
+they permit. The A&A submissions are marked `confidential` — in the
+archive, never out of it. `index/identity.csv` (accession → PMID, journal,
+title, authors) is excluded from every extraction tier.
+
 ### Which corpus answers which question
 
 They differ in KIND, not just in sample, so "develop on A, test on B"
@@ -447,9 +464,13 @@ this section is your map.
   [`corpus/README.md`](corpus/README.md) documents the columns, the
   current baseline (71.9% parsed; 58% exact value recovery against
   Carlisle), and the regeneration command.
-- **The corpus PDFs** are copyrighted and live locally at
-  `C:/temp/journals` (`<journal>/<year>/<n.m>.pdf`) — never commit them.
-  The test suite needs none of them (synthetic PDFs via `pdf()`).
+- **The corpus PDFs** are copyrighted and live locally in the corpus
+  library at `C:/dev/Corpus/master/pdf/<accession>.pdf` — never commit
+  them. The test suite needs none of them (synthetic PDFs via `pdf()`).
+  The as-downloaded tree is still at `C:/temp/journals`
+  (`<journal>/<year>/<n.m>.pdf`), hard-linked to the same bytes, and the
+  older `corpus/*.R` scripts still read it; new work should use the
+  library and its index.
 - **The architecture**: [`docs/parsepdf-architecture.md`](docs/parsepdf-architecture.md)
   (with an HTML twin). Entry points: `parseBaselineTable()` (one PDF,
   deterministic-then-optional-AI), `parseBaselineTableFiles()` (batches;

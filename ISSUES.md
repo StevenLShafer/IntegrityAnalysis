@@ -86,6 +86,104 @@ library C:/Temp/ia-lib are theirs).
 
 ---
 
+## 31. One corpus library, with an index that decides what may be shared
+
+**Status: built 2026-08-31** (`corpus/buildCorpusLibrary.R`,
+`corpus/fetchCorpusIdentity.R`, `corpus/extractShareable.R`,
+`tools/ingestNodes.ps1`, `tools/backupCorpusZip.ps1`; the library itself
+is `C:/dev/Corpus`, outside the repository). Recorded here because the
+*rules* are the deliverable, and because issue 30 depends on it.
+
+Steve, prompted by the prospect of collaborating with Adrian Barnett:
+"The test and development corpora are currently scattered all over this
+computer... we can't have this scattered set of files. Please coalesce
+into a single corpora with a master index and a logical tree. Papers
+should be assigned our own access numbers to preserve confidentiality."
+
+**What was scattered.** Eleven collections across `C:/temp`, the repo's
+hidden `.NewCarlisle`/`.Boldt`/`.Fujii`, and two Linux nodes — 36,842
+files, 24.2 GB, in four incompatible naming schemes. The same paper
+could be `Journals/Anaesthesia/2003/1.2.pdf`, `Journals/PMID_12492668.pdf`
+and a PMC XML named by PMCID, with nothing linking them. **17,032 works**
+after dedup on PMID > PMCID > DOI > SHA-256; **6,565 hold both a PDF and
+an XML**, which is the set that makes XML usable as parser ground truth.
+
+**The architecture is one sentence of Steve's**, given after the A&A
+peer-review holdings were flagged: *"Put them in the master index, but
+marked 'not sharable.' The master corpus itself is never shared. We
+extract and share only what the master index permits."* So the library is
+not a shareable artefact with sensitive parts carved out — it is a
+complete private archive plus an index that **decides**. A file is
+extracted if and only if `master.csv` says `FILE_SHAREABLE`. If a licence
+is wrong, fix the index; never special-case the extraction, because the
+index is what can be audited afterwards.
+
+**Two booleans, because two different questions get asked.**
+`FILE_SHAREABLE` (may the article go?) is true for 20,049 of 36,842
+files. `DERIVED_SHAREABLE` (may a parsed table go?) is true for 30,514.
+The gap is the point: a subscription PDF cannot be redistributed, but the
+mean and SD printed in its Table 1 are *facts*, and facts are not
+copyrightable — so restricted material can still carry a published
+analysis. Confidential peer review is the one class where both are false,
+because there the content *is* the confidence.
+
+**The confidential tier.** `C:/temp/AA` held 6,328 PDFs of Anesthesia &
+Analgesia submissions from Steve's editorship. Pseudonymising the index
+does not make them shareable — the accession hides identity in a *table*
+and does nothing about the authors and title printed inside the PDF. They
+are in the archive (they are the only corpus showing what actually
+arrives at a journal) and marked `confidential`: 6,328 files collapsing
+to 3,149 works, since the same manuscript was held in several folders.
+
+**Accessions are randomised, not sequential-by-scan.** `IA######`
+assigned in shuffled order under a recorded seed. Scan order would leak
+exactly what the pseudonym hides — `IA000001`–`IA001865` would obviously
+be the Carlisle set. Same reasoning as `corpus/pseudonymize.R`.
+`identity.csv` (accession → PMID, journal, volume, issue, pages, title,
+authors) is excluded from every extraction tier unconditionally, with no
+flag to override: turning an accession back into a named paper is a
+decision Steve makes one paper at a time, so the author can be heard
+first.
+
+**`FIRST_SEEN` enables a temporal holdout.** Train on
+`FIRST_SEEN <= X`, evaluate on what arrived after. That is clean in a way
+`corpus/Holdout.csv` cannot claim — those articles had already been read
+and their failures studied when it was drawn. Deliberately *not* inferred
+from file mtimes: a 2025 download copied in 2026 has a timestamp that
+says nothing about when the corpus gained it.
+
+**Watch for**
+
+- **`match()` on a missing key is a silent identity swap, and a positive
+  control will not catch it.** `pmidToPmcid.csv` holds 11,428 rows with an
+  empty PMCID; `match(NA, table)` in R returns the position of the first
+  `NA` rather than missing, so on the first run *every* work without a
+  PMCID — all 3,149 confidential A&A manuscripts among them — inherited
+  one unrelated paper's PMID, and then that paper's title and authors.
+  Coverage read `17,035 / 17,035`. The script already had positive
+  controls on both NCBI endpoints and **they passed**: a healthy API
+  answers a wrong question as cheerfully as a right one, so they proved
+  the service worked and could not prove the keys were right. Fixed with
+  `safeMatch()` (both scripts, ten joins) plus a **negative control that
+  aborts before writing** — a work with no identifier at build time may
+  not acquire one. Treat a coverage figure that jumps to 100% as a
+  defect report, not a result.
+- **The NCBI ID converter moved again.** `www.ncbi.nlm.nih.gov/pmc/utils/
+  idconv/v1.0/` now 301s to `pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/
+  articles/`, and `jsonlite::fromJSON` does not follow redirects — it
+  parses the redirect HTML, finds no records, and reports success having
+  resolved nothing. That is the **third** silent NCBI zero in this project
+  (retired `oa.fcgi`, an unfollowed 301, a `pmcid:` prefix left in parsed
+  values). Both fetchers now run a **positive control before the run** and
+  `stop()` on failure. Add one to any new NCBI caller.
+- Hard links, not copies: `master/` costs no extra disk, but robocopy and
+  zip both expand them, so never back up `master/` *and* the source trees.
+- The originals under `C:/temp` still exist and older `corpus/*.R` scripts
+  still read them. They are hard links to the same bytes, so this is not
+  duplication — but the paths must be repointed before anything is deleted.
+
+---
+
 ## 30. A frozen regression corpus, and multi-source disagreement as a signal
 
 Two requirements from Steve, 2026-08-30, which belong together because
