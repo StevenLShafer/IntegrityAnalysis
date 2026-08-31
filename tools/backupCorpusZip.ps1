@@ -138,13 +138,16 @@ if (Test-Path $regDir) {
   }
 }
 
-# --- xml and txt: compress well, one volume each.
-foreach ($fmt in @('xml', 'txt')) {
-  $d = Join-Path $corpus "master\$fmt"
-  if (Test-Path $d) {
-    $f = @(Get-ChildItem $d -File)
-    if (Write-Volume $fmt $f 'optimal') { $wrote++ }
-  }
+# --- every non-PDF format, one volume each, discovered rather than listed.
+# The first version hardcoded @('xml','txt') and silently omitted the 12
+# .docx and 1 .xlsx when they joined the library - a backup that skips a
+# format without saying so is exactly the failure this script exists to
+# prevent. Enumerate what is actually there instead.
+foreach ($d in (Get-ChildItem (Join-Path $corpus 'master') -Directory)) {
+  if ($d.Name -eq 'pdf') { continue }      # sharded separately, below
+  $f = @(Get-ChildItem $d.FullName -File)
+  if ($f.Count -eq 0) { continue }
+  if (Write-Volume $d.Name $f 'optimal') { $wrote++ }
 }
 
 # --- pdf: sharded by accession range, stored uncompressed.
