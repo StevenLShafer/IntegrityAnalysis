@@ -86,6 +86,116 @@ library C:/Temp/ia-lib are theirs).
 
 ---
 
+## 30. A frozen regression corpus, and multi-source disagreement as a signal
+
+Two requirements from Steve, 2026-08-30, which belong together because
+the first produces the material the second freezes.
+
+### 30a. More than one source per table is information, not a scorecard
+
+"We are trying to learn how to parse input files to generate baseline
+tables. When we have > 1 source, then that provides information from
+which we can further refine input table parsing, regardless of the
+source."
+
+Today's PMC pass gives, for the same trial, up to three independent
+renderings of one baseline table:
+
+| source | reachable | what it is |
+|---|---|---|
+| PDF | ~7,000 | the typeset article |
+| JATS XML | ~10,200 | the publisher's own table markup |
+| the registry | 47,813 trials | values the sponsor typed into ClinicalTrials.gov |
+
+(XML availability was measured, not assumed: 39 of 40 sampled OA
+articles and 39 of 40 sampled author manuscripts carry an `xml_url`,
+against 35 and 3 respectively for `pdf_url`. XML is not a fallback for
+the awkward cases - it is the format that is actually there.)
+
+**5,672 trials have all three.** A further 2,322 author manuscripts have
+XML and the registry but no PDF.
+
+The comparison isolates cleanly because BOTH input paths funnel into the
+SAME `.ppParseBlock()`. The PDF path reconstructs a table from
+coordinates; the XML path hands over real cells; after that the
+interpretation code is byte-identical. So a PDF-vs-XML disagreement is
+attributable to EXTRACTION alone, with interpretation held constant by
+construction. That is a far sharper instrument than issue 24's
+measurement, which could say "9.6% agree with the ground truth not at
+all" but never why.
+
+Three sources also break ties: a 2-versus-1 split usually names the odd
+one out. And the PDF-and-XML-agree-but-registry-differs case is not a
+parser finding at all - it is baseline reporting inconsistency between a
+published paper and its registry entry, which is publishable on its own.
+
+**The point is the feedback loop, not the score.** Each disagreement
+localises a defect (a lost column, a misread decimal, the wrong table
+chosen), that defect gets fixed, and the corpus re-run. What must NOT
+happen is the loop of AGENTS.md's optimisation pass - fix against the
+same files, re-measure on the same files - which is why 30b exists and
+why `corpus/freezeHoldout.R` already splits development from holdout.
+
+**Caveat to state before quoting any number**: XML is ground truth for
+what the TABLE CONTAINS, not for what the PDF says. PMC XML is sometimes
+re-keyed or converted from the publisher's deposit, and author-manuscript
+XML is generated from the submitted Word file, so the two can legitimately
+differ. A disagreement is a flag, not a verdict; the honest design
+measures the rate and adjudicates a sample by eye.
+
+### 30b. A frozen, multi-format regression corpus
+
+"We should set aside a corpus of 'successfully parsed and validated'
+files of all types (pdf, xlsx, docx, XML, etc) that we can use in the
+future to be certain that new parsing programs don't significantly
+degrade the parser."
+
+**The gap this closes.** Every fixture in the suite today is
+SYNTHESISED at test time - `helper-syntheticPdf.R`,
+`helper-syntheticDocx.R`, `helper-syntheticJats.R` - and the only
+committed real files are `Example.xlsx` and `Template.xlsx`. That was
+forced: the Carlisle and A&A corpora are copyrighted PDFs, gitignored,
+local-only. So the suite catches logic regressions but CANNOT catch a
+regression on real-world layout variety, which is exactly where the
+parser fails.
+
+**What makes this newly possible.** Of the registry-linked PMC articles
+measured 2026-08-30: 3,673 are CC BY and 47 are CC0. Those are
+redistributable with attribution, so a `<table-wrap>` fragment plus its
+expected output can be COMMITTED and run in GitHub Actions on every PR.
+CC BY-NC (1,625) and CC BY-NC-ND (1,567) are usable locally but awkward
+to redistribute in a repository others may use commercially; TDM (3,087)
+permits mining, not redistribution. **Only CC BY and CC0 go in the
+repo**, and each case records its licence and citation.
+
+**Two tiers, mirroring the existing local/public split:**
+
+- **Tier 1, committed, runs in CI.** CC BY / CC0 JATS table fragments,
+  plus the synthesised PDF/.docx/.xlsx fixtures already in use. Public,
+  legally clean, fast.
+- **Tier 2, local only.** Real PDFs from the Carlisle, A&A and medRxiv
+  corpora. Run on the compute nodes, never committed.
+
+**What "successfully parsed and validated" must mean**, or the corpus
+freezes our mistakes: the file parses, `validateData()` passes, AND the
+values were checked against a second source (XML, the registry, or by
+hand) rather than merely looking plausible. A case admitted on "it
+parsed without error" would pin whatever the parser did that day,
+including a wrong-table selection - the precise failure of issue 24.
+
+**Done looks like:** a `corpus/regression/` manifest of cases (input,
+expected validated frame, source, licence, citation, how it was
+verified); a test that parses every tier-1 case and diffs against the
+frozen frame; a corpus script that runs tier 2 locally and reports
+drift; and a documented rule that a case is added only WITH its
+verification evidence.
+
+**Deliberately not automated:** admitting a case requires a human
+judgement that the values are right. The manifest records who verified
+it and how.
+
+---
+
 ## 24. Silent misparse: the parser sometimes returns the WRONG TABLE
 
 **The measurement Steve asked for** (2026-08-26, from the "unknown
