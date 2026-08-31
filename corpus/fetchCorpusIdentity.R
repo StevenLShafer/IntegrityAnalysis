@@ -42,6 +42,36 @@ ident <- utils::read.csv(file.path(indexDir, "identity.csv"),
                          colClasses = "character")
 blank <- function(x) is.na(x) | !nzchar(x)
 
+# safeMatch - match() that refuses to join on a missing key.
+#
+# THIS EXISTS BECAUSE THE OBVIOUS VERSION SILENTLY CORRUPTED THE INDEX.
+# pmidToPmcid.csv holds 24,541 rows of which 11,428 have an EMPTY PMCID
+# (they are PMIDs with no PMC record). A plain match(ident$PMCID,
+# m$PMCID) with an NA on the left finds the first NA on the right and
+# returns its position - so every work without a PMCID, including all
+# 3,149 confidential A&A manuscripts, was assigned one unrelated paper's
+# PMID. EFetch then dutifully filled in that paper's journal, title and
+# authors, and the coverage report said 17,035/17,035: a perfect score,
+# entirely wrong.
+#
+# The lesson is narrower than "check your joins". The positive controls
+# above test that the ENDPOINT works. They cannot test that the KEYS are
+# right, because a healthy API answers a wrong question just as happily
+# as a right one. Coverage that rises to 100% is a red flag, not a
+# success - see the negative control at the end of this script.
+safeMatch <- function(x, table) {
+  i <- match(x, table)
+  i[blank(x)] <- NA_integer_
+  i[!is.na(i) & blank(table[i])] <- NA_integer_
+  i
+}
+
+# Which accessions arrived here ALREADY carrying a PMID, before this
+# script touched anything. The negative control at the end compares
+# against this, so that a legitimately-known PMID is not mistaken for a
+# leaked one.
+identifiedAtBuild <- ident$ACCESSION[!blank(ident$PMID)]
+
 ## ---------------------------------------------------------------------
 ## 1. PMCID -> PMID from the table we already hold
 ## ---------------------------------------------------------------------
@@ -52,7 +82,7 @@ if (file.exists(map)) {
   # produced three silent NCBI failures in August), so normalise both
   # sides rather than trusting either.
   norm <- function(x) toupper(sub("^pmcid:", "", trimws(x)))
-  i <- match(norm(ident$PMCID), norm(m$PMCID))
+  i <- safeMatch(norm(ident$PMCID), norm(m$PMCID))
   fill <- blank(ident$PMID) & !is.na(i)
   ident$PMID[fill] <- m$PMID[i][fill]
   message(sprintf("local PMCID->PMID map filled %d PMIDs", sum(fill)))
@@ -101,7 +131,7 @@ if (length(need)) {
   }
   if (length(got)) {
     g <- do.call(rbind, got); g <- g[!is.na(g$pmid), , drop = FALSE]
-    i <- match(toupper(ident$PMCID), toupper(g$pmcid))
+    i <- safeMatch(toupper(ident$PMCID), toupper(g$pmcid))
     fill <- blank(ident$PMID) & !is.na(i)
     ident$PMID[fill] <- g$pmid[i][fill]
     message(sprintf("  converter filled %d more", sum(fill)))
@@ -197,7 +227,7 @@ bib <- if (length(out)) do.call(rbind, out) else NULL
 
 if (!is.null(bib)) {
   bib <- bib[!duplicated(bib$PMID), ]
-  i <- match(ident$PMID, bib$PMID)
+  i <- safeMatch(ident$PMID, bib$PMID)
   for (col in c("JOURNAL", "JOURNAL_FULL", "YEAR", "VOLUME", "ISSUE",
                 "PAGES", "TITLE", "AUTHORS")) {
     v <- bib[[col]][i]
@@ -205,6 +235,31 @@ if (!is.null(bib)) {
   }
   message(sprintf("resolved %d of %d PubMed records", nrow(bib), length(pmids)))
 }
+
+## ---------------------------------------------------------------------
+## 4. NEGATIVE CONTROL - refuse to write an index that resolved too much
+## ---------------------------------------------------------------------
+# The positive controls prove the endpoints answer. This proves we asked
+# about the right papers, and it is the check that would have caught the
+# NA-join described at the top of this file.
+#
+# The invariant: a work with NO identifier of any kind cannot acquire a
+# PMID. The A&A peer-review manuscripts are unpublished and have no PMID,
+# PMCID or DOI - if any of them comes out of this script named, the join
+# is matching on a missing key and every downstream number is fiction.
+#
+# This aborts BEFORE writing, because a contaminated identity.csv is
+# worse than no identity.csv: it is confidently wrong, and it is the file
+# that decides which real author gets attached to which accession.
+anon <- blank(ident$PMCID) & blank(ident$DOI) &
+        !(ident$ACCESSION %in% identifiedAtBuild)
+leaked <- sum(anon & !blank(ident$PMID))
+if (leaked > 0)
+  stop("NEGATIVE CONTROL FAILED: ", leaked, " work(s) with no PMCID, no ",
+       "DOI and no PMID at build time now carry a PMID. A join is ",
+       "matching on a missing key. NOTHING WAS WRITTEN.")
+message(sprintf("negative control passed: %d anonymous works stayed anonymous",
+                sum(anon)))
 
 ident <- ident[order(ident$ACCESSION), ]
 utils::write.csv(ident, file.path(indexDir, "identity.csv"), row.names = FALSE)

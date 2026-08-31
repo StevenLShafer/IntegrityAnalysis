@@ -208,6 +208,24 @@ sources           <- sources[sources$ROLE == "work", ]
 # into an underscore, an opaque manuscript number. These readers turn all
 # of them into the same four columns so the dedup step downstream does not
 # need to know where anything came from.
+# safeMatch - match() that refuses to join on a missing key.
+#
+# match(NA, table) returns the position of the FIRST NA in table, which
+# is a real index, not a miss. Where the right-hand table legitimately
+# contains blanks - pmidToPmcid.csv has 11,428 PMIDs with no PMC record,
+# manifest.csv has rows for articles never retrieved - that turns every
+# unidentified row into a confident, wrong identification. It did exactly
+# that on 2026-08-31: all 3,149 anonymous A&A manuscripts were assigned
+# one unrelated paper's PMID, and the coverage report read 17,035/17,035.
+# Use this for every join whose keys can be missing on either side.
+safeMatch <- function(x, table) {
+  bl <- function(v) is.na(v) | !nzchar(as.character(v))
+  i <- match(x, table)
+  i[bl(x)] <- NA_integer_
+  i[!is.na(i) & bl(table[i])] <- NA_integer_
+  i
+}
+
 emptyIdent <- function(n)
   data.frame(PMID = rep(NA_character_, n), PMCID = NA_character_,
              DOI = NA_character_, NCT = NA_character_,
@@ -222,7 +240,7 @@ readIdentity <- function(kind, paths, srcRow) {
     m <- utils::read.csv(file.path(srcRow$PATH, "manifest.csv"),
                          colClasses = "character")
     out$PMCID <- sub("[.].*$", "", base)
-    i <- match(out$PMCID, m$PMCID)
+    i <- safeMatch(out$PMCID, m$PMCID)
     # "none" in the PMC metadata means no licence was declared, which is
     # NOT the same as public domain - treat it as restricted.
     out$LICENCE <- ifelse(is.na(i), "unknown", m$LICENSE[i])
@@ -234,13 +252,13 @@ readIdentity <- function(kind, paths, srcRow) {
     mp <- utils::read.csv(file.path(repoRoot, "corpus", "pmid_map.csv"),
                           colClasses = "character")
     rel <- sub("^.*/Journals/", "", gsub("\\\\", "/", paths))
-    i <- match(tolower(rel), tolower(mp$PDF))
+    i <- safeMatch(tolower(rel), tolower(mp$PDF))
     out$PMID[is.na(out$PMID)] <- mp$PMID[i][is.na(out$PMID)]
   } else if (kind == "screen-manifest") {
     j <- jsonlite::fromJSON(file.path(srcRow$PATH, "manifest.json"))
     key <- tolower(gsub("\\\\", "/", j$path))
     rel <- tolower(sub("^.*/(pos|neg)/", "\\1/", gsub("\\\\", "/", paths)))
-    i <- match(rel, key)
+    i <- safeMatch(rel, key)
     out$PMCID <- as.character(j$pmcid)[i]
     out$PMID  <- as.character(j$pmid)[i]
     out$DOI   <- as.character(j$doi)[i]
@@ -250,7 +268,7 @@ readIdentity <- function(kind, paths, srcRow) {
     mf <- file.path(srcRow$PATH, "manifest.csv")
     if (file.exists(mf)) {
       m <- utils::read.csv(mf, colClasses = "character")
-      i <- match(out$DOI, m$doi)
+      i <- safeMatch(out$DOI, m$doi)
       # cc_no means "no Creative Commons licence chosen", i.e. all rights
       # reserved - restricted, not unknown.
       lic <- m$license[i]
@@ -267,7 +285,7 @@ readIdentity <- function(kind, paths, srcRow) {
     out$PMID[!grepl("^\\d+$", out$PMID)] <- NA
     m <- utils::read.csv(file.path(srcRow$PATH, "manifest.csv"),
                          colClasses = "character")
-    i <- match(out$PMID, m$PMID)
+    i <- safeMatch(out$PMID, m$PMID)
     out$PMCID <- m$PMCID[i]
   } else if (kind == "filename-pmid") {
     out$PMID <- ifelse(grepl("^PMID_\\d+", base),
@@ -537,7 +555,7 @@ for (col in bibCols) ident[[col]] <- NA_character_
 old <- file.path(indexDir, "identity.csv")
 if (file.exists(old)) {
   o <- utils::read.csv(old, colClasses = "character")
-  i <- match(ident$ACCESSION, o$ACCESSION)
+  i <- safeMatch(ident$ACCESSION, o$ACCESSION)
   for (col in c("PMID", bibCols))
     if (!is.null(o[[col]])) {
       v <- o[[col]][i]
@@ -550,7 +568,7 @@ if (file.exists(old)) {
 pm <- file.path(staging, "ctgov", "pubmedMetadata.csv")
 if (file.exists(pm)) {
   p <- utils::read.csv(pm, colClasses = "character")
-  i <- match(ident$PMID, p$PMID)
+  i <- safeMatch(ident$PMID, p$PMID)
   for (col in c("JOURNAL", "JOURNAL_FULL", "YEAR", "TITLE")) {
     v <- p[[col]][i]
     ident[[col]] <- ifelse(is.na(ident[[col]]) | !nzchar(ident[[col]]),

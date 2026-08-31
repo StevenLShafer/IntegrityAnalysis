@@ -154,6 +154,20 @@ says nothing about when the corpus gained it.
 
 **Watch for**
 
+- **`match()` on a missing key is a silent identity swap, and a positive
+  control will not catch it.** `pmidToPmcid.csv` holds 11,428 rows with an
+  empty PMCID; `match(NA, table)` in R returns the position of the first
+  `NA` rather than missing, so on the first run *every* work without a
+  PMCID — all 3,149 confidential A&A manuscripts among them — inherited
+  one unrelated paper's PMID, and then that paper's title and authors.
+  Coverage read `17,035 / 17,035`. The script already had positive
+  controls on both NCBI endpoints and **they passed**: a healthy API
+  answers a wrong question as cheerfully as a right one, so they proved
+  the service worked and could not prove the keys were right. Fixed with
+  `safeMatch()` (both scripts, ten joins) plus a **negative control that
+  aborts before writing** — a work with no identifier at build time may
+  not acquire one. Treat a coverage figure that jumps to 100% as a
+  defect report, not a result.
 - **The NCBI ID converter moved again.** `www.ncbi.nlm.nih.gov/pmc/utils/
   idconv/v1.0/` now 301s to `pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/
   articles/`, and `jsonlite::fromJSON` does not follow redirects — it
