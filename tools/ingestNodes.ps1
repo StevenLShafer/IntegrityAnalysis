@@ -43,16 +43,25 @@ Say '===== node ingest ====='
 
 # What each node produces, and where it lands locally. Add a row when a
 # node starts a new harvest; nothing else needs to change.
-# THERE ARE TWO COMPUTE NODES, not three. "newryzen" is THIS Windows
-# machine - the one the corpus lives on - and was listed here in error
-# when this script was written. It resolves (to a link-local IPv6 address)
-# and answers ping, so the mistake looked like a node that was merely
-# down; what gave it away is that it runs no sshd and has no entry in
-# ~/.ssh/config. Pulling the archive to itself is meaningless.
+# THE THREE COMPUTE NODES ARE oldryzen, i5 AND surface.
+#
+# This list was wrong in both directions when first written. It named
+# "newryzen", which is THIS Windows machine - the one the corpus lives on
+# - and it omitted "surface" entirely. The first error was well disguised:
+# newryzen resolves to a link-local IPv6 address and answers ping, so it
+# read as a node that was merely down rather than a category error; what
+# gives it away is that it runs no sshd and has no ~/.ssh/config entry.
+#
+# The second error was the expensive one. surface holds ctgov_docs - 3,000
+# ClinicalTrials.gov posted protocols, statistical analysis plans and
+# consent forms across 2,246 NCTs, 5.2 GB - and none of it reached the
+# library, because the original inventory checked oldryzen and i5 and
+# never looked. Two of the three nodes is not an inventory.
 $nodes = @(
   @{ Node = 'oldryzen'; Remote = 'work/pmc_corpus';   Local = 'pmc_corpus' },
   @{ Node = 'oldryzen'; Remote = 'journals';          Local = 'oldryzen_journals' },
-  @{ Node = 'i5';       Remote = 'work/ctgov_corpus'; Local = 'ctgov' }
+  @{ Node = 'i5';       Remote = 'work/ctgov_corpus'; Local = 'ctgov' },
+  @{ Node = 'surface';  Remote = 'work/ctgov_docs';   Local = 'ctgov_docs' }
 )
 
 # Guard the class of mistake rather than just the instance. A node entry
