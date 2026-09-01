@@ -81,11 +81,12 @@ licenceTable <- data.frame(
               "CC BY-NC", "CC BY-NC-SA",
               "CC BY-ND", "CC BY-NC-ND",
               "TDM", "none", "subscription", "unknown",
+              "ctgov posted document",
               "confidential peer review"),
   SHARE = c(rep("public", 4),
             rep("noncommercial", 2),
             rep("verbatim-only", 2),
-            rep("restricted", 4),
+            rep("restricted", 5),
             "confidential"),
   stringsAsFactors = FALSE)
 
@@ -129,6 +130,12 @@ sources <- rbind(
       "2026-08-31", "fetchPmc.sh on oldryzen, streamed to this host by tar over ssh",
       "per-file", "pmc-manifest",
       "10,325 articles reached from the clinicaltrials.gov PMID linkage. Licence is per article from the PMC metadata JSON, not a collection default."),
+
+  src("ctgov-docs", file.path(staging, "ctgov_docs"), "[.]pdf$",
+      "ClinicalTrials.gov posted documents (protocols, statistical analysis plans, informed consent forms), submitted by sponsors under FDAAA and published on the NIH registry site",
+      "2026-08-30", "downloadCtgovDocs.R on surface, streamed to this host by tar over ssh",
+      "ctgov posted document", "ctgov-doc-manifest",
+      "3,000 documents across 2,246 NCTs (1,993 Prot_SAP, 919 Prot, 88 ICF). UNIQUELY USEFUL because the filename IS the NCT, so these join straight onto the registry baseline tables in registry/ctgov - a protocol states the planned analysis while the results section reports what was found, which is a comparison no other collection here supports. Marked RESTRICTED rather than public: the registry RECORD is a US Government work, but these documents are authored by the sponsors and merely hosted, so we do not own a licence to redistribute them. That costs a collaborator nothing - anyone can download them from ClinicalTrials.gov with the NCT, and the NCT list is shareable."),
 
   src("carlisle-journals", "C:/temp/Journals", "[.]pdf$",
       "Publisher web sites (Anaesthesia, Anesthesiology, CJA, JAMA, BJA, EJA), downloaded under Stanford institutional subscription",
@@ -177,8 +184,8 @@ sources <- rbind(
   src("regression-fixtures", file.path(repoRoot, "corpus"), "[.]pdf$",
       "Drawn from the Carlisle corpus as named regression fixtures",
       "2026-08", "selected by hand for buildTestSet.R", "subscription", "filename-pmid",
-      "Test1..Test6 pin one named parser defect each (clean, missing N, categorical, skipped lines, scanned, poppler hang). Small and load-bearing.",
-      recursive = FALSE),
+      "Test1..Test6 pin one named parser defect each (clean, missing N, categorical, skipped lines, scanned, poppler hang), plus the 61 articles in corpus/TEST used during parser development. RECURSIVE ON PURPOSE: the first version of this source set recursive = FALSE and silently collected only the 7 top-level files, leaving the whole TEST directory out of the library - which is exactly the kind of omission the audit was asked to find.",
+      recursive = TRUE),
 
   src("carlisle-tables", repoRoot, "^(Carlisle|One Sheet).*[.]xlsx$",
       "John Carlisle's published supplementary data (Anaesthesia 2017;72:944-952) plus Steve Shafer's PMID and DOI resolutions",
@@ -287,6 +294,13 @@ readIdentity <- function(kind, paths, srcRow) {
                          colClasses = "character")
     i <- safeMatch(out$PMID, m$PMID)
     out$PMCID <- m$PMCID[i]
+  } else if (kind == "ctgov-doc-manifest") {
+    # The filename carries the NCT: NCT02692248_Prot_ICF_000.pdf. That is
+    # the only identifier these have - a protocol has no PMID and no DOI -
+    # and it is the one that matters, because it joins to the registry
+    # baseline tables.
+    out$NCT <- sub("^(NCT\\d+)_.*$", "\\1", base)
+    out$NCT[!grepl("^NCT\\d+$", out$NCT)] <- NA
   } else if (kind == "filename-pmid") {
     out$PMID <- ifelse(grepl("^PMID_\\d+", base),
                        sub("^PMID_(\\d+).*$", "\\1", base), NA)
@@ -491,9 +505,38 @@ if (nrow(prior) && exists("mp")) {
     keepFirst <- !duplicated(prior$WORK_KEY)
     message(sprintf("  %d prior accession(s) retired as duplicates of a merged work",
                     sum(!keepFirst)))
-    utils::write.csv(prior[!keepFirst, ],
-                     file.path(indexDir, "accessionsRetired.csv"),
-                     row.names = FALSE)
+    # APPEND TO THE LEDGER, NEVER OVERWRITE IT.
+    #
+    # This file is not a log - it is load-bearing. The numbering code below
+    # reads it to find the highest accession EVER issued, so that a retired
+    # number is never reissued. Overwriting it with only the current run's
+    # retirements would drop earlier ones out of that ceiling, and the next
+    # build could hand a retired number to a new work - reintroducing
+    # exactly the collision this ledger exists to prevent.
+    #
+    # A retired number is retired permanently, because someone may still be
+    # holding it.
+    retiredPath <- file.path(indexDir, "accessionsRetired.csv")
+    newlyRetired <- prior[!keepFirst, ]
+    newlyRetired$RETIRED_ON <- today
+    ledger <- if (file.exists(retiredPath)) {
+      old <- utils::read.csv(retiredPath, colClasses = "character")
+      # TOLERATE AN OLDER SCHEMA. A ledger written before a column existed
+      # - RETIRED_ON was added after the first ledger file - would make
+      # old[, names(newlyRetired)] throw "undefined columns selected", and
+      # it would throw only on the rare run where a merge actually retires
+      # something. Fill any absent column rather than assume the shape.
+      for (cl in setdiff(names(newlyRetired), names(old)))
+        old[[cl]] <- NA_character_
+      rbind(old[, names(newlyRetired), drop = FALSE], newlyRetired)
+    } else newlyRetired
+    # Deduplicate BY ACCESSION, not by whole row. unique() on a data frame
+    # removes identical rows, so the same accession recorded twice with
+    # different RETIRED_ON dates would survive twice. The first record is
+    # the true one - a number is retired once.
+    ledger <- ledger[!duplicated(ledger$ACCESSION), , drop = FALSE]
+    utils::write.csv(ledger, retiredPath, row.names = FALSE)
+    message(sprintf("  retired ledger now holds %d accession(s)", nrow(ledger)))
     prior <- prior[keepFirst, ]
   }
 }
@@ -504,11 +547,40 @@ if (length(newKeys)) {
   # but the ORDER is shuffled so the number does not encode the source.
   set.seed(20260831L)
   newKeys <- sample(newKeys)
-  start <- nrow(prior) + 1L
+  # NUMBER FROM THE HIGHEST EVER ISSUED, NOT FROM THE ROW COUNT.
+  #
+  # nrow(prior) + 1 was wrong, and it corrupted the index the first time a
+  # merge retired anything: pruning 24 duplicate rows made the row count
+  # 24 lower than the highest number issued, so the next build reissued
+  # IA017012-IA017035 to completely different works. IA017028 ended up
+  # naming both a ClinicalTrials.gov protocol and PMID 31891134.
+  #
+  # An accession is a permanent name for one work. A retired number is
+  # retired forever - it is never recycled, precisely because someone may
+  # still be holding it. So the ceiling must include the retired file too.
+  everIssued <- prior$ACCESSION
+  retiredFile <- file.path(indexDir, "accessionsRetired.csv")
+  if (file.exists(retiredFile))
+    everIssued <- c(everIssued,
+                    utils::read.csv(retiredFile, colClasses = "character")$ACCESSION)
+  highest <- if (length(everIssued))
+    max(as.integer(sub("^IA", "", everIssued))) else 0L
+  start <- highest + 1L
   prior <- rbind(prior, data.frame(
     ACCESSION = sprintf("IA%06d", seq(start, length.out = length(newKeys))),
     WORK_KEY = newKeys, FIRST_SEEN = today, stringsAsFactors = FALSE))
 }
+# An accession naming two works is the one thing this file must never
+# contain, so assert it rather than trusting the arithmetic above. It
+# already happened once (see the numbering comment); a build that produced
+# it again would quietly give two different papers the same name, and the
+# only reason it was caught the first time was that the staleness check
+# noticed seven master files whose bytes did not match their index row.
+dupAcc <- unique(prior$ACCESSION[duplicated(prior$ACCESSION)])
+if (length(dupAcc))
+  stop("accession collision: ", length(dupAcc), " number(s) assigned to ",
+       "more than one work (", paste(head(dupAcc, 5), collapse = ", "),
+       "). NOTHING WAS WRITTEN.")
 utils::write.csv(prior, accFile, row.names = FALSE)
 i <- match(files$WORK_KEY, prior$WORK_KEY)
 files$ACCESSION  <- prior$ACCESSION[i]

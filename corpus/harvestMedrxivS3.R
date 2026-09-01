@@ -47,10 +47,19 @@
 #               just process whatever is already in incoming/)             #
 #     maxGB     download budget per run (default 2)                        #
 #     outDir    default C:/temp/medrxiv_rct                                #
-#     months    which month folders to list (default "recent"):            #
-#                 "recent"  current + previous month - the NIGHTLY scope   #
-#                 "all"     every month folder in the bucket - BACKFILL    #
-#                 "2021-06" a single month, for a targeted top-up          #
+#     months    which folders to list (default "recent"):                  #
+#                 "recent"     current + previous month - NIGHTLY scope    #
+#                 "all"        every Current_Content month folder (72)     #
+#                 "back"       every Back_Content batch folder (16), the   #
+#                              pre-2021 archive                            #
+#                 "everything" both, months newest-first then the archive  #
+#                 "2021-06"    a single month, for a targeted top-up       #
+#                 "Back_Content/medRxiv_Batch_03"  a single batch folder   #
+#                                                                          #
+#   "all" deliberately still means Current_Content only, so the scheduled  #
+#   backfill and any existing caller behave exactly as before. The         #
+#   complete sweep has its own name because a scope that silently widened  #
+#   would be the same mistake in the other direction.                      #
 ############################################################################
 
 suppressPackageStartupMessages({library(xml2)})
@@ -132,7 +141,11 @@ reg.finalizer(.lockGuard, function(e) {
   if (!is.null(info) && identical(info$pid, Sys.getpid())) unlink(lockPath)
 }, onexit = TRUE)
 
-bucket  <- "s3://medrxiv-src-monthly/Current_Content/"
+# The bucket root, NOT Current_Content. Folder names below carry their own
+# prefix - "Current_Content/April_2021" or "Back_Content/medRxiv_Batch_01" -
+# because the archive lives under a SECOND prefix that this script could
+# not previously address at all. See the scope block below.
+bucket  <- "s3://medrxiv-src-monthly/"
 # The "harvest" profile is a dedicated IAM user with a long-lived access
 # key, NOT the Identity Center login (2026-08-27). Identity Center tokens
 # expire with the SSO session - 8 hours by default - so an unattended
@@ -191,8 +204,34 @@ if (maxFiles > 0) {
   # current + previous month, so a run near month's end still sees the
   # packages the rollover is filling in. month.name, not months():
   # the folder names are English regardless of the machine's locale.
-  monthName <- function(d) paste0(month.name[as.integer(format(d, "%m"))],
+  monthName <- function(d) paste0("Current_Content/",
+                                  month.name[as.integer(format(d, "%m"))],
                                   "_", format(d, "%Y"))
+
+  # Back_Content: the pre-2021 archive, in 16 batch folders rather than
+  # months. Listed on demand, because it never changes.
+  # A FAILED LISTING MUST NOT LOOK LIKE AN EMPTY ONE. Returning
+  # character(0) on error would turn an expired credential, a network
+  # outage or a permissions change into "the scope is empty" - the run
+  # would skip every download, touch the heartbeat, and report success
+  # having harvested nothing. That is the exact failure this file already
+  # documents twice (the 16-hour underrun, and Back_Content being
+  # invisible), so it is not repeated here: awsS3() already raises with a
+  # useful message, and an EMPTY listing of a prefix that is supposed to
+  # exist is itself an error worth stopping for.
+  listPrefix <- function(prefix) {
+    ls <- awsS3("ls", paste0(bucket, prefix, "/"))
+    p <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
+    p <- sub("/$", "", p)
+    p <- p[nzchar(p)]
+    if (!length(p))
+      stop("listed ", bucket, prefix, "/ and found no folders. The bucket ",
+           "layout has changed, or the credential cannot see it. Refusing ",
+           "to treat that as an empty scope.", call. = FALSE)
+    p
+  }
+
+  backFolders <- function() paste0("Back_Content/", sort(listPrefix("Back_Content")))
 
   # WHICH MONTHS TO LIST - the fix for a silent 16-hour underrun.
   #
@@ -209,18 +248,40 @@ if (maxFiles > 0) {
   # yesterday's papers is waste. The lesson is that the scope was
   # implicit, so a caller with a different intent could not express it
   # and could not see what they were getting.
-  months <- if (identical(monthArg, "all")) {
-    # Every month folder the bucket actually has, asked rather than
-    # assumed - the archive starts in 2021 and grows a folder a month.
-    ls <- tryCatch(awsS3("ls", bucket), error = function(e) character(0))
-    m <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
-    m <- sub("/$", "", m)
-    m <- m[nzchar(m)]
+  # BACK_CONTENT WAS INVISIBLE, and nothing said so. The bucket has TWO
+  # top-level prefixes: Current_Content/ (72 month folders, 2021 onward)
+  # and Back_Content/ (16 batch folders, everything before that). Every
+  # scope this script offered - "recent", "all", a single month - built a
+  # name of the form <Month>_<Year> and looked only under Current_Content.
+  # So "all" meant "all of the part we knew about", the pre-2021 archive
+  # was never listed, and a caller asking for a complete backfill got a
+  # partial one that reported success. Same shape as the 16-hour underrun
+  # fixed above: the scope was implicit, so it could not be seen.
+  currentFolders <- function() {
+    m <- listPrefix("Current_Content")
     # Newest first: a backfill interrupted halfway should have collected
     # the most recent papers, not the oldest.
     ord <- order(as.Date(paste0("01_", m), format = "%d_%B_%Y"),
                  decreasing = TRUE)
-    m[ord]
+    paste0("Current_Content/", m[ord])
+  }
+
+  months <- if (identical(monthArg, "all")) {
+    # Kept meaning Current_Content, so that existing callers and the
+    # scheduled backfill behave exactly as before. Use "everything" for
+    # the genuinely complete sweep.
+    currentFolders()
+  } else if (identical(monthArg, "back")) {
+    backFolders()
+  } else if (identical(monthArg, "everything")) {
+    # Months first (newest first), then the archive - the recent
+    # literature is worth more per byte than 2019.
+    c(currentFolders(), backFolders())
+  } else if (grepl("^(Back_Content|Current_Content)/", monthArg)) {
+    # A fully-qualified folder name, so a caller partitioning the bucket
+    # across several machines can pass exactly what it means without
+    # translating dates back and forth.
+    monthArg
   } else if (grepl("^[0-9]{4}-[0-9]{2}$", monthArg)) {
     d <- as.Date(paste0(monthArg, "-01"))
     monthName(d)
@@ -235,9 +296,18 @@ if (maxFiles > 0) {
   listing <- do.call(rbind, lapply(months, function(m) {
     ls <- tryCatch(awsS3("ls", paste0(bucket, m, "/")),
                    error = function(e) {
-                     if (grepl("sso login", conditionMessage(e)))
-                       stop(e)
-                     character(0)  # month folder may not exist yet
+                     msg <- conditionMessage(e)
+                     # Swallow ONLY "this folder is not there yet", which
+                     # is normal near a month rollover. A credential
+                     # problem, a throttle, a network drop or a changed
+                     # permission must NOT be reported as an empty folder
+                     # - that turns a broken run into a quiet one, which
+                     # is how this harvest went three days without
+                     # downloading anything and exited 0 each night.
+                     benign <- grepl("NoSuchBucket|NoSuchKey|Not Found|404",
+                                     msg, ignore.case = TRUE)
+                     if (!benign) stop(e)
+                     character(0)
                    })
     ls <- ls[grepl("[.]meca$", ls)]
     if (!length(ls)) return(NULL)

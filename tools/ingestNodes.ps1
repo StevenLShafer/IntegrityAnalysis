@@ -7,9 +7,12 @@
 #
 # THE PIPELINE, and it is deliberately one direction only:
 #
-#   oldryzen / i5 / newryzen  --(this script)-->  C:\dev\Corpus\_source
-#                             --(buildCorpusLibrary.R)-->  master\ + index\
-#                             --(backupCorpusZip.ps1)-->   OneDrive
+#   oldryzen / i5 / surface  --(this script)-->  C:\dev\Corpus\_source
+#                            --(buildCorpusLibrary.R)-->  master\ + index\
+#                            --(backupCorpusZip.ps1)-->   OneDrive
+#
+# newryzen is NOT in that list: it is the Windows machine the corpus lives
+# on, and it was named as a node here in error. See the node table below.
 #
 # The nodes are PRODUCERS. They fetch; they are never the archive. Nothing
 # here writes back to a node and nothing deletes from one, so a node can be
@@ -43,12 +46,39 @@ Say '===== node ingest ====='
 
 # What each node produces, and where it lands locally. Add a row when a
 # node starts a new harvest; nothing else needs to change.
+# THE THREE COMPUTE NODES ARE oldryzen, i5 AND surface.
+#
+# This list was wrong in both directions when first written. It named
+# "newryzen", which is THIS Windows machine - the one the corpus lives on
+# - and it omitted "surface" entirely. The first error was well disguised:
+# newryzen resolves to a link-local IPv6 address and answers ping, so it
+# read as a node that was merely down rather than a category error; what
+# gives it away is that it runs no sshd and has no ~/.ssh/config entry.
+#
+# The second error was the expensive one. surface holds ctgov_docs - 3,000
+# ClinicalTrials.gov posted protocols, statistical analysis plans and
+# consent forms across 2,246 NCTs, 5.2 GB - and none of it reached the
+# library, because the original inventory checked oldryzen and i5 and
+# never looked. Two of the three nodes is not an inventory.
 $nodes = @(
   @{ Node = 'oldryzen'; Remote = 'work/pmc_corpus';   Local = 'pmc_corpus' },
   @{ Node = 'oldryzen'; Remote = 'journals';          Local = 'oldryzen_journals' },
   @{ Node = 'i5';       Remote = 'work/ctgov_corpus'; Local = 'ctgov' },
-  @{ Node = 'newryzen'; Remote = 'work/pmc_corpus';   Local = 'newryzen_pmc' }
+  @{ Node = 'surface';  Remote = 'work/ctgov_docs';   Local = 'ctgov_docs' }
 )
+
+# Guard the class of mistake rather than just the instance. A node entry
+# naming this machine would ssh to itself, and if an sshd were ever
+# installed here it would "succeed" - tarring the corpus and extracting it
+# back over itself. Refuse by name before anything is copied.
+$selfNames = @($env:COMPUTERNAME, [System.Net.Dns]::GetHostName()) |
+             ForEach-Object { $_.ToLower() } | Select-Object -Unique
+$nodes = @($nodes | Where-Object {
+  if ($selfNames -contains $_.Node.ToLower()) {
+    Say ("SKIP {0}: that is this machine, not a compute node" -f $_.Node)
+    $false
+  } else { $true }
+})
 
 $changed = $false
 
