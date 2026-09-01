@@ -98,6 +98,23 @@ $stamps  = Join-Path $corpus 'index\ingest'
 $log     = Join-Path $corpus 'index\ingest.log'
 $rscript = 'C:\Program Files\R\R-4.5.3\bin\Rscript.exe'
 
+# TAR BY ABSOLUTE PATH, because WHICH tar you get decides whether this
+# works at all. Windows ships bsdtar at System32\tar.exe. When Git for
+# Windows' usr\bin sits ahead of System32 on PATH - as it does inside a
+# Git Bash shell, though not in the persisted PATH the scheduler uses - a
+# bare "tar" resolves to GNU tar instead, and GNU tar reads a Windows path
+# as a REMOTE host spec: "C:\Users\...\x.tar" is parsed as host "C" and
+# path "\Users\...". It fails with "Cannot connect to C: resolve failed",
+# which looks nothing like a PATH problem and reads exactly like a corrupt
+# archive.
+#
+# Observed 2026-09-01: byte-identical transfers verified when the script
+# was launched from PowerShell and "failed verification" when launched
+# from a Git Bash shell. The archives were perfect both times. Naming the
+# executable removes the ambiguity permanently.
+$tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+if (-not (Test-Path $tarExe)) { $tarExe = 'tar' }
+
 New-Item -ItemType Directory -Force $staging | Out-Null
 New-Item -ItemType Directory -Force $stamps  | Out-Null
 function Say($m) {
@@ -238,6 +255,7 @@ $medrxiv = if ($env:INTEGRITY_CORPUS) { Join-Path $corpus 'medrxiv_rct' }
            else { 'C:\temp\medrxiv_rct' }
 $allFiles = '-type f'
 $pdfsOnly = "-type f -name '*.pdf' -not -path './incoming/*'"
+$workerPdfs = "-type f -name '*.pdf' -path './medrxiv_w*' -not -path '*/incoming/*'"
 
 $nodes = @(
   @{ Node = 'oldryzen'; Remote = 'work/pmc_corpus';   Local = 'pmc_corpus'
@@ -257,7 +275,29 @@ $nodes = @(
      Select = $pdfsOnly },
   @{ Node = 'surface';  Remote = 'work/medrxiv_rct';  Local = 'medrxiv_rct'
      Dest = $medrxiv                           # src("medrxiv")
-     Select = $pdfsOnly }
+     Select = $pdfsOnly },
+
+  # THE PARALLEL HARVEST WORKERS, added 2026-09-01. harvestMedrxivS3.R
+  # takes a single-instance lock per outDir, so the 24 workers launched to
+  # finish the bucket backlog each write to their own ~/work/medrxiv_wNN.
+  # Without these rows their output would sit on the nodes forever - the
+  # same gap the handoff flagged for medrxiv_rct itself, one directory
+  # further out.
+  #
+  # Remote is ~/work and the selector picks the medrxiv_w* trees, so a
+  # worker added or removed later needs no change here. Files arrive as
+  # medrxiv_w07\<doi>.pdf under the medRxiv destination; src("medrxiv") is
+  # recursive, so nesting is indexed exactly like a flat drop, and a
+  # preprint fetched twice collapses on content hash.
+  @{ Node = 'oldryzen'; Remote = 'work';              Local = 'medrxiv_workers'
+     Dest = $medrxiv                           # src("medrxiv")
+     Select = $workerPdfs },
+  @{ Node = 'i5';       Remote = 'work';              Local = 'medrxiv_workers'
+     Dest = $medrxiv                           # src("medrxiv")
+     Select = $workerPdfs },
+  @{ Node = 'surface';  Remote = 'work';              Local = 'medrxiv_workers'
+     Dest = $medrxiv                           # src("medrxiv")
+     Select = $workerPdfs }
 )
 
 # Guard the class of mistake rather than just the instance. A node entry
@@ -424,15 +464,23 @@ foreach ($n in $nodes) {
 
   # LIST BEFORE EXTRACTING. A truncated stream is still a readable file;
   # tar -t walks every header and fails on the one that was cut off.
-  $chk = Invoke-Native 'tar' @('-tf', $tar)
+  $chk = Invoke-Native $tarExe @('-tf', $tar)
   if ($chk.Code -ne 0) {
-    Say '  FAILED: archive did not verify (truncated stream) - stamp NOT advanced, will retry'
-    Remove-Item $tar -Force
+    # SAY WHAT TAR SAID. The first version of this handler reported only
+    # "truncated stream", which is a guess about the cause rather than the
+    # evidence - and when it fired on 2026-09-01 the archive turned out to
+    # verify perfectly by hand, so the guess was wrong and the message sent
+    # the diagnosis in the wrong direction for twenty minutes. An error
+    # handler that does not print what it observed is the same defect this
+    # repository keeps rediscovering.
+    Say ('  FAILED: archive did not verify (tar exit {0}) - stamp NOT advanced, will retry' -f $chk.Code)
+    if ($chk.Text) { Say ('    tar said: ' + ((($chk.Text | Where-Object { $_ -match '\S' }) | Select-Object -First 2) -join ' / ')) }
+    Say ('    kept for inspection: ' + $tar)
     continue
   }
 
   New-Item -ItemType Directory -Force $dest | Out-Null
-  $x = Invoke-Native 'tar' @('-xf', $tar, '-C', $dest)
+  $x = Invoke-Native $tarExe @('-xf', $tar, '-C', $dest)
   if ($x.Code -ne 0) {
     Say ('  FAILED: extract failed ({0}) - stamp NOT advanced, will retry' -f ($x.Text | Select-Object -First 1))
     Remove-Item $tar -Force
