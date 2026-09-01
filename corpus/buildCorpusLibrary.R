@@ -521,9 +521,20 @@ if (nrow(prior) && exists("mp")) {
     newlyRetired$RETIRED_ON <- today
     ledger <- if (file.exists(retiredPath)) {
       old <- utils::read.csv(retiredPath, colClasses = "character")
-      if (is.null(old$RETIRED_ON)) old$RETIRED_ON <- NA_character_
-      unique(rbind(old[, names(newlyRetired)], newlyRetired))
+      # TOLERATE AN OLDER SCHEMA. A ledger written before a column existed
+      # - RETIRED_ON was added after the first ledger file - would make
+      # old[, names(newlyRetired)] throw "undefined columns selected", and
+      # it would throw only on the rare run where a merge actually retires
+      # something. Fill any absent column rather than assume the shape.
+      for (cl in setdiff(names(newlyRetired), names(old)))
+        old[[cl]] <- NA_character_
+      rbind(old[, names(newlyRetired), drop = FALSE], newlyRetired)
     } else newlyRetired
+    # Deduplicate BY ACCESSION, not by whole row. unique() on a data frame
+    # removes identical rows, so the same accession recorded twice with
+    # different RETIRED_ON dates would survive twice. The first record is
+    # the true one - a number is retired once.
+    ledger <- ledger[!duplicated(ledger$ACCESSION), , drop = FALSE]
     utils::write.csv(ledger, retiredPath, row.names = FALSE)
     message(sprintf("  retired ledger now holds %d accession(s)", nrow(ledger)))
     prior <- prior[keepFirst, ]
