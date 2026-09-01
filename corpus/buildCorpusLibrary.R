@@ -505,9 +505,27 @@ if (nrow(prior) && exists("mp")) {
     keepFirst <- !duplicated(prior$WORK_KEY)
     message(sprintf("  %d prior accession(s) retired as duplicates of a merged work",
                     sum(!keepFirst)))
-    utils::write.csv(prior[!keepFirst, ],
-                     file.path(indexDir, "accessionsRetired.csv"),
-                     row.names = FALSE)
+    # APPEND TO THE LEDGER, NEVER OVERWRITE IT.
+    #
+    # This file is not a log - it is load-bearing. The numbering code below
+    # reads it to find the highest accession EVER issued, so that a retired
+    # number is never reissued. Overwriting it with only the current run's
+    # retirements would drop earlier ones out of that ceiling, and the next
+    # build could hand a retired number to a new work - reintroducing
+    # exactly the collision this ledger exists to prevent.
+    #
+    # A retired number is retired permanently, because someone may still be
+    # holding it.
+    retiredPath <- file.path(indexDir, "accessionsRetired.csv")
+    newlyRetired <- prior[!keepFirst, ]
+    newlyRetired$RETIRED_ON <- today
+    ledger <- if (file.exists(retiredPath)) {
+      old <- utils::read.csv(retiredPath, colClasses = "character")
+      if (is.null(old$RETIRED_ON)) old$RETIRED_ON <- NA_character_
+      unique(rbind(old[, names(newlyRetired)], newlyRetired))
+    } else newlyRetired
+    utils::write.csv(ledger, retiredPath, row.names = FALSE)
+    message(sprintf("  retired ledger now holds %d accession(s)", nrow(ledger)))
     prior <- prior[keepFirst, ]
   }
 }

@@ -59,8 +59,18 @@ chk(all(conf$FILE_SHAREABLE == "FALSE"),
     "no confidential file is marked FILE_SHAREABLE")
 chk(all(conf$DERIVED_SHAREABLE == "FALSE"),
     "no confidential file is marked DERIVED_SHAREABLE")
-chk(all(m$SOURCE_ID[m$SOURCE_ID == "aa-peer-review"] %in% conf$SOURCE_ID),
-    "every A&A peer-review file is confidential")
+# Check the SHARE CLASS of every A&A row, not just that the source id
+# appears somewhere in the confidential set. The earlier version compared
+# source ids only, so a single aa-peer-review row wrongly marked
+# "restricted" would still have passed - and that row would then be
+# FILE_SHAREABLE, which is the exact failure this audit exists to catch.
+aaRows <- m[m$SOURCE_ID == "aa-peer-review", ]
+chk(nrow(aaRows) > 0 && all(aaRows$SHARE == "confidential"),
+    sprintf("all %d A&A peer-review files are confidential (%d not)",
+            nrow(aaRows), sum(aaRows$SHARE != "confidential")))
+chk(all(aaRows$FILE_SHAREABLE == "FALSE") &&
+    all(aaRows$DERIVED_SHAREABLE == "FALSE"),
+    "no A&A peer-review file is shareable in either sense")
 
 # The accession is the whole protection: a confidential work must not be
 # resolvable to a named paper from anything we would ever hand over.
