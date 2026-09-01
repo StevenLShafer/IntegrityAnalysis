@@ -47,3 +47,7 @@ tools/securityScreen.log
 *.key
 id_ed25519*
 id_rsa*
+
+# Python bytecode from the TATR run-along tooling
+__pycache__/
+*.pyc

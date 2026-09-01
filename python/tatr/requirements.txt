@@ -1,0 +1,44 @@
+# python/tatr/requirements.txt - the pinned environment for the TATR run-along.
+#
+# Captured 2026-09-01 from the validated environment on a compute node. This
+# is to the Python side what renv.lock is to the R side, and it is watched
+# by tools/securityScreen.ps1 for the same reason renv.lock is: compromising
+# a dependency beats any application bug.
+#
+# INSTALL WITH tools/tatrProvision.sh, not by hand - torch and torchvision
+# MUST come from the CPU index together. Installing torch from the CPU index
+# and letting torchvision resolve from PyPI produces a version pair that
+# imports and then dies at first use with "operator torchvision::nms does
+# not exist". That happened on the first provisioning attempt and is why the
+# provisioning script exists at all.
+#
+# transformers is pinned BELOW 5.x and that pin is load-bearing, not
+# hygiene. transformers 5.x validates model configs strictly and rejects the
+# published Table Transformer config outright - "Field 'dilation' expected
+# bool, got NoneType" - so the models will not load at all. Do not relax it
+# without re-testing both checkpoints end to end.
+#
+# The model weights are NOT here. They are pinned by revision SHA in
+# tatrTables.py (DET_REV / STR_REV), fetched once by the provisioning
+# script, and loaded thereafter with local_files_only=True so that no run
+# reaches the network or can silently pick up new weights.
+
+# --- from https://download.pytorch.org/whl/cpu (install these together) ---
+torch==2.13.0+cpu
+torchvision==0.28.0+cpu
+
+# --- from PyPI ---
+transformers==4.57.6
+timm==1.0.29
+tokenizers==0.22.2
+huggingface-hub==0.36.2
+safetensors==0.8.0
+numpy==2.5.2
+pillow==12.3.0
+
+# Rendering and text extraction. Both permissive licences, deliberately:
+# pypdfium2 is Apache-2.0/BSD and pdfplumber is MIT. PyMuPDF renders faster
+# and is AGPL, which this repository - public, with a hosted app - should
+# not take on for a speed difference.
+pypdfium2==5.13.0
+pdfplumber==0.11.10
