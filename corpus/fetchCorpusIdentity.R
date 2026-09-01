@@ -34,13 +34,18 @@ suppressWarnings(suppressPackageStartupMessages({
 }))
 
 corpusRoot <- Sys.getenv("INTEGRITY_CORPUS", "C:/dev/Corpus")
+repoRoot   <- Sys.getenv("INTEGRITY_ROOT",   "C:/dev/IntegrityAnalysis")
 indexDir   <- file.path(corpusRoot, "index")
 staging    <- file.path(corpusRoot, "_staging")
 apiKey     <- Sys.getenv("ENTREZ_KEY", "")
 
 ident <- utils::read.csv(file.path(indexDir, "identity.csv"),
                          colClasses = "character")
-blank <- function(x) is.na(x) | !nzchar(x)
+# blank() is the local name for the shared iaBlankKey() - kept because
+# eight tests below read better with it, and because a rename would have
+# made this audit's diff about something other than the joins.
+source(file.path(repoRoot, "corpus", "safeMatch.R"))
+blank <- iaBlankKey
 
 # safeMatch - match() that refuses to join on a missing key.
 #
@@ -59,12 +64,10 @@ blank <- function(x) is.na(x) | !nzchar(x)
 # right, because a healthy API answers a wrong question just as happily
 # as a right one. Coverage that rises to 100% is a red flag, not a
 # success - see the negative control at the end of this script.
-safeMatch <- function(x, table) {
-  i <- match(x, table)
-  i[blank(x)] <- NA_integer_
-  i[!is.na(i) & blank(table[i])] <- NA_integer_
-  i
-}
+# (The definition itself now lives in corpus/safeMatch.R, sourced above.
+# It was hand-copied here from buildCorpusLibrary.R on 2026-08-31; the
+# 2026-09-01 join audit found five more scripts that needed it, at which
+# point a third transcription would have been the defect, not the fix.)
 
 # Which accessions arrived here ALREADY carrying a PMID, before this
 # script touched anything. The negative control at the end compares
@@ -83,7 +86,14 @@ if (file.exists(map)) {
   # sides rather than trusting either.
   norm <- function(x) toupper(sub("^pmcid:", "", trimws(x)))
   i <- safeMatch(norm(ident$PMCID), norm(m$PMCID))
-  fill <- blank(ident$PMID) & !is.na(i)
+  # A MATCHED ROW IS NOT THE SAME AS A ROW WITH A PMID. safeMatch refuses
+  # to join on a blank KEY; it cannot know that the VALUE we are about to
+  # copy is itself blank. Without this, a pmidToPmcid.csv row holding a
+  # PMCID but no PMID would overwrite a missing PMID with an empty one -
+  # which every blank() test downstream reads identically, but which the
+  # coverage counter at the end of this script would score as a fill.
+  # (2026-09-01 join audit.)
+  fill <- blank(ident$PMID) & !is.na(i) & !blank(m$PMID[i])
   ident$PMID[fill] <- m$PMID[i][fill]
   message(sprintf("local PMCID->PMID map filled %d PMIDs", sum(fill)))
 }
@@ -130,9 +140,12 @@ if (length(need)) {
     if (k %% 2000 == 1) message(sprintf("  %d/%d", k, length(need)))
   }
   if (length(got)) {
-    g <- do.call(rbind, got); g <- g[!is.na(g$pmid), , drop = FALSE]
+    # !is.na() is not enough: the converter answers with an empty pmid
+    # field for a PMCID it knows but cannot map, and "" would be counted
+    # as a fill. Same reasoning as the local-map branch above.
+    g <- do.call(rbind, got); g <- g[!blank(g$pmid), , drop = FALSE]
     i <- safeMatch(toupper(ident$PMCID), toupper(g$pmcid))
-    fill <- blank(ident$PMID) & !is.na(i)
+    fill <- blank(ident$PMID) & !is.na(i) & !blank(g$pmid[i])
     ident$PMID[fill] <- g$pmid[i][fill]
     message(sprintf("  converter filled %d more", sum(fill)))
   }

@@ -53,6 +53,7 @@ corpusDir <- if (length(args) >= 1) args[1] else
   file.path(Sys.getenv("INTEGRITY_WORK", "C:/temp"), "ctgov_corpus")
 root      <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 source(file.path(root, "corpus", "pseudonymize.R"))
+source(file.path(root, "corpus", "safeMatch.R"))
 idDir <- iaIdDir(root)
 dir.create(idDir, recursive = TRUE, showWarnings = FALSE)
 
@@ -72,7 +73,39 @@ cat("screened:", nrow(scr), " metadata:", nrow(md),
 
 # One row per trial: the screen's verdict plus the registry's covariates.
 d <- merge(scr, md, by = "NCT", all.x = TRUE, suffixes = c("", ".md"))
-if (!is.null(pm)) d <- merge(d, pm, by = "PMID", all.x = TRUE)
+
+# THE PMID JOIN IS THE DANGEROUS ONE, and this script has never been run
+# - it is scoped work that a watcher killed mid-build, so nothing here
+# has ever been exercised against real data. Most registry trials have NO
+# publication, so trialMetadata.csv carries a blank PMID for thousands of
+# rows. merge() treats a blank key as a value like any other: every
+# unpublished trial would join to every blank-PMID row of
+# pubmedMetadata.csv, taking that paper's journal, year and title AND
+# multiplying the frame by the number of such rows. all.x = TRUE hides
+# it, because no row is LOST - there are simply more of them, each
+# wearing a stranger's citation.
+#
+# Dropping blank keys from the RIGHT side is what makes it safe, and it
+# is safe whatever merge() decides to do about NA: a key that is not in
+# the table cannot be matched by anything. Blanking the left as well
+# keeps the frame honest about what is unknown. (2026-09-01 join audit;
+# corpus/safeMatch.R has the history.)
+if (!is.null(pm)) {
+  d$PMID[iaBlankKey(d$PMID)] <- NA_character_
+  dropped <- sum(iaBlankKey(pm$PMID))
+  if (dropped)
+    cat("  dropping", dropped, "pubmedMetadata row(s) with no PMID",
+        "- they cannot identify anything\n")
+  pm <- pm[!iaBlankKey(pm$PMID), , drop = FALSE]
+  before <- nrow(d)
+  d <- merge(d, pm, by = "PMID", all.x = TRUE)
+  # A left join must not change the row count. If it did, the right side
+  # has duplicate PMIDs and the frame is no longer one row per trial.
+  if (nrow(d) != before)
+    stop("the PMID join changed the row count (", before, " -> ", nrow(d),
+         "): pubmedMetadata.csv has duplicate PMIDs, so this frame is no ",
+         "longer one row per trial. NOTHING WAS WRITTEN.")
+}
 
 d$TRIAL_ID <- iaPseudonym(d$NCT, root, prefix = "TR")
 d$PUB_ID   <- iaPseudonym(d$PMID, root, prefix = "PUB")

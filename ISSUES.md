@@ -168,6 +168,39 @@ says nothing about when the corpus gained it.
   aborts before writing** — a work with no identifier at build time may
   not acquire one. Treat a coverage figure that jumps to 100% as a
   defect report, not a result.
+
+  **Audited 2026-09-01: every join in `corpus/`** — 39 raw `match()`
+  call sites (37 lookups plus the two hand-copied definitions of
+  `safeMatch()` itself), the 12 joins already converted on 2026-08-31,
+  and the 13 `merge()` calls, which have the same defect and were not
+  covered by the original fix. Nothing
+  was corrupt: every right-hand table in use today happens to be free of
+  blank keys, so the seven unguarded joins found were latent, not live
+  (checked, not assumed — `.NewCarlisle/manifest.csv`,
+  `unpaywall.csv`, `licensed_manifest.csv` and `corpus/pmid_map.csv`
+  all hold zero blank PMIDs, and the 20,025 accessions hold no
+  degenerate work key). The audit's three findings worth keeping:
+  **(1)** the failure needs a blank on the LEFT *and* a blank in the
+  table, which is why filename- and literal-keyed joins are fine and
+  did not need touching — 26 of the 37 lookups were cleared unchanged
+  on that ground, and only 7 were genuinely exposed; **(2)** the worst
+  site was
+  `corpus/buildFraudDownloadList.R`, which *deliberately* stores an
+  unresolved citation as `PMID = NA` and then joins on it, so a
+  stranger's DOI, licence and download URL could have entered Steve's
+  hand-worked queue; and **(3)** a second bug of the same family that
+  `safeMatch()` does not address — the work key was built with
+  `!is.na()`, so an empty-string identifier would have produced the
+  key `"pmid:"` and an unhashable file the key `"sha:NA"`, collapsing
+  every affected file into ONE work with ONE accession. That is the
+  mirror image of the collision check already in the builder (one
+  accession, two works) and invisible to it; both are now refused
+  before anything is written. `safeMatch()` itself moved to
+  `corpus/safeMatch.R` — one definition, sourced by seven scripts,
+  because a third hand-transcription would have been the next defect.
+  Pinned by `tests/testthat/test-safe-match.R`, which SKIPS under
+  `R CMD check` (`corpus/` is `.Rbuildignore`d) and therefore runs
+  only in a development tree.
 - **The NCBI ID converter moved again.** `www.ncbi.nlm.nih.gov/pmc/utils/
   idconv/v1.0/` now 301s to `pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/
   articles/`, and `jsonlite::fromJSON` does not follow redirects — it

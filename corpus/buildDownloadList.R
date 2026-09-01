@@ -27,6 +27,11 @@ suppressPackageStartupMessages({
 })
 
 root    <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+# Every join below is keyed on a PMID or a DOI that some rows do not
+# have. safeMatch() makes a missing key a miss instead of a hit on the
+# first blank row of the table - read corpus/safeMatch.R for what that
+# cost when it was plain match(). (2026-09-01 join audit.)
+source(file.path(root, "corpus", "safeMatch.R"))
 outDir  <- file.path(root, ".NewCarlisle")
 outPath <- file.path(outDir, "DownloadPriorityList.xlsx")
 # Where the already-owned corpus PDFs live (see corpus/README.md).
@@ -90,17 +95,21 @@ pm <- read.csv(file.path(root, "corpus", "pmid_map.csv"),
 pm <- pm[nzchar(pm$PMID) & !duplicated(pm$PMID), ]
 po <- read.csv(file.path(root, "corpus", "ParseOutcomes.csv"),
                colClasses = "character")
-pm$OUTCOME <- po$OUTCOME[match(pm$PDF, po$PDF)]
+pm$OUTCOME <- po$OUTCOME[safeMatch(pm$PDF, po$PDF)]
 cat("Local corpus PDFs mapped to a PMID:", nrow(pm), "\n")
 
 # ----------------------------------------------------------------- joins
 
 # Unpaywall was queried by DOI; 132 trials have no DOI, so fall back to
 # its PMID column for those.
-iu <- match(d$DOI, up$DOI)
-iu[!nzchar(d$DOI)] <- NA
+# The blank-DOI guard on the second line was already here and was
+# correct; the PMID FALLBACK on the fourth had no equivalent, which is
+# the exact shape the 2026-08-31 handoff warns about - the failing
+# pattern sitting one line below the guard that fixes it. Both are
+# safeMatch now, so neither can drift from the other again.
+iu <- safeMatch(d$DOI, up$DOI)
 fallback <- is.na(iu)
-iu[fallback] <- match(d$PMID[fallback], up$PMID)
+iu[fallback] <- safeMatch(d$PMID[fallback], up$PMID)
 
 d$OA.status <- ifelse(is.na(iu), "", up$oa_status[iu])
 d$License   <- ifelse(is.na(iu), "", up$license[iu])
@@ -116,7 +125,7 @@ LICENSED <- c("cc0", "public-domain", "cc-by", "cc-by-sa", "cc-by-nc",
               "cc-by-nc-sa", "cc-by-nd", "cc-by-nc-nd")
 d$Licensed <- sub("-[0-9].*$", "", tolower(d$License)) %in% LICENSED
 
-im <- match(d$PMID, mf$PMID)
+im <- safeMatch(d$PMID, mf$PMID)
 d$PMC.status <- ifelse(is.na(im), "", mf$status[im])
 d$PMC.file   <- ifelse(is.na(im), "", mf$file[im])
 
@@ -139,7 +148,7 @@ loPath <- file.path(outDir, "licensed_manifest.csv")
 lo <- if (file.exists(loPath)) read.csv(loPath, colClasses = "character") else
   data.frame(PMID = character(), status = character(), url = character(),
              stringsAsFactors = FALSE)
-il <- match(d$PMID, lo$PMID)
+il <- safeMatch(d$PMID, lo$PMID)
 d$Licensed.tried  <- !is.na(il)
 d$Licensed.failed <- !is.na(il) &
   lo$status[il] %in% c("download_failed", "no_licensed_pdf_url")
@@ -147,7 +156,7 @@ d$Licensed.failed <- !is.na(il) &
 hasUrl <- !is.na(il) & nzchar(ifelse(is.na(il), "", lo$url[il]))
 d$Free.URL[hasUrl] <- lo$url[il][hasUrl]
 
-ip <- match(d$PMID, pm$PMID)
+ip <- safeMatch(d$PMID, pm$PMID)
 d$Local.PDF     <- ifelse(is.na(ip), "", pm$PDF[ip])
 d$Parse.outcome <- ifelse(is.na(ip), "", ifelse(is.na(pm$OUTCOME[ip]), "",
                                                 pm$OUTCOME[ip]))

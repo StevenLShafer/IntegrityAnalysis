@@ -52,6 +52,10 @@ if (!length(which_) || !which_[1] %in% c("boldt", "fujii"))
 which_ <- which_[1]
 
 root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+# Joins here are keyed on a PMID that resolution may not have found, and
+# on a year|volume|page composite that is "NA|NA|NA" for a citation the
+# parser could not read. See corpus/safeMatch.R. (2026-09-01 join audit.)
+source(file.path(root, "corpus", "safeMatch.R"))
 outDir <- file.path(root, if (which_ == "boldt") ".Boldt" else ".Fujii")
 dir.create(outDir, showWarnings = FALSE)
 newCarlisle <- file.path(root, ".NewCarlisle")
@@ -158,8 +162,16 @@ ms <- read.xlsx(file.path(root, "Carlisle Data with PMIDs and DOIs.xlsx"),
                 sheet = "All Data")
 ms$PMID <- as.character(ms$PMID)
 key <- function(y, v, p) paste(y, v, p, sep = "|")
-msKey <- key(ms$year, ms$volume, ms$page)
-hit <- match(key(work$year, work$volume, work$page), msKey)
+# paste() turns a missing component into the four characters "NA", so a
+# composite key CANNOT be blank and safeMatch has nothing to bite on -
+# "NA|NA|NA" on the left cheerfully finds "NA|NA|NA" on the right. Blank
+# the composite explicitly when any part of it is missing. The journal
+# agreement test below would have caught most of these anyway; this makes
+# it not depend on that. (2026-09-01 join audit.)
+keyOrBlank <- function(y, v, p)
+  ifelse(iaBlankKey(y) | iaBlankKey(v) | iaBlankKey(p), "", key(y, v, p))
+msKey <- keyOrBlank(ms$year, ms$volume, ms$page)
+hit <- safeMatch(keyOrBlank(work$year, work$volume, work$page), msKey)
 # A year/volume/page collision across two different journals is
 # possible, so require the journal to agree on its first word too.
 firstWord <- function(x) tolower(sub("[^A-Za-z].*$", "",
@@ -339,7 +351,7 @@ have <- rep("", nrow(work))
 inNew <- !is.na(work$PMID) &
   file.exists(file.path(newCarlisle, paste0("PMID_", work$PMID, ".pdf")))
 have[inNew] <- ".NewCarlisle"
-ip <- match(work$PMID, pm$PMID)
+ip <- safeMatch(work$PMID, pm$PMID)
 inCorpus <- !is.na(ip) & !inNew
 have[inCorpus] <- file.path(corpusDir, pm$PDF[ip[inCorpus]])
 work$HAVE <- have

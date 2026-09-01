@@ -35,6 +35,14 @@ if (!length(args) || !which_ %in% c("boldt", "fujii"))
   stop("say which corpus: boldt or fujii")
 
 root <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
+# This script is the one the audit rated highest-risk, because line 45
+# DELIBERATELY puts NA into the key it then joins on: an unresolved
+# citation is stored as a missing PMID and every table below is keyed by
+# PMID. With plain match() each of those rows took the first blank row of
+# whatever table it met - a stranger's DOI, licence and download URL
+# written into Steve's hand-worked queue. (2026-09-01 join audit;
+# corpus/safeMatch.R.)
+source(file.path(root, "corpus", "safeMatch.R"))
 dir_ <- file.path(root, if (which_ == "boldt") ".Boldt" else ".Fujii")
 outPath <- file.path(dir_, "DownloadList.xlsx")
 newCarlisle <- file.path(root, ".NewCarlisle")
@@ -50,7 +58,7 @@ up <- if (file.exists(upPath)) read.csv(upPath, colClasses = "character") else
              license = character(), url = character(),
              stringsAsFactors = FALSE)
 up <- up[!duplicated(up$PMID), ]
-iu <- match(d$PMID, up$PMID)
+iu <- safeMatch(d$PMID, up$PMID)
 d$DOI       <- ifelse(is.na(iu), "", up$DOI[iu])
 d$OA.status <- ifelse(is.na(iu), "", up$oa_status[iu])
 d$License   <- ifelse(is.na(iu), "", up$license[iu])
@@ -67,7 +75,7 @@ here <- !is.na(d$PMID) &
   file.exists(file.path(dir_, paste0("PMID_", d$PMID, ".pdf")))
 inNew <- !is.na(d$PMID) & !here &
   file.exists(file.path(newCarlisle, paste0("PMID_", d$PMID, ".pdf")))
-ip <- match(d$PMID, pm$PMID)
+ip <- safeMatch(d$PMID, pm$PMID)
 inOld <- !is.na(ip) & !here & !inNew &
   file.exists(file.path(corpusDir, pm$PDF[ip]))
 
@@ -85,7 +93,7 @@ mfPath <- file.path(dir_, "manifest.csv")
 mf <- if (file.exists(mfPath)) read.csv(mfPath, colClasses = "character") else
   data.frame(PMID = character(), PMCID = character(), status = character(),
              stringsAsFactors = FALSE)
-im <- match(d$PMID, mf$PMID)
+im <- safeMatch(d$PMID, mf$PMID)
 inPmc <- !is.na(im) & mf$status[im] == "not_in_oa_subset" &
   nzchar(ifelse(is.na(im), "", mf$PMCID[im]))
 d$PMC.URL <- ifelse(inPmc,

@@ -215,23 +215,14 @@ sources           <- sources[sources$ROLE == "work", ]
 # into an underscore, an opaque manuscript number. These readers turn all
 # of them into the same four columns so the dedup step downstream does not
 # need to know where anything came from.
-# safeMatch - match() that refuses to join on a missing key.
-#
-# match(NA, table) returns the position of the FIRST NA in table, which
-# is a real index, not a miss. Where the right-hand table legitimately
-# contains blanks - pmidToPmcid.csv has 11,428 PMIDs with no PMC record,
-# manifest.csv has rows for articles never retrieved - that turns every
-# unidentified row into a confident, wrong identification. It did exactly
-# that on 2026-08-31: all 3,149 anonymous A&A manuscripts were assigned
-# one unrelated paper's PMID, and the coverage report read 17,035/17,035.
-# Use this for every join whose keys can be missing on either side.
-safeMatch <- function(x, table) {
-  bl <- function(v) is.na(v) | !nzchar(as.character(v))
-  i <- match(x, table)
-  i[bl(x)] <- NA_integer_
-  i[!is.na(i) & bl(table[i])] <- NA_integer_
-  i
-}
+# safeMatch() - match() that refuses to join on a missing key. Written
+# here on 2026-08-31, after every work WITHOUT a PMCID was found to have
+# been given one unrelated paper's identity. The 2026-09-01 join audit
+# moved it to corpus/safeMatch.R so that this script and
+# fetchCorpusIdentity.R share ONE definition instead of two hand
+# transcriptions of it; read that file's header for the failure it
+# prevents, and for the precondition that decides where it is needed.
+source(file.path(repoRoot, "corpus", "safeMatch.R"))
 
 emptyIdent <- function(n)
   data.frame(PMID = rep(NA_character_, n), PMCID = NA_character_,
@@ -448,17 +439,57 @@ if (file.exists(pmcMap)) {
   mp <- utils::read.csv(pmcMap, colClasses = "character")
   nrm <- function(x) toupper(sub("^pmcid:", "", trimws(x)))
   i <- safeMatch(nrm(files$PMCID), nrm(mp$PMCID))
-  fill <- is.na(files$PMID) & !is.na(i)
+  # Only fill from a row that actually carries a PMID. safeMatch stops a
+  # BLANK KEY from joining; it says nothing about a blank VALUE in the
+  # row it landed on, and pmidToPmcid.csv is a table of exactly that
+  # shape. Writing "" here would look like an identification to every
+  # test below and would key the work as "pmid:". (2026-09-01 join audit.)
+  fill <- iaBlankKey(files$PMID) & !is.na(i) & !iaBlankKey(mp$PMID[i])
   files$PMID[fill] <- mp$PMID[i][fill]
   message(sprintf("  alias resolution: %d PMCIDs mapped to PMIDs before keying",
                   sum(fill)))
 }
 
+# THE HASH FALLBACK NEEDS A HASH. paste0("sha:", NA) is not a missing
+# value, it is the literal string "sha:NA" - so if two files both failed
+# to hash they would be keyed identically, merge into one work, and share
+# one accession. The bytes of a file that cannot be read are exactly what
+# we cannot vouch for, so refuse rather than invent. Stopping here leaves
+# the index describing the last good state, which is the same bargain the
+# shrink guard above makes. (2026-09-01 join audit.)
+unhashed <- which(iaBlankKey(files$SHA256))
+if (length(unhashed))
+  stop(length(unhashed), " file(s) could not be hashed and therefore have ",
+       "no work key (", paste(basename(files$ORIGINAL_PATH[head(unhashed, 3)]),
+                              collapse = ", "),
+       "). NOTHING WAS WRITTEN - the index still describes the last good ",
+       "state. A file that cannot be read is usually locked by another ",
+       "process; re-run once it is free.")
+
+# BLANK IS NOT ABSENT. This test was !is.na() until the 2026-09-01 join
+# audit, which treats an EMPTY-STRING identifier as a known one: a source
+# manifest carrying pmid="" yields the key "pmid:", and EVERY file with
+# that defect collapses into a single work holding a single accession.
+# The collision check in step 7 cannot see it - that looks for one
+# accession naming two works, and this is its mirror image, many works
+# wearing one name. There are zero such keys in the 2026-09-01 library
+# (20,025 keys, no empty suffix), which is the reason to assert it rather
+# than trust it: the defect would arrive with a new source, silently, and
+# read as successful dedup.
 files$WORK_KEY <- with(files, ifelse(
-  !is.na(PMID),  paste0("pmid:",  PMID),
-  ifelse(!is.na(PMCID), paste0("pmcid:", PMCID),
-  ifelse(!is.na(DOI),   paste0("doi:",   tolower(DOI)),
-                        paste0("sha:",   SHA256)))))
+  !iaBlankKey(PMID),  paste0("pmid:",  PMID),
+  ifelse(!iaBlankKey(PMCID), paste0("pmcid:", PMCID),
+  ifelse(!iaBlankKey(DOI),   paste0("doi:",   tolower(DOI)),
+                             paste0("sha:",   SHA256)))))
+
+# Belt and braces: whatever route a key took, it must carry a value after
+# its prefix. Four lines here are cheaper than finding out from a
+# too-good dedup count months later.
+degenerate <- which(iaBlankKey(sub("^[a-z]+:", "", files$WORK_KEY)))
+if (length(degenerate))
+  stop(length(degenerate), " file(s) produced an EMPTY work key (",
+       paste(unique(files$WORK_KEY[degenerate]), collapse = ", "),
+       "). They would all have merged into one work. NOTHING WAS WRITTEN.")
 
 ## ---------------------------------------------------------------------
 ## 7. ACCESSION - stable across reruns, assigned in random order
