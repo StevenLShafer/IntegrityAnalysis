@@ -210,15 +210,28 @@ if (maxFiles > 0) {
 
   # Back_Content: the pre-2021 archive, in 16 batch folders rather than
   # months. Listed on demand, because it never changes.
-  backFolders <- function() {
-    ls <- tryCatch(awsS3("ls", paste0(bucket, "Back_Content/")),
-                   error = function(e) character(0))
-    b <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
-    b <- sub("/$", "", b)
-    b <- b[nzchar(b)]
-    if (!length(b)) return(character(0))
-    paste0("Back_Content/", sort(b))
+  # A FAILED LISTING MUST NOT LOOK LIKE AN EMPTY ONE. Returning
+  # character(0) on error would turn an expired credential, a network
+  # outage or a permissions change into "the scope is empty" - the run
+  # would skip every download, touch the heartbeat, and report success
+  # having harvested nothing. That is the exact failure this file already
+  # documents twice (the 16-hour underrun, and Back_Content being
+  # invisible), so it is not repeated here: awsS3() already raises with a
+  # useful message, and an EMPTY listing of a prefix that is supposed to
+  # exist is itself an error worth stopping for.
+  listPrefix <- function(prefix) {
+    ls <- awsS3("ls", paste0(bucket, prefix, "/"))
+    p <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
+    p <- sub("/$", "", p)
+    p <- p[nzchar(p)]
+    if (!length(p))
+      stop("listed ", bucket, prefix, "/ and found no folders. The bucket ",
+           "layout has changed, or the credential cannot see it. Refusing ",
+           "to treat that as an empty scope.", call. = FALSE)
+    p
   }
+
+  backFolders <- function() paste0("Back_Content/", sort(listPrefix("Back_Content")))
 
   # WHICH MONTHS TO LIST - the fix for a silent 16-hour underrun.
   #
@@ -245,12 +258,7 @@ if (maxFiles > 0) {
   # partial one that reported success. Same shape as the 16-hour underrun
   # fixed above: the scope was implicit, so it could not be seen.
   currentFolders <- function() {
-    ls <- tryCatch(awsS3("ls", paste0(bucket, "Current_Content/")),
-                   error = function(e) character(0))
-    m <- sub("^\\s*PRE\\s+", "", trimws(ls[grepl("PRE ", ls)]))
-    m <- sub("/$", "", m)
-    m <- m[nzchar(m)]
-    if (!length(m)) return(character(0))
+    m <- listPrefix("Current_Content")
     # Newest first: a backfill interrupted halfway should have collected
     # the most recent papers, not the oldest.
     ord <- order(as.Date(paste0("01_", m), format = "%d_%B_%Y"),
@@ -288,9 +296,18 @@ if (maxFiles > 0) {
   listing <- do.call(rbind, lapply(months, function(m) {
     ls <- tryCatch(awsS3("ls", paste0(bucket, m, "/")),
                    error = function(e) {
-                     if (grepl("sso login", conditionMessage(e)))
-                       stop(e)
-                     character(0)  # month folder may not exist yet
+                     msg <- conditionMessage(e)
+                     # Swallow ONLY "this folder is not there yet", which
+                     # is normal near a month rollover. A credential
+                     # problem, a throttle, a network drop or a changed
+                     # permission must NOT be reported as an empty folder
+                     # - that turns a broken run into a quiet one, which
+                     # is how this harvest went three days without
+                     # downloading anything and exited 0 each night.
+                     benign <- grepl("NoSuchBucket|NoSuchKey|Not Found|404",
+                                     msg, ignore.case = TRUE)
+                     if (!benign) stop(e)
+                     character(0)
                    })
     ls <- ls[grepl("[.]meca$", ls)]
     if (!length(ls)) return(NULL)
