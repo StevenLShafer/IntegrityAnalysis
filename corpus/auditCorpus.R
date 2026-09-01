@@ -109,6 +109,44 @@ chk(miss == 0, sprintf("every indexed file exists on disk (%d missing)", miss))
 chk(!any(b(m$SHA256)), "every file has a SHA-256")
 chk(length(unique(m$SHA256)) > 0.5 * nrow(m), "hashes are not degenerate")
 
+############################################################################
+# XML IS GROUND TRUTH, AND ONLY A PUBLISHER MAY WRITE IT.
+#
+# Added 2026-09-01, agreed with Steve while scoping a Table Transformer
+# "run-along" that would emit machine-derived table XML for every PDF in
+# the library.
+#
+# The whole value of the dual-format set rests on provenance, not on the
+# file extension. master/pdf/IA004512.pdf and master/xml/IA004512.xml are
+# the same work BY CONSTRUCTION, and the 6,565 works holding both are
+# usable as parser ground truth for exactly one reason: the XML came from
+# the publisher, independently of anything we compute. Machine-derived XML
+# in that same namespace would silently convert "our parse versus the
+# truth" into "our parse versus another machine's parse" - a measurement
+# that looks identical, reads as a healthy corroboration rate, and is
+# worth nothing. Nothing in the index would say it had happened.
+#
+# So the rule is a provenance rule: every XML file in the library must
+# come from a source whose ROLE is "work", i.e. material we RETRIEVED. A
+# derived source may hold its own accession-keyed tree under its own
+# SOURCE_ID; it may never occupy the xml format slot.
+#
+# This asserts a hazard that does not exist yet, deliberately. It is
+# cheaper to install the tripwire before the first derived file is written
+# than to discover afterwards which numbers were computed against it.
+############################################################################
+srcs <- read.csv("index/sources.csv", colClasses = "character")
+derivedIds <- srcs$SOURCE_ID[!is.na(srcs$ROLE) & srcs$ROLE == "derived"]
+xmlRows <- m[m$FORMAT == "xml", , drop = FALSE]
+badXml  <- xmlRows[xmlRows$SOURCE_ID %in% derivedIds, , drop = FALSE]
+chk(nrow(badXml) == 0,
+    sprintf(paste("every XML file is publisher-sourced, not machine-derived",
+                  "(%d derived source(s) declared, %d offending file(s))"),
+            length(derivedIds), nrow(badXml)))
+if (nrow(badXml))
+  cat("        offenders:",
+      paste(utils::head(unique(badXml$SOURCE_ID), 3), collapse = ", "), "\n")
+
 cat("\n=========== SUMMARY ===========\n")
 cat(if (fail == 0) "ALL CHECKS PASSED\n" else
     sprintf("%d CHECK(S) FAILED\n", fail))
