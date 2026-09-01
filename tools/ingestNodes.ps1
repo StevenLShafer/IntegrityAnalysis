@@ -7,9 +7,12 @@
 #
 # THE PIPELINE, and it is deliberately one direction only:
 #
-#   oldryzen / i5 / newryzen  --(this script)-->  C:\dev\Corpus\_source
-#                             --(buildCorpusLibrary.R)-->  master\ + index\
-#                             --(backupCorpusZip.ps1)-->   OneDrive
+#   oldryzen / i5 / surface  --(this script)-->  C:\dev\Corpus\_source
+#                            --(buildCorpusLibrary.R)-->  master\ + index\
+#                            --(backupCorpusZip.ps1)-->   OneDrive
+#
+# newryzen is NOT in that list: it is the Windows machine the corpus lives
+# on, and it was named as a node here in error. See the node table below.
 #
 # The nodes are PRODUCERS. They fetch; they are never the archive. Nothing
 # here writes back to a node and nothing deletes from one, so a node can be
