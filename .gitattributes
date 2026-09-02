@@ -14,3 +14,10 @@
 # and easy to misdiagnose as a bug in the script. Pinning eol=lf stops
 # the conversion for the files that can never tolerate it.
 *.sh text eol=lf
+
+# Python that is COPIED to a Linux compute node, for the same reason as the
+# shell scripts above: python/tatr/tatrTables.py is copied to the Linux
+# compute nodes by the run-along. CPython tolerates CRLF in a module, but a
+# checkout that rewrites these files makes the copy on the node differ from
+# the copy in the repository for no reason anyone can see later.
+*.py text eol=lf
