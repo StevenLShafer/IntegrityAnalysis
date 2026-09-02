@@ -168,20 +168,28 @@
   rows <- vector("list", nrow(d))
   for (i in seq_len(nrow(d))) {
     if (!has[i]) { rows[[i]] <- d[i, , drop = FALSE]; next }
-    parts <- strsplit(d$text[i], .ppUNISPACE, perl = TRUE)[[1]]
-    parts <- parts[nzchar(parts)]
+    txt <- d$text[i]
+    # the parts by their TRUE character offsets, so a run of several
+    # spaces (Springer's en + thin) is measured as the characters it is,
+    # not as one boundary (CodeRabbit on #146)
+    m        <- gregexpr(.ppUNISPACE, txt, perl = TRUE)[[1]]
+    sepStart <- as.integer(m); sepLen <- attr(m, "match.length")
+    starts   <- c(1L, sepStart + sepLen)
+    ends     <- c(sepStart - 1L, nchar(txt))
+    keep     <- ends >= starts
+    starts <- starts[keep]; ends <- ends[keep]
+    parts  <- substring(txt, starts, ends)
     if (length(parts) <= 1) {
       one <- d[i, , drop = FALSE]
       one$text <- if (length(parts)) parts else ""
       rows[[i]] <- one
       next
     }
-    nc  <- nchar(parts)
-    tot <- sum(nc) + length(parts) - 1
+    n   <- nchar(txt)
     out <- d[rep(i, length(parts)), , drop = FALSE]
     out$text  <- parts
-    out$x     <- d$x[i] + d$width[i] * cumsum(c(0, nc[-length(nc)] + 1)) / tot
-    out$width <- d$width[i] * nc / tot
+    out$x     <- d$x[i] + d$width[i] * (starts - 1) / n
+    out$width <- d$width[i] * (ends - starts + 1) / n
     rows[[i]] <- out
   }
   do.call(rbind, rows)
