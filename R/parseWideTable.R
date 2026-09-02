@@ -286,6 +286,21 @@
                                     cat = .wideTagCat),
                              "", label, perl = TRUE))
 
+    # A label that SAYS "median (IQR)" or "median [range]" earns the Q1/Q3
+    # columns HERE, where the label is resolved and before ANY branch below
+    # can consume the row. It was consumed twice over: #140 set the flag
+    # inside the median branch, so a row whose cells did not tokenize left
+    # at "cells not in a recognized format - enter by hand" with no Q1/Q3
+    # (CodeRabbit on #140); the fix for that sat below the no-cells branch,
+    # so a labelled row with EMPTY cells - which becomes a variable heading
+    # for the "Mean"/"Median" line that customarily follows it - still
+    # earned nothing (CodeRabbit on #142). Same defect each time, "enter by
+    # hand" into a grid with nowhere to type, and the same cure: read the
+    # label at the one place it is known. An unlabelled medianTriple row
+    # still sets the flag in the median branch, where its shape is what
+    # identifies it.
+    if (!is.na(tag) && tag %in% c("medIQR", "medRng")) anyMedian <- TRUE
+
     # -- header line of a category variable ("Sex, n" - no cells) ------
     if (!any(nzchar(trimws(bodyTxt)))) {
       flushCat()
@@ -293,17 +308,6 @@
       catHeaderNPct <- identical(tag, "cat")
       next
     }
-
-    # A label that SAYS "median (IQR)" or "median [range]" earns the Q1/Q3
-    # columns here, before ANY skip path below can consume the row.
-    # Setting it inside the median branch was not early enough (CodeRabbit
-    # on PR #140): a row whose cells do not tokenize exits at "cells not in
-    # a recognized format - enter by hand" further down, so a sheet where
-    # that was the only median row got no Q1/Q3 - and "enter by hand" again
-    # meant a grid with nowhere to type. Same defect as the one #140 fixed,
-    # one branch earlier. An unlabelled medianTriple row still sets the flag
-    # in the median branch itself, where its shape is what identifies it.
-    if (!is.na(tag) && tag %in% c("medIQR", "medRng")) anyMedian <- TRUE
 
     # -- per-cell N override "45.3 (12.1); n = 14" ---------------------
     lineN <- rep(NA_real_, nArms)
