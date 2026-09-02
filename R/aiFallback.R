@@ -311,6 +311,38 @@ claudeAvailable <- function() {
          character(1), USE.NAMES = FALSE)
 }
 
+# An uploaded table image as one base64 image block, typed from its magic
+# bytes (2026-09-02). A list of one element so the type attribute survives
+# lapply() in .ppClaudeRequestBody - attributes on a character VECTOR do
+# not reach its elements.
+.ppImageFileB64 <- function(path) {
+  dims <- .ppImageDims(path)
+  type <- switch(dims$format %||% "", jpeg = "image/jpeg", png = "image/png",
+                 gif = "image/gif", NULL)
+  if (is.null(type))
+    stop("Only JPEG, PNG and GIF images can be sent to the model.",
+         call. = FALSE)
+  b64 <- gsub("[\r\n]", "", jsonlite::base64_enc(
+    readBin(path, "raw", file.info(path)$size)))
+  list(structure(b64, media_type = type))
+}
+
+# Why an uploaded image cannot take the AI route, or NULL when it can.
+# The Messages API takes JPEG/PNG/GIF/WebP image blocks up to 5 MB and
+# 8000 px a side; a TIFF has no converter here (no ImageMagick, by
+# design - see utils.R), so it stays with local OCR.
+.ppImageAiRefusal <- function(path) {
+  dims <- .ppImageDims(path)
+  if (is.null(dims)) return(NULL)            # the engine will refuse it
+  if (dims$format == "tiff")
+    return("The AI assist accepts JPEG, PNG and GIF images, not TIFF")
+  if (file.size(path) > 4.5e6)
+    return("The image is larger than the 4.5 MB the AI assist can send")
+  if (max(dims$width, dims$height) > 8000)
+    return("The image is wider than the 8000 pixels the AI assist accepts")
+  NULL
+}
+
 # Pages whose text layer is (near-)empty. In a document that otherwise has
 # text, these are scanned or image-pasted pages - and when a manuscript's
 # tables were pasted in as pictures, they are precisely these pages. The
@@ -341,8 +373,11 @@ claudeAvailable <- function() {
   content <- if (length(imagesB64) > 0) {
     c(lapply(imagesB64, function(b64)
         list(type = "image",
-             source = list(type = "base64", media_type = "image/png",
-                           data = b64))),
+             source = list(type = "base64",
+                           # a rendered page is PNG; an uploaded picture
+                           # carries its own type (.ppImageFileB64)
+                           media_type = attr(b64, "media_type") %||% "image/png",
+                           data = as.character(b64)))),
       list(list(type = "text", text = prompt)))
   } else prompt
   list(
@@ -576,6 +611,10 @@ parseBaselineTableAI <- function(pdfFile,
     if (nchar(pageText) > maxChars)
       pageText <- substr(pageText, 1, maxChars)
     pages <- NA_integer_
+  } else if (.ppIsImageFile(pdfFile)) {
+    # A table image is its own single, text-less page (2026-09-02): it
+    # travels to the model as the image block below, nothing else.
+    pageTexts <- ""; imagePages <- 1L; pages <- 1L; pageText <- ""
   } else {
     # Pages with no text layer in a document that renders are scanned or
     # image-pasted pages (found "in the wild" on medRxiv, 2026-08-26:
@@ -640,7 +679,8 @@ parseBaselineTableAI <- function(pdfFile,
       !anyNA(pages) && any(pages %in% imagePages)) {
     say("Page(s) ", paste(intersect(pages, imagePages), collapse = ","),
         " have no text layer - sending rendered image(s) instead.")
-    imagesB64 <- .ppPageImagesB64(pdfFile, pages)
+    imagesB64 <- if (.ppIsImageFile(pdfFile)) .ppImageFileB64(pdfFile)
+                 else .ppPageImagesB64(pdfFile, pages)
   }
   if (length(imagesB64) == 0 && !nzchar(.ppSquish(pageText)))
     stop("There is no text layer in ", pdfFile, " to send.")

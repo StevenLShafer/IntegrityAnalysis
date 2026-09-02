@@ -253,6 +253,35 @@ if (file.exists("R/parseBaselineTableFiles.R")) {
                "options blob again - that path carries apiKey (M4)"))
 }
 
+## 6 - table images: no ImageMagick, header before decoder -----------------
+# Added 2026-09-02 with image uploads (jpg/png/tif/gif; Steve: "this
+# creates a new security surface (JPG malware)"). An image decoder is a
+# classic attack surface and the uploader is the author under
+# investigation, so two properties are pinned: hostile bytes never route
+# through ImageMagick (tesseract's own reader only), and every path that
+# decodes an image has refused oversized or malformed headers FIRST.
+if (file.exists("R/utils.R")) {
+  ut <- srcOf("R/utils.R")
+  imgFiles <- c("R/utils.R", "R/parseBaselineTableHeuristics.R",
+                "R/aiFallback.R", "R/apiService.R", "R/app_server.R")
+  for (f in imgFiles[file.exists(imgFiles)])
+    if (any(grepl("magick::", srcOf(f), fixed = TRUE)))
+      note(paste(f, "calls ImageMagick (magick::) - the 2026-09-02 decision",
+                 "was tesseract's own reader only (review, image uploads)"))
+  if (!any(grepl("\\.ppImageHeaderBytes", ut)))
+    note(paste("R/utils.R lost the bounded header read (.ppImageHeaderBytes)",
+               "- a crafted image header is read without limit"))
+  he <- srcOf("R/parseBaselineTableHeuristics.R")
+  iOk <- grep("\\.ppImageOK\\(", he); iData <- grep("\\.ppImageData\\(", he)
+  if (!length(iOk) || !length(iData) || min(iOk) > min(iData))
+    note(paste("R/parseBaselineTableHeuristics.R decodes an image",
+               "(.ppImageData) without .ppImageOK() first"))
+  if (file.exists("R/apiService.R") &&
+      !any(grepl("\\.ppImageOK\\(", srcOf("R/apiService.R"))))
+    note(paste("R/apiService.R lost the image preflight (.ppImageOK)",
+               "before the batcher"))
+}
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -262,5 +291,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "5 property groups.
+    "6 property groups.
 ")

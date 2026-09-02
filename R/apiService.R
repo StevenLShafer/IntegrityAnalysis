@@ -499,7 +499,20 @@
 .apiReadUpload <- function(path, name, apiKey = NULL) {
   ext <- tolower(tools::file_ext(name))
   stem <- tools::file_path_sans_ext(basename(name))
-  if (ext %in% c("pdf", "docx")) {
+  if (ext %in% c("pdf", "docx", .ppImageExts)) {
+    # A table image is preflighted from its header - our own bounded
+    # parser, no decoder - before a child process is spent on it; the
+    # engine repeats the check, so this gate is defence in depth
+    # (2026-09-02; see utils.R).
+    if (ext %in% .ppImageExts) {
+      ok <- .ppImageOK(path)
+      if (!isTRUE(ok))
+        return(list(ok = FALSE,
+                    reasons = paste0(name, " was not read: ",
+                                     attr(ok, "reason"), "."),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
+    }
     aiOn <- !is.null(apiKey) && nzchar(apiKey)
     res <- parseBaselineTableFiles(
       path, ai = if (aiOn) "fallback" else "never",

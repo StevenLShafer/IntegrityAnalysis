@@ -199,32 +199,213 @@
 .ppOcrData <- function(pdfFile, dpi = 300, pages = NULL) {
   pg <- .ppOcrPages(pdfFile, dpi = dpi, pages = pages, want = "data")
   if (is.data.frame(pg)) pg <- list(pg)
-  scale <- 72 / dpi
-  lapply(pg, function(d) {
-    d <- as.data.frame(d, stringsAsFactors = FALSE)
-    empty <- data.frame(text = character(0), x = numeric(0), y = numeric(0),
-                        width = numeric(0), height = numeric(0))
-    if (!nrow(d)) return(empty)
-    bb <- do.call(rbind, lapply(strsplit(d$bbox, ","), as.numeric))
-    out <- data.frame(text   = .ppNormalizeGlyphs(d$word),
-                      x      = bb[, 1] * scale,
-                      y      = bb[, 2] * scale,
-                      width  = (bb[, 3] - bb[, 1]) * scale,
-                      height = (bb[, 4] - bb[, 2]) * scale,
-                      stringsAsFactors = FALSE)
-    # tesseract reads the plus-minus sign as a plain plus, in three
-    # shapes seen live (2026-08-26, synthetic page at 300 dpi): a
-    # standalone word between mean and SD ("45.3 + 12.1"), glued to the
-    # mean ("63+ 13"), and fully glued ("165+7"). Without the repair no
-    # continuous row survives tokenization. In a baseline table a plus
-    # touching digits IS a plus-minus, so the repair lives HERE - in the
-    # OCR adapter - never in the global glyph normalizer, where a
-    # genuine plus (e.g. "T+ group") must survive.
-    out$text <- gsub("^\\+$", "\u00b1", out$text)
-    out$text <- gsub("(\\d)\\+$", "\\1\u00b1", out$text)
-    out$text <- gsub("(\\d)\\+(\\d)", "\\1\u00b1\\2", out$text)
-    out[!is.na(out$text) & nzchar(trimws(out$text)), , drop = FALSE]
-  })
+  lapply(pg, .ppOcrBoxes, scale = 72 / dpi)
+}
+
+# One tesseract word table -> the page-words shape, at `scale` points per
+# pixel. Factored out of .ppOcrData (2026-09-02) so an uploaded IMAGE can
+# take the same road: the only difference is where the scale comes from.
+.ppOcrBoxes <- function(d, scale) {
+  d <- as.data.frame(d, stringsAsFactors = FALSE)
+  empty <- data.frame(text = character(0), x = numeric(0), y = numeric(0),
+                      width = numeric(0), height = numeric(0))
+  if (!nrow(d)) return(empty)
+  bb <- do.call(rbind, lapply(strsplit(d$bbox, ","), as.numeric))
+  out <- data.frame(text   = .ppNormalizeGlyphs(d$word),
+                    x      = bb[, 1] * scale,
+                    y      = bb[, 2] * scale,
+                    width  = (bb[, 3] - bb[, 1]) * scale,
+                    height = (bb[, 4] - bb[, 2]) * scale,
+                    stringsAsFactors = FALSE)
+  # tesseract reads the plus-minus sign as a plain plus, in three
+  # shapes seen live (2026-08-26, synthetic page at 300 dpi): a
+  # standalone word between mean and SD ("45.3 + 12.1"), glued to the
+  # mean ("63+ 13"), and fully glued ("165+7"). Without the repair no
+  # continuous row survives tokenization. In a baseline table a plus
+  # touching digits IS a plus-minus, so the repair lives HERE - in the
+  # OCR adapter - never in the global glyph normalizer, where a
+  # genuine plus (e.g. "T+ group") must survive.
+  out$text <- gsub("^\\+$", "\u00b1", out$text)
+  out$text <- gsub("(\\d)\\+$", "\\1\u00b1", out$text)
+  out$text <- gsub("(\\d)\\+(\\d)", "\\1\u00b1\\2", out$text)
+  # ...and a fourth, glued to the SD instead ("63" "+13"): what JPEG
+  # artefacts at 300 dpi did to the same cell (2026-09-02, image uploads).
+  out$text <- gsub("^\\+(\\d)", "\u00b1\\1", out$text)
+  out[!is.na(out$text) & nzchar(trimws(out$text)), , drop = FALSE]
+}
+
+# ---------------------------------------------------------------------------
+# Uploaded table IMAGES (jpg/png/tif/gif) - Steve, 2026-09-02
+# ---------------------------------------------------------------------------
+# A picture of a table takes the scanned-page road: tesseract word boxes
+# into the same deterministic engine, "ocr" provenance, whole-table cyan
+# in the app. It differs from a scanned PDF page in two ways, both
+# handled here.
+#
+# THREAT MODEL FIRST. The uploader is the author under investigation, and
+# an image decoder is a classic attack surface. Three decisions follow:
+#   - NO ImageMagick. tesseract reads JPEG/PNG/TIFF/GIF through its own
+#     leptonica reader, so the app needs no magick dependency and never
+#     exposes ImageMagick's few-hundred-format decoder to hostile bytes.
+#     tools/securityCheck.R pins that no image path ever calls it.
+#   - THE HEADER IS READ BY US, BEFORE ANY DECODER. A 1 KB JPEG can
+#     declare 65,000 x 65,000 pixels and a TIFF can chain thousands of
+#     directories; a decoder would try to allocate all of it.
+#     .ppImageDims() parses only the dimensions and page count, from a
+#     bounded prefix (or, for TIFF, by seeking to each directory), with
+#     no decoding, and .ppImageOK() refuses anything over the caps. It
+#     decides the FORMAT from the magic bytes, never from the file name.
+#   - DECODING HAPPENS ONLY IN THE SUBPROCESS. The app and the API hand
+#     images to parseBaselineTableFiles() exactly like PDFs, so a decoder
+#     crash or stall costs one child under an OS timeout, never the
+#     worker.
+#
+# SCALE. The engine's tolerances are in PDF points (a 3-pt line gap, a
+# 25-pt column gap). A PDF page rendered at a known dpi converts by
+# 72/dpi; an image carries no trustworthy dpi. Measured 2026-09-02 on a
+# journal page rendered at 300, 150 and 96 dpi: the median height of a
+# confident OCR word box was 6.72 pt at every resolution (28, 14 and 9
+# px). So the median word box IS the ruler: scale so it lands at
+# .ppImageWordPt, and the tolerances hold whatever the pixel size.
+
+.ppImageExts <- c("jpg", "jpeg", "png", "tif", "tiff", "gif")
+.ppIsImageFile <- function(path)
+  tolower(tools::file_ext(path)) %in% .ppImageExts
+
+.ppImageMaxPixels   <- 50e6   # 8.4 MP is a Letter page at 300 dpi
+.ppImageMaxPages    <- 10L    # a table is one picture; a TIFF chain is not
+.ppImageHeaderBytes <- 4e6    # JPEG/PNG/GIF dimensions live in the prefix
+.ppImageWordPt      <- 6.75
+
+# Dimensions, page count and format from the file's own header - no
+# decoder involved. NULL when the bytes are not one of the four formats,
+# whatever the file is called.
+.ppImageDims <- function(path) {
+  size <- file.size(path)
+  if (is.na(size) || size < 12) return(NULL)
+  con <- file(path, "rb")
+  on.exit(close(con), add = TRUE)
+  head <- readBin(con, "raw", n = min(size, .ppImageHeaderBytes))
+  u16 <- function(b, i, le = FALSE) {
+    v <- as.integer(b[i:(i + 1)])
+    if (le) v[1] + 256 * v[2] else 256 * v[1] + v[2]
+  }
+  u32 <- function(b, i, le = FALSE) {
+    v <- as.numeric(as.integer(b[i:(i + 3)]))
+    if (le) sum(v * 256^(0:3)) else sum(v * 256^(3:0))
+  }
+  hx <- function(...) as.raw(c(...))
+
+  # PNG: 8-byte signature, then the IHDR chunk - width and height at 17..24
+  if (identical(head[1:8], hx(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))) {
+    if (size < 24 || rawToChar(head[13:16]) != "IHDR") return(NULL)
+    return(list(format = "png", width = u32(head, 17), height = u32(head, 21),
+                pages = 1L))
+  }
+  # GIF: "GIF87a"/"GIF89a", logical screen width and height little-endian
+  if (identical(head[1:4], hx(0x47, 0x49, 0x46, 0x38))) {
+    return(list(format = "gif", width = u16(head, 7, TRUE),
+                height = u16(head, 9, TRUE), pages = 1L))
+  }
+  # JPEG: walk the marker segments to the first SOFn frame header
+  if (identical(head[1:2], hx(0xff, 0xd8))) {
+    i <- 3L; n <- length(head); steps <- 0L
+    while (i + 3 <= n && steps < 2000L) {
+      steps <- steps + 1L
+      if (head[i] != as.raw(0xff)) return(NULL)
+      m <- as.integer(head[i + 1])
+      if (m == 0xff) { i <- i + 1L; next }                # fill byte
+      if (m == 0xd8 || (m >= 0xd0 && m <= 0xd7) || m == 0x01) {
+        i <- i + 2L; next                                  # no payload
+      }
+      if (m == 0xd9 || m == 0xda) return(NULL)            # EOI / scan: no SOF seen
+      len <- u16(head, i + 2)
+      isSOF <- m >= 0xc0 && m <= 0xcf && !m %in% c(0xc4, 0xc8, 0xcc)
+      if (isSOF) {
+        if (i + 8 > n) return(NULL)
+        return(list(format = "jpeg", width = u16(head, i + 7),
+                    height = u16(head, i + 5), pages = 1L))
+      }
+      i <- i + 2L + len
+    }
+    return(NULL)
+  }
+  # TIFF: byte order, magic 42, then a chain of image file directories.
+  # Directories usually sit at the END of the file, so this seeks rather
+  # than reading the whole file. BigTIFF (magic 43) is refused.
+  le <- identical(head[1:4], hx(0x49, 0x49, 0x2a, 0x00))
+  be <- identical(head[1:4], hx(0x4d, 0x4d, 0x00, 0x2a))
+  if (le || be) {
+    readAt <- function(off, n) {
+      if (off < 0 || off + n > size) return(NULL)
+      seek(con, off)
+      b <- readBin(con, "raw", n = n)
+      if (length(b) < n) NULL else b
+    }
+    off <- u32(head, 5, le)
+    width <- height <- NA_real_
+    pages <- 0L; seen <- numeric(0)
+    while (off != 0 && pages <= .ppImageMaxPages) {
+      if (off %in% seen) return(NULL)                     # a loop, not a file
+      seen <- c(seen, off)
+      cnt <- readAt(off, 2); if (is.null(cnt)) return(NULL)
+      nEnt <- u16(cnt, 1, le)
+      if (nEnt == 0 || nEnt > 4096) return(NULL)
+      ent <- readAt(off + 2, 12 * nEnt + 4); if (is.null(ent)) return(NULL)
+      pages <- pages + 1L
+      if (pages == 1L) {
+        for (k in seq_len(nEnt)) {
+          e   <- ent[(12 * (k - 1) + 1):(12 * k)]
+          tag <- u16(e, 1, le); typ <- u16(e, 3, le)
+          val <- if (typ == 3) u16(e, 9, le) else if (typ == 4) u32(e, 9, le)
+                 else NA_real_
+          if (tag == 256) width  <- val
+          if (tag == 257) height <- val
+        }
+      }
+      off <- u32(ent, 12 * nEnt + 1, le)
+    }
+    if (is.na(width) || is.na(height)) return(NULL)
+    return(list(format = "tiff", width = width, height = height,
+                pages = pages))
+  }
+  NULL
+}
+
+# TRUE when the image may be decoded; otherwise FALSE carrying a "reason".
+.ppImageOK <- function(path) {
+  dims <- .ppImageDims(path)
+  no <- function(why) structure(FALSE, reason = why)
+  if (is.null(dims))
+    return(no("not a JPEG, PNG, TIFF or GIF image, whatever the file name says"))
+  if (dims$pages > .ppImageMaxPages)
+    return(no(sprintf("a TIFF with more than %d pages", .ppImageMaxPages)))
+  if (dims$width < 1 || dims$height < 1) return(no("an empty image"))
+  if (dims$width * dims$height > .ppImageMaxPixels)
+    return(no(sprintf("%.0f x %.0f pixels - more than the %d-megapixel limit",
+                      dims$width, dims$height, .ppImageMaxPixels / 1e6)))
+  structure(TRUE, dims = dims)
+}
+
+# OCR word boxes for one image, in the page-words shape, scaled so the
+# median confident word box is .ppImageWordPt points tall (see above).
+# Callers MUST have passed .ppImageOK() first; the engine and the API
+# gate both do, and tools/securityCheck.R checks the order.
+.ppImageData <- function(imgFile, wordPt = .ppImageWordPt) {
+  if (!requireNamespace("tesseract", quietly = TRUE))
+    stop("Reading a table image needs the 'tesseract' package: ",
+         "install.packages(\"tesseract\")", call. = FALSE)
+  d <- as.data.frame(tesseract::ocr_data(imgFile), stringsAsFactors = FALSE)
+  if (!nrow(d)) return(list(.ppOcrBoxes(d, 1)))
+  bb <- do.call(rbind, lapply(strsplit(d$bbox, ","), as.numeric))
+  h  <- bb[, 4] - bb[, 2]
+  good  <- d$confidence > 50 & nchar(d$word) >= 2 & h > 0
+  ruler <- if (any(good)) stats::median(h[good]) else stats::median(h[h > 0])
+  scale <- wordPt / ruler
+  # a ruler outside 72-1440 dpi is not a photograph of a table; fall back
+  # to 300 dpi rather than blow every tolerance up or down by orders
+  if (!is.finite(scale) || scale > 1 || scale < 0.05) scale <- 72 / 300
+  list(.ppOcrBoxes(d, scale))
 }
 
 # Plain OCR text, for the AI paths, which want prose rather than word boxes.

@@ -182,6 +182,19 @@ everything OCR does happens on this server — nothing leaves it.
 Whatever was extracted can be reviewed, corrected, and analyzed
 without leaving the app.
 
+**A picture of a table (jpg, png, tif, gif).** A screenshot or scan of
+Table 1 uploads like a PDF: the app reads it with local optical
+character recognition (tesseract) and extracts the table into the grid,
+shaded **pale cyan** with the same verify-every-value warning as a
+scanned page — OCR can misread digits. It works best on a clean picture
+at 200–300 dpi; at screen resolution (96 dpi) words start to drop out.
+The picture is decoded by the app's own OCR reader, never by
+ImageMagick, and its declared dimensions are checked from the file
+header before any decoder runs — an oversized or malformed image is
+refused with a message. With an API key entered, a jpg, png or gif is
+sent to the AI assist as an image (a tif is read by OCR only; the model
+does not accept it).
+
 **A Word manuscript (.docx).** A submission in Word format uploads the
 same way as a PDF: the app examines every table in the document —
 submissions put them at the end, with the caption just above — picks
@@ -323,8 +336,9 @@ specific cell:
 - **Blue — incongruent.** The value conflicts with the type of its row:
   an SD on a median/IQR row, continuous entries on a category row, a
   median outside its own quartiles, an SE standing in for a missing SD.
-- **Pale cyan — read by OCR.** The whole table came from a scanned page
-  read by optical character recognition. OCR can misread digits (3 vs
+- **Pale cyan — read by OCR.** The whole table came from a scanned page,
+  or an uploaded picture of a table, read by optical character
+  recognition. OCR can misread digits (3 vs
   8, 1 vs 7), and in a fraud screen a single silently wrong digit
   matters — verify every value against the manuscript, or enter an
   Anthropic API key and re-upload for the higher-accuracy AI read.

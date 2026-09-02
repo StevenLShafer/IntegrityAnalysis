@@ -226,12 +226,14 @@ app_ui <- function(testNote = NULL)
             "baseline table (variables as rows, arms as columns, ",
             "including this app's own Editor's View download); ",
             "article PDFs, Word manuscripts (docx), JATS XML from a ",
-              "publisher or PubMed Central (xml), or a ",
-            "zip of many such files - everything combines into one ",
+              "publisher or PubMed Central (xml), a picture of a table ",
+              "(jpg, png, tif, gif - read by OCR, so verify every value), ",
+            "or a zip of many such files - everything combines into one ",
             "table, distinguished by trial - or start with an empty ",
             "table and type the data in<br>")),
           fileInput("upload", NULL, multiple = TRUE,
                     accept = c(".csv", ".xls", ".xlsx", ".pdf", ".docx", ".xml",
+                               ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".gif",
                                ".zip")),
           # Opt-in approximation (Steve, 2026-08-21): percent-only cells
           # whose printed rounding cannot pin a unique count fall back to

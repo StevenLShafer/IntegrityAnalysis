@@ -191,6 +191,21 @@ parseBaselineTable <- function(pdfFile,
     ai <- "never"
   }
 
+  # A table image (2026-09-02): the deterministic pass IS an OCR pass, so
+  # the OCR rescue below has nothing to add and the prose route has no
+  # prose to read; and only what the Messages API accepts as an image
+  # block can take the AI route - JPEG, PNG and GIF under its size
+  # limits. A TIFF, or an oversized picture, is parsed deterministically
+  # with a note rather than failing outright.
+  isImage <- .ppIsImageFile(pdfFile)
+  if (isImage && ai != "never") {
+    why <- .ppImageAiRefusal(pdfFile)
+    if (!is.null(why)) {
+      say(why, " - parsing this image deterministically.")
+      ai <- "never"
+    }
+  }
+
   # ---- AI-only path -------------------------------------------------------
   if (ai == "always")
     return(parseBaselineTableAI(pdfFile, trial = trial, pages = pages,
@@ -216,6 +231,7 @@ parseBaselineTable <- function(pdfFile,
   # verify-every-cell note. With a key present the AI image route (tier
   # 1) runs first - a model reads a page picture better than OCR.
   ocrRescue <- function() {
+    if (isImage) return(NULL)   # the deterministic pass already read pixels
     if (!requireNamespace("tesseract", quietly = TRUE)) return(NULL)
     imgs <- tryCatch(.ppImageOnlyPages(.ppPdfText(pdfFile)),
                      error = function(e) integer(0))
@@ -279,7 +295,7 @@ parseBaselineTable <- function(pdfFile,
     # given in a sentence in the Methods instead. In a 250-article sample,
     # about a third of the articles nothing could be extracted from were of
     # that kind, so when no table can be read anywhere, ask for the prose.
-    if (inherits(out, "error") && prose) {
+    if (inherits(out, "error") && prose && !isImage) {
       say("No table could be read (", conditionMessage(out),
           "); asking ", model, " for baseline data stated in the text.")
       out <- tryCatch(
@@ -302,7 +318,15 @@ parseBaselineTable <- function(pdfFile,
   }
 
   flags <- reviewFlags(het)
-  het$flags <- flags
+  # A picture was read by OCR end to end, so it carries the same
+  # verify-every-value note the scanned-page rescue attaches (the app
+  # shades on engine, but API and console callers see only the flags).
+  # Kept apart from `flags`: the note is not a gap for the AI assist to
+  # fill, and must not trigger a consult on its own.
+  imageNote <- if (isImage)
+    paste("picture read by local OCR - OCR can misread digits, so verify",
+          "every value against the original")
+  het$flags <- c(imageNote, flags)
   if (ai == "never" || length(flags) == 0) return(het)
 
   if (!claudeAvailable() && is.null(apiKey)) {
@@ -335,8 +359,8 @@ parseBaselineTable <- function(pdfFile,
   if (inherits(aiRes, "error")) {
     say("The AI fallback failed (", conditionMessage(aiRes),
         "); returning the deterministic result.")
-    het$flags <- c(flags, paste0("AI fallback failed: ",
-                                 conditionMessage(aiRes)))
+    het$flags <- c(imageNote, flags,
+                   paste0("AI fallback failed: ", conditionMessage(aiRes)))
     return(het)
   }
 
@@ -381,7 +405,7 @@ parseBaselineTable <- function(pdfFile,
 
   if (nrow(newRows) == 0) {
     say("The model found nothing the deterministic pass had missed.")
-    het$flags <- flags
+    het$flags <- c(imageNote, flags)
     return(het)
   }
   say("Adding ", nrow(newRows), " line(s) from ", model,
@@ -405,7 +429,7 @@ parseBaselineTable <- function(pdfFile,
          caption    = het$caption,
          trial      = trial,
          notes      = aiRes$notes,
-         flags      = flags,
+         flags      = c(imageNote, flags),
          engine     = "hybrid"),
     class = "ParsePDFTable")
 }
