@@ -402,6 +402,15 @@
 
     # -- median rows ----------------------------------------------------
     if (mainType == "medianTriple" || tag %in% c("medIQR", "medRng")) {
+      # COLUMNS FIRST, VERDICT SECOND (Steve, 2026-09-02). anyMedian used to
+      # be set only where a median row SURVIVED, several `next`s below. So a
+      # sheet whose median rows were all skipped got no Q1/Q3 columns - while
+      # the skip reason told the reader to "enter median/Q1/Q3 by hand".
+      # There was nowhere to type them: the grid had no Q1 and no Q3. Seeing
+      # a median row is what justifies the columns; whether we could use it
+      # is a separate question, and the answer to it is the reason the user
+      # needs somewhere to type.
+      anyMedian <- TRUE
       # The interval's meaning comes from the LABEL, never from the
       # numbers: an IQR and a range both straddle the median. Same
       # conservative gate as the engine (issue 18): explicit IQR -> emit
@@ -424,21 +433,39 @@
                              "is an IQR, enter median/Q1/Q3 by hand"), txt)
         next
       }
-      bad <- vapply(toks, function(t)
+      # A median outside its own [Q1, Q3] is IMPOSSIBLE, so the arm carrying
+      # it cannot be analyzed. It used to take the whole variable with it -
+      # `any(bad)` skipped the row - which is backwards for a screening tool
+      # on two counts: the arms that ARE internally consistent were thrown
+      # away with the one that is not, and the impossible value itself, which
+      # is precisely the kind of finding this app exists to surface,
+      # disappeared from the grid. Drop only the offending arm, name it, and
+      # keep the rest (Steve's Ticagrelor sheet, 2026-09-02: Age was dropped
+      # over the Aspirin arm's "68.8 (59-64)" while Ticagrelor's
+      # "62 (60-67)" was perfectly usable).
+      present <- vapply(toks, function(t)
+        !is.null(t) && t$type == "medianTriple", logical(1))
+      bad <- present & vapply(toks, function(t)
         !is.null(t) && t$type == "medianTriple" &&
           (t$num2 > t$num1 || t$num3 < t$num1), logical(1))
-      if (any(bad)) {
+      if (any(present) && !any(present & !bad)) {
+        # Nothing survives - same outcome, and same message, as before.
         addSkip(label, "median outside its own [Q1, Q3] - check the cells",
                 txt)
         next
       }
+      if (any(bad))
+        addSkip(paste0(label, " - ", paste(armName[bad], collapse = ", ")),
+                paste("median outside its own [Q1, Q3] in this arm, so the",
+                      "arm was dropped - the other arm(s) were kept. Check",
+                      "these cells against the manuscript"), txt)
       rowName <- .ppUniqueName(if (nzchar(label)) label else "Unnamed",
                                usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
-      anyMedian <- TRUE
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- toks[[j]]
         if (is.null(t) || t$type != "medianTriple") return(NULL)
+        if (bad[j]) return(NULL)          # impossible: reported, not analyzed
         list(N = if (!is.na(lineN[j])) lineN[j] else armN[j],
              MEAN = t$num1, Q1 = t$num2, Q3 = t$num3,
              SD = NA_real_, SE = NA_real_,
