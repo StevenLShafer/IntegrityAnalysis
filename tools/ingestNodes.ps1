@@ -251,29 +251,26 @@ if ($TransferOnly) { Say '  -TransferOnly: no reindex, no identity pass, no back
 # The other three sources take every file, which is what their src() rows  #
 # expect.                                                                  #
 ############################################################################
-############################################################################
-# THE medRxiv DESTINATION IS NOT DERIVED FROM INTEGRITY_CORPUS BY DEFAULT,
-# and the reason is the whole subject of this file.
+# INTEGRITY_CORPUS DOES NOT MOVE medRxiv. Only INTEGRITY_MEDRXIV does.
 #
 # buildCorpusLibrary.R indexes medRxiv at a FIXED path - src("medrxiv",
 # "C:/temp/medrxiv_rct") - because that collection lives outside the corpus
 # tree. An earlier draft here redirected medRxiv whenever INTEGRITY_CORPUS
-# was set, which is exactly right for an isolated test and exactly wrong
-# for anyone who sets that variable to relocate a real corpus: the transfer
-# would report success, the stamp would advance, and the files would sit in
-# a directory the indexer never reads. That is defect 1 of this rewrite,
-# reintroduced one directory over. (CodeRabbit flagged it on PR #135.)
+# was set: exactly right for an isolated test, and exactly wrong for anyone
+# setting that variable to relocate a real corpus. The transfer would report
+# success, the stamp would advance, and the files would sit in a directory
+# the indexer never reads - defect 1 of this very rewrite, reintroduced one
+# directory over.
 #
-# So the override is its own variable, and choosing it is deliberate.
-# INTEGRITY_CORPUS alone no longer moves medRxiv silently - it says so.
+# The correction after that kept the fallback and merely WARNED. That was
+# also wrong, and wrong in this repository's most familiar way: a message in
+# a log nobody reads, standing in for a guard. A variable that relocates the
+# corpus has no business quietly relocating a collection stored outside it.
+#
+# So the override is its own variable and must be chosen deliberately. Both
+# rounds were CodeRabbit findings on PR #135.
 ############################################################################
 $medrxivDefault = 'C:\temp\medrxiv_rct'   # must match src("medrxiv")
-# INTEGRITY_CORPUS does NOT move medRxiv. Only INTEGRITY_MEDRXIV does, and
-# only when someone sets it on purpose. An intermediate version kept the
-# INTEGRITY_CORPUS fallback and merely WARNED about it - but a warning in a
-# log nobody reads is not a guard, and this repository has a long record of
-# exactly that. A variable that relocates the corpus should not quietly
-# relocate a collection stored outside it.
 $medrxiv = if ($env:INTEGRITY_MEDRXIV) { $env:INTEGRITY_MEDRXIV } else { $medrxivDefault }
 if ($medrxiv -ne $medrxivDefault) {
   Say ("NOTE: INTEGRITY_MEDRXIV sends medRxiv to {0}, NOT the indexed path {1}." -f $medrxiv, $medrxivDefault)
