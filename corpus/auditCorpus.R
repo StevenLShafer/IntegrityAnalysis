@@ -135,14 +135,28 @@ chk(length(unique(m$SHA256)) > 0.5 * nrow(m), "hashes are not degenerate")
 # cheaper to install the tripwire before the first derived file is written
 # than to discover afterwards which numbers were computed against it.
 ############################################################################
+# ALLOWLIST, NOT DENYLIST, and the first version got this wrong in the one
+# way that mattered.
+#
+# It rejected only ROLE == "derived". But the agreed design puts machine
+# output in as a COLLECTION - its own SOURCE_ID under registry/ - because
+# that is the role the builder structurally cannot place in master/. So a
+# check that fires only on "derived" would never fire on the very thing it
+# was written to catch, and nothing declares itself "derived" today at all.
+# An unregistered SOURCE_ID would also have slipped through.
+#
+# Stating it positively removes the whole class: XML may come only from a
+# source we RETRIEVED, ROLE == "work". Anything else - collection, derived,
+# unregistered, or a role invented later - is caught without this line
+# needing to know it exists. (CodeRabbit, PR #136.)
 srcs <- read.csv("index/sources.csv", colClasses = "character")
-derivedIds <- srcs$SOURCE_ID[!is.na(srcs$ROLE) & srcs$ROLE == "derived"]
+workIds <- srcs$SOURCE_ID[!is.na(srcs$ROLE) & srcs$ROLE == "work"]
 xmlRows <- m[m$FORMAT == "xml", , drop = FALSE]
-badXml  <- xmlRows[xmlRows$SOURCE_ID %in% derivedIds, , drop = FALSE]
+badXml  <- xmlRows[!xmlRows$SOURCE_ID %in% workIds, , drop = FALSE]
 chk(nrow(badXml) == 0,
-    sprintf(paste("every XML file is publisher-sourced, not machine-derived",
-                  "(%d derived source(s) declared, %d offending file(s))"),
-            length(derivedIds), nrow(badXml)))
+    sprintf(paste("every XML file comes from a retrieved 'work' source, not",
+                  "machine-derived (%d work source(s), %d offending file(s))"),
+            length(workIds), nrow(badXml)))
 if (nrow(badXml))
   cat("        offenders:",
       paste(utils::head(unique(badXml$SOURCE_ID), 3), collapse = ", "), "\n")
