@@ -268,15 +268,18 @@ if ($TransferOnly) { Say '  -TransferOnly: no reindex, no identity pass, no back
 # INTEGRITY_CORPUS alone no longer moves medRxiv silently - it says so.
 ############################################################################
 $medrxivDefault = 'C:\temp\medrxiv_rct'   # must match src("medrxiv")
-$medrxiv = if ($env:INTEGRITY_MEDRXIV) { $env:INTEGRITY_MEDRXIV }
-           elseif ($env:INTEGRITY_CORPUS) { Join-Path $corpus 'medrxiv_rct' }
-           else { $medrxivDefault }
+# INTEGRITY_CORPUS does NOT move medRxiv. Only INTEGRITY_MEDRXIV does, and
+# only when someone sets it on purpose. An intermediate version kept the
+# INTEGRITY_CORPUS fallback and merely WARNED about it - but a warning in a
+# log nobody reads is not a guard, and this repository has a long record of
+# exactly that. A variable that relocates the corpus should not quietly
+# relocate a collection stored outside it.
+$medrxiv = if ($env:INTEGRITY_MEDRXIV) { $env:INTEGRITY_MEDRXIV } else { $medrxivDefault }
 if ($medrxiv -ne $medrxivDefault) {
-  Say ("NOTE: medRxiv is going to {0}, NOT the indexed path {1}." -f $medrxiv, $medrxivDefault)
-  Say  '      buildCorpusLibrary.R reads the indexed path, so anything landing'
-  Say  '      here will NOT appear in the corpus. Correct for an isolated test;'
-  Say  '      wrong for a real run. Unset INTEGRITY_CORPUS/INTEGRITY_MEDRXIV, or'
-  Say  '      point src("medrxiv") at the same place.'
+  Say ("NOTE: INTEGRITY_MEDRXIV sends medRxiv to {0}, NOT the indexed path {1}." -f $medrxiv, $medrxivDefault)
+  Say  '      buildCorpusLibrary.R reads the indexed path, so nothing landing'
+  Say  '      here will appear in the corpus. Correct for an isolated test;'
+  Say  '      wrong for a real run.'
 }
 $allFiles = '-type f'
 $pdfsOnly = "-type f -name '*.pdf' -not -path './incoming/*'"
@@ -474,23 +477,35 @@ foreach ($n in $nodes) {
   # one unusual path taking out the entire run. Skip the row instead.
   # (Both found by CodeRabbit on PR #135.)
   ########################################################################
+  # ACCUMULATE BY VOLUME. Checking each path separately was wrong whenever
+  # %TEMP% and $dest share a drive - the common case - because 1.1x was
+  # tested twice against the same unchanged free-space figure, so a disk
+  # with 1.5x free passed both checks and then could not hold the archive
+  # and the extracted copy together. Summing per resolved volume gives
+  # 2.2x when they are co-located and 1.1x each when they are not.
   $roomOk = $true
+  $need = @{}
   foreach ($vol in @($env:TEMP, $dest)) {
     $q = (Split-Path $vol -Qualifier)
     if (-not $q) {
       Say ('  SKIP: cannot determine the volume for {0} (UNC or relative path?) - stamp NOT advanced' -f $vol)
       $roomOk = $false; break
     }
-    $drive = Get-PSDrive ($q.TrimEnd(':')) -ErrorAction SilentlyContinue
-    if (-not $drive) {
-      Say ('  SKIP: no such drive {0} for {1} - stamp NOT advanced' -f $q, $vol)
-      $roomOk = $false; break
-    }
-    # Each volume receives ONE copy, so 1.1x each rather than 2.2x on one.
-    if ($drive.Free -lt ($bytes * 1.1)) {
-      Say ('  FAILED: {0} needs about {1} MB free for {2} and has {3} MB - stamp NOT advanced' -f
-           $q, [math]::Round($bytes * 1.1 / 1MB), $vol, [math]::Round($drive.Free / 1MB))
-      $roomOk = $false; break
+    $key = $q.TrimEnd(':')
+    $need[$key] = [int64]$need[$key] + [int64]($bytes * 1.1)
+  }
+  if ($roomOk) {
+    foreach ($key in $need.Keys) {
+      $drive = Get-PSDrive $key -ErrorAction SilentlyContinue
+      if (-not $drive) {
+        Say ('  SKIP: no such drive {0}: - stamp NOT advanced' -f $key)
+        $roomOk = $false; break
+      }
+      if ($drive.Free -lt $need[$key]) {
+        Say ('  FAILED: {0}: needs about {1} MB free and has {2} MB - stamp NOT advanced' -f
+             $key, [math]::Round($need[$key] / 1MB), [math]::Round($drive.Free / 1MB))
+        $roomOk = $false; break
+      }
     }
   }
   if (-not $roomOk) { continue }
