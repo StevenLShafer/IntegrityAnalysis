@@ -154,7 +154,9 @@ idconvOk <- function(r, ids) {
   if (!is.list(r) || !is.data.frame(r$records)) return(FALSE)
   if (!"requested-id" %in% names(r$records)) return(FALSE)
   got <- toupper(r$records[["requested-id"]])
-  all(toupper(ids) %in% got) && !anyDuplicated(got)
+  # setequal, not subset: a record for an id that was never asked for is
+  # as much a shape change as a missing one (CodeRabbit on #143).
+  setequal(toupper(ids), got) && !anyDuplicated(got)
 }
 
 # Name the failure that actually happened, because the remedies differ:
@@ -179,6 +181,10 @@ idconvWhy <- function(r, ids) {
                    length(ids) - length(miss), length(ids),
                    paste(head(miss, 3), collapse = ", "),
                    if (length(miss) > 3) ", ..." else ""))
+  extra <- setdiff(got, toupper(ids))
+  if (length(extra))
+    return(sprintf("the reply carried %d id(s) that were not requested (%s)",
+                   length(extra), paste(head(extra, 3), collapse = ", ")))
   paste0("the reply repeated an id (",
          paste(head(unique(got[duplicated(got)]), 3), collapse = ", "), ")")
 }

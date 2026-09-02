@@ -58,7 +58,7 @@ test_that("a batch in which nothing maps is a valid answer, not a shape change",
   expect_true(idconvOk(mixed, c("pmc4280683", "pmc9999999999")))
 })
 
-test_that("a truncated or duplicated reply is refused and named", {
+test_that("a truncated, surplus or duplicated reply is refused and named", {
   sourceIdconv()
   # Three asked, two answered: accepting this would resolve part of a batch
   # and leave the third looking like a PMCID with no PMID.
@@ -66,6 +66,12 @@ test_that("a truncated or duplicated reply is refused and named", {
   expect_false(idconvOk(mixed, ids))
   expect_match(idconvWhy(mixed, ids), "covered 2 of 3 requested ids")
   expect_match(idconvWhy(mixed, ids), "PMC1234567")
+
+  # Two asked, three answered: an id nobody requested is a shape change
+  # too, not a bonus - subset membership would have let it through.
+  expect_false(idconvOk(mixed, "PMC4280683"))
+  expect_match(idconvWhy(mixed, "PMC4280683"), "not requested")
+  expect_match(idconvWhy(mixed, "PMC4280683"), "PMC9999999999")
 
   dup <- list(records = rbind(mixed$records, mixed$records[1, ]))
   expect_false(idconvOk(dup, c("PMC4280683", "PMC9999999999")))
