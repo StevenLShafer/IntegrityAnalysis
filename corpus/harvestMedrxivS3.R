@@ -304,9 +304,45 @@ if (maxFiles > 0) {
                      # - that turns a broken run into a quiet one, which
                      # is how this harvest went three days without
                      # downloading anything and exited 0 each night.
-                     benign <- grepl("NoSuchBucket|NoSuchKey|Not Found|404",
-                                     msg, ignore.case = TRUE)
+                     # HOW A MISSING PREFIX ACTUALLY PRESENTS, which is not
+                     # what the patterns above expect.
+                     #
+                     # `aws s3 ls` on a prefix that holds no objects prints
+                     # NOTHING and exits 1. There is no NoSuchKey, no 404,
+                     # no message of any kind - S3 has no concept of an
+                     # absent "folder", so there is nothing to report. The
+                     # error therefore arrives as the bare string
+                     # "aws s3 failed: " with an empty tail, and none of the
+                     # patterns above match it.
+                     #
+                     # Found live 2026-09-02, the first scheduled run after
+                     # this job was created: on the 2nd of the month the
+                     # "recent" scope asked for Current_Content/
+                     # September_2026, which medRxiv had not created yet.
+                     # The nightly died, and would have died on the 1st or
+                     # 2nd of EVERY month until the folder appeared.
+                     #
+                     # Swallowing an EMPTY message is safe in exactly the way
+                     # the comment above demands. Every failure that must not
+                     # be silenced says something: "Unable to locate
+                     # credentials", "An error occurred (AccessDenied)",
+                     # "Could not connect to the endpoint URL", a throttle,
+                     # an expired token. Silence is the one signal that only
+                     # an empty prefix produces.
+                     # ONLY the empty message. The patterns that used to
+                     # sit here - NoSuchBucket, NoSuchKey, Not Found,
+                     # 404 - were chosen for this case and are wrong for
+                     # it in both directions: a missing PREFIX never
+                     # produces any of them (it produces nothing at all,
+                     # proven above), while NoSuchBucket means the bucket
+                     # itself is gone or misnamed. Swallowing that would
+                     # let a misconfigured run report an empty scope and
+                     # write a healthy heartbeat - the precise failure
+                     # the comment above forbids. (CodeRabbit, PR #138.)
+                     benign <- grepl("^aws s3 failed:\\s*$", msg)
                      if (!benign) stop(e)
+                     cat("  (", m, " not in the bucket yet - skipping)\n",
+                         sep = "")
                      character(0)
                    })
     ls <- ls[grepl("[.]meca$", ls)]
