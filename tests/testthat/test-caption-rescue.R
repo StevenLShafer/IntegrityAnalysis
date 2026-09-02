@@ -212,6 +212,30 @@ test_that("a side caption is split so the header row is read", {
   expect_identical(length(s$lines), 4L)
 })
 
+test_that("a caption whose table runs UNDER it, left-edge aligned, is not split", {
+  # BJA-style: "Table 1" then a wide gap then the caption text, and the
+  # table body below starting at the same left edge. The first version
+  # of the splitter saw only the gap, promoted "Patient characteristics
+  # Control Treatment" to a header row, and cost arms and arm Ns on 13
+  # corpus articles (before/after run, 2026-09-02).
+  lines <- list(
+    data.frame(text = c("Table", "1", "Patient", "characteristics"),
+               x = c(60, 81, 120, 150), y = 100, width = c(19, 4, 28, 60),
+               stringsAsFactors = FALSE),
+    data.frame(text = c("Control", "Treatment"), x = c(250, 350), y = 118,
+               width = c(30, 40), stringsAsFactors = FALSE),
+    data.frame(text = c("(n", "=", "20)", "(n", "=", "22)"),
+               x = c(250, 258, 264, 350, 358, 364), y = 130,
+               width = c(7, 5, 12, 7, 5, 12), stringsAsFactors = FALSE),
+    data.frame(text = c("Age", "45", "(12)", "46", "(11)"),
+               x = c(60, 250, 264, 350, 364), y = 148,
+               width = c(15, 10, 18, 10, 18), stringsAsFactors = FALSE),
+    data.frame(text = c("Weight", "70", "(9)", "71", "(8)"),
+               x = c(60, 250, 264, 350, 364), y = 166,
+               width = c(28, 10, 14, 10, 14), stringsAsFactors = FALSE))
+  expect_null(.ppSplitSideCaption(lines, 1L))
+})
+
 test_that("a foot-of-page caption beside the other column's prose is not split", {
   # A two-column page: the caption spans its whole (left) column and the
   # right column's prose shares the visual line. The leading run is far

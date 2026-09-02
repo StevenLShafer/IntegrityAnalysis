@@ -254,7 +254,15 @@
 #   - a gap of >= 25 pt (the package's column-gap tolerance) follows a
 #     leading run of words spanning at most 30% of the band's width - a
 #     margin column, not a text column;
-#   - the words right of the gap hold no caption of their own.
+#   - the words right of the gap hold no caption of their own;
+#   - THE TABLE BODY SITS BESIDE THE CAPTION, NOT UNDER IT: of the lines
+#     that follow, those not wholly inside the margin column start right
+#     of it. This is the test that separates a side caption from the
+#     common "Table 1 <wide gap> Patient characteristics" caption whose
+#     table then runs full width from the left edge: the first version
+#     lacked it and fired on 207 of 1,865 corpus articles, and on 13 of
+#     those it pushed the caption text into the header row and cost arms
+#     and arm Ns (before/after run, 2026-09-02).
 # Then the leading run stays the caption, the remainder becomes the next
 # line, and in the few lines below, words lying wholly within the
 # caption's x-range - its wrapped continuation, "participants" - are moved
@@ -278,6 +286,13 @@
   rest <- L[seq(g + 1, nrow(L)), , drop = FALSE]
   if (any(grepl("^(?i)(table|tab\\.?)$", rest$text, perl = TRUE))) return(NULL)
   capX1 <- ends[g]
+  # the body test: look at up to six lines below; a line lying wholly
+  # inside the margin column is the caption's own wrap and does not vote
+  if (li >= length(lines)) return(NULL)
+  below <- lines[seq(li + 1, min(li + 6, length(lines)))]
+  inCol <- vapply(below, function(z) all(z$x + z$width <= capX1 + 2), logical(1))
+  starts <- vapply(below[!inCol], function(z) min(z$x), numeric(1))
+  if (length(starts) < 2 || mean(starts >= capX1 + gap / 2) < 0.75) return(NULL)
   out <- append(lines, list(rest), after = li)
   out[[li]] <- cap
   capText <- cap$text
