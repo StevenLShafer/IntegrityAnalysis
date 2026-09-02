@@ -75,9 +75,36 @@ if [ "${1:-}" = "--verify" ]; then verify; exit 0; fi
 
 [ -f "$REQ" ] || { echo "no $REQ - is $REPO the repository?" >&2; exit 1; }
 
-say "installing uv into ~/.local/bin (no root)"
-if ! command -v "$HOME/.local/bin/uv" >/dev/null 2>&1; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+# A PINNED, CHECKSUM-VERIFIED ARTEFACT - not curl | sh.
+#
+# Piping a remote script straight into a shell executes whatever that
+# endpoint serves, as the provisioning user, with no record of what ran. For
+# a repository whose threat model is "the adversary is the author of a
+# manuscript under investigation" and whose dependency files are watched by
+# a nightly security screen, that is the wrong default even for a
+# convenience tool. (CodeRabbit, PR #137.)
+#
+# The version is pinned so provisioning is reproducible, and the published
+# SHA-256 is checked before anything is unpacked or run. Bump UV_VERSION
+# deliberately, the same way renv.lock is bumped.
+UV_VERSION="${UV_VERSION:-0.12.8}"
+UV_TARGET="x86_64-unknown-linux-gnu"
+say "installing uv $UV_VERSION into ~/.local/bin (no root, checksum verified)"
+if ! "$HOME/.local/bin/uv" --version >/dev/null 2>&1; then
+  tmp="$(mktemp -d)"
+  base="https://github.com/astral-sh/uv/releases/download/$UV_VERSION"
+  tarball="uv-$UV_TARGET.tar.gz"
+  curl -fsSL -o "$tmp/$tarball"        "$base/$tarball"
+  curl -fsSL -o "$tmp/$tarball.sha256" "$base/$tarball.sha256"
+  ( cd "$tmp" && sha256sum -c "$tarball.sha256" ) || {
+    echo "uv checksum verification FAILED - refusing to install" >&2
+    rm -rf "$tmp"; exit 1; }
+  mkdir -p "$HOME/.local/bin"
+  tar xzf "$tmp/$tarball" -C "$tmp"
+  install -m 0755 "$tmp/uv-$UV_TARGET/uv"  "$HOME/.local/bin/uv"
+  install -m 0755 "$tmp/uv-$UV_TARGET/uvx" "$HOME/.local/bin/uvx" 2>/dev/null || true
+  rm -rf "$tmp"
+  say "uv installed and verified against its published SHA-256"
 fi
 export PATH="$HOME/.local/bin:$PATH"
 say "uv $(uv --version)"

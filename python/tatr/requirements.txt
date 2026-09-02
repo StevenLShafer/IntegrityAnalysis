@@ -12,11 +12,17 @@
 # not exist". That happened on the first provisioning attempt and is why the
 # provisioning script exists at all.
 #
-# transformers is pinned BELOW 5.x and that pin is load-bearing, not
-# hygiene. transformers 5.x validates model configs strictly and rejects the
-# published Table Transformer config outright - "Field 'dilation' expected
-# bool, got NoneType" - so the models will not load at all. Do not relax it
-# without re-testing both checkpoints end to end.
+# transformers is pinned AT OR ABOVE 5.3.0 because 4.x is affected by
+# GHSA-29pf-2h5f-8g72. An earlier version pinned BELOW 5 instead, because
+# 5.x validates model configs strictly and rejects the published Table
+# Transformer config ("Field 'dilation' expected bool, got NoneType"). That
+# traded a known vulnerability for a loading convenience, which is the wrong
+# way round. tatrTables.py::_config() corrects the config dict before
+# construction instead - see its docstring. (CodeRabbit, PR #137.)
+#
+# Verified: both checkpoints load under 5.16.1 with the correct label sets,
+# and the eight-article regression set returns identical table counts and
+# shapes to the 4.57.6 baseline.
 #
 # The model weights are NOT here. They are pinned by revision SHA in
 # tatrTables.py (DET_REV / STR_REV), fetched once by the provisioning
@@ -28,7 +34,7 @@ torch==2.13.0+cpu
 torchvision==0.28.0+cpu
 
 # --- from PyPI ---
-transformers==4.57.6
+transformers>=5.3.0
 timm==1.0.29
 tokenizers==0.22.2
 huggingface-hub==0.36.2

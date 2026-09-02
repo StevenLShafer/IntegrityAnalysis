@@ -39,6 +39,7 @@ model revision SHAs and the library versions this was validated against.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -51,7 +52,8 @@ import pdfplumber
 import pypdfium2 as pdfium
 import torch
 from PIL import Image
-from transformers import AutoImageProcessor, TableTransformerForObjectDetection
+from transformers import (AutoImageProcessor, TableTransformerConfig,
+                          TableTransformerForObjectDetection)
 
 # ---------------------------------------------------------------------------
 # PEGGED CONSTANTS. Changing any of these changes the output, so each is
@@ -102,6 +104,39 @@ class Box:
         return max(0.0, self.x1 - self.x0) * max(0.0, self.y1 - self.y0)
 
 
+def _config(name, rev, kw):
+    """Load a config that transformers 5.x will accept, without downgrading it.
+
+    THE PROBLEM. The published Table Transformer configs carry JSON nulls for
+    fields typed as bool - "dilation": null, "use_pretrained_backbone": null -
+    and transformers 5.x validates strictly, so construction fails with
+    "Field 'dilation' expected bool, got NoneType". An earlier version of this
+    file answered that by pinning transformers<5. That pin traded a KNOWN
+    VULNERABILITY (GHSA-29pf-2h5f-8g72, fixed in 5.3.0) for a loading
+    convenience, which is the wrong way round. (CodeRabbit, PR #137.)
+
+    WHY THE OBVIOUS FIX DOES NOT WORK. Passing dilation=False to
+    from_pretrained is applied AFTER the config object is constructed from the
+    file, so validation has already failed. The dict has to be corrected
+    before construction, which is what this does.
+
+    It changes nothing about the model. null and False mean the same thing to
+    a ResNet backbone that does not use dilated convolutions, and "backbone":
+    null is simply absent rather than empty. Verified by loading both
+    checkpoints and confirming the label sets - 2 classes for detection, 6 for
+    structure - then re-running the eight-article regression set and getting
+    byte-identical table counts and shapes.
+    """
+    d, _ = TableTransformerConfig.get_config_dict(name, revision=rev, **kw)
+    if d.get("dilation") is None:
+        d["dilation"] = False
+    if d.get("use_pretrained_backbone") is None:
+        d["use_pretrained_backbone"] = False
+    if d.get("backbone") is None:
+        d.pop("backbone", None)
+    return TableTransformerConfig.from_dict(d)
+
+
 def load_models(offline: bool):
     """Load both models at their pinned revisions.
 
@@ -111,16 +146,18 @@ def load_models(offline: bool):
     cache with these exact revisions.
     """
     kw = dict(local_files_only=offline)
+    dcfg = _config(DET_MODEL, DET_REV, kw)
+    scfg = _config(STR_MODEL, STR_REV, kw)
     dproc = AutoImageProcessor.from_pretrained(DET_MODEL, revision=DET_REV, **kw)
     dmodel = TableTransformerForObjectDetection.from_pretrained(
-        DET_MODEL, revision=DET_REV, use_safetensors=True, **kw)
+        DET_MODEL, revision=DET_REV, config=dcfg, use_safetensors=True, **kw)
     sproc = AutoImageProcessor.from_pretrained(STR_MODEL, revision=STR_REV, **kw)
     # The published preprocessor_config carries only "longest_edge", which the
     # shared DETR processor rejects outright. Supplying both matches the crop
     # resolution the research repo uses.
     sproc.size = STRUCT_SIZE
     smodel = TableTransformerForObjectDetection.from_pretrained(
-        STR_MODEL, revision=STR_REV, use_safetensors=True, **kw)
+        STR_MODEL, revision=STR_REV, config=scfg, use_safetensors=True, **kw)
     dmodel.eval()
     smodel.eval()
     return dproc, dmodel, sproc, smodel
@@ -267,7 +304,7 @@ def page_words(page):
     return out
 
 
-def build_xml(accession, pdf_path, tables, elapsed, sha):
+def build_xml(accession, pdf_path, tables, elapsed, sha, gate):
     """A JATS-shaped document: <table-wrap> is what corpus/parseJats.R reads.
 
     The geometry is kept beside the markup rather than thrown away, so a
@@ -289,6 +326,15 @@ def build_xml(accession, pdf_path, tables, elapsed, sha):
         "render-dpi": str(RENDER_DPI),
         "det-threshold": str(DET_THRESHOLD),
         "str-threshold": str(STR_THRESHOLD),
+        # THE GATE THAT PRODUCED THIS FILE, recorded with it. The per-table
+        # statistics are only re-tunable against the thresholds they were
+        # judged by; without these a later pass cannot tell whether a table
+        # is absent because the model missed it or because the gate of the
+        # day rejected it. (CodeRabbit, PR #137.)
+        "gate-min-cols": str(gate["min_cols"]),
+        "gate-min-numeric": str(gate["min_numeric"]),
+        "gate-max-medlen": str(gate["max_medlen"]),
+        "gate-max-leaders": str(MAX_LEADERS),
         "seconds": f"{elapsed:.2f}",
     })
     note = ET.SubElement(root, "provenance-note")
@@ -329,6 +375,14 @@ def build_xml(accession, pdf_path, tables, elapsed, sha):
             ET.SubElement(geo, "row-box", dict(index=str(i), **box_attrs(b)))
         for i, b in enumerate(t["cols"]):
             ET.SubElement(geo, "col-box", dict(index=str(i), **box_attrs(b)))
+        # Spanning cells were counted but their boxes were thrown away. They
+        # are the part of a table's structure that a row/column grid cannot
+        # express, and the reason PubTables-1M exists at all - so scoring
+        # this output against that ground truth needs them. (CodeRabbit.)
+        for i, b in enumerate(t["spans"]):
+            ET.SubElement(geo, "spanning-box", dict(index=str(i), **box_attrs(b)))
+        for i, b in enumerate(t["heads"]):
+            ET.SubElement(geo, "column-header-box", dict(index=str(i), **box_attrs(b)))
     return root
 
 
@@ -396,6 +450,7 @@ def process(pdf_path, accession, models, max_pages=MAX_PAGES,
                 tables.append(dict(page=pno + 1, index=ti, score=float(score),
                                    box=Box(x0, y0, x1, y1), rows=rows, cols=cols,
                                    n_head=len(heads), n_span=len(spans),
+                                   heads=heads, spans=spans,
                                    head_rows=head_rows, cells=grid,
                                    stats=st, keep=keep))
     return tables, time.time() - t0
@@ -442,11 +497,17 @@ def main():
     ############################################################################
     torch.set_num_threads(max(1, args.threads))
 
+    # A RESUMED RUN RETRIES WHAT FAILED. Treating every manifest row as
+    # "done" made a transient failure permanent: one unreadable moment, one
+    # network blip, and that accession was skipped for good on every later
+    # pass, silently, because a row existed. Only rows that actually
+    # succeeded are skipped now. (CodeRabbit, PR #137.)
     done = set()
     if os.path.exists(args.manifest):
-        with open(args.manifest, encoding="utf-8") as fh:
-            for line in fh.readlines()[1:]:
-                done.add(line.split(",")[0])
+        with open(args.manifest, newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                if (row.get("STATUS") or "").strip() == "ok":
+                    done.add(row["ACCESSION"])
 
     todo = []
     with open(args.list, encoding="utf-8") as fh:
@@ -465,17 +526,22 @@ def main():
     models = load_models(offline=not args.allow_download)
     print("models ready", flush=True)
 
+    # csv.writer, not string formatting: a path containing a comma would
+    # shift every later column, and the resume logic above reads this file
+    # back BY COLUMN NAME. (CodeRabbit, PR #137.)
     new = not os.path.exists(args.manifest)
-    mf = open(args.manifest, "a", encoding="utf-8")
+    mf = open(args.manifest, "a", newline="", encoding="utf-8")
+    mw = csv.writer(mf)
     if new:
-        mf.write("ACCESSION,PDF,TABLES_KEPT,TABLES_REJECTED,PAGES_WITH_TABLE,"
-                 "MAXROWS,MAXCOLS,SECONDS,STATUS\n")
+        mw.writerow(["ACCESSION", "PDF", "TABLES_KEPT", "TABLES_REJECTED",
+                     "PAGES_WITH_TABLE", "MAXROWS", "MAXCOLS", "SECONDS",
+                     "STATUS"])
 
     t_start = time.time()
     for i, (acc, path) in enumerate(todo, 1):
         try:
             if not os.path.exists(path):
-                mf.write(f"{acc},{path},0,0,0,0,0,0,missing\n"); mf.flush(); continue
+                mw.writerow([acc, path, 0, 0, 0, 0, 0, 0, "missing"]); mf.flush(); continue
             found, el = process(path, acc, models, min_cols=args.min_cols,
                                 min_numeric=args.min_numeric,
                                 max_medlen=args.max_medlen)
@@ -485,20 +551,23 @@ def main():
             # tells us later whether the gate is set right.
             tables = [t for t in found if t["keep"]]
             if tables:
-                root = build_xml(acc, path, tables, el, sha256_of(path))
+                root = build_xml(acc, path, tables, el, sha256_of(path),
+                                 dict(min_cols=args.min_cols,
+                                      min_numeric=args.min_numeric,
+                                      max_medlen=args.max_medlen))
                 ET.ElementTree(root).write(os.path.join(args.out, f"{acc}.tatr.xml"),
                                            encoding="utf-8", xml_declaration=True)
             pages = len({t["page"] for t in tables})
             mr = max((len(t["rows"]) for t in tables), default=0)
             mc = max((len(t["cols"]) for t in tables), default=0)
-            mf.write(f"{acc},{path},{len(tables)},{len(found) - len(tables)},"
-                     f"{pages},{mr},{mc},{el:.2f},ok\n")
+            mw.writerow([acc, path, len(tables), len(found) - len(tables),
+                         pages, mr, mc, f"{el:.2f}", "ok"])
         except Exception as e:                                    # noqa: BLE001
             # One unreadable PDF must not end a 38,000-file run. The status
             # column is what a later pass greps for; a silent skip would look
             # exactly like a file with no tables.
-            msg = str(e).replace(",", ";")[:120]
-            mf.write(f"{acc},{path},0,0,0,0,0,0,error: {msg}\n")
+            mw.writerow([acc, path, 0, 0, 0, 0, 0, 0,
+                         "error: " + str(e)[:120]])
         mf.flush()
         if i % 50 == 0 or i == len(todo):
             el = time.time() - t_start

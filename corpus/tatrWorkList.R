@@ -100,7 +100,12 @@ if (any(missing)) {
 if (nodes > 1L) {
   grp <- (seq_len(nrow(pdfs)) - 1L) %% nodes + 1L
   for (k in seq_len(nodes)) {
-    f <- sub("[.]csv$", sprintf("_%02d.csv", k), out)
+    # sub() only substitutes when the pattern matches, so an --out without a
+    # .csv suffix produced the SAME filename for every node and each write
+    # overwrote the last: one node's list, silently, instead of three.
+    # (CodeRabbit, PR #137.)
+    f <- if (grepl("[.]csv$", out)) sub("[.]csv$", sprintf("_%02d.csv", k), out)
+         else sprintf("%s_%02d.csv", out, k)
     utils::write.csv(data.frame(ACCESSION = pdfs$ACCESSION[grp == k],
                                 PATH = pdfs$PATH[grp == k]),
                      f, row.names = FALSE, quote = FALSE)

@@ -92,9 +92,16 @@ is moot. Weights are fetched once by `tools/tatrProvision.sh` and loaded
 thereafter with `local_files_only=True`: no network at inference, and no run
 can silently acquire different weights.
 
-**Libraries**: `python/tatr/requirements.txt`. The `transformers<5` pin is
-load-bearing — 5.x rejects the published config outright (`Field 'dilation'
-expected bool, got NoneType`) and the models will not load.
+**Libraries**: `python/tatr/requirements.txt`, pinned at
+`transformers>=5.3.0` because 4.x carries GHSA-29pf-2h5f-8g72. An earlier
+version pinned *below* 5 instead, since 5.x validates configs strictly and
+rejects the published Table Transformer config (`Field 'dilation' expected
+bool, got NoneType`) — trading a known vulnerability for a loading
+convenience. `_config()` corrects the config dict before construction
+instead; `null` and `False` mean the same thing to a backbone that uses no
+dilated convolutions. Verified: both checkpoints load with the correct label
+sets, and the eight-article regression set returns identical table counts and
+shapes to the 4.57.6 baseline.
 
 **Inference constants**, in `tatrTables.py`: render DPI 150, detection
 threshold 0.7, structure threshold 0.5, structure input 800/1000, crop pad
