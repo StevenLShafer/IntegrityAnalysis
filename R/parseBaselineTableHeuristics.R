@@ -1231,27 +1231,42 @@ parseBaselineTableHeuristics <- function(pdfFile,
           li <- which.min(vapply(lines,
                                  function(L) min(abs(L$y - anchors$y[a])),
                                  numeric(1)))
+          # A side caption (Springer's margin column, level with the
+          # table's header row) is split here so that the header becomes
+          # the block's first line instead of vanishing into the caption
+          # text; see .ppSplitSideCaption(). The split is local to this
+          # candidate - other anchors in the band see the original lines.
+          cLines <- lines
+          cTexts <- lineTexts
+          cCap   <- lineTexts[li]
+          side <- .ppSplitSideCaption(lines, li)
+          if (!is.null(side)) {
+            cLines <- side$lines
+            cTexts <- vapply(cLines, .ppLineText, character(1))
+            cCap   <- side$caption
+            cTexts[li] <- cCap
+          }
           # A "Table N" inside a sentence is worth trying only as a last
           # resort, so it is penalised rather than dropped.
-          cs <- .ppCaptionScore(lineTexts[li]) -
+          cs <- .ppCaptionScore(cCap) -
             if (isTRUE(anchors$startsBlock[a])) 0 else 5
-          if (nrow(bw) >= 10 && length(lines) >= 3)
+          if (nrow(bw) >= 10 && length(cLines) >= 3)
             cand[[length(cand) + 1]] <- list(
-              page = p, mode = mode, band = b, lines = lines,
-              lineTexts = lineTexts, capIdx = li,
-              caption = lineTexts[li], capScore = cs)
+              page = p, mode = mode, band = b, lines = cLines,
+              lineTexts = cTexts, capIdx = li,
+              caption = cCap, capScore = cs)
           if (isTRUE(anchors$startsBlock[a]) && p < length(allPages)) {
             # Fewer than two data-looking lines (two or more printed
             # numbers) below the caption: the table is not on this page.
-            below <- if (li < length(lineTexts))
-              lineTexts[seq(li + 1, length(lineTexts))] else character(0)
+            below <- if (li < length(cTexts))
+              cTexts[seq(li + 1, length(cTexts))] else character(0)
             dataish <- sum(vapply(below, function(t)
               sum(gregexpr("[0-9]+", t)[[1]] > 0) >= 2, logical(1)))
             key <- as.character(p + 1)
             prev <- if (is.null(lookScore[[key]])) -Inf else lookScore[[key]]
             if (dataish < 2 && cs > prev) {
               lookScore[[key]]   <- cs
-              lookCaption[[key]] <- lineTexts[li]
+              lookCaption[[key]] <- cCap
             }
           }
         }

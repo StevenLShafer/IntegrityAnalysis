@@ -237,6 +237,65 @@
   data.frame(x = w$x[hit], y = w$y[hit], startsBlock = startsBlock)
 }
 
+# A SIDE CAPTION shares its visual line with the table's own header row.
+# Springer prints "Table 1 Baseline criteria of / participants" in a
+# narrow margin column to the LEFT of a full-width table, level with the
+# header, so the caption's line reads "Table 1 Baseline criteria of
+# Character Ticagrelor arm Aspirin arm (n = 99) P-value". .ppParseBlock()
+# starts at the line AFTER the caption, so that header - and arm 2's N
+# with it - was never read, and every n (%) row was then skipped for want
+# of the N (Steve's ticagrelor article, Springer 10072_2022_6525,
+# 2026-09-02: 15 of 18 variables lost to a header that was on the page).
+#
+# The signature is geometric, and deliberately strict, because a caption
+# at the FOOT of a two-column page also shares its line with the other
+# column's prose, and that prose must not be promoted to a header:
+#   - the anchor word leads the line;
+#   - a gap of >= 25 pt (the package's column-gap tolerance) follows a
+#     leading run of words spanning at most 30% of the band's width - a
+#     margin column, not a text column;
+#   - the words right of the gap hold no caption of their own.
+# Then the leading run stays the caption, the remainder becomes the next
+# line, and in the few lines below, words lying wholly within the
+# caption's x-range - its wrapped continuation, "participants" - are moved
+# into the caption text rather than left to be read as a category header.
+# Returns NULL when the line is not a side caption.
+.ppSplitSideCaption <- function(lines, li, maxLead = 0.3, gap = 25) {
+  L <- lines[[li]]
+  if (is.null(L) || nrow(L) < 3) return(NULL)
+  L <- L[order(L$x), ]
+  if (!grepl("^(?i)(table|tab\\.?)$", L$text[1], perl = TRUE)) return(NULL)
+  ends <- L$x + L$width
+  gaps <- L$x[-1] - ends[-nrow(L)]
+  g <- which(gaps >= gap)
+  if (!length(g)) return(NULL)
+  g <- g[1]
+  if (g < 2) return(NULL)                       # "Table" alone is not a caption
+  bandX0 <- min(vapply(lines, function(z) min(z$x), numeric(1)))
+  bandX1 <- max(vapply(lines, function(z) max(z$x + z$width), numeric(1)))
+  if (ends[g] - L$x[1] > maxLead * (bandX1 - bandX0)) return(NULL)
+  cap  <- L[seq_len(g), , drop = FALSE]
+  rest <- L[seq(g + 1, nrow(L)), , drop = FALSE]
+  if (any(grepl("^(?i)(table|tab\\.?)$", rest$text, perl = TRUE))) return(NULL)
+  capX1 <- ends[g]
+  out <- append(lines, list(rest), after = li)
+  out[[li]] <- cap
+  capText <- cap$text
+  # wrapped continuation: up to four lines below, words entirely within
+  # the margin column (right edge at or before the caption's, and clear of
+  # the table by the same gap)
+  for (j in seq(li + 2, min(li + 5, length(out)))) {
+    if (j > length(out)) break
+    Z <- out[[j]]
+    cont <- (Z$x + Z$width) <= capX1 + 2 & Z$x < rest$x[1] - gap
+    if (!any(cont)) next
+    capText <- c(capText, Z$text[cont])
+    out[[j]] <- Z[!cont, , drop = FALSE]
+  }
+  keep <- vapply(out, nrow, integer(1)) > 0
+  list(lines = out[keep], caption = .ppSquish(paste(capText, collapse = " ")))
+}
+
 # How much does this caption look like a baseline-characteristics table?
 # Used to choose between "Table 1 Patient characteristics" and "Table 2
 # Intraoperative drug usage" on the same page.

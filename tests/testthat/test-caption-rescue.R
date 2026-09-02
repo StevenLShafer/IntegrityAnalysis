@@ -145,3 +145,89 @@ test_that("the next caption's IQR wording cannot relabel this table's ranges", {
   # and the pain-scores rows under Table 2 stayed out of the block
   expect_false(any(grepl("15 min", res$data$ROW, fixed = TRUE)))
 })
+
+# --------------------------------------------------------------------------
+# 4. Springer's typographic spaces glue the caption numeral to its text
+# --------------------------------------------------------------------------
+# Springer sets "Table 1" + EN SPACE (U+2002) + THIN SPACE (U+2009) +
+# caption, and poppler splits words only on ordinary spaces, so the token
+# after "Table" was "1  Baseline" - not a numeral - and .ppCaptionAnchors()
+# found nothing. The document's real Table 1 never became a candidate and
+# the parser returned prose anchored on a cross-reference (Steve's
+# ticagrelor article, Springer 10072_2022_6525, 2026-09-02). The fix splits
+# such tokens at ingest, apportioning the word box by character count.
+# Built with intToUtf8 so no editing tool can rewrite the escapes.
+test_that("typographic spaces inside a token are split into words", {
+  glued <- paste0("1", intToUtf8(0x2002), intToUtf8(0x2009), "Baseline")
+  w <- data.frame(text = c("Table", glued, "criteria", "Character"),
+                  x = c(51, 70, 111, 178), y = 56,
+                  width = c(18, 38, 24, 33), stringsAsFactors = FALSE)
+  expect_identical(nrow(.ppCaptionAnchors(w)), 0L)   # the defect
+  s <- .ppSplitUnicodeSpaces(w)
+  expect_identical(s$text, c("Table", "1", "Baseline", "criteria", "Character"))
+  # the split words keep their order and share the original box
+  expect_true(all(diff(s$x) > 0))
+  expect_equal(s$x[3] + s$width[3], 70 + 38, tolerance = 1e-9)
+  expect_identical(nrow(.ppCaptionAnchors(s)), 1L)
+  # NBSP is a thousands separator in some journals and is left alone
+  nb <- data.frame(text = paste0("1", intToUtf8(0xa0), "000"), x = 1, y = 1,
+                   width = 20, stringsAsFactors = FALSE)
+  expect_identical(.ppSplitUnicodeSpaces(nb)$text, nb$text)
+})
+
+# --------------------------------------------------------------------------
+# 5. A side caption shares its line with the table's header row
+# --------------------------------------------------------------------------
+# Same article: the caption sits in a narrow margin column LEFT of a
+# full-width table, level with its header, so the caption line read
+# "Table 1 Baseline criteria of Character Ticagrelor arm Aspirin arm
+# (n = 99) P-value". .ppParseBlock() starts on the line AFTER the caption,
+# so the header - and arm 2's N - vanished, and all 15 n (%) rows were
+# skipped for want of it. Geometry distilled from the real page.
+sideCaptionLines <- function() {
+  L <- function(y, text, x, width)
+    data.frame(text = text, x = x, y = y, width = width,
+               stringsAsFactors = FALSE)
+  list(
+    L(56, c("Table", "1", "Baseline", "criteria", "of",
+            "Character", "Ticagrelor", "arm", "Aspirin", "arm", "(n", "=", "99)"),
+      c(51, 70, 76, 111, 138, 178, 356, 394, 421, 449, 464, 472, 479),
+      c(18, 4, 33, 24, 7, 33, 35, 13, 25, 13, 7, 5, 11)),
+    L(65, "participants", 51, 40),
+    L(69, c("(n", "=", "101)"), c(356, 364, 371), c(7, 5, 15)),
+    L(87, c("Age,", "median", "(IQR)", "62", "(60-67)", "60.8", "(59-64)"),
+      c(178, 196, 223, 356, 367, 421, 438), c(16, 25, 22, 9, 30, 15, 30)))
+}
+
+test_that("a side caption is split so the header row is read", {
+  lines <- sideCaptionLines()
+  s <- .ppSplitSideCaption(lines, 1L)
+  expect_false(is.null(s))
+  # the wrapped continuation joined the caption; the header became a line
+  expect_identical(s$caption, "Table 1 Baseline criteria of participants")
+  lt <- vapply(s$lines, .ppLineText, character(1))
+  expect_identical(lt[1], "Table 1 Baseline criteria of")
+  expect_identical(lt[2], "Character Ticagrelor arm Aspirin arm (n = 99)")
+  expect_identical(lt[3], "(n = 101)")           # "participants" is gone
+  expect_identical(length(s$lines), 4L)
+})
+
+test_that("a foot-of-page caption beside the other column's prose is not split", {
+  # A two-column page: the caption spans its whole (left) column and the
+  # right column's prose shares the visual line. The leading run is far
+  # wider than a margin column, so the line must be left alone - the
+  # prose is not a header.
+  lines <- list(
+    data.frame(text = c("Table", "2", "Comparison", "of", "outcomes",
+                        "between", "groups", "patients", "were", "randomly"),
+               x = c(60, 81, 89, 140, 155, 195, 235, 320, 360, 385),
+               y = 600, width = c(19, 4, 48, 12, 38, 36, 30, 36, 22, 40),
+               stringsAsFactors = FALSE),
+    data.frame(text = c("Outcome", "Group", "A", "Group", "B"),
+               x = c(60, 150, 175, 220, 245), y = 615,
+               width = c(35, 25, 6, 25, 6), stringsAsFactors = FALSE),
+    data.frame(text = c("Pain", "3.2", "(1.1)", "3.4", "(1.2)"),
+               x = c(60, 150, 165, 220, 235), y = 630,
+               width = c(20, 12, 20, 12, 20), stringsAsFactors = FALSE))
+  expect_null(.ppSplitSideCaption(lines, 1L))
+})
