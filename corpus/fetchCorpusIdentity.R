@@ -132,19 +132,101 @@ idconvUrl <- "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/"
 # backoff, and only a persistent failure or a well-formed answer of the
 # WRONG SHAPE is treated as the endpoint having changed. The distinction is
 # reported, so the message matches what was observed.
+# A USABLE answer is a table with ONE RECORD PER REQUESTED ID. The
+# converter answers every id it is given - an id it does not know comes
+# back as its own record with status "error" (verified against the live
+# endpoint 2026-09-02) - so a table shorter than the request is a
+# truncated reply, and accepting it would resolve part of a batch while
+# the rest went on looking like PMCIDs that genuinely have no PMID
+# (CodeRabbit on #143). The check keys on `requested-id`, which the API
+# echoes upper-cased whatever case it was asked in.
+#
+# What is deliberately NOT required is a `pmid` column. A batch in which
+# nothing maps comes back without one (2026-09-02: two unknown ids ->
+# columns pmcid, requested-id, status, errmsg, and no pmid). The first
+# version of this predicate demanded the column and would have stopped
+# the whole run on such a batch as a "shape change".
+#
+# `is.list(r)` first: jsonlite returns an atomic vector for scalar JSON,
+# and `$` on one is an error, not a NULL - the diagnostic would never
+# have run (CodeRabbit on #143).
+idconvOk <- function(r, ids) {
+  if (!is.list(r) || !is.data.frame(r$records)) return(FALSE)
+  if (!"requested-id" %in% names(r$records)) return(FALSE)
+  got <- toupper(r$records[["requested-id"]])
+  # setequal, not subset: a record for an id that was never asked for is
+  # as much a shape change as a missing one (CodeRabbit on #143).
+  setequal(toupper(ids), got) && !anyDuplicated(got)
+}
+
+# Name the failure that actually happened, because the remedies differ:
+# a transport failure means wait and retry; a malformed or truncated reply
+# means go and look at the endpoint. `kind` and `why` are set by
+# idconvOnce's error handler; everything else is a well-formed reply of
+# the wrong shape, diagnosed in the order idconvOk checks it.
+idconvWhy <- function(r, ids) {
+  w <- attr(r, "why")
+  if (!is.null(w)) return(paste0(attr(r, "kind"), " - ", w))
+  if (!is.list(r))
+    return(paste0("the reply was not a JSON object (", class(r)[1], ")"))
+  if (is.null(r$records))       return("the reply carried no 'records' field")
+  if (!is.data.frame(r$records))
+    return(paste0("'records' was not a table (", class(r$records)[1], ")"))
+  if (!"requested-id" %in% names(r$records))
+    return("'records' lacked the 'requested-id' column")
+  got  <- toupper(r$records[["requested-id"]])
+  miss <- setdiff(toupper(ids), got)
+  if (length(miss))
+    return(sprintf("the reply covered %d of %d requested ids (missing %s%s)",
+                   length(ids) - length(miss), length(ids),
+                   paste(head(miss, 3), collapse = ", "),
+                   if (length(miss) > 3) ", ..." else ""))
+  extra <- setdiff(got, toupper(ids))
+  if (length(extra))
+    return(sprintf("the reply carried %d id(s) that were not requested (%s)",
+                   length(extra), paste(head(extra, 3), collapse = ", ")))
+  paste0("the reply repeated an id (",
+         paste(head(unique(got[duplicated(got)]), 3), collapse = ", "), ")")
+}
+
+# \\b(429|5[0-9]{2})\\b, not 429|50[0-9]: the old pattern matched 500-509
+# and stopped, so 510-599 were called permanent and never retried; and
+# being unanchored it could fire on any digits that happened to contain
+# "429" or "50x" (CodeRabbit on #140).
+#
+# perl = TRUE IS LOAD-BEARING. grepl() defaults to POSIX ERE, where \b is
+# not a word boundary, and the pattern then matches NOTHING - every
+# transient failure would be reported as a permanent shape change, the
+# exact bug this block was written to fix, only inverted. Caught by
+# exercising the pattern against real curl messages before committing.
+#
+# A MALFORMED BODY IS NOT A TRANSPORT FAILURE. fromJSON raises both from
+# the same call, and the handler used to file every error as transport
+# (CodeRabbit on #143). jsonlite's parser prefixes each syntax complaint
+# with "lexical error:" or "parse error:" (yajl; verified 2026-09-02) and
+# curl's messages never do, so the prefix tells them apart. A body that
+# was cut off - "premature EOF" - is a dropped connection and is retried;
+# any other non-JSON body is a page that is not the API (a redirect, an
+# outage notice) and retrying it changes nothing.
 idconvOnce <- function(ids)
   tryCatch(jsonlite::fromJSON(paste0(
     idconvUrl, "?tool=IntegrityAnalysis&email=steveshafer@gmail.com",
     "&format=json&ids=", paste(ids, collapse = ","))),
-    error = function(e) structure(list(), transient =
-      grepl("429|50[0-9]|timed out|cannot open|connection",
-            conditionMessage(e), ignore.case = TRUE),
-      why = conditionMessage(e)))
+    error = function(e) {
+      msg <- gsub("\\s+", " ", conditionMessage(e))   # yajl's is multi-line
+      malformed <- grepl("^(lexical|parse) error", msg)
+      structure(list(),
+        kind = if (malformed) "malformed reply" else "transport failure",
+        transient = if (malformed) grepl("premature EOF", msg, fixed = TRUE)
+                    else grepl("\\b(429|5[0-9]{2})\\b|timed out|cannot open|connection",
+                               msg, ignore.case = TRUE, perl = TRUE),
+        why = msg)
+    })
 
 idconv <- function(ids, tries = 4L) {
   for (i in seq_len(tries)) {
     r <- idconvOnce(ids)
-    if (!is.null(r$records)) return(r)
+    if (idconvOk(r, ids)) return(r)
     if (!isTRUE(attr(r, "transient"))) return(r)   # a real shape change
     if (i < tries) {
       message(sprintf("  ID converter attempt %d/%d transient (%s) - retrying",
@@ -152,15 +234,28 @@ idconv <- function(ids, tries = 4L) {
       Sys.sleep(5 * i)
     }
   }
-  r
+  structure(r, exhausted = TRUE)   # so the report can say WHICH it was
 }
 
-ctl <- idconv("PMC4280683")            # -> PMID 25433674, verified 2026-08-31
-if (is.null(ctl$records) || !identical(as.character(ctl$records$pmid[1]),
-                                       "25433674"))
-  stop("ID converter positive control FAILED after retries - the endpoint ",
-       "is persistently unreachable, or it has moved or ",
-       "changed shape again. Fix it before trusting any coverage number.")
+# "after N attempts" only when we actually made them. The old message said
+# "FAILED after retries" even for a shape failure, which idconv returns on
+# the first call without retrying anything.
+ctlId <- "PMC4280683"                  # -> PMID 25433674, verified 2026-08-31
+ctl <- idconv(ctlId)
+if (!idconvOk(ctl, ctlId))
+  stop("ID converter positive control FAILED ",
+       if (isTRUE(attr(ctl, "exhausted"))) "after 4 attempts" else "immediately",
+       " - ", idconvWhy(ctl, ctlId),
+       ". Fix it before trusting any coverage number.")
+# The control is one id that DOES map, so here - and only here - a missing
+# pmid column is itself the wrong answer.
+ctlPmid <- if ("pmid" %in% names(ctl$records))
+  as.character(ctl$records$pmid[1]) else "<no pmid column>"
+if (!identical(ctlPmid, "25433674"))
+  stop("ID converter positive control returned the WRONG ANSWER for ",
+       ctlId, ": expected PMID 25433674, got '", ctlPmid,
+       "'. The endpoint still answers, so this is a mapping change, not ",
+       "an outage.")
 message("ID converter positive control passed")
 
 need <- unique(ident$PMCID[blank(ident$PMID) & !blank(ident$PMCID)])
@@ -170,9 +265,28 @@ if (length(need)) {
   for (k in seq(1, length(need), by = 200)) {
     ids <- need[k:min(k + 199, length(need))]
     r <- idconv(ids)
-    if (!is.null(r$records))
-      got[[length(got) + 1L]] <- r$records[, intersect(c("pmcid", "pmid"),
-                                                       names(r$records)), drop = FALSE]
+    # REFUSE A PARTIAL INDEX. This used to skip a failed batch and carry on,
+    # so a converter outage after the positive control passed produced an
+    # identity.csv that was quietly short - every unconverted PMCID looking
+    # exactly like a PMCID with no PMID, and the coverage number that gets
+    # quoted from this file silently understating itself. A run that cannot
+    # finish its conversions has to fail loudly, not round down.
+    if (!idconvOk(r, ids))
+      stop(sprintf(paste0("ID converter failed on the batch starting at %d ",
+                          "of %d %s - %s. Refusing to write a partial ",
+                          "identity index; re-run when it answers."),
+                   k, length(need),
+                   if (isTRUE(attr(r, "exhausted"))) "after 4 attempts"
+                   else "immediately", idconvWhy(r, ids)))
+    # Keyed on requested-id, the column idconvOk guarantees (and the API
+    # upper-cases), and tolerant of a batch with no pmid column at all -
+    # which is what "none of these 200 map" looks like, not a failure.
+    rec <- r$records
+    got[[length(got) + 1L]] <- data.frame(
+      pmcid = as.character(rec[["requested-id"]]),
+      pmid  = if ("pmid" %in% names(rec)) as.character(rec$pmid)
+              else NA_character_,
+      stringsAsFactors = FALSE)
     Sys.sleep(0.2)
     if (k %% 2000 == 1) message(sprintf("  %d/%d", k, length(need)))
   }
