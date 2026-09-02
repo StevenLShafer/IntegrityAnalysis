@@ -132,19 +132,50 @@ idconvUrl <- "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/"
 # backoff, and only a persistent failure or a well-formed answer of the
 # WRONG SHAPE is treated as the endpoint having changed. The distinction is
 # reported, so the message matches what was observed.
+# A USABLE answer is not merely a non-NULL `records`. Everything below
+# reads records$pmcid and records$pmid, so an answer that omits either -
+# or that returns something other than a table - is a shape change, and
+# saying so early is what keeps the failure legible (CodeRabbit on #140).
+idconvOk <- function(r)
+  is.data.frame(r$records) && all(c("pmcid", "pmid") %in% names(r$records))
+
+# Name the failure that actually happened. A transport error carries the
+# condition message in `why`; anything else got a well-formed reply of the
+# wrong shape, and those need opposite remedies - wait and retry versus go
+# and look at the endpoint.
+idconvWhy <- function(r) {
+  w <- attr(r, "why")
+  if (!is.null(w)) return(paste0("transport failure - ", w))
+  if (is.null(r$records))       return("the reply carried no 'records' field")
+  if (!is.data.frame(r$records))
+    return(paste0("'records' was not a table (", class(r$records)[1], ")"))
+  paste0("'records' lacked the column(s): ",
+         paste(setdiff(c("pmcid", "pmid"), names(r$records)), collapse = ", "))
+}
+
+# \\b(429|5[0-9]{2})\\b, not 429|50[0-9]: the old pattern matched 500-509
+# and stopped, so 510-599 were called permanent and never retried; and
+# being unanchored it could fire on any digits that happened to contain
+# "429" or "50x" (CodeRabbit on #140).
+#
+# perl = TRUE IS LOAD-BEARING. grepl() defaults to POSIX ERE, where \b is
+# not a word boundary, and the pattern then matches NOTHING - every
+# transient failure would be reported as a permanent shape change, the
+# exact bug this block was written to fix, only inverted. Caught by
+# exercising the pattern against real curl messages before committing.
 idconvOnce <- function(ids)
   tryCatch(jsonlite::fromJSON(paste0(
     idconvUrl, "?tool=IntegrityAnalysis&email=steveshafer@gmail.com",
     "&format=json&ids=", paste(ids, collapse = ","))),
     error = function(e) structure(list(), transient =
-      grepl("429|50[0-9]|timed out|cannot open|connection",
-            conditionMessage(e), ignore.case = TRUE),
+      grepl("\\b(429|5[0-9]{2})\\b|timed out|cannot open|connection",
+            conditionMessage(e), ignore.case = TRUE, perl = TRUE),
       why = conditionMessage(e)))
 
 idconv <- function(ids, tries = 4L) {
   for (i in seq_len(tries)) {
     r <- idconvOnce(ids)
-    if (!is.null(r$records)) return(r)
+    if (idconvOk(r)) return(r)
     if (!isTRUE(attr(r, "transient"))) return(r)   # a real shape change
     if (i < tries) {
       message(sprintf("  ID converter attempt %d/%d transient (%s) - retrying",
@@ -152,15 +183,23 @@ idconv <- function(ids, tries = 4L) {
       Sys.sleep(5 * i)
     }
   }
-  r
+  structure(r, exhausted = TRUE)   # so the report can say WHICH it was
 }
 
+# "after N attempts" only when we actually made them. The old message said
+# "FAILED after retries" even for a shape failure, which idconv returns on
+# the first call without retrying anything.
 ctl <- idconv("PMC4280683")            # -> PMID 25433674, verified 2026-08-31
-if (is.null(ctl$records) || !identical(as.character(ctl$records$pmid[1]),
-                                       "25433674"))
-  stop("ID converter positive control FAILED after retries - the endpoint ",
-       "is persistently unreachable, or it has moved or ",
-       "changed shape again. Fix it before trusting any coverage number.")
+if (!idconvOk(ctl))
+  stop("ID converter positive control FAILED ",
+       if (isTRUE(attr(ctl, "exhausted"))) "after 4 attempts" else "immediately",
+       " - ", idconvWhy(ctl),
+       ". Fix it before trusting any coverage number.")
+if (!identical(as.character(ctl$records$pmid[1]), "25433674"))
+  stop("ID converter positive control returned the WRONG ANSWER for ",
+       "PMC4280683: expected PMID 25433674, got '",
+       as.character(ctl$records$pmid[1]), "'. The endpoint still answers, ",
+       "so this is a mapping change, not an outage.")
 message("ID converter positive control passed")
 
 need <- unique(ident$PMCID[blank(ident$PMID) & !blank(ident$PMCID)])
@@ -170,9 +209,20 @@ if (length(need)) {
   for (k in seq(1, length(need), by = 200)) {
     ids <- need[k:min(k + 199, length(need))]
     r <- idconv(ids)
-    if (!is.null(r$records))
-      got[[length(got) + 1L]] <- r$records[, intersect(c("pmcid", "pmid"),
-                                                       names(r$records)), drop = FALSE]
+    # REFUSE A PARTIAL INDEX. This used to skip a failed batch and carry on,
+    # so a converter outage after the positive control passed produced an
+    # identity.csv that was quietly short - every unconverted PMCID looking
+    # exactly like a PMCID with no PMID, and the coverage number that gets
+    # quoted from this file silently understating itself. A run that cannot
+    # finish its conversions has to fail loudly, not round down.
+    if (!idconvOk(r))
+      stop(sprintf(paste0("ID converter failed on the batch starting at %d ",
+                          "of %d %s - %s. Refusing to write a partial ",
+                          "identity index; re-run when it answers."),
+                   k, length(need),
+                   if (isTRUE(attr(r, "exhausted"))) "after 4 attempts"
+                   else "immediately", idconvWhy(r)))
+    got[[length(got) + 1L]] <- r$records[, c("pmcid", "pmid"), drop = FALSE]
     Sys.sleep(0.2)
     if (k %% 2000 == 1) message(sprintf("  %d/%d", k, length(need)))
   }
