@@ -329,9 +329,17 @@ if (maxFiles > 0) {
                      # "Could not connect to the endpoint URL", a throttle,
                      # an expired token. Silence is the one signal that only
                      # an empty prefix produces.
-                     benign <- grepl("NoSuchBucket|NoSuchKey|Not Found|404",
-                                     msg, ignore.case = TRUE) ||
-                               grepl("^aws s3 failed:\\s*$", msg)
+                     # ONLY the empty message. The patterns that used to
+                     # sit here - NoSuchBucket, NoSuchKey, Not Found,
+                     # 404 - were chosen for this case and are wrong for
+                     # it in both directions: a missing PREFIX never
+                     # produces any of them (it produces nothing at all,
+                     # proven above), while NoSuchBucket means the bucket
+                     # itself is gone or misnamed. Swallowing that would
+                     # let a misconfigured run report an empty scope and
+                     # write a healthy heartbeat - the precise failure
+                     # the comment above forbids. (CodeRabbit, PR #138.)
+                     benign <- grepl("^aws s3 failed:\\s*$", msg)
                      if (!benign) stop(e)
                      cat("  (", m, " not in the bucket yet - skipping)\n",
                          sep = "")
