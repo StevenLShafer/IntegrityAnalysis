@@ -311,31 +311,31 @@ claudeAvailable <- function() {
          character(1), USE.NAMES = FALSE)
 }
 
-# An uploaded table image as one base64 image block, typed from its magic
+# An uploaded table image (JPEG or PNG) as one base64 image block, typed from its magic
 # bytes (2026-09-02). A list of one element so the type attribute survives
 # lapply() in .ppClaudeRequestBody - attributes on a character VECTOR do
 # not reach its elements.
 .ppImageFileB64 <- function(path) {
   dims <- .ppImageDims(path)
   type <- switch(dims$format %||% "", jpeg = "image/jpeg", png = "image/png",
-                 gif = "image/gif", NULL)
+                 NULL)
   if (is.null(type))
-    stop("Only JPEG, PNG and GIF images can be sent to the model.",
-         call. = FALSE)
+    stop("Only JPEG and PNG images can be sent to the model.", call. = FALSE)
   b64 <- gsub("[\r\n]", "", jsonlite::base64_enc(
     readBin(path, "raw", file.info(path)$size)))
   list(structure(b64, media_type = type))
 }
 
 # Why an uploaded image cannot take the AI route, or NULL when it can.
-# The Messages API takes JPEG/PNG/GIF/WebP image blocks up to 5 MB and
+# The Messages API takes JPEG/PNG (and GIF/WebP, which the app does not
+# accept - see utils.R) image blocks up to 5 MB and
 # 8000 px a side; a TIFF has no converter here (no ImageMagick, by
 # design - see utils.R), so it stays with local OCR.
 .ppImageAiRefusal <- function(path) {
   dims <- .ppImageDims(path)
   if (is.null(dims)) return(NULL)            # the engine will refuse it
   if (dims$format == "tiff")
-    return("The AI assist accepts JPEG, PNG and GIF images, not TIFF")
+    return("The AI assist accepts JPEG and PNG images, not TIFF")
   if (file.size(path) > 4.5e6)
     return("The image is larger than the 4.5 MB the AI assist can send")
   if (max(dims$width, dims$height) > 8000)

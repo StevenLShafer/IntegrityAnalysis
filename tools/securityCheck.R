@@ -261,25 +261,37 @@ if (file.exists("R/parseBaselineTableFiles.R")) {
 # through ImageMagick (tesseract's own reader only), and every path that
 # decodes an image has refused oversized or malformed headers FIRST.
 if (file.exists("R/utils.R")) {
-  ut <- srcOf("R/utils.R")
+  # CODE, not comments (screen F4, 2026-09-02): the order test below
+  # could otherwise be satisfied by a comment that names .ppImageOK( -
+  # the failure mode AGENTS.md records for a tripwire that matched a
+  # commented-out line. Verified to trip when the two calls are swapped
+  # in a scratch copy.
+  codeOf <- function(f) sub("#.*$", "", srcOf(f))
+  ut <- codeOf("R/utils.R")
   imgFiles <- c("R/utils.R", "R/parseBaselineTableHeuristics.R",
                 "R/aiFallback.R", "R/apiService.R", "R/app_server.R")
   for (f in imgFiles[file.exists(imgFiles)])
-    if (any(grepl("magick::", srcOf(f), fixed = TRUE)))
+    if (any(grepl("magick::", codeOf(f), fixed = TRUE)))
       note(paste(f, "calls ImageMagick (magick::) - the 2026-09-02 decision",
                  "was tesseract's own reader only (review, image uploads)"))
   if (!any(grepl("\\.ppImageHeaderBytes", ut)))
     note(paste("R/utils.R lost the bounded header read (.ppImageHeaderBytes)",
                "- a crafted image header is read without limit"))
-  he <- srcOf("R/parseBaselineTableHeuristics.R")
+  he <- codeOf("R/parseBaselineTableHeuristics.R")
   iOk <- grep("\\.ppImageOK\\(", he); iData <- grep("\\.ppImageData\\(", he)
   if (!length(iOk) || !length(iData) || min(iOk) > min(iData))
     note(paste("R/parseBaselineTableHeuristics.R decodes an image",
                "(.ppImageData) without .ppImageOK() first"))
   if (file.exists("R/apiService.R") &&
-      !any(grepl("\\.ppImageOK\\(", srcOf("R/apiService.R"))))
+      !any(grepl("\\.ppImageOK\\(", codeOf("R/apiService.R"))))
     note(paste("R/apiService.R lost the image preflight (.ppImageOK)",
                "before the batcher"))
+  # GIF is out (screen F1): giflib sizes frames from the image
+  # descriptor, not the logical screen the header states, so no header
+  # check short of a block walk can bound it. Keep it out.
+  if (any(grepl("\"gif\"", ut)))
+    note(paste("R/utils.R accepts GIF again - the 2026-09-02 screen (F1)",
+               "showed its header cannot bound the decoder's allocation"))
 }
 
 ## ------------------------------------------------------------------------

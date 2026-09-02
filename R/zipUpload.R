@@ -129,7 +129,7 @@ expandZipUploads <- function(files, say = outputComments) {
     if (nrow(plan) == 0) {
       say(paste0(zipName,
                  " contains no usable files (csv, xls, xlsx, pdf, docx, ",
-                 "xml, jpg, png, tif, gif)."))
+                 "xml, jpg, png, tif)."))
       next
     }
     if (nrow(plan) > .zipMaxEntries) {

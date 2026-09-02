@@ -913,7 +913,7 @@ app_server <- function(input, output, session) {
       # real PDFs; a crafted docx can stall libxml2 - the author of a
       # manuscript under investigation is the threat model), engine
       # dispatch by extension inside parseBaselineTableHeuristics().
-      # A picture of a table (jpg/png/tif/gif; Steve, 2026-09-02) rides
+      # A picture of a table (jpg/png/tif; Steve, 2026-09-02) rides
       # the same route: the child preflights the image header before any
       # decoder runs, and reads it with local OCR - "ocr" provenance,
       # whole-table cyan below.
@@ -1016,7 +1016,7 @@ app_server <- function(input, output, session) {
             # whose AI attempt itself failed are not recorded - the
             # same key would just fail the same way.
             # (an image can retry too, if it is one the model accepts)
-            if (files$ext[i] %in% c("pdf", "jpg", "jpeg", "png", "gif") &&
+            if (files$ext[i] %in% c("pdf", "jpg", "jpeg", "png") &&
                 !aiTried[k])
               failedParses <<- unique(rbind(
                 failedParses,

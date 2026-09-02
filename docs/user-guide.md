@@ -182,7 +182,7 @@ everything OCR does happens on this server — nothing leaves it.
 Whatever was extracted can be reviewed, corrected, and analyzed
 without leaving the app.
 
-**A picture of a table (jpg, png, tif, gif).** A screenshot or scan of
+**A picture of a table (jpg, png, tif).** A screenshot or scan of
 Table 1 uploads like a PDF: the app reads it with local optical
 character recognition (tesseract) and extracts the table into the grid,
 shaded **pale cyan** with the same verify-every-value warning as a
@@ -191,9 +191,10 @@ at 200–300 dpi; at screen resolution (96 dpi) words start to drop out.
 The picture is decoded by the app's own OCR reader, never by
 ImageMagick, and its declared dimensions are checked from the file
 header before any decoder runs — an oversized or malformed image is
-refused with a message. With an API key entered, a jpg, png or gif is
-sent to the AI assist as an image (a tif is read by OCR only; the model
-does not accept it).
+refused with a message. (GIF is deliberately not accepted: its header
+cannot bound what its decoder allocates.) With an API key entered, a
+jpg or png is sent to the AI assist as an image (a tif is read by OCR
+only; the model does not accept it).
 
 **A Word manuscript (.docx).** A submission in Word format uploads the
 same way as a PDF: the app examines every table in the document —

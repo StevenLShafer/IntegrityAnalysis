@@ -9,3 +9,5 @@
 # independent re-screen that found the journal amplification bug), which
 # covered everything up to this commit.
 37a13b29216b660ebe5b53cee4a111bd21cfc8c1  2026-08-27T08:00:00  interactive (API review + independent re-screen; see docs/security-screens/log.md)
+6a29bb37d54518e343f20abfbabb5783717e9282  2026-08-31T21:15:10  screen-2026-08-31-2100.md
+88e18e005f7ceec00d01997038fdcaee8b1d57a6  2026-09-02T16:16:22  screen-2026-09-02-1606.md

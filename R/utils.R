@@ -235,7 +235,7 @@
 }
 
 # ---------------------------------------------------------------------------
-# Uploaded table IMAGES (jpg/png/tif/gif) - Steve, 2026-09-02
+# Uploaded table IMAGES (jpg/png/tif) - Steve, 2026-09-02
 # ---------------------------------------------------------------------------
 # A picture of a table takes the scanned-page road: tesseract word boxes
 # into the same deterministic engine, "ocr" provenance, whole-table cyan
@@ -244,7 +244,7 @@
 #
 # THREAT MODEL FIRST. The uploader is the author under investigation, and
 # an image decoder is a classic attack surface. Three decisions follow:
-#   - NO ImageMagick. tesseract reads JPEG/PNG/TIFF/GIF through its own
+#   - NO ImageMagick. tesseract reads JPEG/PNG/TIFF through its own
 #     leptonica reader, so the app needs no magick dependency and never
 #     exposes ImageMagick's few-hundred-format decoder to hostile bytes.
 #     tools/securityCheck.R pins that no image path ever calls it.
@@ -255,6 +255,14 @@
 #     bounded prefix (or, for TIFF, by seeking to each directory), with
 #     no decoding, and .ppImageOK() refuses anything over the caps. It
 #     decides the FORMAT from the magic bytes, never from the file name.
+#   - NO GIF. The security screen of 2026-09-02 (F1) showed that a GIF's
+#     logical screen - the only size its header states up front - is
+#     not what the decoder allocates from: giflib sizes every frame from
+#     its own image descriptor, so a 1 x 1 screen can precede a
+#     65535 x 65535 frame and pass any header check short of walking the
+#     block stream. Steve's rule was GIF and PNG "unless they are free";
+#     GIF stopped being free, so it is out. PNG stays: IHDR is the
+#     dimension the decoder uses.
 #   - DECODING HAPPENS ONLY IN THE SUBPROCESS. The app and the API hand
 #     images to parseBaselineTableFiles() exactly like PDFs, so a decoder
 #     crash or stall costs one child under an OS timeout, never the
@@ -268,17 +276,17 @@
 # px). So the median word box IS the ruler: scale so it lands at
 # .ppImageWordPt, and the tolerances hold whatever the pixel size.
 
-.ppImageExts <- c("jpg", "jpeg", "png", "tif", "tiff", "gif")
+.ppImageExts <- c("jpg", "jpeg", "png", "tif", "tiff")
 .ppIsImageFile <- function(path)
   tolower(tools::file_ext(path)) %in% .ppImageExts
 
-.ppImageMaxPixels   <- 50e6   # 8.4 MP is a Letter page at 300 dpi
+.ppImageMaxPixels   <- 20e6   # 8.4 MP is a Letter page at 300 dpi; A4 at 400 is 15
 .ppImageMaxPages    <- 10L    # a table is one picture; a TIFF chain is not
 .ppImageHeaderBytes <- 4e6    # JPEG/PNG/GIF dimensions live in the prefix
 .ppImageWordPt      <- 6.75
 
 # Dimensions, page count and format from the file's own header - no
-# decoder involved. NULL when the bytes are not one of the four formats,
+# decoder involved. NULL when the bytes are not one of the three formats,
 # whatever the file is called.
 .ppImageDims <- function(path) {
   size <- file.size(path)
@@ -298,14 +306,12 @@
 
   # PNG: 8-byte signature, then the IHDR chunk - width and height at 17..24
   if (identical(head[1:8], hx(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))) {
-    if (size < 24 || rawToChar(head[13:16]) != "IHDR") return(NULL)
+    # raw comparison, not rawToChar(): a NUL among these bytes made
+    # rawToChar() throw, turning a refusal into a 500 (screen F2)
+    if (size < 24 || !identical(head[13:16], hx(0x49, 0x48, 0x44, 0x52)))
+      return(NULL)
     return(list(format = "png", width = u32(head, 17), height = u32(head, 21),
                 pages = 1L))
-  }
-  # GIF: "GIF87a"/"GIF89a", logical screen width and height little-endian
-  if (identical(head[1:4], hx(0x47, 0x49, 0x46, 0x38))) {
-    return(list(format = "gif", width = u16(head, 7, TRUE),
-                height = u16(head, 9, TRUE), pages = 1L))
   }
   # JPEG: walk the marker segments to the first SOFn frame header
   if (identical(head[1:2], hx(0xff, 0xd8))) {
@@ -359,8 +365,11 @@
           tag <- u16(e, 1, le); typ <- u16(e, 3, le)
           val <- if (typ == 3) u16(e, 9, le) else if (typ == 4) u32(e, 9, le)
                  else NA_real_
-          if (tag == 256) width  <- val
-          if (tag == 257) height <- val
+          # a repeated tag is illegal in an IFD; whichever occurrence a
+          # decoder honours, the LARGER value is the one the cap must see
+          # (screen F3)
+          if (tag == 256) width  <- max(width,  val, na.rm = TRUE)
+          if (tag == 257) height <- max(height, val, na.rm = TRUE)
         }
       }
       off <- u32(ent, 12 * nEnt + 1, le)
@@ -377,7 +386,7 @@
   dims <- .ppImageDims(path)
   no <- function(why) structure(FALSE, reason = why)
   if (is.null(dims))
-    return(no("not a JPEG, PNG, TIFF or GIF image, whatever the file name says"))
+    return(no("not a JPEG, PNG or TIFF image, whatever the file name says"))
   if (dims$pages > .ppImageMaxPages)
     return(no(sprintf("a TIFF with more than %d pages", .ppImageMaxPages)))
   if (dims$width < 1 || dims$height < 1) return(no("an empty image"))

@@ -86,6 +86,41 @@ library C:/Temp/ia-lib are theirs).
 
 ---
 
+## 32. A memory ceiling for the parse child, and a render cap for scanned pages
+
+**Status: open, filed 2026-09-02** from the security screen of the image
+upload feature (`docs/security-screens/log.md`, F1 and its note).
+
+Every hostile document is decoded in a child process under a wall-clock
+timeout (`parseBaselineTableFiles()`), and the image route now refuses
+oversized headers before any decoder runs. What the child does NOT have
+is a memory ceiling: a decoder that allocates faster than the timeout
+fires is the container's out-of-memory, and on a single-threaded host
+that is the worker. The image preflight narrows the window (20 MP cap,
+10 TIFF pages, no GIF); it does not close it, and it does nothing for the
+older routes.
+
+Two things, both belonging to the container rather than to R code, and
+neither verifiable from the Windows development machine:
+
+- **A memory limit on the parse child.** On Linux, `ulimit -v` around the
+  `Rscript --vanilla` launch in `parseBaselineTableFiles()`, or a
+  container-level limit in the App Runner service and the Docker image.
+  Whichever is chosen, verify on a Linux node that a deliberately huge
+  allocation in the child is killed and reported as a failed parse, not
+  as a dead worker.
+- **A page-size cap on the scanned-PDF OCR render.** `.ppOcrPages()`
+  renders image-only pages at 300 dpi with no bound on the page's
+  MediaBox; a PDF declaring 200 x 200 inches would render at
+  60000 x 60000. Read the page size from `pdftools::pdf_pagesize()`
+  first and refuse, or render at a dpi that keeps the raster under the
+  same 20 MP the image route allows.
+
+Done looks like: both limits in place, each with the deliberate-break
+test that shows it working, and the screen's F1 note closed.
+
+---
+
 ## 31. One corpus library, with an index that decides what may be shared
 
 **Status: built 2026-08-31** (`corpus/buildCorpusLibrary.R`,

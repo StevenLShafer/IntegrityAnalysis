@@ -252,18 +252,19 @@ for OCR fails cleanly with a message; the AI assist reads such pages far
 more reliably, and everything OCR does happens on this server — nothing
 leaves it. Whatever was extracted can be reviewed, corrected, and
 analyzed without leaving the app.</p>
-<p><strong>A picture of a table (jpg, png, tif, gif).</strong> A
-screenshot or scan of Table 1 uploads like a PDF: the app reads it with
-local optical character recognition (tesseract) and extracts the table
-into the grid, shaded <strong>pale cyan</strong> with the same
+<p><strong>A picture of a table (jpg, png, tif).</strong> A screenshot
+or scan of Table 1 uploads like a PDF: the app reads it with local
+optical character recognition (tesseract) and extracts the table into
+the grid, shaded <strong>pale cyan</strong> with the same
 verify-every-value warning as a scanned page — OCR can misread digits.
 It works best on a clean picture at 200–300 dpi; at screen resolution
 (96 dpi) words start to drop out. The picture is decoded by the app’s
 own OCR reader, never by ImageMagick, and its declared dimensions are
 checked from the file header before any decoder runs — an oversized or
-malformed image is refused with a message. With an API key entered, a
-jpg, png or gif is sent to the AI assist as an image (a tif is read by
-OCR only; the model does not accept it).</p>
+malformed image is refused with a message. (GIF is deliberately not
+accepted: its header cannot bound what its decoder allocates.) With an
+API key entered, a jpg or png is sent to the AI assist as an image (a
+tif is read by OCR only; the model does not accept it).</p>
 <p><strong>A Word manuscript (.docx).</strong> A submission in Word
 format uploads the same way as a PDF: the app examines every table in
 the document — submissions put them at the end, with the caption just

@@ -1,4 +1,4 @@
-# test-image-uploads.R - a picture of a table (jpg/png/tif/gif) as input.
+# test-image-uploads.R - a picture of a table (jpg/png/tif) as input.
 #
 ############################################################################
 # Provenance                                                               #
@@ -63,6 +63,15 @@ test_that("image dimensions come from the header, by magic bytes, with no decode
   expect_identical(.ppImageDims(lie)$format, "png")
   # not an image at all, whatever it is called
   expect_null(.ppImageDims(rawFile(c(0x00, 0x11, 0x22, 0:199), ".jpg")))
+  # a PNG signature with a NUL where "IHDR" should be is refused, not thrown
+  # (screen F2, 2026-09-02)
+  expect_null(.ppImageDims(rawFile(c(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a,
+                                     0x0a, 0, 0, 0, 13, 0x49, 0x00, 0x44, 0x52,
+                                     rep(0, 20)), ".png")))
+  # GIF is not accepted (screen F1): its header cannot bound the decoder
+  expect_false(.ppIsImageFile("table.gif"))
+  expect_null(.ppImageDims(rawFile(c(0x47, 0x49, 0x46, 0x38, 0x39, 0x61,
+                                     1, 0, 1, 0, rep(0, 30)), ".png")))
   expect_null(.ppImageDims(src))
   expect_false(isTRUE(.ppImageOK(src)))
   expect_match(attr(.ppImageOK(src), "reason"), "whatever the file name says")
@@ -103,6 +112,18 @@ test_that("declared bombs are refused before any decoder runs", {
   expect_match(attr(tw, "reason"), "pages")
   # ...and a directory pointer that loops is not a file
   expect_null(.ppImageDims(tiffChain(2, loop = TRUE)))
+  # a repeated ImageWidth tag: the LARGER value is what the cap sees
+  # (screen F3, 2026-09-02) - 60000 then 10 must still be refused
+  le16 <- function(v) c(v %% 256, v %/% 256)
+  le32 <- function(v) c(v %% 256, (v %/% 256) %% 256, (v %/% 65536) %% 256,
+                        (v %/% 16777216) %% 256)
+  dup <- rawFile(c(0x49, 0x49, 0x2a, 0x00, le32(8), le16(3),
+                   le16(256), le16(3), le32(1), le16(60000), le16(0),
+                   le16(257), le16(3), le32(1), le16(60000), le16(0),
+                   le16(256), le16(3), le32(1), le16(10), le16(0),
+                   le32(0)), ".tif")
+  expect_identical(.ppImageDims(dup)$width, 60000)
+  expect_false(isTRUE(.ppImageOK(dup)))
   # the engine refuses too, by name, before reading a pixel
   expect_error(parseBaselineTableHeuristics(tiffChain(12), quiet = TRUE),
                "Refused to read")
