@@ -251,8 +251,33 @@ if ($TransferOnly) { Say '  -TransferOnly: no reindex, no identity pass, no back
 # The other three sources take every file, which is what their src() rows  #
 # expect.                                                                  #
 ############################################################################
-$medrxiv = if ($env:INTEGRITY_CORPUS) { Join-Path $corpus 'medrxiv_rct' }
-           else { 'C:\temp\medrxiv_rct' }
+############################################################################
+# THE medRxiv DESTINATION IS NOT DERIVED FROM INTEGRITY_CORPUS BY DEFAULT,
+# and the reason is the whole subject of this file.
+#
+# buildCorpusLibrary.R indexes medRxiv at a FIXED path - src("medrxiv",
+# "C:/temp/medrxiv_rct") - because that collection lives outside the corpus
+# tree. An earlier draft here redirected medRxiv whenever INTEGRITY_CORPUS
+# was set, which is exactly right for an isolated test and exactly wrong
+# for anyone who sets that variable to relocate a real corpus: the transfer
+# would report success, the stamp would advance, and the files would sit in
+# a directory the indexer never reads. That is defect 1 of this rewrite,
+# reintroduced one directory over. (CodeRabbit flagged it on PR #135.)
+#
+# So the override is its own variable, and choosing it is deliberate.
+# INTEGRITY_CORPUS alone no longer moves medRxiv silently - it says so.
+############################################################################
+$medrxivDefault = 'C:\temp\medrxiv_rct'   # must match src("medrxiv")
+$medrxiv = if ($env:INTEGRITY_MEDRXIV) { $env:INTEGRITY_MEDRXIV }
+           elseif ($env:INTEGRITY_CORPUS) { Join-Path $corpus 'medrxiv_rct' }
+           else { $medrxivDefault }
+if ($medrxiv -ne $medrxivDefault) {
+  Say ("NOTE: medRxiv is going to {0}, NOT the indexed path {1}." -f $medrxiv, $medrxivDefault)
+  Say  '      buildCorpusLibrary.R reads the indexed path, so anything landing'
+  Say  '      here will NOT appear in the corpus. Correct for an isolated test;'
+  Say  '      wrong for a real run. Unset INTEGRITY_CORPUS/INTEGRITY_MEDRXIV, or'
+  Say  '      point src("medrxiv") at the same place.'
+}
 $allFiles = '-type f'
 $pdfsOnly = "-type f -name '*.pdf' -not -path './incoming/*'"
 $workerPdfs = "-type f -name '*.pdf' -path './medrxiv_w*' -not -path '*/incoming/*'"
@@ -433,15 +458,42 @@ foreach ($n in $nodes) {
   }
   Say ('  {0} new file(s), {1} MB - streaming, no node-side staging' -f $count, [math]::Round($bytes / 1MB, 1))
 
-  # Room to receive it? The archive lands whole before it is extracted, so
-  # the peak requirement is the archive plus the extracted copy.
-  $qualifier = (Split-Path $dest -Qualifier).TrimEnd(':')
-  $free = (Get-PSDrive $qualifier).Free
-  if ($free -lt ($bytes * 2.2)) {
-    Say ('  FAILED: {0}: needs about {1} MB free and has {2} MB - stamp NOT advanced' -f
-         $qualifier, [math]::Round($bytes * 2.2 / 1MB), [math]::Round($free / 1MB))
-    continue
+  ########################################################################
+  # Room to receive it - on BOTH volumes, because they need not be one.
+  #
+  # The archive streams into %TEMP% and the extracted copy lands in $dest.
+  # The first version measured only $dest and applied the combined 2.2x
+  # headroom there, so a %TEMP% on a different volume could fill mid-stream
+  # while the check reported plenty of room. The stamp is not advanced on
+  # that path, so the cost is a transfer that repeats rather than data that
+  # is lost - but a guard that measures the wrong disk is not a guard.
+  #
+  # And Split-Path -Qualifier returns NOTHING for a UNC or relative path.
+  # Get-PSDrive '' then throws, and under $ErrorActionPreference = 'Stop'
+  # that aborts the whole loop and silently skips every remaining node -
+  # one unusual path taking out the entire run. Skip the row instead.
+  # (Both found by CodeRabbit on PR #135.)
+  ########################################################################
+  $roomOk = $true
+  foreach ($vol in @($env:TEMP, $dest)) {
+    $q = (Split-Path $vol -Qualifier)
+    if (-not $q) {
+      Say ('  SKIP: cannot determine the volume for {0} (UNC or relative path?) - stamp NOT advanced' -f $vol)
+      $roomOk = $false; break
+    }
+    $drive = Get-PSDrive ($q.TrimEnd(':')) -ErrorAction SilentlyContinue
+    if (-not $drive) {
+      Say ('  SKIP: no such drive {0} for {1} - stamp NOT advanced' -f $q, $vol)
+      $roomOk = $false; break
+    }
+    # Each volume receives ONE copy, so 1.1x each rather than 2.2x on one.
+    if ($drive.Free -lt ($bytes * 1.1)) {
+      Say ('  FAILED: {0} needs about {1} MB free for {2} and has {3} MB - stamp NOT advanced' -f
+           $q, [math]::Round($bytes * 1.1 / 1MB), $vol, [math]::Round($drive.Free / 1MB))
+      $roomOk = $false; break
+    }
   }
+  if (-not $roomOk) { continue }
 
   $tar = Join-Path $env:TEMP "ingest_$tag.tar"
   if (Test-Path $tar) { Remove-Item $tar -Force }
