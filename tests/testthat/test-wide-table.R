@@ -148,6 +148,35 @@ test_that("n (%) rows become a count column plus its complement", {
   expect_true(all(is.na(dia$MEAN)))
 })
 
+test_that("the count tag is recognised in its bracketed and worded forms", {
+  # Steve's Ticagrelor sheet, 2026-09-02: "Male (number, %)" was not
+  # recognised as a tag, so the category column was named after the whole
+  # label - and the app's normalizer, which maps any name containing
+  # NUMBER to N, then refused the sheet for two columns called N. The
+  # file parsed; Analyze was simply never offered.
+  m <- rbind(
+    c("Character",           "Ticagrelor (N=101)", "Aspirin (N = 99)"),
+    c("Male (number, %)",    "68 (67.3%)",         "64 (64.6%)"),
+    c("Smoker, number (%)",  "59 (58.4%)",         "62 (62.6%)"),
+    c("Female (n, %)",       "33 (32.7%)",         "35 (35.4%)"),
+    c("Diabetes (No. %)",    "33 (32.7%)",         "31 (31.3%)"),
+    c("Hemoglobin",          "12.1 (1.2)",         "12.3 (1.1)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  d <- parseWideTable(f, "xlsx")[[1]]$data
+
+  for (v in c("Male", "Smoker", "Female", "Diabetes")) {
+    expect_true(v %in% d$ROW, info = v)
+    expect_true(all(c(v, paste("Not", v)) %in% names(d)), info = v)
+  }
+  expect_identical(d$Male[d$ROW == "Male"], c(68L, 64L))
+  expect_identical(d[["Not Male"]][d$ROW == "Male"], c(33L, 35L))
+  # nothing that the app's normalizer would fold onto N, ROW, or MEAN
+  expect_false(any(grepl("number|no\\.", names(d), ignore.case = TRUE)))
+  # and the mandatory separator still protects a word that merely ends in n
+  expect_identical(d$MEAN[d$ROW == "Hemoglobin"], c(12.1, 12.3))
+  expect_false("Hemoglobi" %in% d$ROW)
+})
+
 test_that("median rows: explicit IQR parses, range and unlabeled refuse", {
   m <- rbind(
     c("Variable",                     "Arm 1 (n = 20)", "Arm 2 (n = 22)"),

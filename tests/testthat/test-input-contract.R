@@ -46,6 +46,23 @@ test_that("a missing required column fails gracefully - never crashes", {
   }
 })
 
+test_that("a name collision after normalizing names the SOURCE column", {
+  # Steve's Ticagrelor sheet, 2026-09-02: a category column the parser
+  # had named "Male (number, %)" was folded onto N by the NUMBER alias,
+  # and the refusal said only "(N)" - which sent the reader looking for
+  # a second N column. The message must name the column to rename.
+  d <- data.frame(TRIAL = "T", ROW = c("Age", "Age"), N = c(15, 17),
+                  MEAN = c(45.3, 46.1), SD = c(12.1, 11.8),
+                  "Male (number, %)" = c(8, 9),
+                  check.names = FALSE, stringsAsFactors = FALSE)
+  msg <- paste(c(utils::capture.output(v <- vd(d)),
+                 utils::capture.output(vd(d), type = "message")),
+               collapse = " ")
+  expect_true(v$FAIL)
+  expect_match(msg, "normalize to the same name: N from 'N' and 'Male (number, %)'",
+               fixed = TRUE)
+})
+
 test_that("column names are case-insensitive and whitespace-trimmed", {
   v <- vd(data.frame(
     " row " = c("Age", "Age"), n = c(15, 17), mean = c(45.3, 46.1),
