@@ -383,6 +383,10 @@ def main():
     ap.add_argument("--out", required=True, help="output directory for XML")
     ap.add_argument("--manifest", required=True, help="CSV run manifest")
     ap.add_argument("--limit", type=int, default=10 ** 9)
+    ap.add_argument("--threads", type=int, default=1,
+                    help="torch threads for THIS worker. One per worker is "
+                         "correct when several run side by side; raise it only "
+                         "for a single-worker run.")
     ap.add_argument("--min-cols", type=int, default=MIN_COLS,
                     help="reject a detection with fewer columns than this")
     ap.add_argument("--min-numeric", type=float, default=MIN_NUMERIC,
@@ -395,7 +399,22 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
     torch.set_grad_enabled(False)
-    torch.set_num_threads(max(1, (os.cpu_count() or 4) - 2))
+    ############################################################################
+    # THREADS: ONE PER WORKER BY DEFAULT, AND THAT DEFAULT IS THE WHOLE POINT.
+    #
+    # This was cpu_count() - 2, which is correct for a single worker on an
+    # idle box and catastrophic for a fleet. The 2026-09-01 pilot ran six
+    # workers on a 16-logical-core node; each claimed 14 threads, so 84
+    # threads contended for 16 cores and throughput collapsed from the 4.7 s
+    # per journal article measured single-worker to 354 s per work.
+    #
+    # Torch does not know how many siblings it has, so the caller must say.
+    # One thread per worker is the right default for the run-along, because
+    # the work is embarrassingly parallel across DOCUMENTS - six documents
+    # at one thread each beats one document at six threads, and it cannot
+    # oversubscribe. Pass --threads deliberately for a single-worker run.
+    ############################################################################
+    torch.set_num_threads(max(1, args.threads))
 
     done = set()
     if os.path.exists(args.manifest):

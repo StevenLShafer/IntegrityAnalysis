@@ -123,9 +123,26 @@ so an interrupted run loses one PDF rather than the run. Every PDF gets a
 manifest row — `ok`, `missing`, or `error: …` — because a silent skip looks
 exactly like a file with no tables.
 
-**Throughput**, measured on an 8-core compute node, CPU only: **4.7 s** per
-typeset journal article, **21.5 s** per medRxiv preprint (longer documents,
-more candidate regions). The corpus holds 38,042 PDFs.
+**Threads: one per worker.** `--threads` defaults to 1 because the work is
+parallel across *documents*. The first pilot used `cpu_count() - 2` per
+worker, so six workers claimed 84 threads on 16 logical cores and
+throughput collapsed. Re-running the same twelve works at one thread each
+took **1,038 s instead of 8,550 s - 8.2x faster**. Torch cannot know how
+many siblings it has; the caller must say.
+
+**Throughput**, CPU only, one thread per worker:
+
+| document kind | seconds each |
+|---|---:|
+| typeset journal article (6-8 pp) | ~5 |
+| medRxiv preprint (20+ pp) | ~21 |
+| ClinicalTrials.gov protocol (70-108 pp, detection-dense) | ~87 |
+
+Cost scales with **detections per page**, not page count alone: every
+detected region costs a further structure pass, and protocol documents are
+detection-dense. Estimating a corpus-wide run from journal articles alone
+understates it by more than an order of magnitude - the corpus holds 38,042
+PDFs, most of them not journal articles.
 
 ## Known limitations
 
