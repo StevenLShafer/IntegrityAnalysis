@@ -79,6 +79,7 @@ CROP_PAD = 12             # the structure model expects the outer rule lines
 MIN_COLS = 3              # two "columns" is what prose degenerates into
 MIN_NUMERIC = 0.15        # share of filled cells that carry a number
 MAX_MEDLEN = 24           # median characters per filled cell
+MAX_LEADERS = 0.20        # share of cells carrying "......" dot leaders
 
 SCALE = RENDER_DPI / 72.0  # PDF points -> rendered pixels
 
@@ -156,7 +157,9 @@ def cells_from_structure(names, boxes):
     return rows, cols, heads, spans
 
 
-NUMERIC = None  # compiled lazily; see is_numeric_cell
+NUMERIC = None   # compiled lazily; see is_numeric_cell
+OUTLINE = None   # section labels: 8., 8.1., 10.3.4, 2.0
+DOTLEADER = None # "Title Page........ 14"
 
 
 def is_numeric_cell(s: str) -> bool:
@@ -166,12 +169,25 @@ def is_numeric_cell(s: str) -> bool:
     45+/-3. Deliberately NOT generous about prose that happens to contain a
     year - a cell is numeric only if digits dominate what it holds.
     """
-    global NUMERIC
+    global NUMERIC, OUTLINE
     if NUMERIC is None:
         import re
         NUMERIC = re.compile(r"[-+(]?\d[\d,.]*\s*[)%]?")
+        # Outline labels only: a TRAILING dot ("8.", "8.1.") or three or
+        # more levels ("10.3.4"). Deliberately NOT "2.0" or "45" - a
+        # bare integer is a count and "2.0" is a plausible mean, and
+        # losing real data to catch a contents page is the wrong trade.
+        # The dot-leader test below catches what this deliberately misses.
+        OUTLINE = re.compile(r"\d+(?:\.\d+)*\.|\d+(?:\.\d+){2,}")
     t = s.strip()
     if not t or len(t) > 24:
+        return False
+    # An OUTLINE NUMBER is not data. "8.1.", "10.3.4", "2.0" are section
+    # labels, and counting them as numeric is how a table of contents passes
+    # a numeric-density gate. Found 2026-09-02: the numeric-dense tables in
+    # ClinicalTrials.gov protocol documents were overwhelmingly contents
+    # pages - "8. PRESTUDY AND CONCOMITANT...", "1.0 Title Page........".
+    if OUTLINE.fullmatch(t):
         return False
     hits = NUMERIC.findall(t)
     if not hits:
@@ -199,17 +215,25 @@ def table_stats(grid):
     Every statistic is written into the XML so the threshold can be
     re-tuned later against recorded evidence rather than re-run.
     """
+    global DOTLEADER
+    if DOTLEADER is None:
+        import re
+        DOTLEADER = re.compile(r"\.{3,}")
     cells = [c for row in grid for c in row]
     n = len(cells)
     if n == 0:
         return dict(cells=0, filled=0.0, numeric=0.0, medlen=0.0)
     filled = [c for c in cells if c.strip()]
     lens = sorted(len(c.strip()) for c in filled) or [0]
+    # Dot leaders are the other half of the contents-page signature: a cell
+    # like "Title Page........ 14" is typography, not tabulation.
+    leaders = sum(bool(DOTLEADER.search(c)) for c in filled)
     return dict(
         cells=n,
         filled=len(filled) / n,
         numeric=(sum(is_numeric_cell(c) for c in filled) / len(filled)) if filled else 0.0,
         medlen=float(lens[len(lens) // 2]),
+        leaders=(leaders / len(filled)) if filled else 0.0,
     )
 
 
@@ -287,6 +311,7 @@ def build_xml(accession, pdf_path, tables, elapsed, sha):
             "frac-filled": f"{t['stats']['filled']:.3f}",
             "frac-numeric": f"{t['stats']['numeric']:.3f}",
             "median-cell-chars": f"{t['stats']['medlen']:.0f}",
+            "frac-dot-leaders": f"{t['stats']['leaders']:.3f}",
             "passed-plausibility": "true" if t["keep"] else "false",
         })
         tbl = ET.SubElement(tw, "table")
@@ -366,7 +391,8 @@ def process(pdf_path, accession, models, max_pages=MAX_PAGES,
                 st = table_stats(grid)
                 keep = (len(cols) >= min_cols
                         and st["numeric"] >= min_numeric
-                        and st["medlen"] <= max_medlen)
+                        and st["medlen"] <= max_medlen
+                        and st["leaders"] < MAX_LEADERS)
                 tables.append(dict(page=pno + 1, index=ti, score=float(score),
                                    box=Box(x0, y0, x1, y1), rows=rows, cols=cols,
                                    n_head=len(heads), n_span=len(spans),
