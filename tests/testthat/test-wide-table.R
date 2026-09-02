@@ -325,3 +325,56 @@ test_that("a differing-N suffix comes back as that line's N", {
   expect_identical(ht$N, c(14, 17))
   expect_identical(ht$MEAN, c(165, 167))
 })
+
+# --------------------------------------------------------------------------
+# Steve's Ticagrelor sheet, 2026-09-02: "the rows with median (IQR) don't get
+# parsed at all ... I can't type into the cells". Two defects, one report.
+# --------------------------------------------------------------------------
+
+test_that("one impossible arm drops that arm, not the whole variable", {
+  # Aspirin's median 68.8 sits above its own Q3 of 64 - impossible, so that
+  # arm cannot be analyzed. Ticagrelor's 62 (60-67) is perfectly usable and
+  # used to be discarded with it, taking the anomaly out of sight as well.
+  m <- rbind(
+    c("Character",         "Ticagrelor (N=101)", "Aspirin (N = 99)"),
+    c("Age, median (IQR)", "62 (60-67)",         "68.8 (59-64)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")[[1]]
+
+  age <- b$data[b$data$ROW == "Age", ]
+  expect_identical(nrow(age), 1L)            # the good arm survives, alone
+  expect_identical(age$MEAN, 62)
+  expect_identical(age$Q1, 60)
+  expect_identical(age$Q3, 67)
+  expect_identical(age$N, 101)
+
+  # and the impossible arm is REPORTED, by name, rather than silently gone
+  expect_identical(nrow(b$skipped), 1L)
+  expect_match(b$skipped$label[1], "Aspirin")
+  expect_match(b$skipped$reason[1], "outside its own", fixed = FALSE)
+})
+
+test_that("every arm impossible still skips the whole row, as before", {
+  m <- rbind(
+    c("Character",         "Arm 1 (n = 10)", "Arm 2 (n = 10)"),
+    c("Age, median (IQR)", "80 (60-67)",     "68.8 (59-64)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")
+  # No usable row at all -> parseWideTable declines the sheet entirely.
+  expect_null(b)
+})
+
+test_that("a skipped median row still gets Q1/Q3 columns to type into", {
+  # The skip reason tells the reader to "enter median/Q1/Q3 by hand". If the
+  # only median rows were skipped, the grid used to carry no Q1 and no Q3
+  # column, so there was nowhere to type them.
+  m <- rbind(
+    c("Character",    "Arm 1 (n = 20)", "Arm 2 (n = 20)"),
+    c("TTR",          "7 (6-9)",        "7 (7-8)"),
+    c("Age, mean (SD)", "45.3 (12.1)",  "46.1 (11.8)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")[[1]]
+
+  expect_true(all(c("Q1", "Q3") %in% names(b$data)))
+  expect_match(b$skipped$reason[1], "unlabeled interval")
+})
