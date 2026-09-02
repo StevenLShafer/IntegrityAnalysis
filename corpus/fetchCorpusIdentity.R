@@ -113,16 +113,53 @@ if (file.exists(map)) {
 # already know, checked BEFORE the run, so a moved endpoint stops the
 # script instead of quietly emptying the column.
 idconvUrl <- "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/"
-idconv <- function(ids)
+
+# RETRY A BUSY ENDPOINT; DO NOT CALL IT A MOVED ONE.
+#
+# The control below is right to stop the run - a silently emptied identity
+# column is the failure this whole file exists to prevent. But it used to
+# stop on ANY failure while asserting a cause it had not checked: "the
+# endpoint has moved or changed shape again". On 2026-09-02 the scheduled
+# run met HTTP 429 - rate limiting, transient, and nothing to do with the
+# endpoint's shape - and reported a move. The identical request succeeded by
+# hand minutes later, first attempt.
+#
+# That is the same defect this repository keeps recording, in the message
+# rather than the logic: an error handler that names a cause it never
+# established sends the next reader somewhere there is nothing to find.
+#
+# So: transient failures (429, 5xx, a dropped connection) are retried with
+# backoff, and only a persistent failure or a well-formed answer of the
+# WRONG SHAPE is treated as the endpoint having changed. The distinction is
+# reported, so the message matches what was observed.
+idconvOnce <- function(ids)
   tryCatch(jsonlite::fromJSON(paste0(
     idconvUrl, "?tool=IntegrityAnalysis&email=steveshafer@gmail.com",
     "&format=json&ids=", paste(ids, collapse = ","))),
-    error = function(e) NULL)
+    error = function(e) structure(list(), transient =
+      grepl("429|50[0-9]|timed out|cannot open|connection",
+            conditionMessage(e), ignore.case = TRUE),
+      why = conditionMessage(e)))
+
+idconv <- function(ids, tries = 4L) {
+  for (i in seq_len(tries)) {
+    r <- idconvOnce(ids)
+    if (!is.null(r$records)) return(r)
+    if (!isTRUE(attr(r, "transient"))) return(r)   # a real shape change
+    if (i < tries) {
+      message(sprintf("  ID converter attempt %d/%d transient (%s) - retrying",
+                      i, tries, substr(attr(r, "why"), 1, 60)))
+      Sys.sleep(5 * i)
+    }
+  }
+  r
+}
 
 ctl <- idconv("PMC4280683")            # -> PMID 25433674, verified 2026-08-31
 if (is.null(ctl$records) || !identical(as.character(ctl$records$pmid[1]),
                                        "25433674"))
-  stop("ID converter positive control FAILED - the endpoint has moved or ",
+  stop("ID converter positive control FAILED after retries - the endpoint ",
+       "is persistently unreachable, or it has moved or ",
        "changed shape again. Fix it before trusting any coverage number.")
 message("ID converter positive control passed")
 
