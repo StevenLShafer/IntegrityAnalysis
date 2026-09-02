@@ -286,6 +286,21 @@
                                     cat = .wideTagCat),
                              "", label, perl = TRUE))
 
+    # A label that SAYS "median (IQR)" or "median [range]" earns the Q1/Q3
+    # columns HERE, where the label is resolved and before ANY branch below
+    # can consume the row. It was consumed twice over: #140 set the flag
+    # inside the median branch, so a row whose cells did not tokenize left
+    # at "cells not in a recognized format - enter by hand" with no Q1/Q3
+    # (CodeRabbit on #140); the fix for that sat below the no-cells branch,
+    # so a labelled row with EMPTY cells - which becomes a variable heading
+    # for the "Mean"/"Median" line that customarily follows it - still
+    # earned nothing (CodeRabbit on #142). Same defect each time, "enter by
+    # hand" into a grid with nowhere to type, and the same cure: read the
+    # label at the one place it is known. An unlabelled medianTriple row
+    # still sets the flag in the median branch, where its shape is what
+    # identifies it.
+    if (!is.na(tag) && tag %in% c("medIQR", "medRng")) anyMedian <- TRUE
+
     # -- header line of a category variable ("Sex, n" - no cells) ------
     if (!any(nzchar(trimws(bodyTxt)))) {
       flushCat()
@@ -443,12 +458,14 @@
       # keep the rest (Steve's Ticagrelor sheet, 2026-09-02: Age was dropped
       # over the Aspirin arm's "68.8 (59-64)" while Ticagrelor's
       # "62 (60-67)" was perfectly usable).
-      present <- vapply(toks, function(t)
+      # medPresent, not `present`: the row loop already has a `present`
+      # built from `types`, and reusing the name here shadowed it.
+      medPresent <- vapply(toks, function(t)
         !is.null(t) && t$type == "medianTriple", logical(1))
-      bad <- present & vapply(toks, function(t)
+      bad <- medPresent & vapply(toks, function(t)
         !is.null(t) && t$type == "medianTriple" &&
           (t$num2 > t$num1 || t$num3 < t$num1), logical(1))
-      if (any(present) && !any(present & !bad)) {
+      if (any(medPresent) && !any(medPresent & !bad)) {
         # Nothing survives - same outcome, and same message, as before.
         addSkip(label, "median outside its own [Q1, Q3] - check the cells",
                 txt)

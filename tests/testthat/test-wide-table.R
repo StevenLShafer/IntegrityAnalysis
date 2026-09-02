@@ -378,3 +378,41 @@ test_that("a skipped median row still gets Q1/Q3 columns to type into", {
   expect_true(all(c("Q1", "Q3") %in% names(b$data)))
   expect_match(b$skipped$reason[1], "unlabeled interval")
 })
+
+test_that("an unreadable median row still earns its Q1/Q3 columns", {
+  # CodeRabbit on PR #140: a row LABELLED "median (IQR)" whose cells cannot be
+  # tokenized exits at the "cells not in a recognized format" skip, which sits
+  # above the median branch. Setting anyMedian inside that branch was
+  # therefore not early enough - the reader was told to enter the value by
+  # hand into a grid that had no Q1 and no Q3 column.
+  m <- rbind(
+    c("Character",         "Arm 1 (n = 20)", "Arm 2 (n = 20)"),
+    c("Age, median (IQR)", "not reported",   "n/a"),
+    c("Weight, mean (SD)", "70.1 (9.2)",     "71.3 (8.8)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")[[1]]
+
+  expect_true(all(c("Q1", "Q3") %in% names(b$data)))
+  expect_match(b$skipped$reason[1], "not in a recognized format")
+  # the readable row is untouched
+  expect_identical(b$data$MEAN[b$data$ROW == "Weight"], c(70.1, 71.3))
+})
+
+test_that("a median row with empty cells still earns its Q1/Q3 columns", {
+  # CodeRabbit on PR #142: the "no cells at all" branch, which turns a bare
+  # label into a variable heading, sits above the "not in a recognized
+  # format" skip - so a labelled median row whose cells were simply empty
+  # was consumed before the flag was set. The heading behaviour itself is
+  # right (the vocacapsaicin corpus prints the variable on one line and
+  # "Median" on the next); only the columns were missing.
+  m <- rbind(
+    c("Character",         "Arm 1 (n = 20)", "Arm 2 (n = 20)"),
+    c("Age, median (IQR)", "",               ""),
+    c("Weight, mean (SD)", "70.1 (9.2)",     "71.3 (8.8)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")[[1]]
+
+  expect_true(all(c("Q1", "Q3") %in% names(b$data)))
+  # the readable row is untouched
+  expect_identical(b$data$MEAN[b$data$ROW == "Weight"], c(70.1, 71.3))
+})
