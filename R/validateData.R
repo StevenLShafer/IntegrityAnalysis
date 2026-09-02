@@ -86,6 +86,12 @@ validateData <- function(DATA) {
   # the overnight screen then took apart: every rule the copy missed was
   # a gate bypass (a "ROWS" header, a NUMBER+N pair). Two
   # implementations of one rule set was the defect; there is now one.
+  # A one-row probe whose CELLS are the original names, pushed through
+  # the same normalizer, so a duplicate can be reported by the column
+  # that caused it (below) even after the normalizer's renames and drops.
+  probe <- .iaNormalizeNames(as.data.frame(
+    as.list(stats::setNames(names(DATA), names(DATA))),
+    stringsAsFactors = FALSE, check.names = FALSE))
   DATA <- .iaNormalizeNames(DATA)
 
   # The one thing the normalizer does NOT do, because it mutates data
@@ -115,10 +121,18 @@ validateData <- function(DATA) {
   dupNames <- .iaDuplicateNames(DATA)
   if (length(dupNames))
   {
+    # Name the SOURCE columns, not only the name they collapsed onto.
+    # "(N)" alone sent the reader looking for a second N column when
+    # the culprit was a category column called "Male (number, %)"
+    # (Steve's Ticagrelor sheet, 2026-09-02).
+    from <- vapply(dupNames, function(d) paste0(
+      d, " from ",
+      paste(sQuote(unlist(probe[names(probe) == d], use.names = FALSE),
+                   q = FALSE), collapse = " and ")), character(1))
     outputComments(paste0(
-      "Two columns normalize to the same name (",
-      paste(dupNames, collapse = ", "),
-      "). Rename or remove one - which column is meant is ambiguous."))
+      "Two columns normalize to the same name: ",
+      paste(from, collapse = "; "),
+      ". Rename or remove one - which column is meant is ambiguous."))
     FAIL <- TRUE
   }
 

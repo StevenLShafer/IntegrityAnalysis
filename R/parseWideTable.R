@@ -147,7 +147,18 @@
                           "(q1\\s*[,;]?\\s*q3|iqr|interquartile[^\\])]*",
                           "|25th[^\\])]*)\\s*[\\])]\\s*$")
 .wideTagMedRng  <- "(?i)[,;–—-]?\\s*median\\s*[\\[(][^\\])]*range[^\\])]*[\\])]\\s*$"
-.wideTagCat     <- "(?i)[,;–—-]\\s*(no\\.?|n)(\\s*\\(\\s*%\\s*\\))?\\s*$"
+# Two shapes of the count tag. "Sex, n (%)" / "Sex, No. (%)" / "Sex, number
+# (%)": a separator, the word, an optional "(%)". And the whole thing in
+# one bracket, "Male (number, %)" / "Male (n, %)" / "Male (No. %)". The
+# separator is MANDATORY in the first shape because a bare trailing "n"
+# is the last letter of Hemoglobin. Steve's Ticagrelor sheet (2026-09-02)
+# had "Male (number, %)": unrecognised, the whole label became the
+# category column's name, and the app's column normalizer - which maps
+# any name containing NUMBER to N - then collided it with the real N and
+# refused the sheet before Analyze was ever offered.
+.wideTagCat     <- paste0(
+  "(?i)(?:[,;–—-]\\s*(?:number|no\\.?|n)(?:\\s*\\(\\s*%\\s*\\))?",
+  "|\\s*\\(\\s*(?:number|no\\.?|n)\\s*[,;/]?\\s*%\\s*\\))\\s*$")
 
 # One number, as the engine prints it (comma/middle-dot decimals,
 # thousands separators, stray < >) - kept in sync with tokenize.R's .ppNUM.
