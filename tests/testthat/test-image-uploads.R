@@ -156,6 +156,24 @@ test_that("a JPEG, PNG or TIFF of a table parses like the page it was rendered f
   expect_equal(w150$y[1], w300$y[1], tolerance = 0.05)
 })
 
+test_that("the AI route preflights the image too - a bomb never reaches the model", {
+  # CodeRabbit on #145: ai = "always" and a direct parseBaselineTableAI()
+  # call never pass through the engine's preflight, so the bytes-for-the-
+  # model reader runs .ppImageOK() itself.
+  bomb <- rawFile(c(0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0xff, 0xff,
+                    0xff, 0xff, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01,
+                    0x03, 0x11, 0x01, 0xff, 0xd9), ".jpg")
+  posted <- 0L
+  testthat::local_mocked_bindings(
+    .ppClaudePost = function(body, key) { posted <<- posted + 1L; stop("no") })
+  expect_error(parseBaselineTableAI(bomb, apiKey = "FAKE", quiet = TRUE),
+               "megapixel")
+  expect_error(parseBaselineTable(bomb, ai = "always", apiKey = "FAKE",
+                                  quiet = TRUE), "megapixel")
+  expect_identical(posted, 0L)
+  expect_match(.ppImageAiRefusal(bomb), "megapixel")
+})
+
 test_that("a TIFF never reaches the model; a JPEG goes as a JPEG image block", {
   skip_if_not_installed("tesseract")
   skip_on_cran()
@@ -202,6 +220,21 @@ test_that("the app accepts a table image and shades the whole table cyan", {
     reg <- parseDerived()
     expect_false(is.null(reg))
     expect_true(any(reg$KIND == "ocr"))
+  })
+  # a TIFF is read, shaded cyan, and NOT promised an AI retry it cannot
+  # have (CodeRabbit on #145)
+  d3 <- file.path(tempdir(), "imgtif")
+  dir.create(d3, showWarnings = FALSE)
+  tif <- file.path(d3, "table.tif")
+  file.copy(imgFrom(syntheticPdfMeanSD(), "tiff"), tif, overwrite = TRUE)
+  shiny::testServer(app_server, {
+    session$setInputs(upload = data.frame(
+      name = "table.tif", datapath = tif, stringsAsFactors = FALSE))
+    log <- commentsLog()
+    expect_match(log, "picture was read by optical character")
+    expect_match(log, "does not accept TIFF")
+    expect_false(grepl("enter an Anthropic API key above", log))
+    expect_true(any(parseDerived()$KIND == "ocr"))
   })
   # a bomb is refused with the reason, and the app carries on. (Its own
   # directory: the purge-on-exit handler removed the first session's.)

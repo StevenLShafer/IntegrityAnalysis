@@ -1088,23 +1088,30 @@ app_server <- function(input, output, session) {
           # a single misread digit (3/8, 1/7) would silently corrupt a
           # fraud screen. ROW/COL "*" = every cell of the trial.
           if (identical(r$engine, "heuristic-ocr")) {
+            # A TIFF cannot take the AI route (the model does not accept
+            # it), so do not promise one (CodeRabbit on #145): point at
+            # the conversion that would work instead.
+            isTiff <- files$ext[i] %in% c("tif", "tiff")
+            aiAdvice <- if (isTiff)
+              paste("or save the picture as a JPG or PNG and re-upload",
+                    "with an Anthropic API key for the higher-accuracy",
+                    "AI read (the model does not accept TIFF)")
+            else paste("or enter an Anthropic API key above and re-upload",
+                       "for the higher-accuracy AI read")
             outputComments(paste0(
               files$name[i],
               if (files$ext[i] %in% .ppImageExts) ": the picture was read by "
               else ": the table page is a scanned image and was read by ",
               "optical character recognition. The whole ",
               "table is shaded cyan - OCR can misread digits, so ",
-              "verify every value against the manuscript, or enter an ",
-              "Anthropic API key above and re-upload for the ",
-              "higher-accuracy AI read."))
+              "verify every value against the manuscript, ", aiAdvice, "."))
             derived <- rbind(derived, data.frame(
               ROW = "*", COL = "*", KIND = "ocr",
               NOTE = paste("this table was read by optical character",
                            "recognition from a scanned page. OCR can",
                            "misread digits (3 vs 8, 1 vs 7) - verify",
-                           "every value against the manuscript, or",
-                           "enter an API key for the higher-accuracy",
-                           "AI read"),
+                           "every value against the manuscript,",
+                           aiAdvice),
               stringsAsFactors = FALSE))
           }
           frames[[length(frames) + 1]] <-

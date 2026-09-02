@@ -316,7 +316,16 @@ claudeAvailable <- function() {
 # lapply() in .ppClaudeRequestBody - attributes on a character VECTOR do
 # not reach its elements.
 .ppImageFileB64 <- function(path) {
-  dims <- .ppImageDims(path)
+  # The same preflight the engine runs, HERE, because ai = "always" and a
+  # direct parseBaselineTableAI() call never pass through the engine
+  # (CodeRabbit on #145): no image's bytes are read for the model until
+  # its header has passed .ppImageOK(). tools/securityCheck.R checks the
+  # order inside this function.
+  ok <- .ppImageOK(path)
+  if (!isTRUE(ok))
+    stop("Refused to read ", basename(path), ": ", attr(ok, "reason"), ".",
+         call. = FALSE)
+  dims <- attr(ok, "dims")
   type <- switch(dims$format %||% "", jpeg = "image/jpeg", png = "image/png",
                  NULL)
   if (is.null(type))
@@ -332,8 +341,9 @@ claudeAvailable <- function() {
 # 8000 px a side; a TIFF has no converter here (no ImageMagick, by
 # design - see utils.R), so it stays with local OCR.
 .ppImageAiRefusal <- function(path) {
-  dims <- .ppImageDims(path)
-  if (is.null(dims)) return(NULL)            # the engine will refuse it
+  ok <- .ppImageOK(path)
+  if (!isTRUE(ok)) return(paste0("Refused to read the image: ", attr(ok, "reason")))
+  dims <- attr(ok, "dims")
   if (dims$format == "tiff")
     return("The AI assist accepts JPEG and PNG images, not TIFF")
   if (file.size(path) > 4.5e6)
