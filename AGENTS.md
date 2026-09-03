@@ -337,12 +337,25 @@ the assertion or test that would catch its regression, and that
 assertion must be verified to FAIL on a deliberate break before it is
 believed.
 
+**A new input format is screened twice.** Every format the app or the
+API reads is a decoder on hostile bytes, so a change that adds one (the
+picture route, PR #145, 2026-09-02) is screened at the feature commit,
+its findings fixed and pinned, and then **screened again on the fix
+commits**, because the fixes rewrite exactly the code the first screen
+judged. #145's second screen found two more hardening items in the
+rewritten TIFF header parser that the first could not have seen. The
+tripwire runs on every push in between, but it only pins properties
+someone has already thought of. The same rule applies to a new
+subprocess launcher (PR #147) and to any change in `aiFallback.R`.
+
 **Scheduling:** nightly at 21:00, but change-gated. `securityScreen.ps1`
 compares HEAD against the last screened commit in
 `tools/securityScreen.ledger` and does nothing unless the watched
 surface moved; a screen of an unchanged tree costs tokens and produces
-noise. The ledger advances only after a report is actually written, so
-a screen that dies leaves its range unclaimed for the next run. Reports
+noise. The ledger advances only after a report is actually written AND
+the model call succeeded (a "529 Overloaded" printed as the report's
+body once advanced it, PR #148), so a screen that dies leaves its range
+unclaimed for the next run. Reports
 land in `docs/security-screens/`. **The screen never patches** - it
 reads and reports, and what to do about a finding stays a decision made
 with the whole system in view.
