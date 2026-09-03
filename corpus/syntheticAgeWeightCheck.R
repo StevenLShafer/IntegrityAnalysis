@@ -52,9 +52,19 @@
 # Usage:                                                                   #
 #   Rscript corpus/syntheticAgeWeightCheck.R [outDir] [trialsPerCell]      #
 #                                            [mcReps] [reportDecimals]     #
+#                                            [sex]                         #
 #     reportDecimals  comma-separated, default "0,1,2" - the integer case  #
 #                     is where the single-row test broke both methods, so  #
 #                     it is in the default sweep this time.                #
+#     sex             "1" adds a THIRD row (Steve, 2026-09-03, before the  #
+#                     email to Barnett): SEX, categorical, evenly divided  #
+#                     in the population, each participant's sex drawn      #
+#                     independently of age and weight and the counts per   #
+#                     arm reported as MALE / FEMALE. A count is exact, so  #
+#                     the decimals sweep does not touch this row itself;   #
+#                     what changes is the trial-level tests, which now     #
+#                     combine three statistics. Output goes to             #
+#                     syntheticAgeWeightSex.csv. Default "0": two rows.    #
 #   INTEGRITY_SNAPSHOT_LIB  an installed snapshot library; the workers     #
 #                     load the installed package, never a live tree.       #
 ############################################################################
@@ -89,11 +99,13 @@ WEIGHT_SD   <- 18
 ARM_NS      <- c(20L, 100L, 500L, 1000L)
 REPORT      <- if (length(args) >= 4)
   as.integer(strsplit(args[4], ",")[[1]]) else c(0L, 1L, 2L)
+SEX         <- length(args) >= 5 && args[5] == "1"
 
-cat("synthetic age + weight check\n")
+cat("synthetic age + weight", if (SEX) "+ sex", "check\n")
 cat("  age    ~ Normal(", AGE_MEAN, ",", AGE_SD, "), rounded to integer years\n")
 cat("  weight ~ Normal(", WEIGHT_MEAN, ",", WEIGHT_SD, "), rounded to integer kg\n")
-cat("  the two are independent; arms per trial: 2, equal size\n")
+if (SEX) cat("  sex    ~ Bernoulli(0.5), reported as MALE / FEMALE counts per arm\n")
+cat("  the variables are independent; arms per trial: 2, equal size\n")
 cat("  trials per cell:", nPer, "\n")
 cat("  Monte Carlo replicates in P_Calc:", mcReps, "\n")
 cat("  reported decimals swept:", paste(REPORT, collapse = ", "), "\n\n")
@@ -117,6 +129,7 @@ oneTrial <- function(spec) {
   # between the arms to find, in either row.
   age <- round(stats::rnorm(2 * n, AGE_MEAN, AGE_SD))
   wt  <- round(stats::rnorm(2 * n, WEIGHT_MEAN, WEIGHT_SD))
+  sex <- if (SEX) stats::rbinom(2 * n, 1, 0.5)   # 1 = male, evenly divided
   g   <- sample(rep(1:2, each = n))
   arm <- function(x) c(mean(x[g == 1]), mean(x[g == 2]))
   arms <- function(x) c(stats::sd(x[g == 1]), stats::sd(x[g == 2]))
@@ -127,34 +140,54 @@ oneTrial <- function(spec) {
     SD   = round(c(arms(age), arms(wt)), rp),
     SE = NA_real_, ROUND_MEAN = rp, ROUND_DISPERSION = rp,
     ROUND_OBSERVATION = 0L, stringsAsFactors = FALSE)
+  catNames <- NULL
+  if (SEX) {
+    # the categorical row, laid out as validateData() lays one out: no N,
+    # mean or SD, the counts per arm in the category columns, rounding NA
+    males <- c(sum(sex[g == 1]), sum(sex[g == 2]))
+    DATA$MALE <- NA_real_; DATA$FEMALE <- NA_real_
+    DATA[c("ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION")] <-
+      lapply(DATA[c("ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION")], as.numeric)
+    DATA <- rbind(DATA, data.frame(
+      TRIAL = id, ROW = "Sex", N = NA_real_, MEAN = NA_real_, SD = NA_real_,
+      SE = NA_real_, ROUND_MEAN = NA_real_, ROUND_DISPERSION = NA_real_,
+      ROUND_OBSERVATION = NA_real_, MALE = males, FEMALE = n - males,
+      stringsAsFactors = FALSE))
+    catNames <- c("MALE", "FEMALE")
+  }
 
   ours <- tryCatch({
     set.seed(id); dqrng::dqset.seed(id)
-    utils::capture.output(pp <- IntegrityAnalysis:::P_Calc(id, DATA, NULL,
+    utils::capture.output(pp <- IntegrityAnalysis:::P_Calc(id, DATA, catNames,
                                                            mcReps))
     pick <- function(row) {
       r <- pp[!is.na(pp$ROW) & pp$ROW == row, , drop = FALSE]
       if (nrow(r)) pNum(r$P[1]) else NA_real_
     }
-    c(age = pick("Age"), weight = pick("Weight"), trial = pick("Summary"))
-  }, error = function(e) c(age = NA_real_, weight = NA_real_, trial = NA_real_))
+    c(age = pick("Age"), weight = pick("Weight"),
+      sex = if (SEX) pick("Sex") else NA_real_, trial = pick("Summary"))
+  }, error = function(e) c(age = NA_real_, weight = NA_real_, sex = NA_real_,
+                           trial = NA_real_))
 
-  ts <- barnettTStats(DATA, CategoryNames = character(0))
+  ts <- barnettTStats(DATA, CategoryNames = if (SEX) catNames else character(0))
   tOf <- function(row) {
     r <- ts[ts$ROW == row, , drop = FALSE]
     if (nrow(r)) r$t[1] else NA_real_
   }
-  tA <- tOf("Age"); tW <- tOf("Weight")
+  tA <- tOf("Age"); tW <- tOf("Weight"); tS <- if (SEX) tOf("Sex") else NA_real_
   # Barnett's t is built with n1 + n2 - 2; his MODEL is handed n1 + n2 - 1.
   # The uniformity of the two-sided p is a statement about the statistic,
-  # so it uses the statistic's own degrees of freedom.
+  # so it uses the statistic's own degrees of freedom. The categorical t
+  # (D'Agostino's pooled-proportion form) is treated the same way.
   tail2 <- function(tv) if (is.finite(tv)) 2 * stats::pt(-abs(tv), 2 * n - 2) else NA_real_
   bd <- tryCatch(barnettDispersion(ts), error = function(e) NULL)
 
   data.frame(n = n, rep = rp,
              ourAge = ours[["age"]], ourWeight = ours[["weight"]],
-             ourTrial = ours[["trial"]],
-             tAge = tA, tWeight = tW, bAge = tail2(tA), bWeight = tail2(tW),
+             ourSex = ours[["sex"]], ourTrial = ours[["trial"]],
+             tAge = tA, tWeight = tW, tSex = tS,
+             bAge = tail2(tA), bWeight = tail2(tW), bSex = tail2(tS),
+             nStat = if (is.null(bd)) NA_integer_ else bd$nStat,
              bDispersed = if (is.null(bd)) NA_real_ else bd$pDispersed,
              bEpsilon   = if (is.null(bd)) NA_real_ else bd$epsilon,
              bDirection = if (is.null(bd)) NA_character_ else bd$direction,
@@ -168,7 +201,7 @@ oneTrial <- function(spec) {
 # position, so a resumed run seeds every trial exactly as a single run
 # would have.
 dir.create(outDir, showWarnings = FALSE, recursive = TRUE)
-outCsv <- file.path(outDir, "syntheticAgeWeight.csv")
+outCsv <- file.path(outDir, if (SEX) "syntheticAgeWeightSex.csv" else "syntheticAgeWeight.csv")
 done <- if (file.exists(outCsv)) utils::read.csv(outCsv, stringsAsFactors = FALSE) else NULL
 cat("running", nrow(cells) * nPer, "trials in", nrow(cells), "cells\n")
 t0 <- Sys.time()
@@ -187,7 +220,7 @@ for (i in seq_len(nrow(cells))) {
   res <- iaParallel(specs, function(s)
            tryCatch(oneTrial(s), error = function(e) NULL),
          export = c("oneTrial", "pNum", "AGE_MEAN", "AGE_SD",
-                    "WEIGHT_MEAN", "WEIGHT_SD", "mcReps"),
+                    "WEIGHT_MEAN", "WEIGHT_SD", "mcReps", "SEX"),
          seed = 20260903L + i)
   res <- do.call(rbind, Filter(Negate(is.null), res))
   utils::write.table(res, outCsv, sep = ",", row.names = FALSE,
@@ -230,10 +263,12 @@ for (rp in REPORT) {
     cat("\nN =", n, "per arm\n")
     show("ours: age",     s$ourAge)
     show("ours: weight",  s$ourWeight)
+    if (SEX) show("ours: sex", s$ourSex)
     show("ours: trial",   s$ourTrial)
     show("Barnett: age",    s$bAge)
     show("Barnett: weight", s$bWeight)
-    for (v in c("tAge", "tWeight")) {
+    if (SEX) show("Barnett: sex", s$bSex)
+    for (v in c("tAge", "tWeight", if (SEX) "tSex")) {
       tt <- s[[v]][is.finite(s[[v]])]
       cat(sprintf("  t (%s): SD=%.4f (1 expected)  %%|t|>1.96=%5.2f (5 expected)  %%t==0=%5.2f\n",
                   sub("^t", "", v), stats::sd(tt), 100 * mean(abs(tt) > 1.959964),
@@ -247,4 +282,4 @@ for (rp in REPORT) {
                 sum(fl & s$bDirection %in% "over-dispersed")))
   }
 }
-cat("\nwritten:", file.path(outDir, "syntheticAgeWeight.csv"), "\n")
+cat("\nwritten:", outCsv, "\n")
