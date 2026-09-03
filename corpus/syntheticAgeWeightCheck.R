@@ -56,6 +56,10 @@
 #     reportDecimals  comma-separated, default "0,1,2" - the integer case  #
 #                     is where the single-row test broke both methods, so  #
 #                     it is in the default sweep this time.                #
+#     share           "k/n": run the k-th of n interleaved shares of the   #
+#                     cells (for splitting one sweep across machines);     #
+#                     default "1/1". Concatenate the shares' CSVs, then    #
+#                     run once more with "1/1" to report. Comes after sex. #
 #     sex             "1" adds a THIRD row (Steve, 2026-09-03, before the  #
 #                     email to Barnett): SEX, categorical, evenly divided  #
 #                     in the population, each participant's sex drawn      #
@@ -100,6 +104,17 @@ ARM_NS      <- c(20L, 100L, 500L, 1000L)
 REPORT      <- if (length(args) >= 4)
   as.integer(strsplit(args[4], ",")[[1]]) else c(0L, 1L, 2L)
 SEX         <- length(args) >= 5 && args[5] == "1"
+# Which cells THIS process runs, as "k/n": the k-th of n interleaved
+# shares of the cell list (default "1/1", every cell). The trials are
+# independent and every cell writes its own rows with its own seed, so the
+# twelve cells can run on three machines at once and the CSVs concatenate
+# (Steve, 2026-09-03: "the simulations are intrinsically parallel ...
+# although they would have to be brought back together for the final p
+# value determinations"). The report at the end reads whatever the CSV
+# holds, so run it once more with "1/1" after the shares are merged - it
+# then skips every cell and only reports.
+SHARE       <- if (length(args) >= 6) as.integer(strsplit(args[6], "/")[[1]]) else c(1L, 1L)
+stopifnot(length(SHARE) == 2L, SHARE[1] >= 1L, SHARE[1] <= SHARE[2])
 
 cat("synthetic age + weight", if (SEX) "+ sex", "check\n")
 cat("  age    ~ Normal(", AGE_MEAN, ",", AGE_SD, "), rounded to integer years\n")
@@ -112,6 +127,13 @@ cat("  reported decimals swept:", paste(REPORT, collapse = ", "), "\n\n")
 
 cells <- expand.grid(n = ARM_NS, rep = REPORT)
 cells <- cells[order(cells$rep, cells$n), ]
+# the cell's position in the FULL list fixes its trial ids and its seed,
+# so a share runs exactly the cells a single run would have, no more
+cells$pos <- seq_len(nrow(cells))
+mine  <- ((cells$pos - 1L) %% SHARE[2]) + 1L == SHARE[1]
+if (SHARE[2] > 1L)
+  cat("  share", SHARE[1], "of", SHARE[2], ": cells",
+      paste(sprintf("N=%d/rep=%d", cells$n[mine], cells$rep[mine]), collapse = ", "), "\n")
 
 # A displayed p of "<0.0001" is P_Calc's licensed claim, not a number;
 # under the null it should occur in about one trial in ten thousand. It
@@ -206,6 +228,7 @@ done <- if (file.exists(outCsv)) utils::read.csv(outCsv, stringsAsFactors = FALS
 cat("running", nrow(cells) * nPer, "trials in", nrow(cells), "cells\n")
 t0 <- Sys.time()
 for (i in seq_len(nrow(cells))) {
+  if (!mine[i]) next
   n <- cells$n[i]; rp <- cells$rep[i]
   if (!is.null(done) && sum(done$n == n & done$rep == rp) >= nPer) {
     cat(sprintf("  cell N=%d rep=%d: already in %s, skipped\n", n, rp, basename(outCsv)))
