@@ -297,7 +297,28 @@ try {
   # even if a finding tempts it to, which is the point (see the
   # iatrogenic note in this file's header).
   $out = $prompt | & $claudeExe -p --permission-mode plan 2>&1
+  $rc  = $LASTEXITCODE
   Add-Content -Path $report -Value $out -Encoding utf8
+  # A failed model call is not an exception here: the CLI prints the
+  # error as ordinary text ("API Error: 529 Overloaded ...") and exits
+  # non-zero, and the pipeline above swallows both. On 2026-09-03 that
+  # produced a report whose whole body was one such line - and the
+  # ledger advanced past the range as if it had been read. So the call
+  # is judged before the ledger moves: a non-zero exit, an empty body,
+  # or a body that begins with the CLI's error prefix is a screen that
+  # did not happen, and the range stays unclaimed for the next run.
+  # The prefix test looks at the START of the whole body only: a real
+  # report that quotes "API Error" on some later line is still a report
+  # (CodeRabbit on #148).
+  $body = (@($out) | ForEach-Object { "$_" }) -join "`n"
+  $failed = ($rc -ne 0) -or ($body.Trim().Length -eq 0) -or
+            ($body.TrimStart() -match '^API Error\b')
+  if ($failed) {
+    Say "SCREEN FAILED (exit $rc): the model call returned no screen"
+    Say ("  " + ($body.Trim() -split "`n")[0])
+    Add-Content -Path $report -Value "**The screen did not complete.** ledger NOT advanced; rerun." -Encoding utf8
+    exit 1
+  }
   Say "report written: $report"
 } catch {
   Say "SCREEN FAILED: $_"
@@ -306,8 +327,9 @@ try {
 }
 
 # --- advance the ledger --------------------------------------------------
-# Only after a report exists. If the screen died, the next run rescreens
-# the same range rather than silently skipping it.
+# Only after a report exists AND the model call succeeded. If the screen
+# died, the next run rescreens the same range rather than silently
+# skipping it.
 Add-Content $ledgerFile ("{0}  {1}  {2}" -f $head, (Get-Date -Format 's'),
                          (Split-Path -Leaf $report))
 Say "ledger advanced to $head"
