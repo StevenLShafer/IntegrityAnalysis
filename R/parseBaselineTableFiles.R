@@ -150,12 +150,29 @@ parseBaselineTableFiles <- function(files,
       Sys.setenv(INTEGRITY_CHILD_APIKEY = childKey)
       on.exit(Sys.unsetenv("INTEGRITY_CHILD_APIKEY"), add = TRUE)
     }
+    # THE PARENT OWNS THE CHILD'S TEMPORARY DIRECTORY (screen F4,
+    # 2026-09-02). A child killed at the timeout never runs its on.exit()
+    # handlers or R's own session cleanup, so its tempdir survived holding
+    # full-page renders of the manuscript (and, with the Table Transformer
+    # seam, an XML of every cell) - a retention-contract gap. TMPDIR/TMP/
+    # TEMP point the child at a directory this process created and removes
+    # whatever the child's fate. INTEGRITY_PARSE_BUDGET tells the child how
+    # long it has, so the model runner can take at most half of it (F3).
+    childTmp <- tempfile("child"); dir.create(childTmp)
+    oldEnv <- Sys.getenv(c("TMPDIR", "TMP", "TEMP"), unset = NA)
+    Sys.setenv(TMPDIR = childTmp, TMP = childTmp, TEMP = childTmp,
+               INTEGRITY_PARSE_BUDGET = as.character(timeout))
     status <- tryCatch(
       system2(rscript,
               c("--vanilla", shQuote(script), shQuote(optsRds),
                 shQuote(outRds), shQuote(f)),
               stdout = FALSE, stderr = FALSE, timeout = timeout),
       warning = function(w) 124L)   # system2 warns when it kills on timeout
+    for (v in names(oldEnv))
+      if (is.na(oldEnv[[v]])) Sys.unsetenv(v)
+      else do.call(Sys.setenv, as.list(stats::setNames(oldEnv[v], v)))
+    Sys.unsetenv("INTEGRITY_PARSE_BUDGET")
+    unlink(childTmp, recursive = TRUE, force = TRUE)
     secs <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
 
     res <- if (file.exists(outRds)) readRDS(outRds) else NULL

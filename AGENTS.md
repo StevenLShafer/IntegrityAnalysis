@@ -262,14 +262,23 @@ The standing conclusions of the 2026-08-20 full-repository review:
   pdfium and pdfminer are two more decoders on hostile bytes, so it is a
   subprocess under an OS timeout, never the worker. Its properties are
   reviewed in `tools/securityCheck.R` group 1 and verified to trip on a
-  break: interpreter and script from configuration, never from a
-  request; every argument `shQuote()`d and every path ours; offline
-  (no `--allow-download`); output read as XML data. It is absent on
-  shinyapps.io (no Python there), so the deployed app's surface did not
-  change; a Docker/API image that sets `INTEGRITY_TATR_PYTHON` takes it
-  on knowingly. The XML the model returns is data: nothing in it is
-  evaluated, and the model never decides which table is the baseline
-  table.
+  break: interpreter and script from configuration ONLY
+  (`INTEGRITY_TATR_PYTHON`, `INTEGRITY_TATR_SCRIPT`/`INTEGRITY_ROOT`) -
+  no home-directory or cwd discovery, so a host provisioned for corpus
+  work does not start serving uploads through the model by accident;
+  every argument `shQuote()`d and every path ours (the upload is copied
+  to a fixed name first); offline (no `--allow-download`); the process's
+  address space capped (`--max-mem-mb`); its budget at most half the
+  parse child's, falling through to plain OCR on overrun; output read
+  as XML data. Both rasterisers refuse pages over 30 inches or 20
+  megapixels before rendering, and the parent now owns and removes the
+  child's temporary directory whatever the child's fate. All from the
+  2026-09-02 screen of PR #147 (`docs/security-screens/log.md`). It is
+  absent on shinyapps.io (no Python there), so the deployed app's
+  surface did not change; a Docker/API image that sets
+  `INTEGRITY_TATR_PYTHON` takes it on knowingly. The XML the model
+  returns is data: nothing in it is evaluated, and the model never
+  decides which table is the baseline table.
 
 ### Two instruments, two stopping rules (added 2026-08-27)
 

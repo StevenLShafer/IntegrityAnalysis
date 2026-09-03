@@ -196,9 +196,67 @@ test_that("with the text engine happy, TATR is consulted only on request", {
   expect_identical(calls, 0L)
 })
 
-test_that("the runner is inert without the pegged Python", {
-  withr::local_envvar(INTEGRITY_TATR_PYTHON = file.path(tempdir(), "no-such-python"))
-  testthat::local_mocked_bindings(.ppTatrPython = function() "")
+test_that("the runner is inert without the pegged Python, and discovers nothing", {
+  # configuration only (screen F2): no home-directory or cwd discovery
+  withr::local_envvar(INTEGRITY_TATR_PYTHON = NA, INTEGRITY_TATR_SCRIPT = NA,
+                      INTEGRITY_ROOT = NA)
+  expect_identical(.ppTatrPython(), "")
+  expect_identical(.ppTatrScript(), "")
   expect_false(.ppTatrAvailable())
   expect_null(.ppTatrRun(syntheticPdfMeanSD(), quiet = TRUE))
+  withr::local_envvar(INTEGRITY_TATR_PYTHON = file.path(tempdir(), "no-such-python"))
+  expect_identical(.ppTatrPython(), "")
+})
+
+test_that("the runner copies the upload under a fixed name and keeps to half the child's budget", {
+  # Rscript stands in for the pegged Python: a fake tatrTables that checks
+  # what it was handed and writes an XML where the runner will look
+  fake <- tempfile(fileext = ".R")
+  writeLines(c(
+    'a <- commandArgs(trailingOnly = TRUE)',
+    'lst <- a[which(a == "--list") + 1]; out <- a[which(a == "--out") + 1]',
+    'stopifnot("--write-empty" %in% a, "--max-mem-mb" %in% a)',
+    'row <- strsplit(readLines(lst), ",")[[1]]',
+    'stopifnot(row[1] == "upload", basename(row[2]) == "upload.pdf", file.exists(row[2]))',
+    'if (nzchar(Sys.getenv("FAKE_TATR_SLEEP"))) Sys.sleep(as.numeric(Sys.getenv("FAKE_TATR_SLEEP")))',
+    'dir.create(out, showWarnings = FALSE)',
+    'writeLines('<?xml version="1.0"?><tatr-tables render-dpi="150"></tatr-tables>', file.path(out, "upload.tatr.xml"))'),
+    fake)
+  rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+  withr::local_envvar(INTEGRITY_TATR_PYTHON = rscript, INTEGRITY_TATR_SCRIPT = fake,
+                      INTEGRITY_PARSE_BUDGET = NA, FAKE_TATR_SLEEP = NA)
+  expect_true(.ppTatrAvailable())
+  src <- file.path(tempdir(), "Table 1, revised.pdf")   # the F5 filename
+  file.copy(syntheticPdfMeanSD(), src, overwrite = TRUE)
+  xml <- .ppTatrRun(src, quiet = TRUE)
+  expect_false(is.null(xml))
+  expect_identical(basename(xml), "upload.tatr.xml")
+  expect_length(.ppReadTatr(xml), 0L)
+  # the budget: half of the child's, and a run past it returns NULL
+  withr::local_envvar(INTEGRITY_PARSE_BUDGET = "4", FAKE_TATR_SLEEP = "6")
+  expect_null(.ppTatrRun(src, quiet = TRUE))
+})
+
+test_that("a page too large to rasterise is skipped before OCR, not rendered", {
+  skip_if_not_installed("tesseract")
+  # a 200 x 200 inch page: 3.6 gigapixels at 300 dpi, which is exactly the
+  # bitmap the cap exists to refuse (screen F1)
+  big <- file.path(tempdir(), "huge.pdf")
+  grDevices::pdf(big, width = 200, height = 200)
+  graphics::plot.new(); graphics::text(0.5, 0.5, "Table 1")
+  grDevices::dev.off()
+  expect_length(.ppOcrData(big), 0L)
+  expect_identical(.ppOcrPages(big, want = "text"), character(0))
+  # an ordinary page is untouched
+  expect_true(nrow(.ppOcrData(syntheticPdfMeanSD())[[1]]) > 10)
+})
+
+test_that("the batch runner leaves no child temporary directory behind", {
+  before <- list.files(tempdir(), pattern = "^child")
+  res <- parseBaselineTableFiles(syntheticPdfMeanSD(), ai = "never", timeout = 60, quiet = TRUE)
+  expect_true(res$ok[1])
+  after <- list.files(tempdir(), pattern = "^child")
+  expect_identical(setdiff(after, before), character(0))
+  # and the parent's own environment is restored
+  expect_false(nzchar(Sys.getenv("INTEGRITY_PARSE_BUDGET")))
 })

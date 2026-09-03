@@ -83,6 +83,16 @@ MIN_NUMERIC = 0.15        # share of filled cells that carry a number
 MAX_MEDLEN = 24           # median characters per filled cell
 MAX_LEADERS = 0.20        # share of cells carrying "......" dot leaders
 
+# BOUNDS AHEAD OF THE RASTERISER AND THE WORD LOOP (security screen F1 and
+# F3, 2026-09-02). A PDF may declare a 200 x 200 inch page - 30000 x 30000
+# px here - and a hostile page can carry tens of thousands of tiny words,
+# which makes assign_words() quadratic. Neither is a journal article: a
+# page is under 30 inches on a side and a few megapixels, with about a
+# thousand words. Pages beyond either bound are skipped and counted.
+MAX_PAGE_INCHES = 30
+MAX_PAGE_PIXELS = 20_000_000
+MAX_WORDS_PER_PAGE = 5000
+
 SCALE = RENDER_DPI / 72.0  # PDF points -> rendered pixels
 
 SCHEMA_VERSION = "1"
@@ -172,6 +182,12 @@ def render(pdf_path: str, n_pages: int):
     doc = pdfium.PdfDocument(pdf_path)
     try:
         for i in range(min(len(doc), n_pages)):
+            w, h = doc[i].get_size()          # points
+            if (w > MAX_PAGE_INCHES * 72 or h > MAX_PAGE_INCHES * 72
+                    or (w * SCALE) * (h * SCALE) > MAX_PAGE_PIXELS):
+                print(f"page {i + 1}: {w / 72:.0f} x {h / 72:.0f} in - over the "
+                      f"raster bound, skipped", flush=True)
+                continue
             yield i, doc[i].render(scale=SCALE).to_pil().convert("RGB")
     finally:
         doc.close()
@@ -297,7 +313,12 @@ def page_words(page):
     the renderer uses, so this is a pure scale with no flip.
     """
     out = []
-    for w in page.extract_words(use_text_flow=False, keep_blank_chars=False):
+    words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    if len(words) > MAX_WORDS_PER_PAGE:
+        print(f"page {page.page_number}: {len(words)} words - over the word "
+              f"bound, text layer ignored", flush=True)
+        return out
+    for w in words:
         out.append({"text": w["text"],
                     "box": Box(w["x0"] * SCALE, w["top"] * SCALE,
                                w["x1"] * SCALE, w["bottom"] * SCALE)})
@@ -476,6 +497,10 @@ def main():
                     help="reject if the median filled cell is longer than this")
     ap.add_argument("--allow-download", action="store_true",
                     help="permit fetching weights; default is offline")
+    ap.add_argument("--max-mem-mb", type=int, default=0,
+                    help="cap this process's address space (Linux; RLIMIT_AS) "
+                         "- the OS timeout the caller holds bounds time, not "
+                         "memory (security screen F1, 2026-09-02)")
     ap.add_argument("--write-empty", action="store_true",
                     help="also write tables the gate rejected whose cells are "
                          "ALL empty - a page with no text layer, where the "
@@ -485,6 +510,13 @@ def main():
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
+    if args.max_mem_mb > 0:
+        try:
+            import resource
+            cap = args.max_mem_mb << 20
+            resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+        except (ImportError, ValueError, OSError) as exc:   # Windows, or a cap below the current use
+            print(f"memory cap not applied: {exc}", flush=True)
     torch.set_grad_enabled(False)
     ############################################################################
     # THREADS: ONE PER WORKER BY DEFAULT, AND THAT DEFAULT IS THE WHOLE POINT.

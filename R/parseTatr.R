@@ -42,8 +42,11 @@
 # library versions (python/tatr/README.md); it is available where
 # tools/tatrProvision.sh has been run (the Linux nodes, a Docker image) and
 # absent on shinyapps.io. So this seam is a RESCUE TIER that engages only
-# when a TATR XML is supplied, or the runner finds its Python (see
-# .ppTatrPython): with neither, parseBaselineTable() behaves exactly as
+# when a TATR XML is supplied, or the deployment has CONFIGURED the model
+# (INTEGRITY_TATR_PYTHON; see .ppTatrPython - there is deliberately no
+# home-directory discovery, so a host provisioned for corpus work does
+# not start serving uploads through the model by accident: screen F2,
+# 2026-09-02). With neither, parseBaselineTable() behaves exactly as
 # before. Deterministic and offline either way - the weights load with
 # local_files_only and same input gives same output.
 #
@@ -356,44 +359,63 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
 # Running the model
 # ---------------------------------------------------------------------------
 
-# The pegged Python (tools/tatrProvision.sh installs ~/tatrenv). Absent -
-# shinyapps.io, a developer machine without torch - the seam stays out of
-# the way and parseBaselineTable() behaves exactly as before.
+# The pegged Python (tools/tatrProvision.sh installs it), FROM CONFIGURATION
+# ONLY: INTEGRITY_TATR_PYTHON names the interpreter and INTEGRITY_TATR_SCRIPT
+# (or INTEGRITY_ROOT, the repo checkout) names the script. The first version
+# also looked in ~/tatrenv and the working directory, which meant any host
+# provisioned for corpus work would have served hostile uploads through
+# pdfium, pdfminer and a 1 GB torch process without anyone deciding so
+# (screen F2, 2026-09-02). Absent - shinyapps.io, a developer machine - the
+# seam stays out of the way. Pinned by tools/securityCheck.R.
 .ppTatrPython <- function() {
   p <- Sys.getenv("INTEGRITY_TATR_PYTHON", "")
-  if (nzchar(p) && file.exists(p)) return(p)
-  for (cand in path.expand(c("~/tatrenv/bin/python", "~/tatrenv/Scripts/python.exe")))
-    if (file.exists(cand)) return(cand)
-  ""
+  if (nzchar(p) && file.exists(p)) p else ""
 }
 .ppTatrScript <- function() {
   s <- Sys.getenv("INTEGRITY_TATR_SCRIPT", "")
   if (nzchar(s) && file.exists(s)) return(s)
-  for (cand in c(file.path(getwd(), "python", "tatr", "tatrTables.py"),
-                 path.expand("~/IntegrityAnalysis/python/tatr/tatrTables.py")))
-    if (file.exists(cand)) return(cand)
-  ""
+  root <- Sys.getenv("INTEGRITY_ROOT", "")
+  s <- if (nzchar(root)) file.path(root, "python", "tatr", "tatrTables.py") else ""
+  if (nzchar(s) && file.exists(s)) s else ""
 }
 .ppTatrAvailable <- function() nzchar(.ppTatrPython()) && nzchar(.ppTatrScript())
 
 # Run the model over ONE PDF in a subprocess under an OS timeout and return
 # the path of its XML, or NULL when it produced none (no table, a crash,
-# the timeout). Offline by construction: the weights load with
-# local_files_only, and --write-empty keeps the text-less geometry a
-# scanned page needs.
+# the timeout - and on a timeout the caller falls through to plain OCR).
+# Offline by construction: the weights load with local_files_only, and
+# --write-empty keeps the text-less geometry a scanned page needs.
+#
+# Three properties from the 2026-09-02 screen, each pinned by the tripwire:
+#   - the PDF is COPIED into the work directory under a fixed name, so the
+#     uploader's filename never reaches the list file or the process (a
+#     comma in "Table 1, revised.pdf" silently disabled the seam: F5);
+#   - the budget is at most HALF the parse child's own, read from
+#     INTEGRITY_PARSE_BUDGET which parseBaselineTableFiles() sets, so a slow
+#     model run cannot consume the whole child and take the OCR rescue with
+#     it (F3);
+#   - --max-mem-mb caps the Python process's address space (F1), which the
+#     OS timeout cannot do.
+.ppTatrMaxMemMb <- 8192L
 .ppTatrRun <- function(pdfFile, timeout = 600, quiet = FALSE) {
   py <- .ppTatrPython(); sc <- .ppTatrScript()
   if (!nzchar(py) || !nzchar(sc)) return(NULL)
+  budget <- suppressWarnings(as.numeric(Sys.getenv("INTEGRITY_PARSE_BUDGET", "")))
+  if (is.finite(budget) && budget > 0) timeout <- min(timeout, budget / 2)
   work <- tempfile("tatr"); dir.create(work)
   acc  <- "upload"
+  pdf  <- file.path(work, "upload.pdf")
+  if (!file.copy(pdfFile, pdf)) return(NULL)
   lst  <- file.path(work, "list.csv")
-  writeLines(paste0(acc, ",", normalizePath(pdfFile, winslash = "/")), lst)
+  writeLines(paste0(acc, ",", normalizePath(pdf, winslash = "/")), lst)
   out  <- file.path(work, "xml")
-  if (!quiet) message("Running the Table Transformer over ", basename(pdfFile), " ...")
+  if (!quiet) message("Running the Table Transformer over ", basename(pdfFile),
+                      " (", round(timeout), " s budget) ...")
   status <- tryCatch(
     system2(py, c(shQuote(sc), "--list", shQuote(lst), "--out", shQuote(out),
                   "--manifest", shQuote(file.path(work, "manifest.csv")),
-                  "--threads", "1", "--write-empty"),
+                  "--threads", "1", "--write-empty",
+                  "--max-mem-mb", as.character(.ppTatrMaxMemMb)),
             stdout = FALSE, stderr = FALSE, timeout = timeout),
     warning = function(w) 124L, error = function(e) 1L)
   xml <- file.path(out, paste0(acc, ".tatr.xml"))
