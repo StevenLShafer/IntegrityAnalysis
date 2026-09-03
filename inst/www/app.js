@@ -68,18 +68,22 @@ $(document).on('shiny:value', function(event) {
   });
   // The one forwarding step, shared by drop and paste: filter by the
   // picker's list, name what was refused, hand the rest to the input.
-  function forward(files) {
+  function forward(files, how) {
     var input = document.getElementById('upload');
     if (!input || !files || !files.length) return;
     var keep = new DataTransfer();
-    var rejected = [];
+    var rejected = [], taken = [];
     for (var i = 0; i < files.length; i++) {
-      if (ACCEPT.indexOf(extOf(files[i].name)) >= 0) keep.items.add(files[i]);
+      if (ACCEPT.indexOf(extOf(files[i].name)) >= 0) { keep.items.add(files[i]); taken.push(files[i].name); }
       else rejected.push(files[i].name);
     }
-    if (rejected.length && window.Shiny) {
-      Shiny.setInputValue('dropRejected',
-                          { names: rejected, nonce: Date.now() });
+    // Say what arrived and how, BEFORE the upload and the parse begin
+    // (Steve, 2026-09-03, after a paste that seemed to do nothing): the
+    // log's first line about a dropped or pasted file is its arrival,
+    // so a silence afterwards is the parser's, not the page's.
+    if (window.Shiny && (taken.length || rejected.length)) {
+      Shiny.setInputValue('dropReceived',
+                          { names: taken, rejected: rejected, how: how || 'dropped', nonce: Date.now() });
     }
     if (!keep.files.length) return;
     input.files = keep.files;
@@ -129,6 +133,6 @@ $(document).on('shiny:value', function(event) {
       var name = 'pasted-' + stamp + (images.length > 1 ? '-' + (j + 1) : '') + ext;
       files.push(new File([blob], name, { type: images[j].type }));
     }
-    forward(files);
+    forward(files, 'pasted');
   });
 })();

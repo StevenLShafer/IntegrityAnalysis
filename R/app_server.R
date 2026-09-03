@@ -739,20 +739,26 @@ app_server <- function(input, output, session) {
   observeEvent(input$upload,
     uploadPass(list(files = input$upload, stamp = Sys.time(), note = NULL)))
 
-  # Drag and drop (Steve, 2026-09-03). A file dropped anywhere on the page
-  # is handed by inst/www/app.js to the SAME file input as the Browse
-  # button, so it arrives here as input$upload and nothing above or below
-  # changes. The only new message is this one: the browser-side handler
-  # keeps back a dropped file whose extension the app does not accept
-  # (the picker's `accept` filters a dialog, not a drop) and reports its
-  # name, so the log says what happened instead of silently ignoring it.
+  # Drag and drop, and paste (Steve, 2026-09-03). A file dropped anywhere
+  # on the page, or a picture pasted onto it, is handed by inst/www/app.js
+  # to the SAME file input as the Browse button, so it arrives here as
+  # input$upload and nothing above or below changes. The only new message
+  # is this one, sent by the page BEFORE the upload begins: what arrived
+  # and by which door (a paste that seemed to do nothing needed the log to
+  # say whether the page had received anything at all), and any file the
+  # browser-side handler kept back because its extension is outside the
+  # accepted list (the picker's `accept` filters a dialog, not a drop).
   # The names are escaped by outputComments() like every other message.
-  observeEvent(input$dropRejected, {
-    nm <- as.character(unlist(input$dropRejected$names))
-    if (!length(nm)) return()
-    outputComments(paste0(
-      "Not opened: ", paste(nm, collapse = ", "),
-      " - dropped files must be csv, xls, xlsx, pdf, docx, xml, jpg, png, tif, or zip."))
+  observeEvent(input$dropReceived, {
+    ev  <- input$dropReceived
+    got <- as.character(unlist(ev$names)); bad <- as.character(unlist(ev$rejected))
+    how <- if (identical(ev$how, "pasted")) "Pasted" else "Dropped"
+    if (length(got))
+      outputComments(paste0(how, ": ", paste(got, collapse = ", "), " - reading it now."))
+    if (length(bad))
+      outputComments(paste0(
+        "Not opened: ", paste(bad, collapse = ", "),
+        " - ", tolower(how), " files must be csv, xls, xlsx, pdf, docx, xml, jpg, png, tif, or zip."))
   })
 
   observeEvent(
