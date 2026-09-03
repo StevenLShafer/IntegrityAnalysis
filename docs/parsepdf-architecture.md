@@ -102,6 +102,24 @@ promising ones.
   table being number 1; it penalises outcome vocabulary, unless the caption also says baseline.
 - A cross-reference inside a sentence ("as demonstrated in Table 3 B and C") is demoted, not
   discarded — it is still tried if nothing better parses.
+- **Typographic spaces are split at ingest** (2026-09-02). Springer sets "Table 1" + en space +
+  thin space + caption, and poppler splits words only on ordinary spaces, so the token after
+  "Table" arrived as `"1  Baseline"` — not a numeral — and no anchor matched: the real Table 1
+  never became a candidate and the parser fell back on cross-reference mentions.
+  `.ppSplitUnicodeSpaces()` (utils.R) splits such tokens on U+2000–U+200A, U+202F, U+205F and
+  U+3000, apportioning the word box by character; NBSP is deliberately left alone, being a
+  thousands separator in several journals.
+- **A side caption is split from the header row it shares a line with** (2026-09-02). Springer
+  prints the caption in a narrow margin column *left* of a full-width table, level with its
+  header, so the caption line also held the arm names and an `(n = 99)`; `.ppParseBlock()` starts
+  after the caption line, so that header — and arm 2's N — vanished, and every n (%) row was
+  skipped for want of it. `.ppSplitSideCaption()` (pageLayout.R) fires only on a strict geometry:
+  the anchor leads the line; a ≥ 25 pt gap follows a leading run spanning ≤ 30% of the band; no
+  second caption sits right of the gap; and the body lines below start *right* of the caption
+  column. That last test is what the corpus insisted on — without it the split fired on 207 of
+  1,865 articles and regressed 13, because "Table 1 ‹wide gap› Patient characteristics" with the
+  table running full width *under* it has the same gap. With it, measured on those 209 files:
+  200 identical, 1 gained, 1 improved, 0 regressions.
 
 ### 04b — Repairing the font encoding
 
