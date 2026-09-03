@@ -58,15 +58,64 @@
 # rather than the app.                                                     #
 ############################################################################
 
+# Bounds on a JATS submission (screen of PR #162, 2026-09-03). The
+# uploader is the author under investigation, and the XML route is the
+# one editorial systems will drive unattended.
+#   .ppJatsMaxBytes   on-disk ceiling. The corpus's 10,108 real JATS
+#                     files: median 99 KB, 99th percentile 239 KB, the
+#                     largest 3.5 MB - so 8 MiB refuses nothing real and
+#                     sits well under the API's 25 MiB request cap.
+#   .ppMaxCellSpan    the largest colspan / rowspan honoured. A single
+#                     <td colspan="100000000"> made a 1.5 GB matrix and a
+#                     4.5 GB child (screen F2). Real tables span a handful.
+#   .ppMaxTableCols   columns a table may have before it is not a baseline
+#                     table (the app's own column limit is 200).
+#   .ppMaxTableRows   rows kept per table.
+#   .ppMaxTableWraps  <table-wrap> elements materialised per document.
+.ppJatsMaxBytes  <- 8L * 1024L * 1024L
+.ppMaxCellSpan   <- 50L
+.ppMaxTableCols  <- 200L
+.ppMaxTableRows  <- 2000L
+.ppMaxTableWraps <- 100L
+
+# TRUE when a JATS file may be parsed; otherwise FALSE carrying a
+# "reason". Header-level, no parser involved: the on-disk size against
+# .ppJatsMaxBytes, and the gzip magic bytes 1f 8b refused by name.
+# WHY THE GZIP CHECK. libxml2's FILE reader opens every path through
+# zlib and inflates a gzip stream transparently whatever the file is
+# called, so a 389 KB gzip named .xml became 400 MB of XML and a parse
+# child past 15 GB (screen F1): the request cap sees bytes on the wire,
+# and this decoder expands them. The reader below parses BYTES, which
+# libxml2 never inflates; this gate names the refusal for the caller.
+.ppJatsOK <- function(file) {
+  no <- function(why) structure(FALSE, reason = why)
+  size <- file.size(file)
+  if (is.na(size) || size < 1) return(no("the file is empty or unreadable"))
+  if (size > .ppJatsMaxBytes)
+    return(no(sprintf("the file is %.1f MiB; a JATS article is read up to %d MiB",
+                      size / 2^20, .ppJatsMaxBytes %/% 2^20)))
+  head <- readBin(file, "raw", n = 2L)
+  if (length(head) == 2L && identical(head, as.raw(c(0x1f, 0x8b))))
+    return(no("the file is a gzip stream, not XML - decompress it first"))
+  TRUE
+}
+
 #' Read a JATS document with the safe parser options only.
 #'
-#' NOBLANKS is passed and nothing else. Never add HUGE, NOENT or
-#' DTDLOAD: see the header, and the tripwire in tools/securityCheck.R.
+#' NOBLANKS is passed and nothing else. Never add HUGE, NOENT, DTDLOAD,
+#' DTDVALID, DTDATTR or XINCLUDE: see the header, and the tripwire in
+#' tools/securityCheck.R. The document is parsed from BYTES read into
+#' memory, never from its path (see .ppJatsOK above for why).
 #' @noRd
 .ppJatsRead <- function(file) {
   if (!requireNamespace("xml2", quietly = TRUE))
     stop("Package 'xml2' is required: install.packages('xml2')")
-  doc <- tryCatch(xml2::read_xml(file, options = "NOBLANKS"),
+  ok <- .ppJatsOK(file)
+  if (!isTRUE(ok))
+    stop("Refused to read ", basename(file), ": ", attr(ok, "reason"), ".",
+         call. = FALSE)
+  bytes <- readBin(file, "raw", n = file.size(file))
+  doc <- tryCatch(xml2::read_xml(bytes, options = "NOBLANKS"),
                   error = function(e)
                     stop("Could not read ", file, " as XML: ",
                          conditionMessage(e), call. = FALSE))
@@ -98,6 +147,7 @@
   if (length(rows) == 0) return(NULL)
   out <- list()
   carry <- integer(0)          # per column: rows still occupied above
+  truncated <- FALSE           # a row hit .ppMaxTableCols (screen F2)
   for (tr in rows) {
     cells <- xml2::xml_find_all(tr, "./td|./th")
     line <- character(0)
@@ -114,6 +164,12 @@
       rs <- suppressWarnings(as.integer(xml2::xml_attr(cell, "rowspan")))
       if (is.na(cs) || cs < 1L) cs <- 1L
       if (is.na(rs) || rs < 1L) rs <- 1L
+      # Spans are the author's numbers: clamped, so no single attribute
+      # can size the matrix (screen 2026-09-03, F2)
+      cs <- min(cs, .ppMaxCellSpan); rs <- min(rs, .ppMaxCellSpan)
+      # ...and a row wider than any baseline table stops growing here,
+      # which makes the whole table not one this engine reads
+      if (col > .ppMaxTableCols) { truncated <- TRUE; break }
       line[col] <- txt
       if (cs > 1L) {
         repl <- if (grepl("(?i)n\\s*=\\s*\\d", txt, perl = TRUE)) txt else ""
@@ -135,9 +191,14 @@
     }
     line[is.na(line)] <- ""
     out[[length(out) + 1L]] <- line
+    if (length(out) >= .ppMaxTableRows) break     # rows kept per table
   }
   nc <- max(lengths(out))
   if (!is.finite(nc) || nc == 0) return(NULL)
+  # Wider than any baseline table: not a table this engine reads. The
+  # bound is what keeps the matrix below a fixed size whatever the spans
+  # said (F2 again: the caps above bound each row, this bounds the whole).
+  if (truncated || nc > .ppMaxTableCols) return(NULL)
   mat <- matrix("", nrow = length(out), ncol = nc)
   for (r in seq_along(out)) if (length(out[[r]])) mat[r, seq_along(out[[r]])] <- out[[r]]
   mat
@@ -148,6 +209,9 @@
 .ppJatsData <- function(file) {
   doc <- .ppJatsRead(file)
   tws <- xml2::xml_find_all(doc, "//table-wrap")
+  # Every <table-wrap> is materialised before candidates are ranked, so
+  # the count is capped here rather than by maxCandidates (screen F2)
+  if (length(tws) > .ppMaxTableWraps) tws <- tws[seq_len(.ppMaxTableWraps)]
   tables <- list()
   for (i in seq_along(tws)) {
     tw <- tws[[i]]

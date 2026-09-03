@@ -48,7 +48,16 @@ banned <- c("\\bsystem\\s*\\(",
             # rather than left to review.
             "[\"']HUGE[\"']",
             "[\"']NOENT[\"']",
-            "[\"']DTDLOAD[\"']")
+            "[\"']DTDLOAD[\"']",
+            # ...and the three the 2026-09-03 screen of PR #162 measured
+            # to be as dangerous: DTDVALID reads an external entity into
+            # the document exactly as NOENT does, DTDATTR fetches the
+            # external DTD (a server-side request to an author-chosen
+            # URL), XINCLUDE is banned on principle. DTDVALID is the one
+            # a publisher's DTD reference tempts someone to add.
+            "[\"']DTDVALID[\"']",
+            "[\"']DTDATTR[\"']",
+            "[\"']XINCLUDE[\"']")
 for (f in rFiles) {
   src <- srcOf(f)
   code <- sub("#.*$", "", src)          # comments may NAME the patterns
@@ -117,6 +126,40 @@ if (file.exists("R/parseTatr.R")) {
   obody <- if (length(op)) ut[op[1]:min(op[1] + 40, length(ut))] else character(0)
   if (!any(grepl("pdf_pagesize", obody, fixed = TRUE)) || !any(grepl("\\.ppRasterMaxPixels", obody)))
     note("R/utils.R: .ppOcrPages() rasterises pages without the size cap (screen F1)")
+}
+
+## 1b - the JATS reader parses bytes it has bounded ------------------------
+# Screen of PR #162 (2026-09-03): libxml2's FILE reader inflates a gzip
+# stream transparently, so a 389 KB upload named .xml became 400 MB of
+# XML and a 15 GB parse child; a single colspan="100000000" made a
+# 1.5 GB matrix. Pinned: the reader has exactly one read_xml() call, on
+# BYTES with NOBLANKS alone; the bytes are read only after .ppJatsOK()
+# has judged size and gzip magic; and both cell parsers clamp spans.
+if (file.exists("R/parseJats.R")) {
+  js <- sub("#.*$", "", srcOf("R/parseJats.R"))
+  calls <- grep("read_xml\\s*\\(", js)
+  if (length(calls) != 1L ||
+      !grepl("read_xml\\(bytes,\\s*options\\s*=\\s*\"NOBLANKS\"\\)", js[calls[1]]))
+    note(paste("R/parseJats.R: the JATS reader must call read_xml() exactly once,",
+               "on bytes, with options = \"NOBLANKS\" alone - a path argument lets",
+               "libxml2 inflate a gzip named .xml (screen of PR #162)"))
+  if (sum(grepl("options\\s*=", js)) != 1L)
+    note("R/parseJats.R: a second parser options= appeared - review it against the screen of PR #162")
+  # inside .ppJatsRead() itself (the gate function reads two magic bytes
+  # of its own, which is the point of it)
+  rd <- grep("^\\.ppJatsRead\\s*<-\\s*function", js)
+  nxt <- grep("^[A-Za-z.][A-Za-z0-9._]*\\s*<-\\s*function", js); nxt <- nxt[nxt > rd[1]]
+  body <- if (length(rd)) js[rd[1]:(if (length(nxt)) nxt[1] - 1L else length(js))] else character(0)
+  ok <- grep("\\.ppJatsOK\\s*\\(", body); rb <- grep("readBin\\s*\\(", body)
+  if (!length(body) || !length(ok) || !length(rb) || min(ok) > min(rb))
+    note("R/parseJats.R: .ppJatsRead() reads the bytes before .ppJatsOK() has bounded the file")
+  if (!any(grepl("min\\(cs,\\s*\\.ppMaxCellSpan\\)", js)))
+    note("R/parseJats.R: colspan is no longer clamped to .ppMaxCellSpan (screen F2)")
+}
+if (file.exists("R/parseDocx.R")) {
+  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  if (!any(grepl("pmin\\(span,\\s*\\.ppMaxCellSpan\\)", dx)))
+    note("R/parseDocx.R: gridSpan is no longer clamped to .ppMaxCellSpan (screen F2)")
 }
 
 ## 2 - the comments log stays escaped ------------------------------------

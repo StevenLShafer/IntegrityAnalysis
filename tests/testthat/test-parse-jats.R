@@ -161,6 +161,73 @@ test_that("the reader passes only the safe libxml2 options", {
   expect_false(grepl("HUGE", code))
   expect_false(grepl("NOENT", code))
   expect_false(grepl("DTDLOAD", code))
-  # And the one call that does exist passes the safe option explicitly.
-  expect_true(grepl('read_xml\\(file, options = "NOBLANKS"\\)', code))
+  expect_false(grepl("DTDVALID", code))
+  expect_false(grepl("DTDATTR", code))
+  expect_false(grepl("XINCLUDE", code))
+  # And the one call that does exist passes the safe option explicitly -
+  # on BYTES, never a path (screen of PR #162: libxml2's file reader
+  # inflates a gzip stream named .xml; its memory parser never does).
+  expect_true(grepl('read_xml\\(bytes, options = "NOBLANKS"\\)', code))
+  expect_false(grepl('read_xml\\(file', code))
+})
+
+# ---- security: the bounds the screen of PR #162 asked for (2026-09-03) ----
+
+test_that("a gzip stream named .xml is refused by name, fast, without inflation", {
+  f <- tmp()
+  con <- gzfile(f, "wb")
+  # 40 MB of XML in a ~40 KB gzip: what libxml2's file reader would have
+  # inflated into a multi-gigabyte DOM
+  writeLines(c("<article><body>", rep("<b/>", 10000000), "</body></article>"), con)
+  close(con)
+  expect_lt(file.size(f), 200000)
+  ok <- IntegrityAnalysis:::.ppJatsOK(f)
+  expect_false(isTRUE(ok))
+  expect_match(attr(ok, "reason"), "gzip")
+  t0 <- Sys.time()
+  expect_error(IntegrityAnalysis:::.ppJatsRead(f), "gzip")
+  expect_error(parseBaselineTableJats(f, quiet = TRUE), "gzip")
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 5)
+})
+
+test_that("a JATS file over the ceiling is refused before it is read", {
+  f <- tmp()
+  con <- file(f, "wb")
+  writeLines(c("<article><body>", rep("<p>padding padding padding padding padding padding</p>", 200000),
+               "</body></article>"), con)
+  close(con)
+  expect_gt(file.size(f), IntegrityAnalysis:::.ppJatsMaxBytes)
+  ok <- IntegrityAnalysis:::.ppJatsOK(f)
+  expect_false(isTRUE(ok))
+  expect_match(attr(ok, "reason"), "MiB")
+  expect_error(IntegrityAnalysis:::.ppJatsRead(f), "MiB")
+})
+
+test_that("an author's colspan or rowspan cannot size the matrix", {
+  f <- tmp()
+  writeLines(c(
+    '<article><body><table-wrap><label>Table 1</label><caption><p>Baseline</p></caption><table>',
+    '<tr><td></td><td colspan="100000000">Control (n = 40)</td><td>Treatment (n = 42)</td></tr>',
+    '<tr><td rowspan="100000000">Age</td><td>61 (10)</td><td>60 (11)</td></tr>',
+    '</table></table-wrap></body></article>'), f)
+  t0 <- Sys.time()
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 5)
+  m <- d$tables[[1]]$cells
+  expect_lte(ncol(m), IntegrityAnalysis:::.ppMaxCellSpan + 2L)
+  expect_equal(nrow(m), 2L)
+})
+
+test_that("a wall of table-wraps and a table wider than any baseline table are bounded", {
+  f <- tmp()
+  one <- '<table-wrap><table><tr><td>a</td><td>1</td></tr><tr><td>b</td><td>2</td></tr></table></table-wrap>'
+  writeLines(c("<article><body>", rep(one, 500), "</body></article>"), f)
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lte(length(d$tables), IntegrityAnalysis:::.ppMaxTableWraps)
+  # 400 real cells in one row: wider than a table the engine reads
+  g <- tmp()
+  writeLines(c("<article><body><table-wrap><table><tr>",
+               rep("<td>x</td>", 400), "</tr><tr>", rep("<td>1</td>", 400),
+               "</tr></table></table-wrap></body></article>"), g)
+  expect_length(IntegrityAnalysis:::.ppJatsData(g)$tables, 0L)
 })

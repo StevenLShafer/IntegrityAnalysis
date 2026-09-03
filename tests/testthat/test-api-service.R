@@ -159,6 +159,16 @@ test_that("the service reads a JATS XML article, end to end", {
   expect_true(b$ok)
   expect_gt(b$trials, 0)
   expect_match(b$resultsCsv, "Summary")
+
+  # the screen of this change (2026-09-03, F1): a gzip stream named .xml
+  # is refused with its reason as a 422, before any child is spent
+  gz <- file.path(tempdir(), "compressed.xml")
+  con <- gzfile(gz, "wb"); writeLines(c("<article>", rep("<b/>", 100000), "</article>"), con); close(con)
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(gz)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 422)
+  expect_match(httr2::resp_body_json(r)$reasons[[1]], "gzip")
 })
 
 test_that("the auth helper is strict about tokens", {

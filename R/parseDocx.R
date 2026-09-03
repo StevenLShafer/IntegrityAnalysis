@@ -81,6 +81,10 @@
       if (is.na(v)) 1L else max(1L, suppressWarnings(as.integer(v)))
     }, integer(1))
     span[is.na(span)] <- 1L
+    # The author's number, clamped: a gridSpan of a hundred million would
+    # size the row (screen of PR #162, 2026-09-03, F2 - found in the JATS
+    # sibling, the same shape here)
+    span <- pmin(span, .ppMaxCellSpan)
     out <- character(sum(span))
     pos <- 1L
     for (k in seq_along(txt)) {

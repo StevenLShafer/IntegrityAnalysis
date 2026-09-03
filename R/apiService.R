@@ -523,6 +523,18 @@
                     data = NULL, skipped = NULL, flags = character(0),
                     engine = NA_character_))
     }
+    # A JATS file likewise: size ceiling and gzip magic judged here, so
+    # a caller gets the reason as a 422 rather than a child that died
+    # (screen of PR #162, F1); the reader repeats the check.
+    if (ext == "xml") {
+      ok <- .ppJatsOK(path)
+      if (!isTRUE(ok))
+        return(list(ok = FALSE,
+                    reasons = paste0(name, " was not read: ",
+                                     attr(ok, "reason"), "."),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
+    }
     aiOn <- !is.null(apiKey) && nzchar(apiKey)
     res <- parseBaselineTableFiles(
       path, ai = if (aiOn) "fallback" else "never",
