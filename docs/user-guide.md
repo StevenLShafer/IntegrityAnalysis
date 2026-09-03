@@ -775,9 +775,10 @@ the same privacy contract as the app.
 
 **Endpoints.** `GET /health` reports the service identity (open, for
 monitoring). `POST /parse` accepts one document — article PDF, Word
-manuscript, picture of a table, or spreadsheet (JATS XML is read by the
-app but not yet by the service) — and returns the extracted baseline
-table.
+manuscript, JATS XML article, picture of a table, or spreadsheet — and
+returns the extracted baseline table. JATS XML is the route intended
+for editorial systems, which hold the manuscript as XML before any PDF
+exists and whose tables are real cells rather than page geometry.
 `POST /analyze` goes on to validate and run the Monte Carlo, returning
 a per-trial results CSV and the overall Stouffer P.
 
