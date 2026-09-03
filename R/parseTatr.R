@@ -397,6 +397,17 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
 #   - --max-mem-mb caps the Python process's address space (F1), which the
 #     OS timeout cannot do.
 .ppTatrMaxMemMb <- 8192L
+
+# Remove a work directory, retrying briefly: a subprocess killed an
+# instant ago can still hold a handle on a file inside it.
+.ppRemoveDir <- function(dir, tries = 5L) {
+  for (i in seq_len(tries)) {
+    unlink(dir, recursive = TRUE, force = TRUE)
+    if (!dir.exists(dir)) return(invisible(TRUE))
+    Sys.sleep(0.2 * i)
+  }
+  invisible(!dir.exists(dir))
+}
 .ppTatrRun <- function(pdfFile, timeout = 600, quiet = FALSE) {
   py <- .ppTatrPython(); sc <- .ppTatrScript()
   if (!nzchar(py) || !nzchar(sc)) return(NULL)
@@ -407,8 +418,15 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
   # directory here; only a success leaves it, for the caller to consume
   # and remove (CodeRabbit on #147: repeated failures could otherwise
   # fill temporary storage).
+  # On a timeout, system2() has already terminated the child before it
+  # returns 124: on Linux R signals the child's process group (SIGINT,
+  # then SIGTERM, then SIGKILL - verified from R's own source in the
+  # 2026-09-02 screen), and the Python is invoked directly, so there is
+  # no wrapper to leave an orphan behind. The removal below still retries
+  # for a moment, because a process killed an instant ago can hold a
+  # handle on its files (CodeRabbit on #147).
   ok <- FALSE
-  on.exit(if (!ok) unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
+  on.exit(if (!ok) .ppRemoveDir(work), add = TRUE)
   acc  <- "upload"
   pdf  <- file.path(work, "upload.pdf")
   if (!file.copy(pdfFile, pdf)) return(NULL)
