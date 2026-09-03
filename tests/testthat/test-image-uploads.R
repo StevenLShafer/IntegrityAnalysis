@@ -211,6 +211,39 @@ test_that("a JPEG, PNG or TIFF of a table parses like the page it was rendered f
   expect_equal(w150$y[1], w300$y[1], tolerance = 0.05)
 })
 
+test_that("a caption-less picture with one wrapped arm header is read whole, from its first line", {
+  skip_if_not_installed("tesseract")
+  skip_on_cran()
+  skip_if(isTRUE(as.logical(Sys.getenv("CI", "false"))),
+          "exact OCR equality is certified on the desktop and the nodes, not the runner's tesseract")
+  # The shape of a pasted screenshot (Steve, 2026-09-03, the ticagrelor
+  # table): no "Table 1" line, the first arm's "(n = ...)" wrapped onto a
+  # second line while the second arm keeps its N on the header line, and a
+  # wide white gap between the labels and the numbers. Before the fix the
+  # layout detector split the picture at that gap and the header scan
+  # started at line 2, so arm 2 had no N and every n (%) row was skipped.
+  vx <- c(300, 420)
+  cells <- c(
+    rowCells(80,  "Characteristic", c("Control", "Treatment (n = 17)"), vx),
+    rowCells(98,  "",               c("(n = 15)", ""),                  vx),
+    rowCells(126, "Age (yr)",       c("45.3 (12.1)", "46.1 (11.8)"),    vx),
+    rowCells(144, "Weight (kg)",    c("63 (13)",     "68 (12)"),        vx),
+    rowCells(162, "Male, n (%)",    c("10 (67%)",    "12 (71%)"),       vx),
+    rowCells(180, "Smoker, n (%)",  c("4 (27%)",     "5 (29%)"),        vx))
+  pdf <- makeTablePdf(file.path(tempdir(), "wrappedHeader.pdf"), cells)
+  png <- imgFrom(pdf, "png")
+  r <- parseBaselineTableHeuristics(png, quiet = TRUE)
+  expect_identical(r$engine, "heuristic-ocr")
+  expect_equal(r$arms$N, c(15, 17))
+  expect_setequal(unique(r$data$ROW), c("Age (yr)", "Weight (kg)", "Male, n (%)", "Smoker, n (%)"))
+  expect_equal(nrow(r$skipped), 0L)
+  # the same picture with a "Table 1" line still takes the caption road
+  capPdf <- makeTablePdf(file.path(tempdir(), "wrappedHeaderCap.pdf"),
+                         c(list(list(x = 72, y = 60, text = "Table 1. Baseline characteristics", adj = 0)), cells))
+  rc <- parseBaselineTableHeuristics(imgFrom(capPdf, "png"), quiet = TRUE)
+  expect_equal(rc$arms$N, c(15, 17))
+})
+
 test_that("the AI route preflights the image too - a bomb never reaches the model", {
   # CodeRabbit on #145: ai = "always" and a direct parseBaselineTableAI()
   # call never pass through the engine's preflight, so the bytes-for-the-
