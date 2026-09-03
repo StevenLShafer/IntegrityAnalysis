@@ -39,6 +39,66 @@ test_that("the engine parses its own rendered page through OCR", {
   expect_equal(srt(viaOcr$data), srt(direct$data), ignore_attr = TRUE)
 })
 
+test_that("an OCR read aimed at one page renders that page only, at its own index", {
+  skip_if_not_installed("tesseract")
+  # A three-page document: prose, the table, prose. The OCR rescue aims
+  # the engine at page 2; before 2026-09-03 the engine rendered and OCRed
+  # all three (screen F1). The renderer is mocked to record what it was
+  # asked for and to hand back the page's text-layer words under its
+  # page name, which is the contract .ppOcrPagesAt() relies on.
+  f <- file.path(tempdir(), "threePages.pdf")
+  grDevices::pdf(f, width = 8.5, height = 11)
+  op <- graphics::par(mar = c(0, 0, 0, 0), xaxs = "i", yaxs = "i")
+  for (pg in 1:3) {
+    graphics::plot.new(); graphics::plot.window(xlim = c(0, 612), ylim = c(0, 792))
+    if (pg == 2) {
+      graphics::text(72, 792 - 80, "Table 1. Baseline patient characteristics", adj = c(0, 1), cex = 0.85)
+      graphics::text(300, 792 - 110, "Control (n = 15)", adj = c(0.5, 1), cex = 0.85)
+      graphics::text(420, 792 - 110, "Treatment (n = 17)", adj = c(0.5, 1), cex = 0.85)
+      graphics::text(72, 792 - 150, "Age (yr)", adj = c(0, 1), cex = 0.85)
+      graphics::text(300, 792 - 150, "45.3 (12.1)", adj = c(0.5, 1), cex = 0.85)
+      graphics::text(420, 792 - 150, "46.1 (11.8)", adj = c(0.5, 1), cex = 0.85)
+      graphics::text(72, 792 - 168, "Weight (kg)", adj = c(0, 1), cex = 0.85)
+      graphics::text(300, 792 - 168, "63 (13)", adj = c(0.5, 1), cex = 0.85)
+      graphics::text(420, 792 - 168, "68 (12)", adj = c(0.5, 1), cex = 0.85)
+    } else {
+      graphics::text(72, 792 - 80, paste("Page", pg, "is prose about the methods and the results."), adj = c(0, 1), cex = 0.85)
+    }
+  }
+  graphics::par(op); grDevices::dev.off()
+  words <- .ppPdfData(f)
+  asked <- NULL
+  testthat::local_mocked_bindings(
+    .ppOcrData = function(pdfFile, dpi = 300, pages = NULL) {
+      asked <<- pages
+      p <- if (is.null(pages)) seq_along(words) else pages
+      structure(words[p], names = as.character(p))
+    })
+  placed <- .ppOcrPagesAt(f, 300, pages = 2L)
+  expect_length(placed, 3L)
+  expect_identical(nrow(placed[[1]]), 0L)
+  expect_identical(nrow(placed[[3]]), 0L)
+  expect_gt(nrow(placed[[2]]), 5L)
+  r <- parseBaselineTableHeuristics(f, pages = 2L, ocr = TRUE, quiet = TRUE)
+  expect_identical(asked, 2L)                 # one page rendered, not three
+  expect_identical(r$engine, "heuristic-ocr")
+  expect_equal(r$arms$N, c(15, 17))
+})
+
+test_that("a document whose page sizes cannot be read is not rendered at all", {
+  skip_if_not_installed("tesseract")
+  # Fail closed (screen 2026-09-03, N2): without page sizes the cap cannot
+  # be applied, so nothing is rasterised rather than everything uncapped
+  src <- syntheticPdfMeanSD()
+  rendered <- FALSE
+  testthat::local_mocked_bindings(
+    pdf_pagesize = function(...) stop("unreadable page tree"),
+    pdf_convert = function(...) { rendered <<- TRUE; character(0) },
+    .package = "pdftools")
+  expect_identical(.ppOcrPages(src, want = "data"), list())
+  expect_false(rendered)
+})
+
 test_that("parseBaselineTable rescues a failed parse via OCR when pages are image-only", {
   skip_if_not_installed("tesseract")
   src <- syntheticPdfMeanSD()

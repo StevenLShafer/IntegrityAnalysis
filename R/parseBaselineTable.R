@@ -216,7 +216,20 @@ parseBaselineTable <- function(pdfFile,
   tatrNote <- paste("table geometry from the Table Transformer (rows and",
                     "columns located by the model; every value read from",
                     "the document)")
+  # The parse is memoised per OCR mode, as the XML is: the rescue chain
+  # asks for it twice (on the text engine's error, then again inside the
+  # OCR rescue), and without the memo a degraded scan was rendered and
+  # OCRed through the model twice before plain OCR ran a third time -
+  # more than the parse child's budget on a host that runs the model
+  # (screen 2026-09-03, F2). A NULL answer is memoised too.
+  tatrMemo <- list()
   tatrParse <- function(ocrMode = "auto") {
+    if (!is.null(tatrMemo[[ocrMode]])) return(tatrMemo[[ocrMode]]$value)
+    r <- tatrParseOnce(ocrMode)
+    tatrMemo[[ocrMode]] <<- list(value = r)
+    r
+  }
+  tatrParseOnce <- function(ocrMode = "auto") {
     xml <- tatrSource()
     if (is.null(xml)) return(NULL)
     r <- tryCatch(
