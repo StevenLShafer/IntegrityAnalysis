@@ -379,6 +379,40 @@ PR, with the reasoning in comments.
 
 ## Conventions
 
+**Long runs** (Steve, 2026-09-03, after a week in which runs were found
+dead an hour late: a 90-minute sweep killed by a tool's background-task
+lifecycle with nothing written; a corpus comparison stalled 27 minutes
+under a monitor that only reported change; a screen that recorded an
+API error as a finished screen; a push from a detached worktree that
+pushed nothing). The failures were in the launch, the environment, the
+monitoring and the reading of success - never in what the smoke test
+exercised. So:
+
+- **The smoke test is the first unit of the real run.** Scripts write
+  per unit and resume (`corpus/syntheticAgeWeightCheck.R` is the
+  pattern); run one real unit at full size from the real launcher,
+  directory, node, environment and output path, then let the full run
+  continue from it. A tiny variant proves less than one real unit.
+- **Launch detached** (`setsid nohup` on the nodes, `Start-Process` on
+  Windows), never under an assistant's background task. The launcher's
+  return is not evidence; the process list and the first output file
+  are.
+- **Predict the first-output time** from the smoke unit and alarm at
+  twice it with nothing written; thereafter alarm on *unchanged for two
+  ticks* and on *process gone*, never only on change. Check at 2 and 10
+  minutes, then every 15.
+- **Read state back after every state change**: a push by
+  `git rev-parse origin/<branch>`, a launch by `pgrep`, a write by its
+  row count, a screen by its report body, a deploy by the live page.
+  The absence of an error is not success.
+- **Record per run**: launch command, predicted first output, resume
+  command. A dead run then costs one unit.
+- Never `pkill -f` / `pgrep -f` with a pattern the ssh command line
+  itself can match (it kills the session); kill by pid from a script
+  file. Never create a worktree from `origin/<branch>` - that is a
+  detached HEAD and `git push origin <branch>` pushes the untouched
+  local branch; use `-b` or the bare branch name.
+
 - Case sensitivity: shinyapps.io runs Linux — filenames in code must match
   exactly (the old `Global.R`-vs-`global.R` failure generalizes).
 - Generous comments; every non-obvious or AI-drafted change carries a
