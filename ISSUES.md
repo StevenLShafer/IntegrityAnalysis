@@ -166,8 +166,48 @@ What is NOT decided, and is Steve's call:
   Carlisle mapping; the 147-article scoring on the node queue is the
   fuller answer.
 
-Done looks like: a deployment decision recorded here, and the value
-scoring run once on the 147.
+**Measured 2026-09-03 on the WHOLE Carlisle corpus** (1,865 articles;
+the model's geometry for all of them from a 3.7 h run on `i5`, the
+comparison on `oldryzen` from the installed branch snapshot through the
+batcher: `tatr = "never"` against `tatr = "always"`; files under
+`C:/dev/Corpus/tatr/xml/runFull/always/`, scripts
+`C:/dev/Corpus/tools/tatrAlwaysReport.R` and `valueCheckAlways.R`):
+
+- The text engine parses 1,654 (88.7%); with the seam 1,768 (94.8%):
+  **114 recovered, none lost** (78 through the text layer, 36 by the
+  OCR pairing). The 51 articles the model found no table in parse the
+  same either way.
+- When both succeed (1,654), the model's reading wins by parse score in
+  441 (26.7%): 63 with identical numbers, 378 with different ones - the
+  model reads more (median 28 values against 19).
+- **Judged by Carlisle's hand-entered numbers** (1,485 of the 1,865
+  join to his One Sheet by PMID; each reading's values scored for
+  recall of his numbers and precision against them): on the 321 joined
+  articles where the model won with different numbers, recall rises
+  from 0.41 to 0.59 and precision from 0.38 to 0.44; paired, the model
+  reads more of his numbers in 150 articles and fewer in 59. Of the
+  1,905 values the model added net, 58% are his - a better hit rate than
+  the text engine's own 38% on those articles, so the additions are
+  content, not noise, on balance. The 84 recovered articles with a
+  Carlisle trial score recall 0.51 / precision 0.46, the same order as
+  the text engine's 0.61 / 0.48 on articles it parses: ordinary parser
+  output. Corpus-wide, recall 0.61 -> 0.65 and precision 0.48 -> 0.50.
+  So `tatr = "always"` is a net gain by his numbers, not just by score.
+- **The failure the score cannot see, 38 articles**: the model's reading
+  won by parse score while its precision against Carlisle fell by more
+  than 0.2 - in the worst (PMID 14725516) the text engine's 16 values
+  were all his and the model's 16 were a different table with one.
+  Parse score rewards content; it does not know which table is the
+  baseline table, and a larger non-baseline table can outscore a
+  correct smaller one. This does not touch the default `tatr = "auto"`
+  (the seam runs only when the text engine fails: 114 recovered, none
+  lost); it is a rule to add before `"always"` is used in earnest - the
+  model's candidate should have to match the text engine's caption, or
+  the caption score should weigh in the comparison. Listed in
+  `always_valuecheck.csv`.
+
+Done looks like: a deployment decision recorded here, and the "always"
+comparison given a caption rule so the 38 cannot happen.
 
 ---
 
