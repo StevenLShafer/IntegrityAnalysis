@@ -176,6 +176,25 @@ if (file.exists("R/parseJats.R")) {
   # a scratch break that kept the message passed the first version)
   if (!any(grepl("grepRaw\\(\"<!ENTITY\"", js)))
     note("R/parseJats.R: .ppJatsOK() no longer refuses a declared internal entity (<!ENTITY)")
+  # fourth screen of #162: the entity search sees ASCII only, so a NUL
+  # anywhere is refused (UTF-16 hid the keyword) and the first byte is
+  # "<"; and counts, not time, bound the work - cells per table, cells
+  # per document, body paragraphs - each APPLIED, not merely defined
+  if (!any(grepl("any\\(bytes == as\\.raw\\(0L\\)\\)", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer refuses NUL bytes - a UTF-16 file hides <!ENTITY from the byte search")
+  if (!any(grepl("first != as\\.raw\\(0x3c\\)", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer requires the first byte to be \"<\"")
+  if (!any(grepl("nCells > \\.ppMaxTableCells", js)))
+    note("R/parseJats.R: the per-table cell count (.ppMaxTableCells) is no longer applied before the matrix is built")
+  if (!any(grepl("spentCells > \\.ppMaxDocCells", js)))
+    note("R/parseJats.R: the document cell budget (.ppMaxDocCells) is no longer applied across table-wraps")
+  if (!any(grepl("length\\(body\\) > \\.ppMaxBodyParas", js)))
+    note("R/parseJats.R: the body paragraph cap (.ppMaxBodyParas) is no longer applied")
+  # the adapter runs lazily, inside the candidate loop, for tried tables
+  # only: its one call must come after the loop opens
+  ad <- grep("\\.ppDocxLines\\(", js); lp <- grep("for \\(i in seq_along\\(cand\\)\\)", js)
+  if (length(ad) != 1L || !length(lp) || ad[1] < lp[1])
+    note("R/parseJats.R: .ppDocxLines() runs for every table before ranking - it must run once, inside the candidate loop")
 }
 if (file.exists("R/parseDocx.R")) {
   dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))

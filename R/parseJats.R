@@ -77,6 +77,18 @@
 .ppMaxTableCols  <- 200L
 .ppMaxTableRows  <- 2000L
 .ppMaxTableWraps <- 100L
+# Counts, not time (fourth screen of PR #162, F3): a table at the row
+# and column caps holds 400,000 cells and burned the whole 60 s child
+# budget building them, so the child was killed and the request pinned
+# the service for the whole minute. Cells are counted by libxml2
+# before any is built; a real baseline table has under 2,000. The
+# document budget bounds the sum across table-wraps (nested wrappers
+# share one set of rows and multiplied the cost by their depth), and
+# the paragraph cap bounds a body of empty <p/> nodes, which cost the
+# text budget nothing and the loop 120 us each.
+.ppMaxTableCells <- 20000L    # per table, td + th
+.ppMaxDocCells   <- 100000L   # across every table-wrap read
+.ppMaxBodyParas  <- 20000L    # outermost <body> paragraphs iterated
 # Text bounds (second screen of PR #162, 2026-09-03). The extractor used
 # the DESCENDANT axis, so a <p> nested 250 deep - libxml2 allows 256 -
 # put every ancestor's text, each containing the leaf, into the text
@@ -116,6 +128,23 @@
   bytes <- readBin(file, "raw", n = size)     # bounded by the size check above
   if (length(bytes) >= 2L && identical(bytes[1:2], as.raw(c(0x1f, 0x8b))))
     return(no("the file is a gzip stream, not XML - decompress it first"))
+  # The entity search below looks for ASCII bytes, so it must be shown
+  # ASCII: a UTF-16 file interleaves every letter with a NUL, the search
+  # never matches, and libxml2 decodes the document - DTD subset and all
+  # - from its byte-order mark (fourth screen of PR #162, F1). NUL is not
+  # a legal character in any XML encoding and 0 of the corpus's 10,108
+  # JATS files hold one, so a NUL anywhere is refused. And the first
+  # byte after optional whitespace and a UTF-8 BOM must be "<", which
+  # also closes the EBCDIC path, where "<" is 0x4C and the keyword is a
+  # different byte string. Every real file passes both.
+  if (any(bytes == as.raw(0L)))
+    return(no("the file contains NUL bytes - a JATS article is UTF-8 text"))
+  start <- if (length(bytes) >= 3L &&
+               identical(bytes[1:3], as.raw(c(0xef, 0xbb, 0xbf)))) 4L else 1L
+  rest  <- bytes[seq.int(start, length.out = max(length(bytes) - start + 1L, 0L))]
+  first <- rest[!(rest %in% as.raw(c(0x20, 0x09, 0x0a, 0x0d)))][1]
+  if (is.na(first) || first != as.raw(0x3c))
+    return(no("the file does not begin with \"<\" - it is not XML markup"))
   # An internal entity declaration is refused outright (third screen of
   # PR #162): none of the corpus's 10,108 real JATS files declares one
   # (the five predefined entities and numeric character references need
@@ -173,6 +202,11 @@
   # outermost rows only: a <tr> nested inside a <td> is that cell's text
   rows <- xml2::xml_find_all(tw, ".//tr[not(ancestor::td) and not(ancestor::th)]")
   if (length(rows) == 0) return(NULL)
+  # counted in C before any cell is built (F3 of the fourth screen):
+  # above .ppMaxTableCells this is not a table the engine reads
+  nCells <- length(xml2::xml_find_all(
+    tw, ".//tr[not(ancestor::td) and not(ancestor::th)]/*[self::td or self::th]"))
+  if (nCells > .ppMaxTableCells) return(NULL)
   out <- list()
   carry <- integer(0)          # per column: rows still occupied above
   truncated <- FALSE           # a row hit .ppMaxTableCols (screen F2)
@@ -229,6 +263,7 @@
   if (truncated || nc > .ppMaxTableCols) return(NULL)
   mat <- matrix("", nrow = length(out), ncol = nc)
   for (r in seq_along(out)) if (length(out[[r]])) mat[r, seq_along(out[[r]])] <- out[[r]]
+  attr(mat, "cells") <- nCells    # for the document budget in .ppJatsData
   mat
 }
 
@@ -241,10 +276,16 @@
   # the count is capped here rather than by maxCandidates (screen F2)
   if (length(tws) > .ppMaxTableWraps) tws <- tws[seq_len(.ppMaxTableWraps)]
   tables <- list()
+  spentCells <- 0L
   for (i in seq_along(tws)) {
     tw <- tws[[i]]
     mat <- .ppJatsMatrix(tw)
     if (is.null(mat) || nrow(mat) < 2) next
+    # the document budget: nested <table-wrap>s share one set of rows,
+    # so 100 wrappers around one table cost 100 tables (F3); stop
+    # reading once the cells built so far exceed the budget
+    spentCells <- spentCells + as.integer(attr(mat, "cells") %||% 0L)
+    if (spentCells > .ppMaxDocCells) break
     # Caption: <label> ("Table 1.") plus <caption>'s paragraphs. Both
     # were present in 98% and 93% of real tables; <title> in none, so it
     # is read only as a fallback rather than assumed.
@@ -276,6 +317,10 @@
   # inside the table is not independent evidence of the arm sizes the
   # same table is being asked to supply.
   body <- xml2::xml_find_all(doc, "//body//p[not(ancestor::table-wrap) and not(ancestor::p)]")
+  # a body of empty <p/> costs the text budget nothing and the loop
+  # 120 us a node - 1.5 million of them took 179 s (F3); real articles
+  # have hundreds
+  if (length(body) > .ppMaxBodyParas) body <- body[seq_len(.ppMaxBodyParas)]
   # the total budget, applied AS the paragraphs are read: the loop stops
   # when it is spent, so no paragraph past the budget is ever built
   fullText <- character(0); spent <- 0L
@@ -324,12 +369,12 @@ parseBaselineTableJats <- function(xmlFile,
     tab <- doc$tables[[t]]
     capScore <- if (is.na(tab$caption)) 0 else .ppCaptionScore(tab$caption)
     if (!is.finite(capScore)) capScore <- 0
-    adapted <- .ppDocxLines(tab$cells, caption = tab$caption,
-                            footnotes = tab$footnotes)
-    if (length(adapted$lines) < 2) next
+    # the word adapter is NOT run here: it cost 212 s for one table at
+    # the caps and ran for all 100 wrappers before any was ranked (F3
+    # of the fourth screen). Candidates carry their cells; the adapter
+    # runs below, for the tables actually tried.
     cand[[length(cand) + 1L]] <- list(
-      ordinal = tab$ordinal, lines = adapted$lines,
-      lineTexts = adapted$lineTexts, capIdx = adapted$capIdx,
+      ordinal = tab$ordinal, cells = tab$cells, footnotes = tab$footnotes,
       caption = tab$caption, capScore = capScore)
   }
   if (length(cand) == 0)
@@ -346,14 +391,18 @@ parseBaselineTableJats <- function(xmlFile,
   cand <- cand[ord]
   strongOrdered <- isStrong[ord]
 
-  tried <- 0L
+  tried <- 0L; adaptedAny <- FALSE
   best <- NULL; bestScore <- -Inf; bestCand <- NULL; bestStrong <- FALSE
   for (i in seq_along(cand)) {
     cc <- cand[[i]]
     if (tried >= maxCandidates && bestScore > -Inf) break
+    adapted <- .ppDocxLines(cc$cells, caption = cc$caption,
+                            footnotes = cc$footnotes)
+    if (length(adapted$lines) < 2) next
+    adaptedAny <- TRUE
     tried <- tried + 1L
     res <- tryCatch(
-      .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
+      .ppParseBlock(adapted$lines, adapted$lineTexts, adapted$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
                     textCands = textCands, textTotals = textTotals,
                     pctApprox = pctApprox),
@@ -368,6 +417,8 @@ parseBaselineTableJats <- function(xmlFile,
       bestStrong <- strongOrdered[i]
     }
   }
+  if (!adaptedAny)
+    stop("No usable table content could be read from ", xmlFile, ".")
   if (is.null(best))
     stop("No usable baseline table could be parsed from ", xmlFile, ".")
 

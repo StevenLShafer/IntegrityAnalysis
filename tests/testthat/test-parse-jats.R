@@ -308,3 +308,88 @@ test_that("a wall of table-wraps and a table wider than any baseline table are b
                "</tr></table></table-wrap></body></article>"), g)
   expect_length(IntegrityAnalysis:::.ppJatsData(g)$tables, 0L)
 })
+
+# ---- fourth screen of PR #162 ---------------------------------------------
+
+test_that("a UTF-16 file cannot hide a declared entity from the byte gate (fourth screen of #162)", {
+  # the same document that is refused as UTF-8 passed the ASCII search
+  # as UTF-16, because every letter is followed by a NUL
+  doc <- paste0('<?xml version="1.0"?><!DOCTYPE article [<!ENTITY z "',
+                strrep("z", 1000), '">]><article><body><p>',
+                strrep("&z;", 400), '</p></body></article>')
+  f8 <- tmp(); writeBin(charToRaw(doc), f8)
+  ok <- IntegrityAnalysis:::.ppJatsOK(f8)
+  expect_false(isTRUE(ok)); expect_match(attr(ok, "reason"), "ENTITY")
+  f16 <- tmp()
+  writeBin(c(as.raw(c(0xff, 0xfe)), iconv(doc, "UTF-8", "UTF-16LE", toRaw = TRUE)[[1]]), f16)
+  expect_false(any(grepRaw("<!ENTITY", readBin(f16, "raw", file.size(f16)), fixed = TRUE)))
+  ok <- IntegrityAnalysis:::.ppJatsOK(f16)
+  expect_false(isTRUE(ok)); expect_match(attr(ok, "reason"), "NUL")
+  expect_error(IntegrityAnalysis:::.ppJatsRead(f16), "NUL")
+  # a UTF-8 BOM and leading whitespace are fine; anything else in front
+  # of the first "<" is not XML markup
+  fb <- tmp(); writeBin(c(as.raw(c(0xef, 0xbb, 0xbf)), charToRaw("\n  <article><body><p>x</p></body></article>")), fb)
+  expect_true(isTRUE(IntegrityAnalysis:::.ppJatsOK(fb)))
+  fe <- tmp(); writeBin(charToRaw("MZ<article/>"), fe)
+  ok <- IntegrityAnalysis:::.ppJatsOK(fe)
+  expect_false(isTRUE(ok)); expect_match(attr(ok, "reason"), "begin")
+  fw <- tmp(); writeBin(charToRaw("   \n\t "), fw)
+  expect_false(isTRUE(IntegrityAnalysis:::.ppJatsOK(fw)))
+})
+
+test_that("cells are counted before any is built, per table and per document", {
+  # 300 rows x 100 columns = 30,000 cells: under the row and column caps,
+  # over the per-table cell cap, so the matrix is never built
+  big <- c('<table-wrap><label>Table 9</label><caption><p>Supplement</p></caption><table>',
+           rep(paste0("<tr>", strrep("<td>1</td>", 100), "</tr>"), 300),
+           '</table></table-wrap>')
+  small <- c('<table-wrap><label>Table 1</label><caption><p>Baseline characteristics</p></caption><table>',
+             '<tr><td></td><td>Control (n = 40)</td><td>Treatment (n = 42)</td></tr>',
+             '<tr><td>Age (yr)</td><td>61 (10)</td><td>60 (11)</td></tr>',
+             '<tr><td>Weight (kg)</td><td>80 (12)</td><td>79 (13)</td></tr>',
+             '</table></table-wrap>')
+  f <- tmp()
+  writeLines(c("<article><body>", big, small, "</body></article>"), f)
+  tw <- xml2::xml_find_first(IntegrityAnalysis:::.ppJatsRead(f), "//table-wrap")
+  expect_null(IntegrityAnalysis:::.ppJatsMatrix(tw))
+  t0 <- Sys.time()
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 5)
+  expect_equal(length(d$tables), 1L)      # the big one was skipped, the real one read
+  expect_equal(as.integer(attr(d$tables[[1]]$cells, "cells")), 9L)
+  r <- parseBaselineTableJats(f, quiet = TRUE)
+  expect_equal(sort(unique(r$data$ROW)), c("Age", "Weight"))
+  # the document budget: many tables each under the per-table cap stop
+  # being read once their cells exceed .ppMaxDocCells
+  mid <- c('<table-wrap><label>Table 2</label><caption><p>More</p></caption><table>',
+           rep(paste0("<tr>", strrep("<td>1</td>", 50), "</tr>"), 100),
+           '</table></table-wrap>')                       # 5,000 cells each
+  f2 <- tmp()
+  writeLines(c("<article><body>", rep(mid, 40), "</body></article>"), f2)   # 200,000 cells
+  d2 <- IntegrityAnalysis:::.ppJatsData(f2)
+  expect_lte(length(d2$tables), IntegrityAnalysis:::.ppMaxDocCells %/% 5000L + 1L)
+})
+
+test_that("a body of empty paragraphs is capped by count, and the adapter runs only for tried tables", {
+  f <- tmp()
+  writeLines(c("<article><body>",
+               '<table-wrap><label>Table 1</label><caption><p>Baseline characteristics</p></caption><table>',
+               '<tr><td></td><td>Control (n = 40)</td><td>Treatment (n = 42)</td></tr>',
+               '<tr><td>Age (yr)</td><td>61 (10)</td><td>60 (11)</td></tr>',
+               '</table></table-wrap>',
+               rep("<p/>", 60000), "<p>Patients were randomized 1:1.</p>",
+               "</body></article>"), f)
+  t0 <- Sys.time()
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  expect_lte(length(d$fullText), IntegrityAnalysis:::.ppMaxBodyParas)
+  # candidates carry cells, not adapted lines: the adapter is deferred
+  r <- parseBaselineTableJats(f, quiet = TRUE)
+  expect_equal(unique(r$data$ROW), "Age")
+  # ...and a document whose only table adapts to nothing still says so
+  fn <- tmp()
+  writeLines(c("<article><body>",
+               '<table-wrap><table><tr><td>a</td></tr><tr><td>b</td></tr></table></table-wrap>',
+               "</body></article>"), fn)
+  expect_error(parseBaselineTableJats(fn, quiet = TRUE), "usable")
+})
