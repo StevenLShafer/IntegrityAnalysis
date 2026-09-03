@@ -739,6 +739,22 @@ app_server <- function(input, output, session) {
   observeEvent(input$upload,
     uploadPass(list(files = input$upload, stamp = Sys.time(), note = NULL)))
 
+  # Drag and drop (Steve, 2026-09-03). A file dropped anywhere on the page
+  # is handed by inst/www/app.js to the SAME file input as the Browse
+  # button, so it arrives here as input$upload and nothing above or below
+  # changes. The only new message is this one: the browser-side handler
+  # keeps back a dropped file whose extension the app does not accept
+  # (the picker's `accept` filters a dialog, not a drop) and reports its
+  # name, so the log says what happened instead of silently ignoring it.
+  # The names are escaped by outputComments() like every other message.
+  observeEvent(input$dropRejected, {
+    nm <- as.character(unlist(input$dropRejected$names))
+    if (!length(nm)) return()
+    outputComments(paste0(
+      "Not opened: ", paste(nm, collapse = ", "),
+      " - dropped files must be csv, xls, xlsx, pdf, docx, xml, jpg, png, tif, or zip."))
+  })
+
   observeEvent(
     {
       uploadPass()

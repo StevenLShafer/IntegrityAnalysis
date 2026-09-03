@@ -7,9 +7,9 @@ and means that agree *too well*, variable after variable, are evidence
 that no randomization ever happened.
 
 **Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —
-upload an article PDF, a Word manuscript, a spreadsheet, a picture of
-a table (jpg, png, tif), or a zip of many; review the extracted table
-in an editable grid; analyze. The
+upload (or drop anywhere on the page) an article PDF, a Word
+manuscript, a spreadsheet, a picture of a table (jpg, png, tif), or a
+zip of many; review the extracted table in an editable grid; analyze. The
 [user guide](https://integrityanalysis.io/guide.html) covers
 everything, including the privacy contract (IntegrityAnalysis itself
 retains nothing you upload; the one exception is the optional
