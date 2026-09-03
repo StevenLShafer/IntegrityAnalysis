@@ -17,6 +17,8 @@ parseBaselineTable(
   effort = "medium",
   maxTokens = 16000L,
   apiKey = NULL,
+  tatr = c("auto", "never", "always"),
+  tatrXml = NULL,
   quiet = FALSE
 )
 }
@@ -58,6 +60,16 @@ a printed unit of N/100), not a printed datum. Default \code{FALSE}.}
 
 \item{model, effort, maxTokens, apiKey}{Passed to \code{\link[=parseBaselineTableAI]{parseBaselineTableAI()}}.}
 
+\item{tatr}{\code{"auto"} (the default) brings in the Table Transformer's
+geometry when the text engine fails, provided a \code{tatrXml} is given or
+the pegged Python environment is present (see \code{R/parseTatr.R});
+\code{"always"} also compares it against a successful text parse and keeps
+the better; \code{"never"} leaves it out.}
+
+\item{tatrXml}{Path to the Table Transformer XML for this PDF (a
+\verb{*.tatr.xml} written by \code{python/tatr/tatrTables.py}), or a directory
+holding \verb{<stem>.tatr.xml}. When \code{NULL}, the model is run if available.}
+
 \item{quiet}{Suppress the progress and summary messages.}
 }
 \value{
@@ -68,7 +80,9 @@ An object of class \code{ParsePDFTable}. \verb{$engine} is \code{"heuristic"},
 \description{
 Reads the baseline characteristics table ("Table 1") out of a randomized
 controlled trial and returns it as one line per baseline variable per
-treatment arm, in the input layout of the Integrity-Analysis app. The document may be a PDF, a Word manuscript (\code{.docx}) or JATS XML (\code{.xml}); the file extension selects the reader.
+treatment arm, in the input layout of the Integrity-Analysis app. The
+document may be a PDF, a Word manuscript (\code{.docx}) or JATS XML (\code{.xml});
+the file extension selects the reader.
 }
 \details{
 The deterministic engine (\code{\link[=parseBaselineTableHeuristics]{parseBaselineTableHeuristics()}}) always runs
@@ -86,9 +100,11 @@ whole table. Useful for comparing the two engines against each other.
 }
 
 \code{.docx} and \code{.xml} are an exception to all three: the AI engine reads
-RENDERED PDF PAGES, which neither format has. For those two, \code{ai} is forced
-to \code{"never"} with a message and parsing proceeds deterministically,
-including when \code{"always"} was asked for.
+RENDERED PDF PAGES, which neither format has. For those two, \code{ai} is
+forced to \code{"never"} with a message and parsing proceeds deterministically
+— including when \code{"always"} was asked for. Failing outright instead would
+be worse: a mixed folder uploaded with the assist on would lose its Word
+and XML files for no reason.
 
 If no table can be read by either engine and \code{prose = TRUE}, a last attempt
 asks the model to find baseline characteristics in the article's running

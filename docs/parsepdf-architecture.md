@@ -227,6 +227,46 @@ included in the build), percent-only tables with no counts, and fonts that drop 
 mean and SD fuse into one number ("47.714.9") — splitting those would be fabrication, not
 extraction.
 
+### 05d — Table Transformer geometry, with tesseract on scanned pages (2026-09-02)
+
+The third route into `.ppParseBlock()`, beside the text-layer engine and the Word path. Microsoft's
+Table Transformer (`python/tatr/tatrTables.py`, pegged weights and libraries, run as a subprocess)
+finds a table's rows and columns on the rendered page and writes them as `*.tatr.xml`. On a page
+with a text layer the XML already carries each cell's text; on a page with none, the R side
+(`R/parseTatr.R`) reads the page with tesseract and assigns each OCR word to the cell holding at
+least half of its box — the same rule the Python side applies to text-layer words — in reading
+order by line. Either way the cell grid then goes through the **same `.ppDocxLines()` adapter the
+Word path uses**, so every cell rule applies unchanged.
+
+- **The model never chooses the table.** It claimed a baseline table in a third of the articles
+  that have none, so every table it found is a candidate and the engine's own caption and parse
+  scoring pick the winner, exactly as for a `.docx`. The caption is the best-scoring "Table N"
+  line above the detection box (or level with it), and up to four lines beneath the box travel
+  as footnotes, so the stop-pattern and "a (b)" machinery see what they see for a PDF block.
+- **A rescue tier.** `parseBaselineTable(tatr = "auto")` tries the seam when the text engine
+  fails, before the AI route; on image-only pages it runs ahead of plain OCR (arm 1 of the OCR
+  measurement found plain OCR's dominant failure to be the *wrong table*, which is precisely
+  what geometry fixes); `tatr = "always"` also compares it against a successful text parse by
+  parse score. Engines: `heuristic-tatr` (text layer) and `heuristic-tatr-ocr` (the pairing —
+  `"ocr"` provenance, whole-table cyan in the app).
+- **Where it runs.** The model needs the pegged Python (`tools/tatrProvision.sh`; the Linux
+  nodes; a Docker image with `INTEGRITY_TATR_PYTHON` set). Where it is absent — shinyapps.io —
+  the seam is inert and the parser behaves exactly as before. The runner is the package's second
+  subprocess launcher, reviewed and pinned in `tools/securityCheck.R` group 1: fixed interpreter
+  and script, every argument quoted, offline, OS timeout, output read as XML data.
+- **Measured** (2026-09-02, installed snapshot, PR #147). Text layer: of 574 Carlisle articles
+  with model geometry the engine alone parses 523, and of the 51 it cannot the seam recovers
+  25 (8 with an N on every arm, 17 with continuous rows). Scanned set: of 192 with geometry the
+  engine alone parses 106; the seam recovers 19 of the 86 failures through the text layer, but
+  the OCR pairing on real scans yielded only fragments (18 results, none with two arm Ns) and
+  is gated on arm identity like the OCR rescue. So the geometry earns its place on text-layer
+  failures; on a real scan the AI image route remains the quality path (issue 22).
+
+`tests/testthat/test-tatr.R` hand-builds the XML the model would write for the synthetic PDFs
+and pins: geometry + text layer reproduces the text-layer parse exactly; geometry + tesseract
+reproduces it with no text layer at all; the workflow falls back, stays out of the way, and is
+inert without the model.
+
 ### 08 — The AI fallback
 
 Reached only when `reviewFlags()` is non-empty and `ai != "never"`. Two sources:
@@ -251,6 +291,8 @@ never produced.
 | `R/parseBaselineTable.R` | hybrid entry point, `reviewFlags()`, `print.ParsePDFTable()` |
 | `R/aiFallback.R` | **the only file that touches the network**; schema, prompts, request, response |
 | `R/parseBaselineTableFiles.R` | batch runner, one subprocess per file |
+| `R/parseTatr.R` | the Table Transformer seam: XML reader, OCR-word-to-cell assignment, candidate parse through `.ppDocxLines()`, and the model runner |
+| `python/tatr/tatrTables.py` | the model itself (pegged; see its README); `--write-empty` keeps the text-less geometry a scanned page needs |
 | `R/writeIntegrityTemplate.R` | `.xlsx` writer |
 | `inst/scripts/parseOne.R` | the subprocess worker the batch runner launches |
 

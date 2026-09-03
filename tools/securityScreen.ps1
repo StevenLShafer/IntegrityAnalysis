@@ -114,6 +114,7 @@ $watched = @(
   'R/parseBaselineTable.R', 'R/parseBaselineTableFiles.R',
   'R/parseBaselineTableHeuristics.R', 'R/parseDocx.R',
   'R/parseWideTable.R', 'R/parsePDF-module.R', 'R/aiFallback.R',
+  'R/parseTatr.R', 'python/tatr/',
   'R/tokenize.R', 'R/pageLayout.R', 'R/armNRecovery.R',
   'R/utils.R', 'R/validateData.R', 'R/baselineTable.R',
   'inst/scripts/', '.github/workflows/', 'Dockerfile',

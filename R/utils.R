@@ -235,6 +235,19 @@
     stop("OCR needs the 'tesseract' package: install.packages(\"tesseract\")",
          call. = FALSE)
   if (is.null(pages)) pages <- seq_len(pdftools::pdf_info(pdfFile)$pages)
+  # A page-size cap BEFORE the rasteriser (screen F1, 2026-09-02): a PDF may
+  # declare a MediaBox of 200 x 200 inches, which at 300 dpi is a 3.6-gigapixel
+  # bitmap, and the OS timeout on the parse child bounds time, not memory.
+  # Pages over 30 inches on a side or over .ppRasterMaxPixels at this dpi
+  # are not rendered; a journal page is 8.4 megapixels at 300 dpi.
+  ps <- tryCatch(pdftools::pdf_pagesize(pdfFile), error = function(e) NULL)
+  if (!is.null(ps) && nrow(ps) >= max(pages)) {
+    w <- ps$width[pages]; h <- ps$height[pages]
+    big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
+    pages <- pages[!big]
+  }
+  if (length(pages) == 0)
+    return(if (want == "text") character(0) else list())
 
   tmp <- tempfile("ppocr")
   dir.create(tmp, showWarnings = FALSE, recursive = TRUE)
@@ -251,6 +264,8 @@
   else
     lapply(imgs, function(i) tesseract::ocr_data(i))
 }
+
+.ppRasterMaxPixels <- 20e6
 
 .ppOcrData <- function(pdfFile, dpi = 300, pages = NULL) {
   pg <- .ppOcrPages(pdfFile, dpi = dpi, pages = pages, want = "data")

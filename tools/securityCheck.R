@@ -58,8 +58,65 @@ for (f in rFiles) {
       note(sprintf("%s:%d: banned pattern %s", f, hit[1], pat))
   }
   hit <- grep("\\bsystem2\\s*\\(", code)
-  if (length(hit) && basename(f) != "parseBaselineTableFiles.R")
-    note(sprintf("%s:%d: system2() outside the reviewed launcher", f, hit[1]))
+  # Two reviewed launchers, each with its own pinned properties below:
+  # parseBaselineTableFiles.R (Rscript per file) and, since 2026-09-02,
+  # parseTatr.R's .ppTatrRun() (the pegged Python over one PDF). Review
+  # of the second, recorded here as AGENTS.md requires: the interpreter
+  # comes from INTEGRITY_TATR_PYTHON or a fixed home path, never from a
+  # request; the script path likewise; every argument is shQuote()d and
+  # every path is one this process created in tempdir(); the model runs
+  # offline (no --allow-download); its output is a file read as XML data;
+  # and the call carries an OS timeout. It is absent wherever the Python
+  # is (shinyapps.io), so the app's deployed surface is unchanged.
+  if (length(hit) && !basename(f) %in% c("parseBaselineTableFiles.R", "parseTatr.R"))
+    note(sprintf("%s:%d: system2() outside the reviewed launchers", f, hit[1]))
+  # ...and in parseTatr.R the exemption is for .ppTatrRun() ALONE: a
+  # system2() anywhere else in that file is a new launcher (CodeRabbit
+  # on #147).
+  if (length(hit) && basename(f) == "parseTatr.R") {
+    fnStart <- grep("^\\.ppTatrRun\\s*<-\\s*function", code)
+    fnEnd <- if (length(fnStart)) {
+      nxt <- grep("^[A-Za-z.][A-Za-z0-9._]*\\s*<-\\s*function", code)
+      nxt <- nxt[nxt > fnStart[1]]
+      if (length(nxt)) nxt[1] - 1L else length(code)
+    } else 0L
+    stray <- hit[!(length(fnStart) > 0 & hit >= fnStart[1] & hit <= fnEnd)]
+    if (length(stray))
+      note(sprintf("%s:%d: system2() in R/parseTatr.R outside .ppTatrRun() - a new, unreviewed launcher",
+                   f, stray[1]))
+  }
+}
+if (file.exists("R/parseTatr.R")) {
+  tr  <- sub("#.*$", "", srcOf("R/parseTatr.R"))
+  run <- grep("^\\.ppTatrRun\\s*<-\\s*function", tr)
+  body <- if (length(run)) tr[run[1]:min(run[1] + 40, length(tr))] else character(0)
+  if (!any(grepl("timeout\\s*=\\s*timeout", body)))
+    note("R/parseTatr.R: .ppTatrRun() lost its OS timeout on the Python subprocess")
+  if (any(grepl("--allow-download", body, fixed = TRUE)))
+    note("R/parseTatr.R: .ppTatrRun() would let the model fetch weights at inference (offline by design)")
+  if (!any(grepl("shQuote\\(sc\\)", body)) || !any(grepl("shQuote\\(lst\\)", body)))
+    note("R/parseTatr.R: .ppTatrRun() passes a path to the shell unquoted")
+  if (any(grepl("stdout\\s*=\\s*TRUE", body)))
+    note("R/parseTatr.R: .ppTatrRun() captures the model's stdout - its output is the XML file, read as data")
+  # the 2026-09-02 screen's findings, each pinned (F1, F2, F3, F5)
+  if (!any(grepl("--max-mem-mb", body, fixed = TRUE)))
+    note("R/parseTatr.R: .ppTatrRun() no longer caps the model process's memory (--max-mem-mb; screen F1)")
+  if (!any(grepl("INTEGRITY_PARSE_BUDGET", body, fixed = TRUE)))
+    note("R/parseTatr.R: .ppTatrRun() ignores the parse child's budget (INTEGRITY_PARSE_BUDGET; screen F3)")
+  if (!any(grepl("file.copy(pdfFile, pdf)", body, fixed = TRUE)))
+    note("R/parseTatr.R: .ppTatrRun() passes the uploader's own file name to the model (screen F5)")
+  disc <- grep("^\\.ppTatr(Python|Script)\\s*<-\\s*function", tr)
+  dbody <- if (length(disc)) tr[min(disc):min(max(disc) + 12, length(tr))] else character(0)
+  if (any(grepl("tatrenv|path\\.expand|getwd\\(", dbody)))
+    note("R/parseTatr.R: the model is discovered from the home directory or cwd, not configuration (screen F2)")
+  pf <- sub("#.*$", "", srcOf("R/parseBaselineTableFiles.R"))
+  if (!any(grepl("TMPDIR = childTmp", pf, fixed = TRUE)) || !any(grepl("unlink(childTmp", pf, fixed = TRUE)))
+    note("R/parseBaselineTableFiles.R: the parent no longer owns and removes the child's tempdir (screen F4)")
+  ut <- sub("#.*$", "", srcOf("R/utils.R"))
+  op <- grep("^\\.ppOcrPages\\s*<-\\s*function", ut)
+  obody <- if (length(op)) ut[op[1]:min(op[1] + 40, length(ut))] else character(0)
+  if (!any(grepl("pdf_pagesize", obody, fixed = TRUE)) || !any(grepl("\\.ppRasterMaxPixels", obody)))
+    note("R/utils.R: .ppOcrPages() rasterises pages without the size cap (screen F1)")
 }
 
 ## 2 - the comments log stays escaped ------------------------------------
