@@ -37,6 +37,7 @@ Imports:
   shinyjs,
   shinyWidgets,
   stats,
+  tesseract,
   tools,
   utils,
   xml2,
@@ -50,7 +51,6 @@ Suggests:
     rcmdcheck,
     remotes,
     rsconnect,
-    tesseract,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3

@@ -97,6 +97,15 @@ parsing challenge: `corpus/` (see its README).
 
   A locally-installed (`R CMD INSTALL`) copy will NOT deploy — shinyapps.io
   can only fetch the package from GitHub, so push first, deploy second.
+  **A Suggests package never deploys.** rsconnect captures the package's
+  Imports for the bundle and nothing else, so a runtime feature guarded
+  by `requireNamespace()` on a Suggests package works on every developer
+  machine and fails in production - tesseract sat in Suggests from the
+  OCR rescue (issue 22) until 2026-09-03, so the deployed app's scanned
+  page rescue silently returned nothing and the picture route (#145)
+  refused every image (found by Steve pasting a screenshot into the
+  #157 review app). Anything the deployed app may call belongs in
+  Imports, whatever `requireNamespace()` guards it with.
   PR test apps are `IntegrityAnalysis_PR_<n>`; purge them after merging.
   **A PR test app must identify itself in the UI** (Steve's rule,
   2026-08-16): deploy it with an `app.R` of the form
