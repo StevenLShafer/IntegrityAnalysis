@@ -29,10 +29,10 @@ The application runs at
 source at <https://github.com/StevenLShafer/IntegrityAnalysis>.
 
 **Privacy: nothing you upload or enter is retained on this server, and
-nothing leaves it unless you supply an AI key.** The uploaded PDF or
-spreadsheet, any data typed into the table, and the analysis results are
-all purged when the session closes. No record of the analysis is kept
-here.
+nothing leaves it unless you supply an AI key.** The uploaded file,
+whatever its kind and however it arrived, any data typed into the
+table, and the analysis results are all purged when the session
+closes. No record of the analysis is kept here.
 Manuscripts under review are confidential, and the app is built around
 that: uploaded files are deleted from disk when the session ends,
 downloads are generated straight into your browser, and nothing is
