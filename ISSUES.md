@@ -110,6 +110,131 @@ test that shows it working, and the screen's F1 note closed.
 
 ---
 
+## 33. The Table Transformer + tesseract seam: built; where it runs is the open question
+
+**Status: built 2026-09-02 (PR #147, `R/parseTatr.R`)** at Steve's
+direction, "Add tatr-tesseract to pdf parser workflow", after the
+run-along (issue 20's neighbour, PR #137) showed the model locating a
+griddable table in 84% of the text-layer articles the engine cannot grid
+and on 97% of scanned pages with no text layer at all.
+
+What is built: the model's XML (with `--write-empty`, so a scanned page
+keeps its geometry) goes through the Word path's adapter into the same
+block parser; on a page with no text layer, tesseract supplies the
+characters and each word is assigned to the cell holding at least half
+of its box. A rescue tier behind the text engine, ahead of the AI route
+and of plain OCR; the model never chooses the table.
+
+**Measured 2026-09-02** on an installed snapshot, through the subprocess
+batcher. Run B (574 Carlisle articles with model geometry, text layer):
+the engine alone parses 523; of the **51 it cannot, the seam recovers
+25** (49%) - 8 of them with an N on every arm, 17 with continuous rows,
+and a tail of thin one-to-two-variable readings that the value scoring
+below would sort. The 26 still failing split between poppler timeouts
+(the same files time out with or without the seam) and tables the model
+found but the engine could not read as baseline data. Run C (the 300
+accessions of the scanned-set run, 192 with model geometry, 84 of them
+text-less tables kept by `--write-empty`): the engine alone parses
+106; of the 86 it cannot, the seam recovers **19 through the text
+layer** - the same mechanism as run B - but the **OCR pairing on real
+scans yielded only fragments**: 18 results, none with an N on two arms,
+one with a continuous row, mostly a single variable, and no better than
+plain OCR on the five files both read. The seam now gates a pairing
+result on arm identity exactly as the OCR rescue does, so those
+fragments do not surface. **Standing conclusion, unchanged from issue
+22: on a real scan the AI image route is the quality path; geometry
+from the model helps the text-layer failures, not (yet) the scans.**
+
+What is NOT decided, and is Steve's call:
+
+- **Where the model runs in deployment.** It needs the pegged Python
+  (`tools/tatrProvision.sh`), ~17 s per article on CPU, ~1 GB resident,
+  and ~500 MB of weights on disk. Two hosts could carry it. The API's
+  Docker image is the simpler one: we build it, so the Python, the
+  weights and `INTEGRITY_TATR_PYTHON` go in directly. The shinyapps.io
+  app (Steve's Professional plan, instances up to 8 GB) is the second:
+  it runs Python through `reticulate` from a shipped `requirements.txt`,
+  but the torch wheels and the pegged weights would have to travel in
+  the app bundle or be fetched at every instance start, and each cold
+  start would pay the model load. A third route joins the two (Steve,
+  2026-09-02): the shinyapps.io app could call OUR OWN API for the
+  geometry - a `POST /v1/geometry` endpoint on the Docker image, invoked
+  only when the app's text engine fails, returning the model's XML for
+  the app's own `parseBaselineTableTatr()`. One place runs the model,
+  the app stays R-only; it costs a service token held as a shinyapps
+  secret and one round trip per failure, and it changes the guide's
+  "nothing leaves this server" sentence, which would then read "to a
+  container we run, with the API's zero-retention guarantee". Neither
+  deployment is a code change; the endpoint is a small one. All Steve's
+  call, weighed against the memory ceiling of issue 32 and the measured
+  payoff (text-layer failures, not scans).
+- **Per-cell OCR, and a higher render for scans.** The pairing OCRs the
+  whole page at 300 dpi and assigns words; on real scans that produced
+  fragments (above). OCRing each cell's crop separately, with a
+  digits-friendly configuration, and rendering scanned pages for the
+  model at more than 150 dpi are the next steps - and need an image
+  cropper that is not ImageMagick (screen F1, 2026-09-02; tesseract's own
+  reader can take a rectangle, which is the route to try). Arm 2's 99
+  real scans are the test set.
+- **Value scoring - now run on the 25** (2026-09-02, late). Eleven of
+  the 25 recovered articles map to a Carlisle trial with hand-entered
+  values. Of the seam's 185 (mean, SD) pairs, **105 corroborate his
+  (57%)** by the corroboration script's own rounding rule, and **91% of
+  his pairs are recovered** (10 of 113 missed). Six articles are fully
+  corroborated; five carry uncorroborated pairs, two of them badly
+  (IA012208: 44 of 54; IA013851: 22 of 32 - extra rows he did not
+  record, or a table read wrong). That is the same order as the engine's
+  corpus-wide 44.8% fully-corroborated figure, so the recovered readings
+  are ordinary parser output, not a new class of error - and the two bad
+  ones are what the grid's flags exist for. The remaining 14 have no
+  Carlisle mapping; the 147-article scoring on the node queue is the
+  fuller answer.
+
+**Measured 2026-09-03 on the WHOLE Carlisle corpus** (1,865 articles;
+the model's geometry for all of them from a 3.7 h run on `i5`, the
+comparison on `oldryzen` from the installed branch snapshot through the
+batcher: `tatr = "never"` against `tatr = "always"`; files under
+`C:/dev/Corpus/tatr/xml/runFull/always/`, scripts
+`C:/dev/Corpus/tools/tatrAlwaysReport.R` and `valueCheckAlways.R`):
+
+- The text engine parses 1,654 (88.7%); with the seam 1,768 (94.8%):
+  **114 recovered, none lost** (78 through the text layer, 36 by the
+  OCR pairing). The 51 articles the model found no table in parse the
+  same either way.
+- When both succeed (1,654), the model's reading wins by parse score in
+  441 (26.7%): 63 with identical numbers, 378 with different ones - the
+  model reads more (median 28 values against 19).
+- **Judged by Carlisle's hand-entered numbers** (1,485 of the 1,865
+  join to his One Sheet by PMID; each reading's values scored for
+  recall of his numbers and precision against them): on the 321 joined
+  articles where the model won with different numbers, recall rises
+  from 0.41 to 0.59 and precision from 0.38 to 0.44; paired, the model
+  reads more of his numbers in 150 articles and fewer in 59. Of the
+  1,905 values the model added net, 58% are his - a better hit rate than
+  the text engine's own 38% on those articles, so the additions are
+  content, not noise, on balance. The 84 recovered articles with a
+  Carlisle trial score recall 0.51 / precision 0.46, the same order as
+  the text engine's 0.61 / 0.48 on articles it parses: ordinary parser
+  output. Corpus-wide, recall 0.61 -> 0.65 and precision 0.48 -> 0.50.
+  So `tatr = "always"` is a net gain by his numbers, not just by score.
+- **The failure the score cannot see, 38 articles**: the model's reading
+  won by parse score while its precision against Carlisle fell by more
+  than 0.2 - in the worst (PMID 14725516) the text engine's 16 values
+  were all his and the model's 16 were a different table with one.
+  Parse score rewards content; it does not know which table is the
+  baseline table, and a larger non-baseline table can outscore a
+  correct smaller one. This does not touch the default `tatr = "auto"`
+  (the seam runs only when the text engine fails: 114 recovered, none
+  lost); it is a rule to add before `"always"` is used in earnest - the
+  model's candidate should have to match the text engine's caption, or
+  the caption score should weigh in the comparison. Listed in
+  `always_valuecheck.csv`.
+
+Done looks like: a deployment decision recorded here, and the "always"
+comparison given a caption rule so the 38 cannot happen.
+
+---
+
 ## 31. One corpus library, with an index that decides what may be shared
 
 **Status: built 2026-08-31** (`corpus/buildCorpusLibrary.R`,

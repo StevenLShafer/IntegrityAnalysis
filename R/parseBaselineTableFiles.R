@@ -13,6 +13,19 @@
 # produce the validation figures quoted in README.md.                      #
 ############################################################################
 
+# Build the child-process options blob with the AI key REMOVED, and
+# return the key separately for out-of-band (env var) passing. Pure and
+# side-effect free, so the security property "the key is never in the
+# options blob" (security review M4, 2026-08-26) is directly testable.
+.ppSplitChildKey <- function(ai, dots, libPaths, devPath) {
+  childKey <- if (!is.null(dots$apiKey) && nzchar(dots$apiKey))
+    dots$apiKey else ""
+  dots$apiKey <- NULL
+  list(opts = list(libPaths = libPaths, devPath = devPath,
+                   args = c(list(ai = ai), dots)),
+       childKey = childKey)
+}
+
 #' Parse every PDF, Word manuscript and JATS XML file in a directory
 #'
 #' Runs [parseBaselineTable()] over many PDFs, `.docx` manuscripts and
@@ -61,19 +74,6 @@
 #' # The parsed table for one article
 #' res$result[[1]]$data
 #' }
-# Build the child-process options blob with the AI key REMOVED, and
-# return the key separately for out-of-band (env var) passing. Pure and
-# side-effect free, so the security property "the key is never in the
-# options blob" (security review M4, 2026-08-26) is directly testable.
-.ppSplitChildKey <- function(ai, dots, libPaths, devPath) {
-  childKey <- if (!is.null(dots$apiKey) && nzchar(dots$apiKey))
-    dots$apiKey else ""
-  dots$apiKey <- NULL
-  list(opts = list(libPaths = libPaths, devPath = devPath,
-                   args = c(list(ai = ai), dots)),
-       childKey = childKey)
-}
-
 #' @seealso [parseBaselineTable()]
 #' @export
 parseBaselineTableFiles <- function(files,
@@ -150,12 +150,29 @@ parseBaselineTableFiles <- function(files,
       Sys.setenv(INTEGRITY_CHILD_APIKEY = childKey)
       on.exit(Sys.unsetenv("INTEGRITY_CHILD_APIKEY"), add = TRUE)
     }
+    # THE PARENT OWNS THE CHILD'S TEMPORARY DIRECTORY (screen F4,
+    # 2026-09-02). A child killed at the timeout never runs its on.exit()
+    # handlers or R's own session cleanup, so its tempdir survived holding
+    # full-page renders of the manuscript (and, with the Table Transformer
+    # seam, an XML of every cell) - a retention-contract gap. TMPDIR/TMP/
+    # TEMP point the child at a directory this process created and removes
+    # whatever the child's fate. INTEGRITY_PARSE_BUDGET tells the child how
+    # long it has, so the model runner can take at most half of it (F3).
+    childTmp <- tempfile("child"); dir.create(childTmp)
+    oldEnv <- Sys.getenv(c("TMPDIR", "TMP", "TEMP"), unset = NA)
+    Sys.setenv(TMPDIR = childTmp, TMP = childTmp, TEMP = childTmp,
+               INTEGRITY_PARSE_BUDGET = as.character(timeout))
     status <- tryCatch(
       system2(rscript,
               c("--vanilla", shQuote(script), shQuote(optsRds),
                 shQuote(outRds), shQuote(f)),
               stdout = FALSE, stderr = FALSE, timeout = timeout),
       warning = function(w) 124L)   # system2 warns when it kills on timeout
+    for (v in names(oldEnv))
+      if (is.na(oldEnv[[v]])) Sys.unsetenv(v)
+      else do.call(Sys.setenv, as.list(stats::setNames(oldEnv[v], v)))
+    Sys.unsetenv("INTEGRITY_PARSE_BUDGET")
+    unlink(childTmp, recursive = TRUE, force = TRUE)
     secs <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 2)
 
     res <- if (file.exists(outRds)) readRDS(outRds) else NULL

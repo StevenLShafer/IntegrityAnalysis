@@ -137,6 +137,14 @@ reviewFlags <- function(x) {
 #'   when `ai` is not `"never"` and the table routes have both failed. Rows
 #'   found this way are tagged `"ai-prose"` in `$provenance`.
 #' @param model,effort,maxTokens,apiKey Passed to [parseBaselineTableAI()].
+#' @param tatr `"auto"` (the default) brings in the Table Transformer's
+#'   geometry when the text engine fails, provided a `tatrXml` is given or
+#'   the pegged Python environment is present (see `R/parseTatr.R`);
+#'   `"always"` also compares it against a successful text parse and keeps
+#'   the better; `"never"` leaves it out.
+#' @param tatrXml Path to the Table Transformer XML for this PDF (a
+#'   `*.tatr.xml` written by `python/tatr/tatrTables.py`), or a directory
+#'   holding `<stem>.tatr.xml`. When `NULL`, the model is run if available.
 #'
 #' @return An object of class `ParsePDFTable`. `$engine` is `"heuristic"`,
 #'   `"ai"`, or `"hybrid"`; `$provenance` records the engine per row; and
@@ -168,11 +176,73 @@ parseBaselineTable <- function(pdfFile,
                                effort        = "medium",
                                maxTokens     = 16000L,
                                apiKey        = NULL,
+                               tatr          = c("auto", "never", "always"),
+                               tatrXml       = NULL,
                                quiet         = FALSE)
 {
   ai        <- match.arg(ai)
   parenIsSD <- match.arg(parenIsSD)
+  tatr      <- match.arg(tatr)
   say <- function(...) if (!quiet) message(...)
+
+  # ---- The Table Transformer seam (R/parseTatr.R, 2026-09-02) -------------
+  # Geometry from the model, characters from the text layer or from OCR.
+  # A rescue tier: it engages when the text engine fails (or on request),
+  # and only where an XML is supplied or the pegged Python is present -
+  # everywhere else this function behaves exactly as before. The model
+  # is run at most once per call, lazily, in a subprocess under a timeout.
+  tatrPath <- NULL; tatrTried <- FALSE
+  # When the runner produced the XML, its work directory (the copied PDF,
+  # the list, the XML) is removed as this call returns - not left for
+  # session cleanup (CodeRabbit on #147; the batcher's children already
+  # have a parent-owned tempdir, this covers a direct call).
+  tatrSource <- function() {
+    if (tatrTried) return(tatrPath)
+    tatrTried <<- TRUE
+    if (!is.null(tatrXml)) {
+      p <- if (dir.exists(tatrXml))
+        file.path(tatrXml, paste0(tools::file_path_sans_ext(basename(pdfFile)), ".tatr.xml"))
+      else tatrXml
+      tatrPath <<- if (file.exists(p)) p else NULL
+    } else if (.ppTatrAvailable()) {
+      tatrPath <<- .ppTatrRun(pdfFile, quiet = quiet)
+      if (!is.null(tatrPath)) tatrWork <<- dirname(dirname(tatrPath))
+    }
+    tatrPath
+  }
+  tatrWork <- NULL
+  on.exit(if (!is.null(tatrWork)) unlink(tatrWork, recursive = TRUE, force = TRUE),
+          add = TRUE)
+  tatrNote <- paste("table geometry from the Table Transformer (rows and",
+                    "columns located by the model; every value read from",
+                    "the document)")
+  tatrParse <- function(ocrMode = "auto") {
+    xml <- tatrSource()
+    if (is.null(xml)) return(NULL)
+    r <- tryCatch(
+      parseBaselineTableTatr(pdfFile, xml, trial = trial, parenIsSD = parenIsSD,
+                             roundObsDelta = roundObsDelta, pctApprox = pctApprox,
+                             ocr = ocrMode, quiet = quiet),
+      error = function(e) { say("Table Transformer: ", conditionMessage(e)); NULL })
+    if (is.null(r)) return(NULL)
+    # The OCR rescue's quality gate, applied here too: a pairing result
+    # with no arm name and no arm N cannot be analysed and would only
+    # erode trust surfaced as a cyan table. Measured 2026-09-02 on the
+    # scanned corpus set: 18 pairing results, none with two arm Ns, one
+    # with a continuous row - fragments, not tables. Gate them.
+    if (identical(r$engine, "heuristic-tatr-ocr") &&
+        !(any(!is.na(r$arms$arm) & nzchar(r$arms$arm)) || any(!is.na(r$arms$N)))) {
+      say("Table Transformer + OCR found a table but could not read any arm ",
+          "name or arm N - the scan is too degraded for OCR.")
+      return(NULL)
+    }
+    r$flags <- c(tatrNote,
+                 if (identical(r$engine, "heuristic-tatr-ocr"))
+                   paste("scanned page(s) read by local OCR - OCR can misread",
+                         "digits, so verify every value against the manuscript"),
+                 reviewFlags(r))
+    r
+  }
 
   # The AI fallback renders PDF pages (parseBaselineTableAI), which a
   # .docx does not have. Proceed deterministically with a note rather
@@ -236,6 +306,16 @@ parseBaselineTable <- function(pdfFile,
     imgs <- tryCatch(.ppImageOnlyPages(.ppPdfText(pdfFile)),
                      error = function(e) integer(0))
     if (length(imgs) == 0) return(NULL)
+    # The pairing first: the model's geometry with tesseract's characters.
+    # Arm 1 of the OCR measurement (2026-09-02) found the dominant failure
+    # of plain OCR to be aiming at the WRONG TABLE, not misread digits -
+    # which is the failure geometry from the model addresses.
+    if (tatr != "never") {
+      tt <- tatrParse("auto")
+      if (!is.null(tt) && (any(!is.na(tt$arms$arm) & nzchar(tt$arms$arm)) ||
+                           any(!is.na(tt$arms$N))))
+        return(tt)
+    }
     say("Page(s) ", paste(imgs, collapse = ","), " are scanned images; ",
         "retrying them with local OCR (tesseract) ...")
     # OCR only the image pages (their captions are part of the picture);
@@ -276,6 +356,12 @@ parseBaselineTable <- function(pdfFile,
   }
 
   if (inherits(het, "error")) {
+    # The text engine found nothing: the model's geometry over the same
+    # text layer is the cheapest second opinion, free and offline.
+    if (tatr != "never") {
+      tt <- tatrParse("auto")
+      if (!is.null(tt)) return(tt)
+    }
     if (ai == "never") {
       ocr <- ocrRescue()
       if (!is.null(ocr)) return(ocr)
@@ -317,6 +403,23 @@ parseBaselineTable <- function(pdfFile,
     return(out)
   }
 
+  # tatr = "always": the text engine succeeded, but the caller wants the
+  # model's reading compared - keep whichever parses better. The model's
+  # own provenance notes (geometry from the model; OCR if it read pixels)
+  # ride along under `tatrFlags`, ahead of the review flags every return
+  # below rebuilds - otherwise the replacement silently lost them
+  # (CodeRabbit on #147).
+  tatrFlags <- NULL
+  if (tatr == "always") {
+    tt <- tatrParse("auto")
+    if (!is.null(tt) && .ppParseScore(tt) > .ppParseScore(het)) {
+      say("Keeping the Table Transformer reading (parse score ",
+          round(.ppParseScore(tt), 1), " vs ", round(.ppParseScore(het), 1), ").")
+      tatrFlags <- setdiff(tt$flags, reviewFlags(tt))
+      het <- tt
+    }
+  }
+
   flags <- reviewFlags(het)
   # A picture was read by OCR end to end, so it carries the same
   # verify-every-value note the scanned-page rescue attaches (the app
@@ -326,7 +429,7 @@ parseBaselineTable <- function(pdfFile,
   imageNote <- if (isImage)
     paste("picture read by local OCR - OCR can misread digits, so verify",
           "every value against the original")
-  het$flags <- c(imageNote, flags)
+  het$flags <- c(imageNote, tatrFlags, flags)
   if (ai == "never" || length(flags) == 0) return(het)
 
   if (!claudeAvailable() && is.null(apiKey)) {
@@ -359,7 +462,7 @@ parseBaselineTable <- function(pdfFile,
   if (inherits(aiRes, "error")) {
     say("The AI fallback failed (", conditionMessage(aiRes),
         "); returning the deterministic result.")
-    het$flags <- c(imageNote, flags,
+    het$flags <- c(imageNote, tatrFlags, flags,
                    paste0("AI fallback failed: ", conditionMessage(aiRes)))
     return(het)
   }
@@ -405,7 +508,7 @@ parseBaselineTable <- function(pdfFile,
 
   if (nrow(newRows) == 0) {
     say("The model found nothing the deterministic pass had missed.")
-    het$flags <- c(imageNote, flags)
+    het$flags <- c(imageNote, tatrFlags, flags)
     return(het)
   }
   say("Adding ", nrow(newRows), " line(s) from ", model,
@@ -429,7 +532,7 @@ parseBaselineTable <- function(pdfFile,
          caption    = het$caption,
          trial      = trial,
          notes      = aiRes$notes,
-         flags      = c(imageNote, flags),
+         flags      = c(imageNote, tatrFlags, flags),
          engine     = "hybrid"),
     class = "ParsePDFTable")
 }

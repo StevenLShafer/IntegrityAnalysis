@@ -140,12 +140,68 @@
   length(m) >= 2
 }
 
+# Typographic spaces that poppler does NOT split words on. Springer sets
+# "Table 1" + EN SPACE + THIN SPACE + caption text, so the numeral and the
+# first caption word arrive as ONE token ("1  Baseline"); the caption
+# anchor - the word "Table" followed by a word that IS a numeral - then
+# never matches, the document's real Table 1 never becomes a candidate,
+# and the parser falls back on cross-reference mentions and returns
+# prose (Steve's ticagrelor article, Springer 10072_2022_6525,
+# 2026-09-02: 36 lines of ground truth, 1 variable parsed).
+#
+# Built with intToUtf8 rather than \u escapes so that no editing tool
+# can quietly turn the escapes into characters or eat a backslash.
+# U+2000-U+200A are the en/em/thin/hair family, U+202F the narrow
+# no-break space, U+205F the medium mathematical space, U+3000 the
+# ideographic space. NBSP (U+00A0) is deliberately ABSENT: it is the
+# thousands separator of "1 000" in several journals, and splitting it
+# would shred numbers that today at least stay in one piece.
+.ppUNISPACE <- sprintf("[%s]+", intToUtf8(c(0x2000:0x200a, 0x202f,
+                                            0x205f, 0x3000)))
+
+# Split every token holding such a space into the words poppler would
+# have delivered had the space been an ordinary one, apportioning the
+# token's box by character count (each gap counted as one character).
+.ppSplitUnicodeSpaces <- function(d) {
+  has <- grepl(.ppUNISPACE, d$text, perl = TRUE)
+  if (!any(has)) return(d)
+  rows <- vector("list", nrow(d))
+  for (i in seq_len(nrow(d))) {
+    if (!has[i]) { rows[[i]] <- d[i, , drop = FALSE]; next }
+    txt <- d$text[i]
+    # the parts by their TRUE character offsets, so a run of several
+    # spaces (Springer's en + thin) is measured as the characters it is,
+    # not as one boundary (CodeRabbit on #146)
+    m        <- gregexpr(.ppUNISPACE, txt, perl = TRUE)[[1]]
+    sepStart <- as.integer(m); sepLen <- attr(m, "match.length")
+    starts   <- c(1L, sepStart + sepLen)
+    ends     <- c(sepStart - 1L, nchar(txt))
+    keep     <- ends >= starts
+    starts <- starts[keep]; ends <- ends[keep]
+    parts  <- substring(txt, starts, ends)
+    if (length(parts) <= 1) {
+      one <- d[i, , drop = FALSE]
+      one$text <- if (length(parts)) parts else ""
+      rows[[i]] <- one
+      next
+    }
+    n   <- nchar(txt)
+    out <- d[rep(i, length(parts)), , drop = FALSE]
+    out$text  <- parts
+    out$x     <- d$x[i] + d$width[i] * (starts - 1) / n
+    out$width <- d$width[i] * (ends - starts + 1) / n
+    rows[[i]] <- out
+  }
+  do.call(rbind, rows)
+}
+
 .ppPdfData <- function(pdfFile) {
   pg   <- pdftools::pdf_data(pdfFile)
   txt  <- unlist(lapply(pg, function(d) if (nrow(d)) d$text else character(0)))
   dash <- .ppPlusMinusIsDash(.ppNormalizeGlyphs(txt))
   lapply(pg, function(d) {
     if (nrow(d)) {
+      d <- .ppSplitUnicodeSpaces(d)
       d$text <- .ppNormalizeGlyphs(d$text)
       if (dash) d$text <- gsub(.ppPLUSMINUS, "-",d$text, fixed = TRUE)
     }
@@ -179,6 +235,19 @@
     stop("OCR needs the 'tesseract' package: install.packages(\"tesseract\")",
          call. = FALSE)
   if (is.null(pages)) pages <- seq_len(pdftools::pdf_info(pdfFile)$pages)
+  # A page-size cap BEFORE the rasteriser (screen F1, 2026-09-02): a PDF may
+  # declare a MediaBox of 200 x 200 inches, which at 300 dpi is a 3.6-gigapixel
+  # bitmap, and the OS timeout on the parse child bounds time, not memory.
+  # Pages over 30 inches on a side or over .ppRasterMaxPixels at this dpi
+  # are not rendered; a journal page is 8.4 megapixels at 300 dpi.
+  ps <- tryCatch(pdftools::pdf_pagesize(pdfFile), error = function(e) NULL)
+  if (!is.null(ps) && nrow(ps) >= max(pages)) {
+    w <- ps$width[pages]; h <- ps$height[pages]
+    big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
+    pages <- pages[!big]
+  }
+  if (length(pages) == 0)
+    return(if (want == "text") character(0) else list())
 
   tmp <- tempfile("ppocr")
   dir.create(tmp, showWarnings = FALSE, recursive = TRUE)
@@ -195,6 +264,8 @@
   else
     lapply(imgs, function(i) tesseract::ocr_data(i))
 }
+
+.ppRasterMaxPixels <- 20e6
 
 .ppOcrData <- function(pdfFile, dpi = 300, pages = NULL) {
   pg <- .ppOcrPages(pdfFile, dpi = dpi, pages = pages, want = "data")

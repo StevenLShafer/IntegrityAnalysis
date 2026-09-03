@@ -1087,7 +1087,7 @@ app_server <- function(input, output, session) {
           # is no model judgment involved, just glyph recognition, and
           # a single misread digit (3/8, 1/7) would silently corrupt a
           # fraud screen. ROW/COL "*" = every cell of the trial.
-          if (identical(r$engine, "heuristic-ocr")) {
+          if (r$engine %in% c("heuristic-ocr", "heuristic-tatr-ocr")) {
             # A TIFF cannot take the AI route (the model does not accept
             # it), so do not promise one (CodeRabbit on #145): point at
             # the conversion that would work instead.
