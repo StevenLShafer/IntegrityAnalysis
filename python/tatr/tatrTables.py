@@ -476,6 +476,12 @@ def main():
                     help="reject if the median filled cell is longer than this")
     ap.add_argument("--allow-download", action="store_true",
                     help="permit fetching weights; default is offline")
+    ap.add_argument("--write-empty", action="store_true",
+                    help="also write tables the gate rejected whose cells are "
+                         "ALL empty - a page with no text layer, where the "
+                         "geometry is exactly what an OCR pass can fill "
+                         "(the tesseract pairing, 2026-09-02); they carry "
+                         "passed-plausibility=false")
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -549,7 +555,11 @@ def main():
             # written: 14-26 prose blocks per article would bury the real
             # tables and inflate the library for nothing. The count is what
             # tells us later whether the gate is set right.
-            tables = [t for t in found if t["keep"]]
+            # --write-empty adds the text-less rejects: cell text is empty
+            # because the page has no text layer, not because the region is
+            # prose, and their boxes are what the R side fills with OCR.
+            tables = [t for t in found
+                      if t["keep"] or (args.write_empty and t["stats"]["filled"] == 0)]
             if tables:
                 root = build_xml(acc, path, tables, el, sha256_of(path),
                                  dict(min_cols=args.min_cols,
