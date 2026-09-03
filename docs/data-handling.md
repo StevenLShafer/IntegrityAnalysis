@@ -39,7 +39,9 @@ way is used to train a model, and it is deleted within about 30 days.
 ## What is processed, and what is not
 
 **Processed (transiently):** the uploaded file (PDF, Word manuscript,
-spreadsheet, or picture of a table - or a zip archive of those, which
+JATS XML article, spreadsheet, or picture of a table - whether picked,
+dropped on the page or pasted from the clipboard - or a zip archive of
+those, which
 the app expands into its entries, each then handled exactly as a
 single upload and discarded with it), the baseline table extracted from
 it, any values a

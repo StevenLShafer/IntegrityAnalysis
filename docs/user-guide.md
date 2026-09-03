@@ -29,10 +29,10 @@ The application runs at
 source at <https://github.com/StevenLShafer/IntegrityAnalysis>.
 
 **Privacy: nothing you upload or enter is retained on this server, and
-nothing leaves it unless you supply an AI key.** The uploaded PDF or
-spreadsheet, any data typed into the table, and the analysis results are
-all purged when the session closes. No record of the analysis is kept
-here.
+nothing leaves it unless you supply an AI key.** The uploaded file,
+whatever its kind and however it arrived, any data typed into the
+table, and the analysis results are all purged when the session
+closes. No record of the analysis is kept here.
 Manuscripts under review are confidential, and the app is built around
 that: uploaded files are deleted from disk when the session ends,
 downloads are generated straight into your browser, and nothing is
@@ -130,19 +130,27 @@ results (see *Validation* below).
    later session), and the reconstructed baseline table (the
    journal-style view, for comparison against the manuscript).
 
-## The seven ways in
+## The ways in
+
+The app reads nine kinds of input, and every one of them lands in the
+same editable grid: a **template spreadsheet**, a **journal-style
+baseline table** in a spreadsheet, an **article PDF**, a **picture of a
+table**, a **Word manuscript**, a **JATS XML** article, **several files
+at once**, a **zip archive** of many, and an **empty table** you type
+into. Each is described below.
 
 *However a file arrives — the Browse button, **dropped anywhere on the
 page** (one file or several, any of the types below, and a zip of
 them), or **pasted** (a screenshot of a table sits in the clipboard as
 a PNG on Windows, macOS, Linux, iOS and Android; Ctrl+V or Cmd+V on the
 page uploads it as a picture of a table) — it takes exactly the same
-path through the app. A dropped file of a type the app does not read is
-refused with a note in the message box; nothing is opened by the
-browser. A paste that carries text, or a paste into a text field or the
-grid, is left to do what it always did. On a phone, whether a page-level
-paste of a picture reaches the app depends on the browser; the picker
-and the drop always work.*
+path through the app. The message box names every file as it arrives
+and by which door. A dropped file of a type the app does not read is
+refused with a note; nothing is opened by the browser. A paste that
+carries text, or a paste into a text field or the grid, is left to do
+what it always did. On a phone, whether a page-level paste of a picture
+reaches the app depends on the browser; the picker and the drop always
+work.*
 
 **A template spreadsheet.** A spreadsheet in the app's own long format
 (Excel `.xlsx`/`.xls` or `.csv`) uploads directly. The column layout is
@@ -194,19 +202,25 @@ everything OCR does happens on this server — nothing leaves it.
 Whatever was extracted can be reviewed, corrected, and analyzed
 without leaving the app.
 
-**A picture of a table (jpg, png, tif).** A screenshot or scan of
-Table 1 uploads like a PDF: the app reads it with local optical
-character recognition (tesseract) and extracts the table into the grid,
-shaded **pale cyan** with the same verify-every-value warning as a
-scanned page — OCR can misread digits. It works best on a clean picture
-at 200–300 dpi; at screen resolution (96 dpi) words start to drop out.
-The picture is decoded by the app's own OCR reader, never by
-ImageMagick, and its declared dimensions are checked from the file
-header before any decoder runs — an oversized or malformed image is
-refused with a message. (GIF is deliberately not accepted: its header
-cannot bound what its decoder allocates.) With an API key entered, a
-jpg or png is sent to the AI assist as an image (a tif is read by OCR
-only; the model does not accept it).
+**A picture of a table (jpg, png, tif) — uploaded, dropped, or
+pasted.** A screenshot or scan of Table 1 uploads like a PDF, and a
+screenshot can simply be pasted onto the page: the app reads it with
+local optical character recognition (tesseract) and extracts the table
+into the grid, shaded **pale cyan** with the same verify-every-value
+warning as a scanned page — OCR can misread digits. The picture is
+taken to *be* the table: it is read whole, from its first line, with no
+search for a "Table 1" caption (one may be present or not) and no
+attempt to split it into page columns, so a screenshot of just the
+table is the ideal input. It works best on a clean picture at 200–300
+dpi; at screen resolution (96 dpi) small type is at the edge of what
+OCR reads reliably, so check the cyan values with particular care. The
+picture is decoded by the app's own OCR reader, never by ImageMagick,
+and its declared dimensions are checked from the file header before any
+decoder runs — an oversized or malformed image is refused with a
+message. (GIF is deliberately not accepted: its header cannot bound
+what its decoder allocates.) With an API key entered, a jpg or png is
+sent to the AI assist as an image (a tif is read by OCR only; the model
+does not accept it).
 
 **A Word manuscript (.docx).** A submission in Word format uploads the
 same way as a PDF: the app examines every table in the document —
@@ -218,10 +232,24 @@ safeguards apply: deterministic, entirely local, unusable lines
 red-flagged in the grid, and when no printed arm sizes exist the app
 looks for "(n = …)" statements in the Methods text (flagged for
 checking against the CONSORT diagram). The table must be a genuine Word
-table — a pasted image of a table has no text to read.
+table — a picture of a table pasted into the document has no text to
+read there. Paste the picture itself onto this page instead, and it is
+read as a picture of a table (above).
+
+**A JATS XML article.** The XML that PubMed Central, Europe PMC and
+publishers' production systems emit for an article (`.xml`, the JATS
+tag set) uploads like a PDF. A JATS table is a real table — rows and
+cells, not positions on a page — so extraction is the cleanest of all
+the document routes: the caption and the footnotes travel with the
+table, and the only interpretation left is what the numbers mean, which
+is the same for every route. Vertically merged cells (a category name
+spanning its rows) are unfolded the way the printed table reads. This
+is the route intended for editorial systems, which hold the manuscript
+as XML long before a PDF exists.
 
 **Several files at once — or one after another.** Any mix of
-spreadsheets, PDFs, and Word manuscripts in one selection, and any
+spreadsheets, PDFs, Word manuscripts, JATS XML files and pictures in
+one selection, and any
 number of uploads in sequence: **each upload appends to the table
 already in the grid**
 (including edits you have typed but not yet revalidated). Every file
@@ -232,17 +260,17 @@ with its file name so nothing silently merges. To start over, click
 **Start With an Empty Table**.
 
 **A zip archive of a whole analysis.** Zip any number of spreadsheets,
-article PDFs, and Word manuscripts into one `.zip` and upload just
-that. This is built
+article PDFs, Word manuscripts, JATS XML files and pictures of tables
+into one `.zip` and upload just that. This is built
 for reproducing a multi-trial investigation — the pattern of Carlisle's
 2012 review of Fujii's 168 trials
 ([PMID 22404311](https://pubmed.ncbi.nlm.nih.gov/22404311/)): put one
 file per trial in the archive and every entry becomes its own trial in
 the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
-csv/xls/xlsx/PDF/docx are skipped with a note, an archive inside the
-archive is not expanded, and a corrupt archive is reported rather than
-analyzed.
+csv/xls/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note, an
+archive inside the archive is not expanded, and a corrupt archive is
+reported rather than analyzed.
 
 The limits, and what they mean in practice:
 

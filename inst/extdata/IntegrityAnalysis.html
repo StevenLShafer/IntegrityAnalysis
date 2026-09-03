@@ -33,8 +33,7 @@ vertical-align: middle;
 <li><a href="#background" id="toc-background">Background</a></li>
 <li><a href="#quick-start" id="toc-quick-start">Quick start</a>
 <ul>
-<li><a href="#the-seven-ways-in" id="toc-the-seven-ways-in">The seven
-ways in</a></li>
+<li><a href="#the-ways-in" id="toc-the-ways-in">The ways in</a></li>
 <li><a href="#the-ai-assist-optional-bring-your-own-key" id="toc-the-ai-assist-optional-bring-your-own-key">The AI assist
 (optional — bring your own key)</a></li>
 </ul></li>
@@ -110,21 +109,21 @@ analysis of RCT baseline data.</strong></p>
 code is open source at <a href="https://github.com/StevenLShafer/IntegrityAnalysis" class="uri">https://github.com/StevenLShafer/IntegrityAnalysis</a>.</p>
 <p><strong>Privacy: nothing you upload or enter is retained on this
 server, and nothing leaves it unless you supply an AI key.</strong> The
-uploaded PDF or spreadsheet, any data typed into the table, and the
-analysis results are all purged when the session closes. No record of
-the analysis is kept here. Manuscripts under review are confidential,
-and the app is built around that: uploaded files are deleted from disk
-when the session ends, downloads are generated straight into your
-browser, and nothing is logged. The deployed analysis is fully
-deterministic and offline — no document content is ever sent to any
-third-party service — with one opt-in exception under your sole control:
-the <strong>AI assist</strong> (see below) engages only when you enter
-your own Anthropic API key, and entering it is your explicit consent to
-send your uploaded documents’ content to that service for the session.
-Even then confidentiality holds: Anthropic’s commercial terms bar it
-from training models on API submissions, and API data is deleted within
-about 30 days (see the AI-assist section for the specifics). Without a
-key, nothing you upload ever leaves this server.</p>
+uploaded file, whatever its kind and however it arrived, any data typed
+into the table, and the analysis results are all purged when the session
+closes. No record of the analysis is kept here. Manuscripts under review
+are confidential, and the app is built around that: uploaded files are
+deleted from disk when the session ends, downloads are generated
+straight into your browser, and nothing is logged. The deployed analysis
+is fully deterministic and offline — no document content is ever sent to
+any third-party service — with one opt-in exception under your sole
+control: the <strong>AI assist</strong> (see below) engages only when
+you enter your own Anthropic API key, and entering it is your explicit
+consent to send your uploaded documents’ content to that service for the
+session. Even then confidentiality holds: Anthropic’s commercial terms
+bar it from training models on API submissions, and API data is deleted
+within about 30 days (see the AI-assist section for the specifics).
+Without a key, nothing you upload ever leaves this server.</p>
 <p><strong>Usage counting:</strong> I tabulate the number of times
 IntegrityAnalysis is opened and the number of analyses run — simple
 counts, and nothing else. Not even your IP address reaches the counter,
@@ -201,18 +200,27 @@ trial’s p value appears as it completes.</li>
 later session), and the reconstructed baseline table (the journal-style
 view, for comparison against the manuscript).</li>
 </ol>
-<h2 id="the-seven-ways-in">The seven ways in</h2>
+<h2 id="the-ways-in">The ways in</h2>
+<p>The app reads nine kinds of input, and every one of them lands in the
+same editable grid: a <strong>template spreadsheet</strong>, a
+<strong>journal-style baseline table</strong> in a spreadsheet, an
+<strong>article PDF</strong>, a <strong>picture of a table</strong>, a
+<strong>Word manuscript</strong>, a <strong>JATS XML</strong> article,
+<strong>several files at once</strong>, a <strong>zip archive</strong>
+of many, and an <strong>empty table</strong> you type into. Each is
+described below.</p>
 <p><em>However a file arrives — the Browse button, <strong>dropped
 anywhere on the page</strong> (one file or several, any of the types
 below, and a zip of them), or <strong>pasted</strong> (a screenshot of a
 table sits in the clipboard as a PNG on Windows, macOS, Linux, iOS and
 Android; Ctrl+V or Cmd+V on the page uploads it as a picture of a table)
-— it takes exactly the same path through the app. A dropped file of a
-type the app does not read is refused with a note in the message box;
-nothing is opened by the browser. A paste that carries text, or a paste
-into a text field or the grid, is left to do what it always did. On a
-phone, whether a page-level paste of a picture reaches the app depends
-on the browser; the picker and the drop always work.</em></p>
+— it takes exactly the same path through the app. The message box names
+every file as it arrives and by which door. A dropped file of a type the
+app does not read is refused with a note; nothing is opened by the
+browser. A paste that carries text, or a paste into a text field or the
+grid, is left to do what it always did. On a phone, whether a page-level
+paste of a picture reaches the app depends on the browser; the picker
+and the drop always work.</em></p>
 <p><strong>A template spreadsheet.</strong> A spreadsheet in the app’s
 own long format (Excel <code>.xlsx</code>/<code>.xls</code> or
 <code>.csv</code>) uploads directly. The column layout is described in
@@ -263,19 +271,25 @@ for OCR fails cleanly with a message; the AI assist reads such pages far
 more reliably, and everything OCR does happens on this server — nothing
 leaves it. Whatever was extracted can be reviewed, corrected, and
 analyzed without leaving the app.</p>
-<p><strong>A picture of a table (jpg, png, tif).</strong> A screenshot
-or scan of Table 1 uploads like a PDF: the app reads it with local
-optical character recognition (tesseract) and extracts the table into
-the grid, shaded <strong>pale cyan</strong> with the same
+<p><strong>A picture of a table (jpg, png, tif) — uploaded, dropped, or
+pasted.</strong> A screenshot or scan of Table 1 uploads like a PDF, and
+a screenshot can simply be pasted onto the page: the app reads it with
+local optical character recognition (tesseract) and extracts the table
+into the grid, shaded <strong>pale cyan</strong> with the same
 verify-every-value warning as a scanned page — OCR can misread digits.
-It works best on a clean picture at 200–300 dpi; at screen resolution
-(96 dpi) words start to drop out. The picture is decoded by the app’s
-own OCR reader, never by ImageMagick, and its declared dimensions are
-checked from the file header before any decoder runs — an oversized or
-malformed image is refused with a message. (GIF is deliberately not
-accepted: its header cannot bound what its decoder allocates.) With an
-API key entered, a jpg or png is sent to the AI assist as an image (a
-tif is read by OCR only; the model does not accept it).</p>
+The picture is taken to <em>be</em> the table: it is read whole, from
+its first line, with no search for a “Table 1” caption (one may be
+present or not) and no attempt to split it into page columns, so a
+screenshot of just the table is the ideal input. It works best on a
+clean picture at 200–300 dpi; at screen resolution (96 dpi) small type
+is at the edge of what OCR reads reliably, so check the cyan values with
+particular care. The picture is decoded by the app’s own OCR reader,
+never by ImageMagick, and its declared dimensions are checked from the
+file header before any decoder runs — an oversized or malformed image is
+refused with a message. (GIF is deliberately not accepted: its header
+cannot bound what its decoder allocates.) With an API key entered, a jpg
+or png is sent to the AI assist as an image (a tif is read by OCR only;
+the model does not accept it).</p>
 <p><strong>A Word manuscript (.docx).</strong> A submission in Word
 format uploads the same way as a PDF: the app examines every table in
 the document — submissions put them at the end, with the caption just
@@ -286,28 +300,40 @@ The same safeguards apply: deterministic, entirely local, unusable lines
 red-flagged in the grid, and when no printed arm sizes exist the app
 looks for “(n = …)” statements in the Methods text (flagged for checking
 against the CONSORT diagram). The table must be a genuine Word table — a
-pasted image of a table has no text to read.</p>
+picture of a table pasted into the document has no text to read there.
+Paste the picture itself onto this page instead, and it is read as a
+picture of a table (above).</p>
+<p><strong>A JATS XML article.</strong> The XML that PubMed Central,
+Europe PMC and publishers’ production systems emit for an article
+(<code>.xml</code>, the JATS tag set) uploads like a PDF. A JATS table
+is a real table — rows and cells, not positions on a page — so
+extraction is the cleanest of all the document routes: the caption and
+the footnotes travel with the table, and the only interpretation left is
+what the numbers mean, which is the same for every route. Vertically
+merged cells (a category name spanning its rows) are unfolded the way
+the printed table reads. This is the route intended for editorial
+systems, which hold the manuscript as XML long before a PDF exists.</p>
 <p><strong>Several files at once — or one after another.</strong> Any
-mix of spreadsheets, PDFs, and Word manuscripts in one selection, and
-any number of uploads in sequence: <strong>each upload appends to the
-table already in the grid</strong> (including edits you have typed but
-not yet revalidated). Every file becomes rows in the combined table,
-distinguished by the TRIAL column; a file without trial identifiers gets
-its file name as the trial. If a new file uses trial labels already in
-the table, its labels are prefixed with its file name so nothing
-silently merges. To start over, click <strong>Start With an Empty
-Table</strong>.</p>
+mix of spreadsheets, PDFs, Word manuscripts, JATS XML files and pictures
+in one selection, and any number of uploads in sequence: <strong>each
+upload appends to the table already in the grid</strong> (including
+edits you have typed but not yet revalidated). Every file becomes rows
+in the combined table, distinguished by the TRIAL column; a file without
+trial identifiers gets its file name as the trial. If a new file uses
+trial labels already in the table, its labels are prefixed with its file
+name so nothing silently merges. To start over, click <strong>Start With
+an Empty Table</strong>.</p>
 <p><strong>A zip archive of a whole analysis.</strong> Zip any number of
-spreadsheets, article PDFs, and Word manuscripts into one
-<code>.zip</code> and upload just that. This is built for reproducing a
-multi-trial investigation — the pattern of Carlisle’s 2012 review of
-Fujii’s 168 trials (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>): put
+spreadsheets, article PDFs, Word manuscripts, JATS XML files and
+pictures of tables into one <code>.zip</code> and upload just that. This
+is built for reproducing a multi-trial investigation — the pattern of
+Carlisle’s 2012 review of Fujii’s 168 trials (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>): put
 one file per trial in the archive and every entry becomes its own trial
 in the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
-csv/xls/xlsx/PDF/docx are skipped with a note, an archive inside the
-archive is not expanded, and a corrupt archive is reported rather than
-analyzed.</p>
+csv/xls/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note, an
+archive inside the archive is not expanded, and a corrupt archive is
+reported rather than analyzed.</p>
 <p>The limits, and what they mean in practice:</p>
 <ul>
 <li><strong>The zip file itself may be up to 50 MB</strong> — the
