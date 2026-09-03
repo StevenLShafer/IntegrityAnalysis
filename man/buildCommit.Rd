@@ -22,8 +22,14 @@ deployed against what is in the repository (ISSUES.md issue 28).
 The value is read, in order, from:
 \enumerate{
 \item \code{RemoteSha} in the installed DESCRIPTION - written by
-\code{remotes::install_github()}, which is how deploys install
-this package (AGENTS.md, "Running, testing, deploying");
+\code{remotes::install_github()}, which is how the deploy job
+installs this package (AGENTS.md, "Running, testing, deploying");
+or, failing that, \code{GithubSHA1}, the field packrat writes
+when the shinyapps.io builder installs the package from GitHub
+itself - which is what actually runs in production, since the
+deploy bundles only \code{app.R} and leaves the install to the
+builder (2026-09-03: five deploys after issue 28 the live app
+still said "unknown", for exactly this reason);
 \item \code{INTEGRITY_BUILD_SHA} in the environment, for container
 builds that install by other means;
 \item \code{git rev-parse HEAD} when running from a source tree,

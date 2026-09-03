@@ -56,12 +56,30 @@ test_that("buildCommit honours an explicit build SHA", {
   on.exit(if (is.na(old)) Sys.unsetenv("INTEGRITY_BUILD_SHA")
           else Sys.setenv(INTEGRITY_BUILD_SHA = old), add = TRUE)
   d <- suppressWarnings(utils::packageDescription("IntegrityAnalysis"))
-  skip_if(is.list(d) && !is.null(d$RemoteSha) && nzchar(d$RemoteSha),
-          "installed from GitHub: RemoteSha wins, by design")
+  skip_if(!is.na(.buildCommitFromDescription(d)),
+          "installed from GitHub: the DESCRIPTION's commit wins, by design")
   sha <- paste(rep("beefcafe", 5), collapse = "")
   Sys.setenv(INTEGRITY_BUILD_SHA = sha)
   expect_identical(buildCommit(), sha)
   expect_identical(buildCommit(short = TRUE), "beefcafe")
+})
+
+test_that("the installed DESCRIPTION is read whichever installer wrote it", {
+  # remotes::install_github() writes RemoteSha; the shinyapps.io builder
+  # (packrat) writes GithubSHA1 - and production runs the builder's copy,
+  # so reading only the first left the live app saying "unknown" for a
+  # week after issue 28 (2026-09-03)
+  sha <- paste(rep("0123456789ab", 3), collapse = "")   # 36 hex chars
+  expect_identical(.buildCommitFromDescription(list(RemoteSha = sha)), sha)
+  expect_identical(.buildCommitFromDescription(list(GithubSHA1 = sha)), sha)
+  # RemoteSha wins when both are present
+  expect_identical(.buildCommitFromDescription(
+    list(RemoteSha = sha, GithubSHA1 = "deadbeefdeadbeef")), sha)
+  # nothing usable: NA, never a guess
+  expect_true(is.na(.buildCommitFromDescription(list(Package = "x"))))
+  expect_true(is.na(.buildCommitFromDescription(list(RemoteSha = ""))))
+  expect_true(is.na(.buildCommitFromDescription(list(GithubSHA1 = "not a sha"))))
+  expect_true(is.na(.buildCommitFromDescription(NA)))
 })
 
 test_that("buildLabel says 'unknown' instead of fabricating", {
