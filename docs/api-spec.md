@@ -49,7 +49,9 @@ parsing → validation → one-sided Monte Carlo toward excessive homogeneity.
 Multipart upload, exactly one file: `file` = PDF, Word manuscript
 (docx), spreadsheet (xlsx/xls/csv in the app's input layout), or a
 picture of a table (jpg/png/tif, read by local OCR - see the app's user
-guide for what that implies). Optional form fields:
+guide for what that implies). A zip archive is **not** accepted here:
+the app expands a zip into its entries client-side and analyses each
+as its own upload; the API takes the single file. Optional form fields:
 `m` (replications, default 15000, capped), `format` (`json` | `csv`,
 default json).
 

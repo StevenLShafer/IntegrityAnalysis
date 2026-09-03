@@ -321,9 +321,12 @@ sheet 1; Provenance and Skipped go after it.
 
 ## How the Integrity-Analysis app will use this
 
-The app's intended shape (Steve, 2026-08-16): a user supplies **one of four**
-things — a path to a local PDF or a **folder** of PDFs, a single PDF, a
-spreadsheet already in `Example.xlsx` format, or **nothing at all**. All four
+The app's intended shape (Steve, 2026-08-16, extended 2026-09-02): a user
+supplies **one of five** things — a path to a local PDF or a **folder** of
+PDFs, a single PDF, a spreadsheet already in `Example.xlsx` format, a
+**picture of a table** (jpg/png/tif), or **nothing at all** — and any of
+the files may arrive inside a **zip archive**, which the app expands into
+its entries before anything else looks at them. All of these
 converge on the same data frame, which is shown in an **editable grid**
 (rhandsontable or similar), validated **cell by cell as it is entered**, and
 only then submitted to the Monte Carlo — which runs **trial by trial, keyed by

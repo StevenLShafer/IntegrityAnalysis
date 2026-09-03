@@ -11,9 +11,12 @@ upload an article PDF, a Word manuscript, a spreadsheet, a picture of
 a table (jpg, png, tif), or a zip of many; review the extracted table
 in an editable grid; analyze. The
 [user guide](https://integrityanalysis.io/guide.html) covers
-everything, including the privacy contract (nothing you upload is
-retained) and the optional bring-your-own-key AI assist for
-hard-to-read documents.
+everything, including the privacy contract (IntegrityAnalysis itself
+retains nothing you upload; the one exception is the optional
+bring-your-own-key AI assist for hard-to-read documents, which sends
+the unreadable pages to Anthropic under your own key — see
+[data handling](docs/data-handling.md) for what Anthropic keeps, and
+for how long).
 
 ## What is here
 

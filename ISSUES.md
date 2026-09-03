@@ -14,8 +14,8 @@ and therefore gappy.
 
 **Merged and in production today** (#140–#144, all from Steve's live
 testing of a real journal table, `Ticgrelor.xlsx`): per-arm median
-handling, with Q1/Q3 columns that are always there to type into (#140,
-#142); the log autoscroll no longer throws (#141); the identity-index
+handling, with Q1/Q3 columns that are always there to type into (#140
+and #142); the log autoscroll no longer throws (#141); the identity-index
 fetcher refuses a partial index and names the converter failure that
 actually happened (#143); `(number, %)` recognised as the count tag,
 and a name-collision refusal that names the offending column (#144).
