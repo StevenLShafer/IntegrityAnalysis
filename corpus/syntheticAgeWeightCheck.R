@@ -161,23 +161,43 @@ oneTrial <- function(spec) {
              stringsAsFactors = FALSE)
 }
 
-specs <- list(); k <- 0L
-for (i in seq_len(nrow(cells)))
-  for (j in seq_len(nPer)) {
-    k <- k + 1L
-    specs[[k]] <- list(n = cells$n[i], rep = cells$rep[i], id = k)
-  }
-cat("running", length(specs), "trials\n")
+# One cell at a time, each APPENDED to the CSV as it finishes, and a cell
+# already in the CSV is skipped - so a run that dies at 90 minutes (the
+# first full run did, 2026-09-03, with nothing written) resumes from the
+# next cell rather than from the start. Trial ids are fixed by cell
+# position, so a resumed run seeds every trial exactly as a single run
+# would have.
+dir.create(outDir, showWarnings = FALSE, recursive = TRUE)
+outCsv <- file.path(outDir, "syntheticAgeWeight.csv")
+done <- if (file.exists(outCsv)) utils::read.csv(outCsv, stringsAsFactors = FALSE) else NULL
+cat("running", nrow(cells) * nPer, "trials in", nrow(cells), "cells\n")
 t0 <- Sys.time()
-res <- iaParallel(specs, function(s)
-         tryCatch(oneTrial(s), error = function(e) NULL),
-       export = c("oneTrial", "pNum", "AGE_MEAN", "AGE_SD",
-                  "WEIGHT_MEAN", "WEIGHT_SD", "mcReps"))
-res <- do.call(rbind, Filter(Negate(is.null), res))
+for (i in seq_len(nrow(cells))) {
+  n <- cells$n[i]; rp <- cells$rep[i]
+  if (!is.null(done) && sum(done$n == n & done$rep == rp) >= nPer) {
+    cat(sprintf("  cell N=%d rep=%d: already in %s, skipped\n", n, rp, basename(outCsv)))
+    next
+  }
+  specs <- lapply(seq_len(nPer), function(j) list(n = n, rep = rp, id = (i - 1L) * nPer + j))
+  t1 <- Sys.time()
+  # a seed per cell: each cell's worker pool is new, and the helper seeds
+  # a pool from its `seed`, so one seed for all would hand every cell the
+  # same participant draws - a paired design, not the independent one the
+  # single-row test used
+  res <- iaParallel(specs, function(s)
+           tryCatch(oneTrial(s), error = function(e) NULL),
+         export = c("oneTrial", "pNum", "AGE_MEAN", "AGE_SD",
+                    "WEIGHT_MEAN", "WEIGHT_SD", "mcReps"),
+         seed = 20260903L + i)
+  res <- do.call(rbind, Filter(Negate(is.null), res))
+  utils::write.table(res, outCsv, sep = ",", row.names = FALSE,
+                     col.names = !file.exists(outCsv), append = file.exists(outCsv))
+  cat(sprintf("  cell N=%d rep=%d: %d trials in %.1f min\n", n, rp, nrow(res),
+              as.numeric(difftime(Sys.time(), t1, units = "mins"))))
+}
 cat("  done in", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
     "min\n")
-dir.create(outDir, showWarnings = FALSE, recursive = TRUE)
-utils::write.csv(res, file.path(outDir, "syntheticAgeWeight.csv"), row.names = FALSE)
+res <- utils::read.csv(outCsv, stringsAsFactors = FALSE)
 
 ## ---- report --------------------------------------------------------------
 unif <- function(p) {
