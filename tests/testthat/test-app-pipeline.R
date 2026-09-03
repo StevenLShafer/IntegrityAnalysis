@@ -51,6 +51,35 @@ test_that("app_ui() builds and points at the www/ resource prefix", {
   expect_match(withNote, "TEST DEPLOYMENT", fixed = TRUE)
 })
 
+test_that("drag and drop forwards to the one upload input, with the picker's own type list", {
+  # Drag and drop (2026-09-03) lives in inst/www/app.js and hands dropped
+  # files to fileInput("upload"); the server never learns they were
+  # dropped. Three things a one-line change could silently break:
+  js <- paste(readLines(system.file("www", "app.js", package = "IntegrityAnalysis"),
+                        warn = FALSE), collapse = "\n")
+  # 1. it targets the upload input by id, and fires its change event
+  expect_match(js, "getElementById('upload')", fixed = TRUE)
+  expect_match(js, "new Event('change'", fixed = TRUE)
+  # 2. it keeps the browser from opening a dropped file itself
+  expect_match(js, "on('dragover'", fixed = TRUE)
+  expect_match(js, "preventDefault()", fixed = TRUE)
+  # 3. its extension list is the picker's accept list, no more, no less -
+  #    a type added to one and not the other is refused on one road only
+  jsList <- regmatches(js, regexpr("ACCEPT = \\[[^]]*\\]", js))
+  jsExts <- regmatches(jsList, gregexpr("'\\.[a-z]+'", jsList))[[1]]
+  jsExts <- sort(gsub("'", "", jsExts))
+  html <- paste(unlist(htmltools::renderTags(app_ui())), collapse = " ")
+  accept <- regmatches(html, regexpr('accept="[^"]*"', html))
+  uiExts <- sort(strsplit(sub('accept="([^"]*)"', "\\1", accept), ",")[[1]])
+  expect_identical(jsExts, uiExts)
+  # the page says so, and the rejected-drop message reaches the log
+  expect_match(html, "dropped anywhere on this page", fixed = TRUE)
+  shiny::testServer(app_server, {
+    session$setInputs(dropRejected = list(names = list("notes.txt"), nonce = 1))
+    expect_match(session$userData$commentsLog(), "Not opened: notes.txt", fixed = TRUE)
+  })
+})
+
 test_that("Example.xlsx runs the full pipeline; re-run does not append", {
   ex <- stageCopy(system.file("extdata", "Example.xlsx",
                               package = "IntegrityAnalysis"))

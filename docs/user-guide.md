@@ -132,6 +132,12 @@ results (see *Validation* below).
 
 ## The seven ways in
 
+*However a file arrives — the Browse button, or **dropped anywhere on
+the page** (one file or several, any of the types below, and a zip of
+them) — it takes exactly the same path through the app. A dropped file
+of a type the app does not read is refused with a note in the message
+box; nothing is opened by the browser.*
+
 **A template spreadsheet.** A spreadsheet in the app's own long format
 (Excel `.xlsx`/`.xls` or `.csv`) uploads directly. The column layout is
 described in *Preparing your data* below — but few users should ever
