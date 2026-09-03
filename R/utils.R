@@ -596,6 +596,11 @@
   # (a BEL where a superscript "a" is printed - vocacapsaicin corpus,
   # 2026-08-22); strip them before anything pattern-matches the label.
   label <- gsub("[[:cntrl:]]", "", label)
+  # ...and the zero-width characters a typesetter leaves where a line
+  # was allowed to break (U+200B in "ACA\u200b", ticagrelor article,
+  # seen in the API's results CSV 2026-09-03): invisible in the grid,
+  # they defeat label matching and cannot be written by every encoding.
+  label <- gsub("[\u200b\u200c\u200d\u2060\ufeff]", "", label)
   label <- .ppSquish(label)
   label <- sub("(?i)[,;\u2014-]?\\s*(no\\.?|n)\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
   label <- sub("(?i)[,;\u2014-]?\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
