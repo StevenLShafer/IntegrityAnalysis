@@ -130,6 +130,51 @@ test_that("declared bombs are refused before any decoder runs", {
   expect_error(parseBaselineTableHeuristics(jpg, quiet = TRUE), "megapixel")
 })
 
+test_that("a TIFF dimension entry is one SHORT or LONG, and the cap sees every page", {
+  le16 <- function(v) c(v %% 256, v %/% 256)
+  le32 <- function(v) c(v %% 256, (v %/% 256) %% 256, (v %/% 65536) %% 256,
+                        (v %/% 16777216) %% 256)
+  # a LONG width entry with count 2: the value field is an OFFSET (here 8,
+  # the directory itself), not a width of 8 - refused, not read as small
+  # (screen 2026-09-03, F1)
+  off2 <- rawFile(c(0x49, 0x49, 0x2a, 0x00, le32(8), le16(2),
+                    le16(256), le16(4), le32(2), le32(8),
+                    le16(257), le16(3), le32(1), le16(10), le16(0),
+                    le32(0)), ".tif")
+  expect_null(.ppImageDims(off2))
+  # a BYTE-typed width: refused, and silently - no max(NA) warning reaches
+  # the parent process
+  byt <- rawFile(c(0x49, 0x49, 0x2a, 0x00, le32(8), le16(2),
+                   le16(256), le16(1), le32(1), le32(10),
+                   le16(257), le16(3), le32(1), le16(10), le16(0),
+                   le32(0)), ".tif")
+  expect_silent(expect_null(.ppImageDims(byt)))
+  # a 10 x 10 first page ahead of a 60000 x 60000 second page: the cap
+  # sees the second, whichever page a decoder reads (screen 2026-09-03, F2)
+  big2 <- rawFile(c(0x49, 0x49, 0x2a, 0x00, le32(8),
+                    le16(2),
+                    le16(256), le16(3), le32(1), le16(10), le16(0),
+                    le16(257), le16(3), le32(1), le16(10), le16(0),
+                    le32(8 + 30),
+                    le16(2),
+                    le16(256), le16(3), le32(1), le16(60000), le16(0),
+                    le16(257), le16(3), le32(1), le16(60000), le16(0),
+                    le32(0)), ".tif")
+  d <- .ppImageDims(big2)
+  expect_identical(d$pages, 2L)
+  expect_identical(d$width, 60000)
+  expect_false(isTRUE(.ppImageOK(big2)))
+  # the model's own limits hold inside the reader that encodes the bytes
+  # (screen 2026-09-03, N1): 8500 x 2000 is under the 20 MP cap but over
+  # the 8000 px side the Messages API accepts
+  wide <- rawFile(c(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                    0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+                    0x00, 0x00, 0x21, 0x34, 0x00, 0x00, 0x07, 0xd0,
+                    8, 2, 0, 0, 0, 0, 0, 0, 0), ".png")
+  expect_true(isTRUE(.ppImageOK(wide)))
+  expect_error(.ppImageFileB64(wide), "8000 pixels")
+})
+
 test_that("a JPEG, PNG or TIFF of a table parses like the page it was rendered from", {
   skip_if_not_installed("tesseract")
   skip_on_cran()

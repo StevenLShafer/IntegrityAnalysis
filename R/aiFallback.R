@@ -325,6 +325,12 @@ claudeAvailable <- function() {
   if (!isTRUE(ok))
     stop("Refused to read ", basename(path), ": ", attr(ok, "reason"), ".",
          call. = FALSE)
+  # ...and the model's own limits (4.5 MB, 8000 px a side) are enforced
+  # HERE too, not only on the fallback path in parseBaselineTable(): an
+  # ai = "always" caller would otherwise read and encode a 20 MB image
+  # for Anthropic to reject (screen 2026-09-03, N1)
+  why <- .ppImageAiRefusal(path)
+  if (!is.null(why)) stop(why, ".", call. = FALSE)
   dims <- attr(ok, "dims")
   type <- switch(dims$format %||% "", jpeg = "image/jpeg", png = "image/png",
                  NULL)

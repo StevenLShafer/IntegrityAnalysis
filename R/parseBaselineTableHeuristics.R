@@ -1163,7 +1163,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
                                   roundObsDelta = roundObsDelta,
                                   maxCandidates = maxCandidates,
                                   pctApprox = pctApprox, quiet = quiet))
-  # A table IMAGE (jpg/png/tif/gif; Steve, 2026-09-02) is a scanned page
+  # A table IMAGE (jpg/png/tif; Steve, 2026-09-02) is a scanned page
   # without the page: tesseract word boxes into this same engine, "ocr"
   # provenance, cyan in the app. The header preflight runs FIRST - the
   # file is hostile input, and no decoder touches it until its declared

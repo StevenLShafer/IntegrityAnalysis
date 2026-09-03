@@ -282,7 +282,7 @@
 
 .ppImageMaxPixels   <- 20e6   # 8.4 MP is a Letter page at 300 dpi; A4 at 400 is 15
 .ppImageMaxPages    <- 10L    # a table is one picture; a TIFF chain is not
-.ppImageHeaderBytes <- 4e6    # JPEG/PNG/GIF dimensions live in the prefix
+.ppImageHeaderBytes <- 4e6    # JPEG/PNG dimensions live in the prefix; TIFF seeks
 .ppImageWordPt      <- 6.75
 
 # Dimensions, page count and format from the file's own header - no
@@ -359,18 +359,27 @@
       if (nEnt == 0 || nEnt > 4096) return(NULL)
       ent <- readAt(off + 2, 12 * nEnt + 4); if (is.null(ent)) return(NULL)
       pages <- pages + 1L
-      if (pages == 1L) {
-        for (k in seq_len(nEnt)) {
-          e   <- ent[(12 * (k - 1) + 1):(12 * k)]
-          tag <- u16(e, 1, le); typ <- u16(e, 3, le)
-          val <- if (typ == 3) u16(e, 9, le) else if (typ == 4) u32(e, 9, le)
-                 else NA_real_
-          # a repeated tag is illegal in an IFD; whichever occurrence a
-          # decoder honours, the LARGER value is the one the cap must see
-          # (screen F3)
-          if (tag == 256) width  <- max(width,  val, na.rm = TRUE)
-          if (tag == 257) height <- max(height, val, na.rm = TRUE)
-        }
+      # EVERY directory is read, not only the first: a tiny page 1 ahead
+      # of a 60000 x 60000 page 2 must not pass the cap, whichever page a
+      # decoder chooses to read (screen 2026-09-03, F2)
+      for (k in seq_len(nEnt)) {
+        e   <- ent[(12 * (k - 1) + 1):(12 * k)]
+        tag <- u16(e, 1, le)
+        if (tag != 256 && tag != 257) next
+        typ <- u16(e, 3, le); cnt <- u32(e, 5, le)
+        # A dimension is ONE SHORT or LONG. With any other type, or a
+        # count above one, the 4-byte value field is an OFFSET to the
+        # values, and what sits at that offset is the author's - so the
+        # file is refused rather than a small offset read as a small
+        # width (screen 2026-09-03, F1). This also keeps max() away from
+        # an NA, which was a warning in the API's parent process.
+        if (cnt != 1 || !typ %in% c(3, 4)) return(NULL)
+        val <- if (typ == 3) u16(e, 9, le) else u32(e, 9, le)
+        # a repeated tag is illegal in an IFD; whichever occurrence a
+        # decoder honours, the LARGER value is the one the cap must see
+        # (screen F3, 2026-09-02)
+        if (tag == 256) width  <- max(width,  val, na.rm = TRUE)
+        if (tag == 257) height <- max(height, val, na.rm = TRUE)
       }
       off <- u32(ent, 12 * nEnt + 1, le)
     }

@@ -331,6 +331,21 @@ if (file.exists("R/utils.R")) {
     note(paste("R/utils.R: .ppImageDims() no longer reads the header through",
                "readBin(con, \"raw\", n = min(size, .ppImageHeaderBytes)) -",
                "a crafted image header is read without limit"))
+  # the TIFF dimension entry is one SHORT or LONG, else the file is
+  # refused - with another type or count the value field is an offset
+  # (screen 2026-09-03, F1)
+  if (length(dims) &&
+      !any(grepl("cnt\\s*!=\\s*1\\s*\\|\\|\\s*!\\s*typ\\s*%in%\\s*c\\s*\\(\\s*3\\s*,\\s*4\\s*\\)",
+                 dims)))
+    note(paste("R/utils.R: .ppImageDims() no longer refuses a TIFF dimension",
+               "entry whose count is not 1 or whose type is not SHORT/LONG -",
+               "an offset would be read as a small width"))
+  # ...and the cap reads EVERY directory, not the first alone
+  # (screen 2026-09-03, F2)
+  if (length(dims) && any(grepl("pages\\s*==\\s*1L", dims)))
+    note(paste("R/utils.R: .ppImageDims() reads dimensions from the first",
+               "TIFF directory only again - a tiny page 1 ahead of a huge",
+               "page 2 passes the cap"))
   # preflight before decode, INSIDE the function that decodes
   orderIn <- function(f, fn, before, after, what) {
     if (!file.exists(f)) return(invisible())
@@ -352,6 +367,13 @@ if (file.exists("R/utils.R")) {
           "\\.ppImageOK\\s*\\(", "readBin\\s*\\(",
           paste("R/aiFallback.R: .ppImageFileB64() reads image bytes for the",
                 "model without .ppImageOK() first"))
+  # ...and the model's own size limits, in the same function, before the
+  # bytes are read (screen 2026-09-03, N1)
+  orderIn("R/aiFallback.R", ".ppImageFileB64",
+          "\\.ppImageAiRefusal\\s*\\(", "readBin\\s*\\(",
+          paste("R/aiFallback.R: .ppImageFileB64() reads image bytes for the",
+                "model without .ppImageAiRefusal() first - a 20 MB image is",
+                "encoded for Anthropic to reject"))
 }
 
 ## ------------------------------------------------------------------------
