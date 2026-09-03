@@ -742,9 +742,19 @@ main" (ordinary) from "not a commit in this repository" (alarming),
 because a check that cried wolf every time main moved would be ignored
 within a week — and then the alarming case would be ignored too.
 
-**Remaining:** production still reports no build commit until the next
-production deploy carries this code. The nightly check flags that, which
-is the honest behaviour rather than a false pass.
+**What actually happened (2026-09-03).** Six production deploys after
+this shipped, the live app still said "unknown", and the nightly check
+flagged it every night from 2026-08-31. The deploy bundles only `app.R`;
+the shinyapps.io builder installs the package itself, and the DESCRIPTION
+it writes carries neither `RemoteSha` (PR #97's assumption) nor
+`GithubSHA1` (PR #149's second guess - verified by the deploy after it,
+still "unknown"). So the third route is the one that works: the deploy
+job writes the commit it deployed to `build-sha.txt` beside `app.R`, and
+the shim hands it to `buildCommit()` as `INTEGRITY_BUILD_SHA` after
+checking it looks like a commit. The value is only as trustworthy as the
+deploy job that wrote it - which is the "not attestation" caveat above,
+unchanged. Confirmed by `tools/checkDeployedBuild.ps1` after the deploy
+that carries this.
 
 ---
 
