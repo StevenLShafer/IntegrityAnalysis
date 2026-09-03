@@ -70,6 +70,21 @@ for (f in rFiles) {
   # is (shinyapps.io), so the app's deployed surface is unchanged.
   if (length(hit) && !basename(f) %in% c("parseBaselineTableFiles.R", "parseTatr.R"))
     note(sprintf("%s:%d: system2() outside the reviewed launchers", f, hit[1]))
+  # ...and in parseTatr.R the exemption is for .ppTatrRun() ALONE: a
+  # system2() anywhere else in that file is a new launcher (CodeRabbit
+  # on #147).
+  if (length(hit) && basename(f) == "parseTatr.R") {
+    fnStart <- grep("^\\.ppTatrRun\\s*<-\\s*function", code)
+    fnEnd <- if (length(fnStart)) {
+      nxt <- grep("^[A-Za-z.][A-Za-z0-9._]*\\s*<-\\s*function", code)
+      nxt <- nxt[nxt > fnStart[1]]
+      if (length(nxt)) nxt[1] - 1L else length(code)
+    } else 0L
+    stray <- hit[!(length(fnStart) > 0 & hit >= fnStart[1] & hit <= fnEnd)]
+    if (length(stray))
+      note(sprintf("%s:%d: system2() in R/parseTatr.R outside .ppTatrRun() - a new, unreviewed launcher",
+                   f, stray[1]))
+  }
 }
 if (file.exists("R/parseTatr.R")) {
   tr  <- sub("#.*$", "", srcOf("R/parseTatr.R"))

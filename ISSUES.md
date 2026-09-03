@@ -124,11 +124,26 @@ from the model helps the text-layer failures, not (yet) the scans.**
 What is NOT decided, and is Steve's call:
 
 - **Where the model runs in deployment.** It needs the pegged Python
-  (`tools/tatrProvision.sh`), ~17 s per article on CPU, and weights on
-  disk. shinyapps.io cannot host it, so the free app is unchanged. The
-  API's Docker image could carry it (`INTEGRITY_TATR_PYTHON`), which
-  would also make the confidential tier's scans readable locally.
-  Cost, image size and the memory ceiling of issue 32 all bear on this.
+  (`tools/tatrProvision.sh`), ~17 s per article on CPU, ~1 GB resident,
+  and ~500 MB of weights on disk. Two hosts could carry it. The API's
+  Docker image is the simpler one: we build it, so the Python, the
+  weights and `INTEGRITY_TATR_PYTHON` go in directly. The shinyapps.io
+  app (Steve's Professional plan, instances up to 8 GB) is the second:
+  it runs Python through `reticulate` from a shipped `requirements.txt`,
+  but the torch wheels and the pegged weights would have to travel in
+  the app bundle or be fetched at every instance start, and each cold
+  start would pay the model load. A third route joins the two (Steve,
+  2026-09-02): the shinyapps.io app could call OUR OWN API for the
+  geometry - a `POST /v1/geometry` endpoint on the Docker image, invoked
+  only when the app's text engine fails, returning the model's XML for
+  the app's own `parseBaselineTableTatr()`. One place runs the model,
+  the app stays R-only; it costs a service token held as a shinyapps
+  secret and one round trip per failure, and it changes the guide's
+  "nothing leaves this server" sentence, which would then read "to a
+  container we run, with the API's zero-retention guarantee". Neither
+  deployment is a code change; the endpoint is a small one. All Steve's
+  call, weighed against the memory ceiling of issue 32 and the measured
+  payoff (text-layer failures, not scans).
 - **Per-cell OCR, and a higher render for scans.** The pairing OCRs the
   whole page at 300 dpi and assigns words; on real scans that produced
   fragments (above). OCRing each cell's crop separately, with a

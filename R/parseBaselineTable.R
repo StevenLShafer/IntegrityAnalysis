@@ -192,6 +192,10 @@ parseBaselineTable <- function(pdfFile,
   # everywhere else this function behaves exactly as before. The model
   # is run at most once per call, lazily, in a subprocess under a timeout.
   tatrPath <- NULL; tatrTried <- FALSE
+  # When the runner produced the XML, its work directory (the copied PDF,
+  # the list, the XML) is removed as this call returns - not left for
+  # session cleanup (CodeRabbit on #147; the batcher's children already
+  # have a parent-owned tempdir, this covers a direct call).
   tatrSource <- function() {
     if (tatrTried) return(tatrPath)
     tatrTried <<- TRUE
@@ -202,9 +206,13 @@ parseBaselineTable <- function(pdfFile,
       tatrPath <<- if (file.exists(p)) p else NULL
     } else if (.ppTatrAvailable()) {
       tatrPath <<- .ppTatrRun(pdfFile, quiet = quiet)
+      if (!is.null(tatrPath)) tatrWork <<- dirname(dirname(tatrPath))
     }
     tatrPath
   }
+  tatrWork <- NULL
+  on.exit(if (!is.null(tatrWork)) unlink(tatrWork, recursive = TRUE, force = TRUE),
+          add = TRUE)
   tatrNote <- paste("table geometry from the Table Transformer (rows and",
                     "columns located by the model; every value read from",
                     "the document)")
@@ -380,18 +388,24 @@ parseBaselineTable <- function(pdfFile,
   }
 
   # tatr = "always": the text engine succeeded, but the caller wants the
-  # model's reading compared - keep whichever parses better.
+  # model's reading compared - keep whichever parses better. The model's
+  # own provenance notes (geometry from the model; OCR if it read pixels)
+  # ride along under `tatrFlags`, ahead of the review flags every return
+  # below rebuilds - otherwise the replacement silently lost them
+  # (CodeRabbit on #147).
+  tatrFlags <- NULL
   if (tatr == "always") {
     tt <- tatrParse("auto")
     if (!is.null(tt) && .ppParseScore(tt) > .ppParseScore(het)) {
       say("Keeping the Table Transformer reading (parse score ",
           round(.ppParseScore(tt), 1), " vs ", round(.ppParseScore(het), 1), ").")
+      tatrFlags <- setdiff(tt$flags, reviewFlags(tt))
       het <- tt
     }
   }
 
   flags <- reviewFlags(het)
-  het$flags <- flags
+  het$flags <- c(tatrFlags, flags)
   if (ai == "never" || length(flags) == 0) return(het)
 
   if (!claudeAvailable() && is.null(apiKey)) {
@@ -424,8 +438,8 @@ parseBaselineTable <- function(pdfFile,
   if (inherits(aiRes, "error")) {
     say("The AI fallback failed (", conditionMessage(aiRes),
         "); returning the deterministic result.")
-    het$flags <- c(flags, paste0("AI fallback failed: ",
-                                 conditionMessage(aiRes)))
+    het$flags <- c(tatrFlags, flags,
+                   paste0("AI fallback failed: ", conditionMessage(aiRes)))
     return(het)
   }
 
@@ -470,7 +484,7 @@ parseBaselineTable <- function(pdfFile,
 
   if (nrow(newRows) == 0) {
     say("The model found nothing the deterministic pass had missed.")
-    het$flags <- flags
+    het$flags <- c(tatrFlags, flags)
     return(het)
   }
   say("Adding ", nrow(newRows), " line(s) from ", model,
@@ -494,7 +508,7 @@ parseBaselineTable <- function(pdfFile,
          caption    = het$caption,
          trial      = trial,
          notes      = aiRes$notes,
-         flags      = flags,
+         flags      = c(tatrFlags, flags),
          engine     = "hybrid"),
     class = "ParsePDFTable")
 }

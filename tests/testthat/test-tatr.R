@@ -196,6 +196,38 @@ test_that("with the text engine happy, TATR is consulted only on request", {
   expect_identical(calls, 0L)
 })
 
+test_that("a direct call removes the runner's work directory once the XML is consumed", {
+  src <- syntheticPdfMeanSD()
+  g <- meanSDGeometry()
+  made <- NULL
+  testthat::local_mocked_bindings(
+    .ppTatrAvailable = function() TRUE,
+    .ppTatrRun = function(pdfFile, timeout = 600, quiet = FALSE) {
+      work <- tempfile("tatr"); dir.create(file.path(work, "xml"), recursive = TRUE)
+      made <<- work
+      tatrXmlFor(file.path(work, "xml", "upload.tatr.xml"), 1L, g$rows, g$cols, g$cells)
+    },
+    parseBaselineTableHeuristics = function(...) stop("no usable table in the text layer"))
+  r <- parseBaselineTable(src, ai = "never", quiet = TRUE)
+  expect_identical(r$engine, "heuristic-tatr")
+  expect_false(is.null(made))
+  expect_false(dir.exists(made))          # gone with the call, not the session
+})
+
+test_that("tatr = \"always\" keeps the model's provenance flags when it wins", {
+  src <- syntheticPdfMeanSD()
+  g <- meanSDGeometry()
+  xml <- tatrXmlFor(tempfile(fileext = ".tatr.xml"), 1L, g$rows, g$cols, g$cells)
+  # make the text engine's reading strictly worse than the model's
+  weak <- parseBaselineTableHeuristics(src, quiet = TRUE)
+  weak$data <- weak$data[weak$data$ROW == "Age", ]
+  weak$arms$N[] <- NA
+  testthat::local_mocked_bindings(parseBaselineTableHeuristics = function(...) weak)
+  r <- parseBaselineTable(src, ai = "never", tatr = "always", tatrXml = xml, quiet = TRUE)
+  expect_identical(r$engine, "heuristic-tatr")
+  expect_true(any(grepl("Table Transformer", r$flags)))
+})
+
 test_that("the runner is inert without the pegged Python, and discovers nothing", {
   # configuration only (screen F2): no home-directory or cwd discovery
   withr::local_envvar(INTEGRITY_TATR_PYTHON = NA, INTEGRITY_TATR_SCRIPT = NA,
@@ -220,7 +252,7 @@ test_that("the runner copies the upload under a fixed name and keeps to half the
     'stopifnot(row[1] == "upload", basename(row[2]) == "upload.pdf", file.exists(row[2]))',
     'if (nzchar(Sys.getenv("FAKE_TATR_SLEEP"))) Sys.sleep(as.numeric(Sys.getenv("FAKE_TATR_SLEEP")))',
     'dir.create(out, showWarnings = FALSE)',
-    'writeLines('<?xml version="1.0"?><tatr-tables render-dpi="150"></tatr-tables>', file.path(out, "upload.tatr.xml"))'),
+    'writeLines(\'<?xml version="1.0"?><tatr-tables render-dpi="150"></tatr-tables>\', file.path(out, "upload.tatr.xml"))'),
     fake)
   rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
   withr::local_envvar(INTEGRITY_TATR_PYTHON = rscript, INTEGRITY_TATR_SCRIPT = fake,

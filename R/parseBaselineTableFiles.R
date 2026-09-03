@@ -13,6 +13,19 @@
 # produce the validation figures quoted in README.md.                      #
 ############################################################################
 
+# Build the child-process options blob with the AI key REMOVED, and
+# return the key separately for out-of-band (env var) passing. Pure and
+# side-effect free, so the security property "the key is never in the
+# options blob" (security review M4, 2026-08-26) is directly testable.
+.ppSplitChildKey <- function(ai, dots, libPaths, devPath) {
+  childKey <- if (!is.null(dots$apiKey) && nzchar(dots$apiKey))
+    dots$apiKey else ""
+  dots$apiKey <- NULL
+  list(opts = list(libPaths = libPaths, devPath = devPath,
+                   args = c(list(ai = ai), dots)),
+       childKey = childKey)
+}
+
 #' Parse every PDF, Word manuscript and JATS XML file in a directory
 #'
 #' Runs [parseBaselineTable()] over many PDFs, `.docx` manuscripts and
@@ -61,19 +74,6 @@
 #' # The parsed table for one article
 #' res$result[[1]]$data
 #' }
-# Build the child-process options blob with the AI key REMOVED, and
-# return the key separately for out-of-band (env var) passing. Pure and
-# side-effect free, so the security property "the key is never in the
-# options blob" (security review M4, 2026-08-26) is directly testable.
-.ppSplitChildKey <- function(ai, dots, libPaths, devPath) {
-  childKey <- if (!is.null(dots$apiKey) && nzchar(dots$apiKey))
-    dots$apiKey else ""
-  dots$apiKey <- NULL
-  list(opts = list(libPaths = libPaths, devPath = devPath,
-                   args = c(list(ai = ai), dots)),
-       childKey = childKey)
-}
-
 #' @seealso [parseBaselineTable()]
 #' @export
 parseBaselineTableFiles <- function(files,
