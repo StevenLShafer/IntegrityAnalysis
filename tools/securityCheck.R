@@ -155,6 +155,22 @@ if (file.exists("R/parseJats.R")) {
     note("R/parseJats.R: .ppJatsRead() reads the bytes before .ppJatsOK() has bounded the file")
   if (!any(grepl("min\\(cs,\\s*\\.ppMaxCellSpan\\)", js)))
     note("R/parseJats.R: colspan is no longer clamped to .ppMaxCellSpan (screen F2)")
+  # second screen of #162: only OUTERMOST paragraphs and rows are
+  # selected, else nesting multiplies the text by the depth. The nested
+  # tests in test-parse-jats.R carry the property; this grep only says
+  # the guards are still present.
+  if (sum(grepl("not\\(ancestor::p\\)", js)) < 3L ||
+      !any(grepl("not\\(ancestor::td\\)", js)))
+    note("R/parseJats.R: an XPath lost its outermost-node guard (not(ancestor::p) / not(ancestor::td)) - nested elements multiply the text")
+  # the budget must be APPLIED, not merely defined (a scratch break that
+  # kept the constant and dropped its use passed the first version)
+  if (!any(grepl("cumsum\\(nchar\\(fullText.*\\.ppJatsMaxTextChars", js)))
+    note("R/parseJats.R: the text-vector budget (.ppJatsMaxTextChars) is no longer applied to fullText")
+}
+if (file.exists("R/parseDocx.R")) {
+  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  if (!any(grepl("\\.ppClip\\(txt,\\s*\\.ppMaxCellChars\\)", dx)))
+    note("R/parseDocx.R: .ppDocxTextLine() no longer clips a cell to .ppMaxCellChars")
 }
 if (file.exists("R/parseDocx.R")) {
   dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))

@@ -218,6 +218,56 @@ test_that("an author's colspan or rowspan cannot size the matrix", {
   expect_equal(nrow(m), 2L)
 })
 
+test_that("nested paragraphs and rows do not multiply the text (second screen of #162)", {
+  # 250 nested <p> around a 3 MB leaf: the descendant axis used to put
+  # every ancestor's text - each containing the leaf - into fullText
+  # (1.25 GB of characters from a 5 MB file). Outermost nodes only, and
+  # a clip and a budget on top.
+  f <- tmp()
+  leaf <- paste(rep("x", 3000000), collapse = "")
+  open <- paste0(vapply(1:250, function(i) sprintf("<p>%d", i), character(1)), collapse = "")
+  close <- paste(rep("</p>", 250), collapse = "")
+  writeLines(c("<article><body>", open, leaf, close, "</body></article>"), f)
+  t0 <- Sys.time()
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  expect_lte(sum(nchar(d$fullText)), IntegrityAnalysis:::.ppMaxParaChars)
+  # an internal entity referenced many times inside the nesting: the
+  # budget bounds it whatever the XPath says
+  g <- tmp()
+  writeLines(c('<!DOCTYPE article [<!ENTITY e "', paste(rep("y", 400000), collapse = ""), '">]>',
+               "<article><body>", open, paste(rep("&e;", 5), collapse = " "), close,
+               "</body></article>"), g)
+  t0 <- Sys.time()
+  d2 <- IntegrityAnalysis:::.ppJatsData(g)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  expect_lte(sum(nchar(d2$fullText)), IntegrityAnalysis:::.ppJatsMaxTextChars)
+  # rows nested inside a cell are that cell's text, not more rows
+  h <- tmp()
+  inner <- paste(rep("<tr><td>", 120), collapse = "")
+  writeLines(c("<article><body><table-wrap><table><tr><td>a</td><td>", inner,
+               paste(rep("z", 100000), collapse = ""), paste(rep("</td></tr>", 120), collapse = ""),
+               "</td></tr><tr><td>b</td><td>2</td></tr></table></table-wrap></body></article>"), h)
+  t0 <- Sys.time()
+  d3 <- IntegrityAnalysis:::.ppJatsData(h)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  m <- d3$tables[[1]]$cells
+  expect_equal(nrow(m), 2L)
+  expect_lte(max(nchar(m)), IntegrityAnalysis:::.ppMaxCellChars)
+})
+
+test_that("a five-megabyte cell of one-character words does not stall the word adapter", {
+  txt <- paste(rep("a", 2500000), collapse = " ")
+  t0 <- Sys.time()
+  ln <- IntegrityAnalysis:::.ppDocxTextLine(txt, 0)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 5)
+  expect_lte(nrow(ln), IntegrityAnalysis:::.ppMaxLineWords)
+  # and a real cell still becomes the same words at the same places
+  ln2 <- IntegrityAnalysis:::.ppDocxTextLine("Control (n = 40)", 0, x0 = 12)
+  expect_identical(ln2$text, c("Control", "(n", "=", "40)"))
+  expect_equal(ln2$x, 12 + c(0, 48, 66, 78))
+})
+
 test_that("a wall of table-wraps and a table wider than any baseline table are bounded", {
   f <- tmp()
   one <- '<table-wrap><table><tr><td>a</td><td>1</td></tr><tr><td>b</td><td>2</td></tr></table></table-wrap>'

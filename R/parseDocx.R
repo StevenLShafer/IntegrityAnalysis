@@ -170,18 +170,19 @@
 # Fabricate one engine "line" (a data frame of words with text/x/y/width/
 # height) from free text starting at x = x0.
 .ppDocxTextLine <- function(txt, y, x0 = 0, charW = 6) {
-  ws <- strsplit(.ppSquish(txt), " ")[[1]]
+  # The cell is the author's: clipped to .ppMaxCellChars and to
+  # .ppMaxLineWords words before anything is built from it, and the line
+  # is one data frame built from vectors rather than one per word - a
+  # single 5 MB cell of one-character words spent the whole child budget
+  # in the old per-word rbind (second screen of PR #162, 2026-09-03).
+  ws <- strsplit(.ppSquish(.ppClip(txt, .ppMaxCellChars)), " ")[[1]]
   ws <- ws[nzchar(ws)]
   if (length(ws) == 0) return(NULL)
-  x <- x0
-  out <- vector("list", length(ws))
-  for (i in seq_along(ws)) {
-    out[[i]] <- data.frame(text = ws[i], x = x, y = y,
-                           width = charW * nchar(ws[i]), height = 10,
-                           stringsAsFactors = FALSE)
-    x <- x + charW * nchar(ws[i]) + charW
-  }
-  do.call(rbind, out)
+  if (length(ws) > .ppMaxLineWords) ws <- ws[seq_len(.ppMaxLineWords)]
+  w <- charW * nchar(ws)
+  x <- x0 + cumsum(c(0, utils::head(w + charW, -1)))
+  data.frame(text = ws, x = x, y = y, width = w, height = 10,
+             stringsAsFactors = FALSE)
 }
 
 # The synthetic-coordinate adapter: a cell matrix (plus optional caption

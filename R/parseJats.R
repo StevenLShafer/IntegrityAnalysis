@@ -77,6 +77,25 @@
 .ppMaxTableCols  <- 200L
 .ppMaxTableRows  <- 2000L
 .ppMaxTableWraps <- 100L
+# Text bounds (second screen of PR #162, 2026-09-03). The extractor used
+# the DESCENDANT axis, so a <p> nested 250 deep - libxml2 allows 256 -
+# put every ancestor's text, each containing the leaf, into the text
+# vector: a 5 MB file became 1.25 GB of characters and a 3.8 GB child.
+# Now only OUTERMOST nodes are selected (an outer node's text already
+# holds the inner text, so real articles read the same), every cell,
+# caption, footnote and paragraph is clipped, and the text vector has a
+# total budget - which is what bounds an internal entity referenced many
+# times, whatever the XPath says.
+.ppMaxCellChars     <- 2000L
+.ppMaxParaChars     <- 20000L
+.ppJatsMaxTextChars <- 2000000L
+.ppMaxLineWords     <- 500L
+.ppClip <- function(s, n) {
+  s[is.na(s)] <- ""
+  long <- nchar(s, type = "bytes") > n
+  if (any(long)) s[long] <- substr(s[long], 1L, n)
+  s
+}
 
 # TRUE when a JATS file may be parsed; otherwise FALSE carrying a
 # "reason". Header-level, no parser involved: the on-disk size against
@@ -143,7 +162,8 @@
 #' is live. Without that, later cells shift left - see the header.
 #' @noRd
 .ppJatsMatrix <- function(tw) {
-  rows <- xml2::xml_find_all(tw, ".//tr")
+  # outermost rows only: a <tr> nested inside a <td> is that cell's text
+  rows <- xml2::xml_find_all(tw, ".//tr[not(ancestor::td) and not(ancestor::th)]")
   if (length(rows) == 0) return(NULL)
   out <- list()
   carry <- integer(0)          # per column: rows still occupied above
@@ -159,7 +179,7 @@
         carry[col] <- carry[col] - 1L
         col <- col + 1L
       }
-      txt <- .ppSquish(xml2::xml_text(cell))
+      txt <- .ppSquish(.ppClip(xml2::xml_text(cell), .ppMaxCellChars))
       cs <- suppressWarnings(as.integer(xml2::xml_attr(cell, "colspan")))
       rs <- suppressWarnings(as.integer(xml2::xml_attr(cell, "rowspan")))
       if (is.na(cs) || cs < 1L) cs <- 1L
@@ -224,14 +244,14 @@
     capNode <- xml2::xml_find_first(tw, "./caption")
     cap <- ""
     if (!inherits(capNode, "xml_missing")) {
-      ps <- xml2::xml_find_all(capNode, ".//p|.//title")
-      cap <- .ppSquish(paste(vapply(ps, xml2::xml_text, character(1)),
+      ps <- xml2::xml_find_all(capNode, ".//p[not(ancestor::p)]|.//title")
+      cap <- .ppSquish(paste(.ppClip(vapply(ps, xml2::xml_text, character(1)), .ppMaxParaChars),
                              collapse = " "))
-      if (!nzchar(cap)) cap <- .ppSquish(xml2::xml_text(capNode))
+      if (!nzchar(cap)) cap <- .ppSquish(.ppClip(xml2::xml_text(capNode), .ppMaxParaChars))
     }
     caption <- .ppSquish(paste(c(lab, cap), collapse = " "))
-    foot <- xml2::xml_find_all(tw, ".//table-wrap-foot//p")
-    footnotes <- vapply(foot, function(n) .ppSquish(xml2::xml_text(n)),
+    foot <- xml2::xml_find_all(tw, ".//table-wrap-foot//p[not(ancestor::p)]")
+    footnotes <- vapply(foot, function(n) .ppSquish(.ppClip(xml2::xml_text(n), .ppMaxParaChars)),
                         character(1))
     tables[[length(tables) + 1L]] <- list(
       cells = mat, caption = if (nzchar(caption)) caption else NA_character_,
@@ -241,10 +261,13 @@
   # Body text for arm-N recovery. Table content is excluded: a number
   # inside the table is not independent evidence of the arm sizes the
   # same table is being asked to supply.
-  body <- xml2::xml_find_all(doc, "//body//p[not(ancestor::table-wrap)]")
-  fullText <- vapply(body, function(n) .ppSquish(xml2::xml_text(n)),
+  body <- xml2::xml_find_all(doc, "//body//p[not(ancestor::table-wrap) and not(ancestor::p)]")
+  fullText <- vapply(body, function(n) .ppSquish(.ppClip(xml2::xml_text(n), .ppMaxParaChars)),
                      character(1))
-  list(tables = tables, fullText = fullText[nzchar(fullText)])
+  fullText <- fullText[nzchar(fullText)]
+  # the total budget: paragraphs kept in order until it is spent
+  keep <- cumsum(nchar(fullText, type = "bytes")) <= .ppJatsMaxTextChars
+  list(tables = tables, fullText = fullText[keep])
 }
 
 #' Parse a baseline table out of a JATS XML document
