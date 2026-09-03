@@ -51,3 +51,4 @@ id_rsa*
 # Python bytecode from the TATR run-along tooling
 __pycache__/
 *.pyc
+tests/testthat/testthat-problems.rds
