@@ -169,7 +169,7 @@ Security must be assured before anything deploys (Steve's requirement,
 2026-08-20). The threat model is specific and unusual: **the adversary is
 the author of a manuscript under investigation.** An editor can be
 induced to upload a file that author crafted, so every uploaded artifact
-- spreadsheet, PDF, file *name* - is hostile input.
+- spreadsheet, PDF, picture of a table, file *name* - is hostile input.
 
 ### The API surface (added 2026-08-26)
 
@@ -255,6 +255,25 @@ The standing conclusions of the 2026-08-20 full-repository review:
   refuse absolute paths and `..` components, extract by basename into a
   fresh directory, cap entry count and total uncompressed size, and
   never recurse into nested archives.
+- **A picture of a table is decoded only after its header passes our
+  own parser, and never by ImageMagick** (added 2026-09-02 with image
+  uploads, PR #145; the screen that adjudicated it is in
+  `docs/security-screens/log.md`). jpg/png/tif are read by tesseract's
+  own leptonica reader - there is no `magick` dependency, and none may
+  be added to an image path. `.ppImageDims()` reads dimensions, page
+  count and format from the magic bytes (a bounded 4 MB prefix; TIFF by
+  seeking its directory chain) with no decoder involved, and
+  `.ppImageOK()` refuses over 20 megapixels, over 10 TIFF pages, a
+  looping chain, or bytes that are not one of the three formats
+  whatever the file is called. **GIF is deliberately not accepted**: its
+  header states a logical screen, but giflib allocates from each frame's
+  own descriptor, so no header check short of walking the block stream
+  can bound it. Decoding happens only in the parse subprocess, and the
+  AI route runs the same preflight before reading bytes for the model.
+  Tripwire group 6 pins all of this from the R parser's token table and
+  checks preflight-before-decode inside each function that decodes.
+  Still open: a memory ceiling on the child (ISSUES 32) - the header
+  check narrows the window, it does not close it.
 
 ### Two instruments, two stopping rules (added 2026-08-27)
 

@@ -7,8 +7,9 @@ and means that agree *too well*, variable after variable, are evidence
 that no randomization ever happened.
 
 **Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —
-upload an article PDF, a Word manuscript, a spreadsheet, or a zip of
-many; review the extracted table in an editable grid; analyze. The
+upload an article PDF, a Word manuscript, a spreadsheet, a picture of
+a table (jpg, png, tif), or a zip of many; review the extracted table
+in an editable grid; analyze. The
 [user guide](https://integrityanalysis.io/guide.html) covers
 everything, including the privacy contract (nothing you upload is
 retained) and the optional bring-your-own-key AI assist for
@@ -19,8 +20,9 @@ hard-to-read documents.
 - **The Shiny app** (`R/app_*.R`) — the interactive screen above.
 - **The parse engine** (`R/parse*`, `R/tokenize.R`, `R/pageLayout.R`) —
   deterministic extraction of baseline tables from PDFs (85% of a
-  1,865-trial journal corpus), Word manuscripts, and journal-style
-  spreadsheets, with tesseract OCR and an opt-in AI tier for scans.
+  1,865-trial journal corpus), Word manuscripts, JATS XML, journal-style
+  spreadsheets, and pictures of tables (jpg/png/tif, read by tesseract's
+  own reader - no ImageMagick), with an opt-in AI tier for scans.
 - **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
   rounding treatment, median/IQR rows via a metalog null, one-sided p
   toward homogeneity, Stouffer combination; validated against

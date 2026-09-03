@@ -10,79 +10,68 @@ and therefore gappy.
 
 ---
 
-## Where things stand — 2026-08-26 (end of day, session handoff)
+## Where things stand — 2026-09-02 (evening, session handoff)
 
-**Nine PRs merged and deployed today (#72–#80), all same-day from
-Steve's live testing:**
-no-training/confidentiality documentation for the AI assist (#72 — the
-Commercial Terms bar training on API content; sourced in the guide);
-scanned pages travel to the AI assist as page images (#73, tier 1 of
-issue 22); the medRxiv harvester's RCT filter repaired against
-referential abstracts (#74); tesseract OCR into the deterministic
-engine with whole-table cyan shading (#75, tier 2); the three-column
-UI — sidebar | workflow | data with a message box under the grid, the
-Table.png explainer retired to the guide (#76); automatic re-read of
-failed uploads when a key validates, plus the verdict-overlap fix
-(#77); Template/Example downloads retired from the sidebar (#78); the
-key verdict paints before the retry parse starts (#79); and the
-medRxiv harvest moved to the S3 TDM channel (#80). Zip-upload limits
-documented in the guide for Steve's outreach to statistical editors
-(direct docs commits).
+**Merged and in production today** (#140–#144, all from Steve's live
+testing of a real journal table, `Ticgrelor.xlsx`): per-arm median
+handling, with Q1/Q3 columns that are always there to type into (#140,
+#142); the log autoscroll no longer throws (#141); the identity-index
+fetcher refuses a partial index and names the converter failure that
+actually happened (#143); `(number, %)` recognised as the count tag,
+and a name-collision refusal that names the offending column (#144).
+Production was verified end to end with the sheet after the merges.
 
-**Citable numbers for outreach** (Steve is writing EICs, publishers,
-WAME, and statistical editors this week): parse rate **71.9% → 84.9%**
-over the 1,865-trial Carlisle corpus (single-engine recertification,
-PR #71, purely additive vs prior main); **r = 0.9930** against
-Carlisle 2017 across all 5,080 trials, median |diff| 0.0127, **99.0%
-alarm concordance**; AI-assist rescue rates 91%/81%; the live demo
-flow (paste key → green check → upload → green rescue, now with
-automatic re-read). A&A submission archive gross rate: 54.5% of 6,328
-raw submissions (a floor, not comparable to the curated corpus;
-results in C:/temp/AAW_20260825/ParseOutcomes_AA.csv).
+**Open, green, screened — awaiting Steve's merge:**
 
-**AWS (new 2026-08-26)**: account 196253397540, Identity Center
-profile `steve` (root retired to break-glass), S3 bucket
-shafer-corpora-196253397540 (private, corpus backup candidate), $10
-monthly budget alarm.
+- **#145 — a picture of a table (jpg/png/tif) as input.** Read by
+  tesseract's own reader (no ImageMagick), header-checked by our own
+  parser before any decoder runs, decoded only in the parse
+  subprocess, shaded cyan. `securityScreen.ps1` ran on the branch: one
+  High (GIF) fixed by dropping GIF, three Lows fixed, the child memory
+  ceiling filed as issue 32; CodeRabbit's five threads fixed; tripwire
+  group 6 rebuilt on the parser's token table and verified to trip on
+  seven deliberate breaks.
+- **#146 — Springer side captions.** Typographic spaces glued the
+  caption numeral to its text, and the caption shares its line with the
+  table's header row. The ticagrelor PDF now parses to the same 84
+  numbers as the spreadsheet. Before/after on the 209 corpus files
+  whose caption lines show the gap: 200 identical, 1 gained, 1
+  improved, 0 regressions — after a tightening the measurement itself
+  forced (the gap-only version regressed 13).
 
-> **ACTION NEEDED, first thing (found 2026-08-26 ~22:00 PT).** The
-> Identity Center access token expires **8 hours** after login - the
-> default session duration, NOT the ~90 days this note previously
-> claimed. Measured: login 15:35, expiry 23:35 UTC. Consequences: the
-> 02:00 medRxiv harvest **failed overnight**, and the hardened API
-> image cannot be rebuilt or deployed until you log in.
-> **One-time fix:** Identity Center console -> Settings ->
-> Authentication -> raise the session duration (up to 90 days), then
-> `aws sso login --profile steve`. Unattended jobs work from then on.
-> (Alternative, if that proves insufficient: a long-lived IAM access
-> key scoped to S3 read - trades a static credential for reliability.)
+**OCR measurement (issue 22 follow-on, `C:/dev/Corpus/ocr`)**: arm 2
+(99 real scans) complete; arm 1 (born-digital renders scored against
+JATS truth) still running, past 200 works. Interim finding: the
+dominant OCR failure is wrong-table selection, not digit misreads
+(~92% digit precision) — the case for pairing TATR geometry with
+tesseract, proposed to Steve but not yet filed as an issue.
 
-**PubTables-1M (issue 20)**: 8.0 GB of annotations/word boxes
-downloaded and verified; test split (93,834 tables) extracted; mining
-worktree C:/Temp/ia-pubtables + snapshot library ia-pubtables-lib
-(engine commit recorded per row). 500-table pilot: 19.6%
-baseline-shaped (→ ~18k with ground truth in the split), shaped parse
-62.2% vs generic 22.9% (correct stratification), 0.05 s/table (full
-split ≈ 80 min). The full-split run is chunked/resumable in
-C:/temp/pubtables1m/mining. v1 agreement metrics are crude proxies —
-see the issue before citing them.
+**Citable numbers are unchanged** from 2026-08-26: parse rate 84.9%
+over the 1,865-trial Carlisle corpus; r = 0.9930 against Carlisle 2017
+across 5,080 trials, 99.0% alarm concordance; AI-assist rescue 91%/81%.
 
-**Overnight, unattended**: 2 AM — S3 harvest (100 packages / 2 GB per
-night, corpus/harvestMedrxivS3.R); 3 AM — corpora backup to OneDrive
-(now nightly). The medRxiv corpus holds 7 RCT PDFs after the first
-S3 batch (2% RCT base rate × nightly cadence compounds).
+**Two traps recorded today** (details in the off-repo handoff and the
+memory notes): a corpus before/after silently measured the stale 0.1.0
+package in the user library after a failed reinstall — assert
+`find.package()` lies inside the snapshot library before measuring;
+and `system2(timeout=)` on Windows kills the 32-bit Rscript launcher,
+not its 64-bit child — drive per-file subprocesses with
+`bin/x64/Rscript` and `processx::run(cleanup_tree = TRUE)`.
 
-**Queued next**: PubTables full-split report + v2 scoring (issue 20);
-the issue-23 layout repairs; fold parsing of freshly harvested PDFs
-into the nightly job with a snapshot library (Steve approved
-2026-08-25 — still pending); adjudicate the 121 Carlisle-2017
-outliers (issue 3); a usable real scan to pin the cyan OCR path
-end-to-end (issue 22). Steve's call: nine stale stanpumpr_PR_* preview
-apps on shinyapps (other project) await a sweep.
+**Still standing from 2026-08-26**: the AWS Identity Center session
+duration (8 h by default — raise it, then `aws sso login --profile
+steve`, or unattended harvests fail; confirm this was done);
+PubTables-1M full-split report and v2 scoring (issue 20); the issue-23
+layout repairs; nightly parsing of freshly harvested PDFs with a
+snapshot library (approved 2026-08-25, pending); the 121 Carlisle-2017
+outliers (issue 3); the TATR ctgov-docs scoping decision
+(`tatr/HANDOFF-TATR.md`). Overnight jobs unchanged: 2 AM S3 harvest,
+3 AM OneDrive backup.
 
-**Working alongside other sessions**: see AGENTS.md. The ParsePDF
-glyph session's PR #53 remains open (worktree C:/Temp/ia-glyphs and
-library C:/Temp/ia-lib are theirs).
+**Working alongside other sessions**: see AGENTS.md. Worktrees in use
+today: `C:/Temp/ia-main` (main snapshot) and `C:/Temp/ia-springer`
+(#146); snapshot libraries `C:/Temp/ia-lib-main` and
+`C:/Temp/ia-lib-springer`.
 
 ---
 

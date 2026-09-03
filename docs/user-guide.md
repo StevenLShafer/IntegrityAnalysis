@@ -262,8 +262,9 @@ box, and pages the deterministic reader cannot fully parse are sent to
 the Anthropic API — under *your* account, at roughly $0.06–0.11 per
 article. Pages with no text layer at all — scanned pages, or tables
 pasted into an otherwise digital manuscript as pictures — are sent as
-rendered page images, which the model reads directly; this is the only
-route in the app that can reach a scanned table. When even no table
+rendered page images, which the model reads directly, and an uploaded
+jpg or png of a table goes the same way; this is the only route in the
+app that can reach a degraded scan. When even no table
 can be found, the assist also asks for baseline data stated in the
 article's running text (some trials report age, weight, and sex in a
 Methods sentence rather than a table).

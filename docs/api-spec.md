@@ -46,8 +46,10 @@ parsing → validation → one-sided Monte Carlo toward excessive homogeneity.
 ## Endpoints
 
 ### POST /v1/analyze
-Multipart upload, exactly one file: `file` = PDF **or** spreadsheet
-(xlsx/xls/csv in the app's input layout). Optional form fields:
+Multipart upload, exactly one file: `file` = PDF, Word manuscript
+(docx), spreadsheet (xlsx/xls/csv in the app's input layout), or a
+picture of a table (jpg/png/tif, read by local OCR - see the app's user
+guide for what that implies). Optional form fields:
 `m` (replications, default 15000, capped), `format` (`json` | `csv`,
 default json).
 
@@ -87,7 +89,7 @@ Issue `code` taxonomy is shared with the app's color-coded grid
 (ISSUES.md issue 13): `missing` (yellow), `unreadable` (red),
 `incongruent` (blue), `skipped`, `refused` (e.g. quartiles too skewed).
 
-**4xx/5xx**: `unsupported_media_type` (not PDF/xlsx/xls/csv),
+**4xx/5xx**: `unsupported_media_type` (not one of the types above),
 `payload_too_large` (cap 50 MB), `unauthorized`, `rate_limited`,
 `parse_failed` (nothing extractable; message mirrors the app's
 plain-language failure), `internal` (request ID for support; no content
@@ -101,9 +103,10 @@ This document (machine-readable OpenAPI once implemented).
 
 ## Processing rules
 
-- PDF path: `parseBaselineTableFiles()` (subprocess, OS timeout 60 s —
-  the poppler-hang defense is mandatory server-side). Spreadsheet path:
-  read directly. Then `validateData()`; a FAIL maps to
+- Document path (PDF, docx, image): `parseBaselineTableFiles()`
+  (subprocess, OS timeout 60 s — the poppler-hang defense is mandatory
+  server-side); an image is header-checked by `.ppImageOK()` before a
+  child is spent on it. Spreadsheet path: read directly. Then `validateData()`; a FAIL maps to
   `status: "incomplete"` with the issue list, never a bare error.
 - Statistics identical to the app: mean(SD), median(Q1,Q3) metalog,
   categorical lower-tail chi-square; mid-p; Stouffer per trial; single
