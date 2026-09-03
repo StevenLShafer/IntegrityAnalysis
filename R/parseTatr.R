@@ -403,6 +403,12 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
   budget <- suppressWarnings(as.numeric(Sys.getenv("INTEGRITY_PARSE_BUDGET", "")))
   if (is.finite(budget) && budget > 0) timeout <- min(timeout, budget / 2)
   work <- tempfile("tatr"); dir.create(work)
+  # A failed run - copy, timeout, crash, no XML - removes its own work
+  # directory here; only a success leaves it, for the caller to consume
+  # and remove (CodeRabbit on #147: repeated failures could otherwise
+  # fill temporary storage).
+  ok <- FALSE
+  on.exit(if (!ok) unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
   acc  <- "upload"
   pdf  <- file.path(work, "upload.pdf")
   if (!file.copy(pdfFile, pdf)) return(NULL)
@@ -419,5 +425,6 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
             stdout = FALSE, stderr = FALSE, timeout = timeout),
     warning = function(w) 124L, error = function(e) 1L)
   xml <- file.path(out, paste0(acc, ".tatr.xml"))
-  if (identical(status, 0L) && file.exists(xml)) xml else NULL
+  ok <- identical(status, 0L) && file.exists(xml)
+  if (ok) xml else NULL
 }

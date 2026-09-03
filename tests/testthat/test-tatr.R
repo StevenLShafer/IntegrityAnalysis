@@ -264,9 +264,15 @@ test_that("the runner copies the upload under a fixed name and keeps to half the
   expect_false(is.null(xml))
   expect_identical(basename(xml), "upload.tatr.xml")
   expect_length(.ppReadTatr(xml), 0L)
-  # the budget: half of the child's, and a run past it returns NULL
+  # the budget: half of the child's, and a run past it returns NULL -
+  # and a failed run removes its own work directory (CodeRabbit on #147)
+  before <- list.files(tempdir(), pattern = "^tatr")
   withr::local_envvar(INTEGRITY_PARSE_BUDGET = "4", FAKE_TATR_SLEEP = "6")
   expect_null(.ppTatrRun(src, quiet = TRUE))
+  expect_identical(setdiff(list.files(tempdir(), pattern = "^tatr"), before), character(0))
+  # ...as does a run whose upload cannot even be copied
+  expect_null(.ppTatrRun(file.path(tempdir(), "no-such.pdf"), quiet = TRUE))
+  expect_identical(setdiff(list.files(tempdir(), pattern = "^tatr"), before), character(0))
 })
 
 test_that("a page too large to rasterise is skipped before OCR, not rendered", {
