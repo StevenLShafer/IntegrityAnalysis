@@ -78,6 +78,7 @@ Collate:
   parseBaselineTableHeuristics.R
   parseDocx.R
   parseJats.R
+  parseTatr.R
   aiFallback.R
   parseBaselineTable.R
   parseBaselineTableFiles.R

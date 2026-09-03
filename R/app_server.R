@@ -1079,7 +1079,7 @@ app_server <- function(input, output, session) {
           # is no model judgment involved, just glyph recognition, and
           # a single misread digit (3/8, 1/7) would silently corrupt a
           # fraud screen. ROW/COL "*" = every cell of the trial.
-          if (identical(r$engine, "heuristic-ocr")) {
+          if (r$engine %in% c("heuristic-ocr", "heuristic-tatr-ocr")) {
             outputComments(paste0(
               files$name[i], ": the table page is a scanned image and ",
               "was read by optical character recognition. The whole ",

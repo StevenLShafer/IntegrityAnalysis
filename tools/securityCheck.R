@@ -58,8 +58,31 @@ for (f in rFiles) {
       note(sprintf("%s:%d: banned pattern %s", f, hit[1], pat))
   }
   hit <- grep("\\bsystem2\\s*\\(", code)
-  if (length(hit) && basename(f) != "parseBaselineTableFiles.R")
-    note(sprintf("%s:%d: system2() outside the reviewed launcher", f, hit[1]))
+  # Two reviewed launchers, each with its own pinned properties below:
+  # parseBaselineTableFiles.R (Rscript per file) and, since 2026-09-02,
+  # parseTatr.R's .ppTatrRun() (the pegged Python over one PDF). Review
+  # of the second, recorded here as AGENTS.md requires: the interpreter
+  # comes from INTEGRITY_TATR_PYTHON or a fixed home path, never from a
+  # request; the script path likewise; every argument is shQuote()d and
+  # every path is one this process created in tempdir(); the model runs
+  # offline (no --allow-download); its output is a file read as XML data;
+  # and the call carries an OS timeout. It is absent wherever the Python
+  # is (shinyapps.io), so the app's deployed surface is unchanged.
+  if (length(hit) && !basename(f) %in% c("parseBaselineTableFiles.R", "parseTatr.R"))
+    note(sprintf("%s:%d: system2() outside the reviewed launchers", f, hit[1]))
+}
+if (file.exists("R/parseTatr.R")) {
+  tr  <- sub("#.*$", "", srcOf("R/parseTatr.R"))
+  run <- grep("^\\.ppTatrRun\\s*<-\\s*function", tr)
+  body <- if (length(run)) tr[run[1]:min(run[1] + 40, length(tr))] else character(0)
+  if (!any(grepl("timeout\\s*=\\s*timeout", body)))
+    note("R/parseTatr.R: .ppTatrRun() lost its OS timeout on the Python subprocess")
+  if (any(grepl("--allow-download", body, fixed = TRUE)))
+    note("R/parseTatr.R: .ppTatrRun() would let the model fetch weights at inference (offline by design)")
+  if (!any(grepl("shQuote\\(sc\\)", body)) || !any(grepl("shQuote\\(lst\\)", body)))
+    note("R/parseTatr.R: .ppTatrRun() passes a path to the shell unquoted")
+  if (any(grepl("stdout\\s*=\\s*TRUE", body)))
+    note("R/parseTatr.R: .ppTatrRun() captures the model's stdout - its output is the XML file, read as data")
 }
 
 ## 2 - the comments log stays escaped ------------------------------------
