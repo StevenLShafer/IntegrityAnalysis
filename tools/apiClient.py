@@ -9,12 +9,14 @@ against a local service and the deployed one before the API User's Guide
 Usage:
     python tools/apiClient.py health  <base-url>
     python tools/apiClient.py parse   <base-url> <file>
-    python tools/apiClient.py analyze <base-url> <file> [m]
+    python tools/apiClient.py analyze <base-url> <file>
 
 <file> is an article PDF, a Word manuscript (.docx), a JATS XML article
 (.xml), a spreadsheet (csv/xls/xlsx), or a picture of a table
-(jpg/png/tif); one file per call. [m] is the Monte Carlo replication count
-for /analyze (default 15000). The bearer token comes from the
+(jpg/png/tif); one file per call. The service takes no replication count:
+every row runs the app's staged Monte Carlo (1,000 / 10,000 / 100,000
+replicates, escalating only while the row alarms). The bearer token comes
+from the
 INTEGRITY_API_TOKEN environment variable; /health needs none. Written
 2026-09-03 by Claude Code (model Claude Fable 5.1) at Steve Shafer's
 request, beside the R client.
@@ -91,9 +93,7 @@ def main(argv):
     if not os.path.exists(path):
         print("no such file: %s" % path)
         sys.exit(2)
-    fields = {}
-    if verb == "analyze" and len(argv) >= 4:
-        fields["m"] = str(int(argv[3]))
+    fields = {}   # the service takes only the file; no form fields
     body, ctype = multipart(fields, "file", path)
     req = urllib.request.Request(base + "/" + verb, data=body, method="POST",
                                  headers={"Authorization": "Bearer " + token,

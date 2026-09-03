@@ -16,12 +16,15 @@
 #
 #   Rscript tools/apiClient.R health  <base-url>
 #   Rscript tools/apiClient.R parse   <base-url> <file>
-#   Rscript tools/apiClient.R analyze <base-url> <file> [m]
+#   Rscript tools/apiClient.R analyze <base-url> <file>
 #
 #   <file>     an article PDF, Word manuscript (.docx), JATS XML (.xml),
 #              spreadsheet (csv/xls/xlsx), or picture of a table
 #              (jpg/png/tif). One file per call - the service takes no zip.
-#   [m]        Monte Carlo replications for /analyze (default 15000).
+#   The service takes no replication count: every row runs the app's
+#   staged Monte Carlo (1,000 / 10,000 / 100,000 replicates, escalating
+#   only while the row alarms), and the M column of the results says
+#   what each row used.
 #
 # The bearer token comes from the INTEGRITY_API_TOKEN environment variable
 # (the plaintext token the operator issued with tools/issueApiToken.R;
@@ -46,7 +49,7 @@ args <- commandArgs(trailingOnly = TRUE)
 usage <- function() {
   cat("usage: Rscript tools/apiClient.R health  <base-url>\n",
       "       Rscript tools/apiClient.R parse   <base-url> <file>\n",
-      "       Rscript tools/apiClient.R analyze <base-url> <file> [m]\n", sep = "")
+      "       Rscript tools/apiClient.R analyze <base-url> <file>\n", sep = "")
   quit(status = 2)
 }
 if (length(args) < 2) usage()
@@ -75,14 +78,12 @@ if (verb == "health") quit(status = 0)
 if (!nzchar(token)) { say("set INTEGRITY_API_TOKEN to the token the operator issued you"); quit(status = 2) }
 file <- args[3]
 if (!file.exists(file)) { say("no such file: ", file); quit(status = 2) }
-m <- if (verb == "analyze" && length(args) >= 4) as.integer(args[4]) else NULL
 
 req <- request(paste0(base, "/", verb)) |>
   req_headers(Authorization = paste("Bearer", token)) |>
   req_timeout(if (verb == "analyze") 900 else 300) |>
   req_error(is_error = function(resp) FALSE)
 body <- list(file = form_file(file))
-if (!is.null(m)) body$m <- as.character(m)
 req <- req_body_multipart(req, !!!body)
 
 t0 <- Sys.time()
