@@ -341,7 +341,9 @@ if (file.exists("R/utils.R")) {
                "entry whose count is not 1 or whose type is not SHORT/LONG -",
                "an offset would be read as a small width"))
   # ...and the cap reads EVERY directory, not the first alone
-  # (screen 2026-09-03, F2)
+  # (screen 2026-09-03, F2). This is a NEGATIVE grep - a rewrite that
+  # reads one directory some other way would not trip it; the property
+  # itself is carried by the two-page bomb in test-image-uploads.R
   if (length(dims) && any(grepl("pages\\s*==\\s*1L", dims)))
     note(paste("R/utils.R: .ppImageDims() reads dimensions from the first",
                "TIFF directory only again - a tiny page 1 ahead of a huge",
