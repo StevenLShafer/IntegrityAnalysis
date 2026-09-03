@@ -386,7 +386,9 @@ supplies **one of five** things — a path to a local PDF or a **folder** of
 PDFs, a single PDF, a spreadsheet already in `Example.xlsx` format, a
 **picture of a table** (jpg/png/tif), or **nothing at all** — and any of
 the files may arrive inside a **zip archive**, which the app expands into
-its entries before anything else looks at them. All of these
+its entries before anything else looks at them, and may be picked with
+the button or **dropped anywhere on the page** (2026-09-03), which
+reaches the same upload input. All of these
 converge on the same data frame, which is shown in an **editable grid**
 (rhandsontable or similar), validated **cell by cell as it is entered**, and
 only then submitted to the Monte Carlo — which runs **trial by trial, keyed by

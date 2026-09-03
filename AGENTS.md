@@ -50,7 +50,11 @@ handler deletes uploaded paths.
 
 The upload pipeline (since 2026-08-17 all input modes converge on one
 editable grid — Steve's original vision): file (csv/xls/xlsx, **or an
-article PDF**, parsed by the deterministic engine in a subprocess and
+article PDF**, a Word manuscript, JATS XML, **a picture of a table**
+(jpg/png/tif, 2026-09-02), or a zip of them — picked with the button or
+**dropped anywhere on the page** (2026-09-03; the drop is handed to the
+same file input, so there is one upload path, not two) — parsed by the
+deterministic engine in a subprocess and
 narrated in the comments log) → the **editable rhandsontable grid** (fix a
 missing N or a mistyped SD in place; "Apply Edits & Revalidate") →
 column-name normalization by grep (any "MEAN"-containing name that isn't

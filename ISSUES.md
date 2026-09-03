@@ -10,53 +10,56 @@ and therefore gappy.
 
 ---
 
-## Where things stand — 2026-09-02 (evening, session handoff)
+## Where things stand — 2026-09-03 (midday)
 
-**Merged and in production today** (#140–#144, all from Steve's live
-testing of a real journal table, `Ticgrelor.xlsx`): per-arm median
-handling, with Q1/Q3 columns that are always there to type into (#140
-and #142); the log autoscroll no longer throws (#141); the identity-index
-fetcher refuses a partial index and names the converter failure that
-actually happened (#143); `(number, %)` recognised as the count tag,
-and a name-collision refusal that names the offending column (#144).
-Production was verified end to end with the sheet after the merges.
+**Merged and in production today, eleven PRs (#145–#155).** The app
+now takes **a picture of a table** (jpg/png/tif, #145: read by
+tesseract's own reader, header-checked by our own parser before any
+decoder, decoded only in the parse subprocess, screened three times —
+feature, fixes, and the fixes' fixes — with every finding adjudicated in
+`docs/security-screens/log.md`) and **a file dropped anywhere on the
+page** (#155: the drop is handed to the one upload input, so no new
+path; hand-tested by Steve). The parser finds **Springer's side
+captions** (#146) and carries the **Table Transformer + tesseract seam**
+(#147, issue 33). The **live app reports its build commit** at last
+(#149, #151: the shinyapps builder records no install provenance, so
+the deploy now writes the commit it deployed and the shim hands it
+over; `checkDeployedBuild.ps1` passes for the first time since it was
+written). The screen script no longer records an API error as a
+finished screen (#148). Two AGENTS rules from the day's lessons: a new
+input format is screened twice (#152), and how to launch and watch a
+long run so a failure shows in minutes (#154). The synthetic tautology
+sweep gained a second row and cell shares for running across machines
+(#150, #153).
 
-**Open, green, screened — awaiting Steve's merge:**
+**Measured today, whole Carlisle corpus** (issue 33): the text engine
+parses 1,654 of 1,865; with the seam 1,768 — 114 recovered, none lost.
+Judged by Carlisle's hand-entered numbers, `tatr = "always"` raises
+recall from 0.61 to 0.65 and precision from 0.48 to 0.50, and 58 % of
+the values the model adds are his. One failure the parse score cannot
+see, in 38 articles: a larger non-baseline table outscoring a correct
+smaller one — the caption rule to add before `"always"` is used in
+earnest; the default `"auto"` is untouched.
 
-- **#145 — a picture of a table (jpg/png/tif) as input.** Read by
-  tesseract's own reader (no ImageMagick), header-checked by our own
-  parser before any decoder runs, decoded only in the parse
-  subprocess, shaded cyan. `securityScreen.ps1` ran on the branch: one
-  High (GIF) fixed by dropping GIF, three Lows fixed, the child memory
-  ceiling filed as issue 32; CodeRabbit's five threads fixed; tripwire
-  group 6 rebuilt on the parser's token table and verified to trip on
-  seven deliberate breaks.
-- **#146 — Springer side captions.** Typographic spaces glued the
-  caption numeral to its text, and the caption shares its line with the
-  table's header row. The ticagrelor PDF now parses to the same 84
-  numbers as the spreadsheet. Before/after on the 209 corpus files
-  whose caption lines show the gap: 200 identical, 1 gained, 1
-  improved, 0 regressions — after a tightening the measurement itself
-  forced (the gap-only version regressed 13).
+**Barnett comparison** (`corpus/syntheticAgeWeightCheck.R`): with
+integer-reported means his trial-level test flags honest two-row trials
+as under-dispersed 0.9 / 3.3 / 14.0 / 29.2 % at 20 / 100 / 500 / 1,000
+per arm; at one or two decimals 0.1–0.4 %. A three-row run (adding sex)
+finished the same day. Ours fails safe. His test stays a measured,
+cited comparison, not part of the reported screen.
 
-**OCR measurement (issue 22 follow-on, `C:/dev/Corpus/ocr`)**: arm 2
-(99 real scans) complete; arm 1 (born-digital renders scored against
-JATS truth) still running, past 200 works. Interim finding: the
-dominant OCR failure is wrong-table selection, not digit misreads
-(~92% digit precision) — the case for pairing TATR geometry with
-tesseract, proposed to Steve but not yet filed as an issue.
+**Nodes:** `surface`, `oldryzen`, `i5` each carry a full library and a
+snapshot of this main, test suite 45 files / 1,453 passing on all
+three. Arm 1 of the OCR measurement (issue 22) is finishing on
+`oldryzen` (12 shards, ~6,200 works).
 
-**Citable numbers are unchanged** from 2026-08-26: parse rate 84.9%
-over the 1,865-trial Carlisle corpus; r = 0.9930 against Carlisle 2017
-across 5,080 trials, 99.0% alarm concordance; AI-assist rescue 91%/81%.
+**Citable numbers**: parse rate 84.9 % over the 1,865-trial Carlisle
+corpus (text engine; 94.8 % with the seam where the model runs); r =
+0.9930 against Carlisle 2017 across 5,080 trials, 99.0 % alarm
+concordance; AI-assist rescue 91 % / 81 %.
 
-**Two traps recorded today** (details in the off-repo handoff and the
-memory notes): a corpus before/after silently measured the stale 0.1.0
-package in the user library after a failed reinstall — assert
-`find.package()` lies inside the snapshot library before measuring;
-and `system2(timeout=)` on Windows kills the 32-bit Rscript launcher,
-not its 64-bit child — drive per-file subprocesses with
-`bin/x64/Rscript` and `processx::run(cleanup_tree = TRUE)`.
+**Open decisions (Steve's):** where the Table Transformer runs in
+deployment (issue 33); the child memory ceiling (issue 32).
 
 **Still standing from 2026-08-26**: the AWS Identity Center session
 duration (8 h by default — raise it, then `aws sso login --profile
