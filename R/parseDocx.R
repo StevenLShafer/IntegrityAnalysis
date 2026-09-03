@@ -81,6 +81,10 @@
       if (is.na(v)) 1L else max(1L, suppressWarnings(as.integer(v)))
     }, integer(1))
     span[is.na(span)] <- 1L
+    # The author's number, clamped: a gridSpan of a hundred million would
+    # size the row (screen of PR #162, 2026-09-03, F2 - found in the JATS
+    # sibling, the same shape here)
+    span <- pmin(span, .ppMaxCellSpan)
     out <- character(sum(span))
     pos <- 1L
     for (k in seq_along(txt)) {
@@ -166,18 +170,19 @@
 # Fabricate one engine "line" (a data frame of words with text/x/y/width/
 # height) from free text starting at x = x0.
 .ppDocxTextLine <- function(txt, y, x0 = 0, charW = 6) {
-  ws <- strsplit(.ppSquish(txt), " ")[[1]]
+  # The cell is the author's: clipped to .ppMaxCellChars and to
+  # .ppMaxLineWords words before anything is built from it, and the line
+  # is one data frame built from vectors rather than one per word - a
+  # single 5 MB cell of one-character words spent the whole child budget
+  # in the old per-word rbind (second screen of PR #162, 2026-09-03).
+  ws <- strsplit(.ppSquish(.ppClip(txt, .ppMaxCellChars)), " ")[[1]]
   ws <- ws[nzchar(ws)]
   if (length(ws) == 0) return(NULL)
-  x <- x0
-  out <- vector("list", length(ws))
-  for (i in seq_along(ws)) {
-    out[[i]] <- data.frame(text = ws[i], x = x, y = y,
-                           width = charW * nchar(ws[i]), height = 10,
-                           stringsAsFactors = FALSE)
-    x <- x + charW * nchar(ws[i]) + charW
-  }
-  do.call(rbind, out)
+  if (length(ws) > .ppMaxLineWords) ws <- ws[seq_len(.ppMaxLineWords)]
+  w <- charW * nchar(ws)
+  x <- x0 + cumsum(c(0, utils::head(w + charW, -1)))
+  data.frame(text = ws, x = x, y = y, width = w, height = 10,
+             stringsAsFactors = FALSE)
 }
 
 # The synthetic-coordinate adapter: a cell matrix (plus optional caption
@@ -206,7 +211,14 @@
       words[[length(words) + 1]] <-
         .ppDocxTextLine(txt, y, x0 = (cl - 1) * pitch, charW = charW)
     }
-    if (length(words) > 0) add(do.call(rbind, words))
+    if (length(words) > 0) {
+      row <- do.call(rbind, words)
+      # a row is capped at .ppMaxLineWords whatever its cells added up to:
+      # 200 cells of 500 words each made a 99,504-word line that spent the
+      # child budget in the tokenizer (third screen of PR #162)
+      if (nrow(row) > .ppMaxLineWords) row <- row[seq_len(.ppMaxLineWords), , drop = FALSE]
+      add(row)
+    }
     y <- y + 12
   }
   for (fn in footnotes) {

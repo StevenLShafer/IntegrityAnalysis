@@ -493,19 +493,41 @@
 # callers of the helper.
 .apiMaxBytesOnDisk <- 26214400L
 
-# Read one uploaded file into template-layout rows. PDFs and Word
-# manuscripts go through the subprocess batcher; spreadsheets are read
-# in-process after a decompression-bomb preflight.
+# Read one uploaded file into template-layout rows. PDFs, Word
+# manuscripts, JATS XML and table images go through the subprocess
+# batcher; spreadsheets are read in-process after a decompression-bomb
+# preflight.
+#
+# JATS XML joined the list on 2026-09-03 (Steve: "XML through the API
+# will become the preferred route for screening manuscripts for research
+# fraud" - it is what an editorial system holds before any PDF exists).
+# It takes the same road as a PDF: the child process, the OS timeout, the
+# 25 MiB request cap, and libxml2's own defences - the tripwire bans the
+# options (HUGE, NOENT, DTDLOAD) that would switch them off, so an
+# entity bomb or an external-entity read in a hostile submission stays a
+# parse error inside the child (issue 29; tools/securityCheck.R group 1).
 .apiReadUpload <- function(path, name, apiKey = NULL) {
   ext <- tolower(tools::file_ext(name))
   stem <- tools::file_path_sans_ext(basename(name))
-  if (ext %in% c("pdf", "docx", .ppImageExts)) {
+  if (ext %in% c("pdf", "docx", "xml", .ppImageExts)) {
     # A table image is preflighted from its header - our own bounded
     # parser, no decoder - before a child process is spent on it; the
     # engine repeats the check, so this gate is defence in depth
     # (2026-09-02; see utils.R).
     if (ext %in% .ppImageExts) {
       ok <- .ppImageOK(path)
+      if (!isTRUE(ok))
+        return(list(ok = FALSE,
+                    reasons = paste0(name, " was not read: ",
+                                     attr(ok, "reason"), "."),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
+    }
+    # A JATS file likewise: size ceiling and gzip magic judged here, so
+    # a caller gets the reason as a 422 rather than a child that died
+    # (screen of PR #162, F1); the reader repeats the check.
+    if (ext == "xml") {
+      ok <- .ppJatsOK(path)
       if (!isTRUE(ok))
         return(list(ok = FALSE,
                     reasons = paste0(name, " was not read: ",

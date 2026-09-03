@@ -48,7 +48,16 @@ banned <- c("\\bsystem\\s*\\(",
             # rather than left to review.
             "[\"']HUGE[\"']",
             "[\"']NOENT[\"']",
-            "[\"']DTDLOAD[\"']")
+            "[\"']DTDLOAD[\"']",
+            # ...and the three the 2026-09-03 screen of PR #162 measured
+            # to be as dangerous: DTDVALID reads an external entity into
+            # the document exactly as NOENT does, DTDATTR fetches the
+            # external DTD (a server-side request to an author-chosen
+            # URL), XINCLUDE is banned on principle. DTDVALID is the one
+            # a publisher's DTD reference tempts someone to add.
+            "[\"']DTDVALID[\"']",
+            "[\"']DTDATTR[\"']",
+            "[\"']XINCLUDE[\"']")
 for (f in rFiles) {
   src <- srcOf(f)
   code <- sub("#.*$", "", src)          # comments may NAME the patterns
@@ -117,6 +126,85 @@ if (file.exists("R/parseTatr.R")) {
   obody <- if (length(op)) ut[op[1]:min(op[1] + 40, length(ut))] else character(0)
   if (!any(grepl("pdf_pagesize", obody, fixed = TRUE)) || !any(grepl("\\.ppRasterMaxPixels", obody)))
     note("R/utils.R: .ppOcrPages() rasterises pages without the size cap (screen F1)")
+}
+
+## 1b - the JATS reader parses bytes it has bounded ------------------------
+# Screen of PR #162 (2026-09-03): libxml2's FILE reader inflates a gzip
+# stream transparently, so a 389 KB upload named .xml became 400 MB of
+# XML and a 15 GB parse child; a single colspan="100000000" made a
+# 1.5 GB matrix. Pinned: the reader has exactly one read_xml() call, on
+# BYTES with NOBLANKS alone; the bytes are read only after .ppJatsOK()
+# has judged size and gzip magic; and both cell parsers clamp spans.
+if (file.exists("R/parseJats.R")) {
+  js <- sub("#.*$", "", srcOf("R/parseJats.R"))
+  calls <- grep("read_xml\\s*\\(", js)
+  if (length(calls) != 1L ||
+      !grepl("read_xml\\(bytes,\\s*options\\s*=\\s*\"NOBLANKS\"\\)", js[calls[1]]))
+    note(paste("R/parseJats.R: the JATS reader must call read_xml() exactly once,",
+               "on bytes, with options = \"NOBLANKS\" alone - a path argument lets",
+               "libxml2 inflate a gzip named .xml (screen of PR #162)"))
+  if (sum(grepl("options\\s*=", js)) != 1L)
+    note("R/parseJats.R: a second parser options= appeared - review it against the screen of PR #162")
+  # inside .ppJatsRead() itself (the gate function reads two magic bytes
+  # of its own, which is the point of it)
+  rd <- grep("^\\.ppJatsRead\\s*<-\\s*function", js)
+  nxt <- grep("^[A-Za-z.][A-Za-z0-9._]*\\s*<-\\s*function", js); nxt <- nxt[nxt > rd[1]]
+  body <- if (length(rd)) js[rd[1]:(if (length(nxt)) nxt[1] - 1L else length(js))] else character(0)
+  ok <- grep("\\.ppJatsOK\\s*\\(", body); rb <- grep("readBin\\s*\\(", body)
+  if (!length(body) || !length(ok) || !length(rb) || min(ok) > min(rb))
+    note("R/parseJats.R: .ppJatsRead() reads the bytes before .ppJatsOK() has bounded the file")
+  if (!any(grepl("min\\(cs,\\s*\\.ppMaxCellSpan\\)", js)))
+    note("R/parseJats.R: colspan is no longer clamped to .ppMaxCellSpan (screen F2)")
+  # second screen of #162: only OUTERMOST paragraphs and rows are
+  # selected, else nesting multiplies the text by the depth. The nested
+  # tests in test-parse-jats.R carry the property; this grep only says
+  # the guards are still present.
+  if (sum(grepl("not\\(ancestor::p\\)", js)) < 3L ||
+      !any(grepl("not\\(ancestor::td\\)", js)))
+    note("R/parseJats.R: an XPath lost its outermost-node guard (not(ancestor::p) / not(ancestor::td)) - nested elements multiply the text")
+  # the budget must be APPLIED, incrementally - the loop stops when it is
+  # spent (a scratch break that kept the constant and dropped its use
+  # passed the first version of this pin)
+  if (!any(grepl("if\\s*\\(spent\\s*>\\s*\\.ppJatsMaxTextChars\\)\\s*break", js)))
+    note("R/parseJats.R: the text-vector budget (.ppJatsMaxTextChars) is no longer applied as the paragraphs are read")
+  # third screen of #162: every .//title in an XPath carries the
+  # outermost-title guard, and the gate refuses a declared entity
+  tl <- grep("title", js); tl <- tl[grepl("//\\*\\[|\\.//title|self::title", js[tl])]
+  if (length(tl) && !all(grepl("not\\(ancestor::title\\)", js[tl])))
+    note("R/parseJats.R: a caption XPath selects <title> without not(ancestor::title) - nested titles multiply the caption")
+  # the CALL, not the phrase (the refusal message names <!ENTITY too, and
+  # a scratch break that kept the message passed the first version)
+  if (!any(grepl("grepRaw\\(\"<!ENTITY\"", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer refuses a declared internal entity (<!ENTITY)")
+  # fourth screen of #162: the entity search sees ASCII only, so a NUL
+  # anywhere is refused (UTF-16 hid the keyword) and the first byte is
+  # "<"; and counts, not time, bound the work - cells per table, cells
+  # per document, body paragraphs - each APPLIED, not merely defined
+  if (!any(grepl("any\\(bytes == as\\.raw\\(0L\\)\\)", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer refuses NUL bytes - a UTF-16 file hides <!ENTITY from the byte search")
+  if (!any(grepl("first != as\\.raw\\(0x3c\\)", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer requires the first byte to be \"<\"")
+  if (!any(grepl("nCells > \\.ppMaxTableCells", js)))
+    note("R/parseJats.R: the per-table cell count (.ppMaxTableCells) is no longer applied before the matrix is built")
+  if (!any(grepl("spentCells > \\.ppMaxDocCells", js)))
+    note("R/parseJats.R: the document cell budget (.ppMaxDocCells) is no longer applied across table-wraps")
+  if (!any(grepl("length\\(body\\) > \\.ppMaxBodyParas", js)))
+    note("R/parseJats.R: the body paragraph cap (.ppMaxBodyParas) is no longer applied")
+  # the adapter runs lazily, inside the candidate loop, for tried tables
+  # only: its one call must come after the loop opens
+  ad <- grep("\\.ppDocxLines\\(", js); lp <- grep("for \\(i in seq_along\\(cand\\)\\)", js)
+  if (length(ad) != 1L || !length(lp) || ad[1] < lp[1])
+    note("R/parseJats.R: .ppDocxLines() runs for every table before ranking - it must run once, inside the candidate loop")
+}
+if (file.exists("R/parseDocx.R")) {
+  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  if (!any(grepl("\\.ppClip\\(txt,\\s*\\.ppMaxCellChars\\)", dx)))
+    note("R/parseDocx.R: .ppDocxTextLine() no longer clips a cell to .ppMaxCellChars")
+}
+if (file.exists("R/parseDocx.R")) {
+  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  if (!any(grepl("pmin\\(span,\\s*\\.ppMaxCellSpan\\)", dx)))
+    note("R/parseDocx.R: gridSpan is no longer clamped to .ppMaxCellSpan (screen F2)")
 }
 
 ## 2 - the comments log stays escaped ------------------------------------

@@ -65,6 +65,10 @@ test_that("the service honors the whole issue-1 contract", {
   h <- httr2::request(paste0(api$base, "/health")) |> httr2::req_perform()
   expect_equal(httr2::resp_status(h), 200)
   expect_true(httr2::resp_body_json(h)$ok)
+  # the libxml2 version the JATS route runs on is on record (screen of
+  # PR #162) - and it was null on every reply until the client script
+  # read it back, because xml2 does not export libxml2_version()
+  expect_match(httr2::resp_body_json(h)$libxml2, "^[0-9]+[.][0-9]+")
 
   # everything else is refused without a bearer token
   r <- httr2::request(paste0(api$base, "/parse")) |>
@@ -121,6 +125,54 @@ test_that("the service honors the whole issue-1 contract", {
   expect_gt(b$trials, 0)
   expect_match(b$resultsCsv, "Summary")
   expect_true(is.numeric(b$overallP) || is.character(b$overallP))
+})
+
+test_that("the service reads a JATS XML article, end to end", {
+  # Steve, 2026-09-03: "XML through the API will become the preferred
+  # route for screening manuscripts for research fraud." The same parser
+  # the app uses (issue 29), reached through the same child process as a
+  # PDF; the synthetic article is helper-syntheticJats.R's.
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  xml <- makeJatsArticle(file.path(tempdir(), "article.xml"), list(list(
+    caption = "Table 1. Baseline characteristics of the patients",
+    rows = list(c("",            "Control (n = 40)", "Treatment (n = 42)"),
+                c("Age (yr)",    "61.2 (10.4)",      "60.7 (11.1)"),
+                c("Weight (kg)", "78 (14)",          "79 (15)"),
+                c("Male, n (%)", "22 (55%)",         "24 (57%)")),
+    spans = list(NULL, NULL, NULL, NULL))))
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(xml)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  expect_true(b$ok)
+  expect_true(b$deleted)
+  expect_identical(b$engine, "heuristic-jats")
+  expect_gte(b$rows, 4)
+  expect_match(b$templateCsv, "Age")
+  expect_match(b$templateCsv, "Weight")
+  # ...and the Monte Carlo runs on it
+  r <- apiReq(api$base, "/analyze") |>
+    httr2::req_body_multipart(file = curl::form_file(xml)) |>
+    httr2::req_timeout(600) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  expect_true(b$ok)
+  expect_gt(b$trials, 0)
+  expect_match(b$resultsCsv, "Summary")
+
+  # the screen of this change (2026-09-03, F1): a gzip stream named .xml
+  # is refused with its reason as a 422, before any child is spent
+  gz <- file.path(tempdir(), "compressed.xml")
+  con <- gzfile(gz, "wb"); writeLines(c("<article>", rep("<b/>", 100000), "</article>"), con); close(con)
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(gz)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 422)
+  expect_match(httr2::resp_body_json(r)$reasons[[1]], "gzip")
 })
 
 test_that("the auth helper is strict about tokens", {
