@@ -132,11 +132,17 @@ results (see *Validation* below).
 
 ## The seven ways in
 
-*However a file arrives — the Browse button, or **dropped anywhere on
-the page** (one file or several, any of the types below, and a zip of
-them) — it takes exactly the same path through the app. A dropped file
-of a type the app does not read is refused with a note in the message
-box; nothing is opened by the browser.*
+*However a file arrives — the Browse button, **dropped anywhere on the
+page** (one file or several, any of the types below, and a zip of
+them), or **pasted** (a screenshot of a table sits in the clipboard as
+a PNG on Windows, macOS, Linux, iOS and Android; Ctrl+V or Cmd+V on the
+page uploads it as a picture of a table) — it takes exactly the same
+path through the app. A dropped file of a type the app does not read is
+refused with a note in the message box; nothing is opened by the
+browser. A paste that carries text, or a paste into a text field or the
+grid, is left to do what it always did. On a phone, whether a page-level
+paste of a picture reaches the app depends on the browser; the picker
+and the drop always work.*
 
 **A template spreadsheet.** A spreadsheet in the app's own long format
 (Excel `.xlsx`/`.xls` or `.csv`) uploads directly. The column layout is

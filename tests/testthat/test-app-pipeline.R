@@ -78,6 +78,16 @@ test_that("drag and drop forwards to the one upload input, with the picker's own
     session$setInputs(dropRejected = list(names = list("notes.txt"), nonce = 1))
     expect_match(session$userData$commentsLog(), "Not opened: notes.txt", fixed = TRUE)
   })
+  # 4. paste (2026-09-03): a screenshot in the clipboard takes the same
+  #    road. Only PNG/JPEG items are taken, a paste carrying text is left
+  #    alone (cells into the grid), and so is a paste into a text field or
+  #    the grid - pinned by the strings that implement each rule
+  expect_match(js, "on('paste'", fixed = TRUE)
+  expect_match(js, "it.type === 'image/png' || it.type === 'image/jpeg'", fixed = TRUE)
+  expect_match(js, "if (hasText || !images.length) return;", fixed = TRUE)
+  expect_match(js, "tag === 'input' || tag === 'textarea'", fixed = TRUE)
+  expect_match(js, "closest('.handsontable')", fixed = TRUE)
+  expect_match(html, "pasted (Ctrl+V / Cmd+V)", fixed = TRUE)
 })
 
 test_that("Example.xlsx runs the full pipeline; re-run does not append", {

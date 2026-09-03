@@ -66,16 +66,11 @@ $(document).on('shiny:value', function(event) {
     depth = Math.max(0, depth - 1);
     if (depth === 0) $('body').removeClass('ia-dropping');
   });
-  $(document).on('drop', function (e) {
-    if (!carriesFiles(e)) return;
-    e.preventDefault();
-    depth = 0;
-    $('body').removeClass('ia-dropping');
-
-    var files = e.originalEvent.dataTransfer.files;
+  // The one forwarding step, shared by drop and paste: filter by the
+  // picker's list, name what was refused, hand the rest to the input.
+  function forward(files) {
     var input = document.getElementById('upload');
     if (!input || !files || !files.length) return;
-
     var keep = new DataTransfer();
     var rejected = [];
     for (var i = 0; i < files.length; i++) {
@@ -89,5 +84,51 @@ $(document).on('shiny:value', function(event) {
     if (!keep.files.length) return;
     input.files = keep.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  $(document).on('drop', function (e) {
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    $('body').removeClass('ia-dropping');
+    forward(e.originalEvent.dataTransfer.files);
+  });
+
+  // Paste a picture (Steve, 2026-09-03: a screenshot of a table lands in
+  // the clipboard as a PNG on every desktop and mobile OS). The clipboard's
+  // image items become files named for the moment they were pasted and
+  // take the same road as a drop - the OS wrote a real PNG or JPEG, and
+  // the header preflight on the server judges it like any other. Two
+  // pastes are deliberately left alone: one that carries TEXT (cells being
+  // pasted into the grid, a key into the key field) and one aimed at a
+  // text field or the grid itself, whatever it carries. Only an image-only
+  // paste on the page at large is taken. On iOS and Android a page-level
+  // paste of an image reaches the browser in some browsers and not others;
+  // the drop and the picker are the sure routes there.
+  $(document).on('paste', function (e) {
+    var cd = e.originalEvent && e.originalEvent.clipboardData;
+    if (!cd || !cd.items) return;
+    var t = e.target;
+    var tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || (t && t.isContentEditable)) return;
+    if ($(t).closest('.handsontable').length) return;
+    var hasText = false, images = [];
+    for (var i = 0; i < cd.items.length; i++) {
+      var it = cd.items[i];
+      if (it.kind === 'string' && (it.type === 'text/plain' || it.type === 'text/html')) hasText = true;
+      if (it.kind === 'file' && (it.type === 'image/png' || it.type === 'image/jpeg')) images.push(it);
+    }
+    if (hasText || !images.length) return;
+    e.preventDefault();
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    var files = [];
+    for (var j = 0; j < images.length; j++) {
+      var blob = images[j].getAsFile();
+      if (!blob) continue;
+      var ext = images[j].type === 'image/png' ? '.png' : '.jpg';
+      var name = 'pasted-' + stamp + (images.length > 1 ? '-' + (j + 1) : '') + ext;
+      files.push(new File([blob], name, { type: images[j].type }));
+    }
+    forward(files);
   });
 })();
