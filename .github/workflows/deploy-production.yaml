@@ -133,6 +133,12 @@ jobs:
             stage <- file.path(tempdir(), "deploy-stage")
             dir.create(stage)
             file.copy("app.R", stage)
+            # The deployed commit, for app.R to hand to buildCommit()
+            # (issue 28): the shinyapps.io builder records no install
+            # provenance in DESCRIPTION, so the deploy says what it
+            # deployed. DEPLOY_SHA is the commit checked out and installed
+            # above - the same value the log line at the end prints.
+            writeLines(Sys.getenv("DEPLOY_SHA"), file.path(stage, "build-sha.txt"))
             # RETRY THE TRANSIENT COLLISION (2026-08-27). shinyapps.io
             # serializes deploys per ACCOUNT, not per app, so a
             # production deploy and a PR-app deploy that overlap fail
@@ -168,7 +174,7 @@ jobs:
             deployWithRetry(
               appDir = stage,
               appName = Sys.getenv("SHINY_APP_NAME"),
-              appFiles = "app.R",
+              appFiles = c("app.R", "build-sha.txt"),
               account = Sys.getenv("SHINY_ACCOUNT"),
               server = "shinyapps.io",
               forceUpdate = TRUE, launch.browser = FALSE)
