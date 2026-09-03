@@ -152,10 +152,19 @@ What is NOT decided, and is Steve's call:
   cropper that is not ImageMagick (screen F1, 2026-09-02; tesseract's own
   reader can take a rectangle, which is the route to try). Arm 2's 99
   real scans are the test set.
-- **Value scoring.** "Baseline-like" is candidate recovery. Scoring the
-  seam's recovered numbers against Carlisle's published values on the
-  147 is the test that discharges the run-along's caveat, and it has not
-  been run.
+- **Value scoring - now run on the 25** (2026-09-02, late). Eleven of
+  the 25 recovered articles map to a Carlisle trial with hand-entered
+  values. Of the seam's 185 (mean, SD) pairs, **105 corroborate his
+  (57%)** by the corroboration script's own rounding rule, and **91% of
+  his pairs are recovered** (10 of 113 missed). Six articles are fully
+  corroborated; five carry uncorroborated pairs, two of them badly
+  (IA012208: 44 of 54; IA013851: 22 of 32 - extra rows he did not
+  record, or a table read wrong). That is the same order as the engine's
+  corpus-wide 44.8% fully-corroborated figure, so the recovered readings
+  are ordinary parser output, not a new class of error - and the two bad
+  ones are what the grid's flags exist for. The remaining 14 have no
+  Carlisle mapping; the 147-article scoring on the node queue is the
+  fuller answer.
 
 Done looks like: a deployment decision recorded here, and the value
 scoring run once on the 147.
