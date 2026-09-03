@@ -91,7 +91,7 @@ function() {
 #* Parse one document into the template layout
 #* @serializer unboxedJSON
 #* @post /parse
-#* @param file:file The document: PDF, Word (.docx), spreadsheet, or a picture of a table (jpg, png, tif).
+#* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
 function(req, res, file) {
   # Every upload lives in its own tempdir and dies with the request -
   # the retention contract (issue 1). The response confirms it.
@@ -124,7 +124,7 @@ function(req, res, file) {
 #* Parse (if needed), validate, and run the Monte Carlo
 #* @serializer unboxedJSON
 #* @post /analyze
-#* @param file:file The document: PDF, Word (.docx), spreadsheet, or a picture of a table (jpg, png, tif).
+#* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
 function(req, res, file) {
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
   dir.create(work)

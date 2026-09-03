@@ -47,7 +47,10 @@ parsing → validation → one-sided Monte Carlo toward excessive homogeneity.
 
 ### POST /v1/analyze
 Multipart upload, exactly one file: `file` = PDF, Word manuscript
-(docx), spreadsheet (xlsx/xls/csv in the app's input layout), or a
+(docx), **JATS XML** (xml - the article as an editorial or production
+system holds it; the intended route for automated screening, since it
+exists before any PDF and its tables are real cells rather than page
+geometry), spreadsheet (xlsx/xls/csv in the app's input layout), or a
 picture of a table (jpg/png/tif, read by local OCR - see the app's user
 guide for what that implies). A zip archive is **not** accepted here:
 the app expands a zip into its entries client-side and analyses each

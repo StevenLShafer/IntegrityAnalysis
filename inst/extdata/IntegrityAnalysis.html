@@ -964,10 +964,13 @@ the same engine, the same deterministic-first policy, and the same
 privacy contract as the app.</p>
 <p><strong>Endpoints.</strong> <code>GET /health</code> reports the
 service identity (open, for monitoring). <code>POST /parse</code>
-accepts one document — article PDF, Word manuscript, or spreadsheet —
-and returns the extracted baseline table. <code>POST /analyze</code>
-goes on to validate and run the Monte Carlo, returning a per-trial
-results CSV and the overall Stouffer P.</p>
+accepts one document — article PDF, Word manuscript, JATS XML article,
+picture of a table, or spreadsheet — and returns the extracted baseline
+table. JATS XML is the route intended for editorial systems, which hold
+the manuscript as XML before any PDF exists and whose tables are real
+cells rather than page geometry. <code>POST /analyze</code> goes on to
+validate and run the Monte Carlo, returning a per-trial results CSV and
+the overall Stouffer P.</p>
 <p><strong>Authentication.</strong> Every data endpoint requires a
 bearer token issued by the service operator; a request without one is
 refused before any handler runs, and a service with no tokens configured
