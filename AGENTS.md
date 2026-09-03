@@ -106,6 +106,13 @@ parsing challenge: `corpus/` (see its README).
   refused every image (found by Steve pasting a screenshot into the
   #157 review app). Anything the deployed app may call belongs in
   Imports, whatever `requireNamespace()` guards it with.
+  And once tesseract was in Imports the GitHub runner ran the OCR tests
+  for the first time - and read the synthetic page differently from the
+  desktop and the nodes (arm N as NA). **Exact OCR equality is a property
+  of the tesseract build, not of this package**: those two assertions
+  are certified on the desktop and the three Linux nodes (whose engines
+  are known and recorded) and `skip_on_ci()` on the runner, whose
+  tesseract is whatever its image ships.
   PR test apps are `IntegrityAnalysis_PR_<n>`; purge them after merging.
   **A PR test app must identify itself in the UI** (Steve's rule,
   2026-08-16): deploy it with an `app.R` of the form
