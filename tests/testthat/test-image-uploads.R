@@ -186,7 +186,8 @@ test_that("a JPEG, PNG or TIFF of a table parses like the page it was rendered f
   # whose engines are known, and skipped where the engine is whatever the
   # runner image ships (2026-09-03, the day tesseract entered Imports and
   # this test ran on the runner for the first time).
-  skip_on_ci("exact OCR equality is certified on the desktop and the nodes, not the runner's tesseract")
+  skip_if(isTRUE(as.logical(Sys.getenv("CI", "false"))),
+          "exact OCR equality is certified on the desktop and the nodes, not the runner's tesseract")
   src <- syntheticPdfMeanSD()
   direct <- parseBaselineTableHeuristics(src, quiet = TRUE)
   srt <- function(d) {
