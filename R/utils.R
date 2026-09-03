@@ -241,11 +241,15 @@
   # Pages over 30 inches on a side or over .ppRasterMaxPixels at this dpi
   # are not rendered; a journal page is 8.4 megapixels at 300 dpi.
   ps <- tryCatch(pdftools::pdf_pagesize(pdfFile), error = function(e) NULL)
-  if (!is.null(ps) && nrow(ps) >= max(pages)) {
-    w <- ps$width[pages]; h <- ps$height[pages]
-    big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
-    pages <- pages[!big]
-  }
+  # Fail CLOSED (screen 2026-09-03, N2): a document whose page sizes cannot
+  # be read is not rendered at all, rather than rendered uncapped. The
+  # short-count case cannot occur (pdftools preallocates one row per page)
+  # but is treated the same way so the cap never depends on that.
+  if (is.null(ps) || nrow(ps) < max(pages))
+    return(if (want == "text") character(0) else list())
+  w <- ps$width[pages]; h <- ps$height[pages]
+  big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
+  pages <- pages[!big]
   if (length(pages) == 0)
     return(if (want == "text") character(0) else list())
 
@@ -259,10 +263,16 @@
     pdfFile, format = "png", pages = pages, dpi = dpi, verbose = FALSE,
     filenames = file.path(tmp, "page%04d.%s"))
 
-  if (want == "text")
-    vapply(imgs, function(i) tesseract::ocr(i), character(1), USE.NAMES = FALSE)
-  else
-    lapply(imgs, function(i) tesseract::ocr_data(i))
+  # Named by page number, so a caller that asked for some pages can put
+  # each result back at its page index (the cap above may have dropped
+  # some of the pages asked for).
+  if (want == "text") {
+    out <- vapply(imgs, function(i) tesseract::ocr(i), character(1), USE.NAMES = FALSE)
+  } else {
+    out <- lapply(imgs, function(i) tesseract::ocr_data(i))
+  }
+  names(out) <- as.character(pages)
+  out
 }
 
 .ppRasterMaxPixels <- 20e6
@@ -270,7 +280,29 @@
 .ppOcrData <- function(pdfFile, dpi = 300, pages = NULL) {
   pg <- .ppOcrPages(pdfFile, dpi = dpi, pages = pages, want = "data")
   if (is.data.frame(pg)) pg <- list(pg)
-  lapply(pg, .ppOcrBoxes, scale = 72 / dpi)
+  lapply(pg, .ppOcrBoxes, scale = 72 / dpi)   # lapply keeps the page names
+}
+
+# Render and OCR ONLY the pages asked for, returned as one entry per
+# document page with an empty word frame everywhere else, so a caller's
+# page indices still line up with the document's. Until 2026-09-03 the
+# engine rendered and OCRed every page of a document at 300 dpi even
+# when the OCR rescue had aimed it at the two image pages - a 30-page
+# preprint spent the whole child budget on pages the text layer had
+# already read, and the rescue failed on exactly the documents it was
+# built for (screen 2026-09-03, F1). NULL pages = every page, as before.
+.ppOcrPagesAt <- function(pdfFile, dpi = 300, pages = NULL) {
+  n <- tryCatch(pdftools::pdf_info(pdfFile)$pages, error = function(e) 0L)
+  if (!is.numeric(n) || n < 1L) return(list())
+  got <- .ppOcrData(pdfFile, dpi = dpi, pages = pages)
+  empty <- data.frame(text = character(0), x = numeric(0), y = numeric(0),
+                      width = numeric(0), height = numeric(0),
+                      stringsAsFactors = FALSE)
+  out <- rep(list(empty), n)
+  at <- suppressWarnings(as.integer(names(got)))
+  keep <- !is.na(at) & at >= 1L & at <= n
+  out[at[keep]] <- got[keep]
+  out
 }
 
 # One tesseract word table -> the page-words shape, at `scale` points per

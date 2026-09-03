@@ -117,6 +117,10 @@ $watched = @(
   'R/parseTatr.R', 'python/tatr/',
   'R/tokenize.R', 'R/pageLayout.R', 'R/armNRecovery.R',
   'R/utils.R', 'R/validateData.R', 'R/baselineTable.R',
+  # inst/www/ since 2026-09-03: the drop-and-paste handler is browser
+  # code on the upload path; app.R since 2026-09-03: the shim reads
+  # build-sha.txt and sets an environment variable
+  'inst/www/', 'app.R',
   'inst/scripts/', '.github/workflows/', 'Dockerfile',
   'renv.lock', 'DESCRIPTION'
 )

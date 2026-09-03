@@ -1175,13 +1175,22 @@ parseBaselineTableHeuristics <- function(pdfFile,
       stop("Refused to read ", basename(pdfFile), ": ", attr(ok, "reason"),
            ".", call. = FALSE)
     ocr <- TRUE
+    # A picture IS the table (Steve, 2026-09-03: "pasted screenshots can
+    # be presumed to have captured the table"). A pasted screenshot of the
+    # ticagrelor table was being split down its own middle: with no
+    # "Table 1" caption in the picture, the page-layout detector took the
+    # white gap between the row labels and the numbers for a two-column
+    # journal gutter, and the left half (labels plus one arm) outscored
+    # the whole. So an image is read full width only - a screenshot of a
+    # two-column page is not what the picture route is for.
+    layout <- "single"
   }
   if (!requireNamespace("pdftools", quietly = TRUE))
     stop("Package 'pdftools' is required: install.packages('pdftools')")
   say <- function(...) if (!quiet) message(...)
 
   allPages <- if (isImage) .ppImageData(pdfFile)
-              else if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
+              else if (isTRUE(ocr)) .ppOcrPagesAt(pdfFile, ocrDpi, pages)
               else .ppPdfData(pdfFile)
   # Submitted manuscripts number every line down the left margin; strip the
   # rail before anything downstream sees it (2026-08-20, see pageLayout.R).
@@ -1330,10 +1339,18 @@ parseBaselineTableHeuristics <- function(pdfFile,
           if (nrow(bw) < 10) next
           lines <- .ppBuildLines(bw)
           if (length(lines) < 3) next
+          # capIdx = 1 treats the page's first line as the caption, so
+          # the header scan starts at line 2. For a PICTURE of a table
+          # the first line IS the header (there is nothing above it), and
+          # with capIdx = 1 the screenshot's "Aspirin arm (n=99)" was
+          # never scanned: arm 2 got no N and fifteen "n (%)" rows were
+          # skipped for it (2026-09-03). The look-ahead candidates above
+          # already start at 0 for the same reason.
           cand[[length(cand) + 1]] <- list(
             page = p, mode = mode, band = b, lines = lines,
             lineTexts = vapply(lines, .ppLineText, character(1)),
-            capIdx = 1L, caption = NA_character_, capScore = 0)
+            capIdx = if (isImage) 0L else 1L, caption = NA_character_,
+            capScore = 0)
         }
       }
     }

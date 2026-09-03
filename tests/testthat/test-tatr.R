@@ -196,6 +196,24 @@ test_that("with the text engine happy, TATR is consulted only on request", {
   expect_identical(calls, 0L)
 })
 
+test_that("the rescue chain parses through the model once, not once per asker", {
+  # The text engine fails, the seam is tried, its answer is NULL (a
+  # degraded scan), and the OCR rescue asks the seam again: before the
+  # memo that ran parseBaselineTableTatr() - and its page renders and OCR -
+  # a second time (screen 2026-09-03, F2)
+  src <- syntheticPdfMeanSD()
+  g <- meanSDGeometry()
+  xml <- tatrXmlFor(tempfile(fileext = ".tatr.xml"), 1L, g$rows, g$cols, g$cells)
+  calls <- 0L
+  testthat::local_mocked_bindings(
+    parseBaselineTableHeuristics = function(...) stop("no usable table in the text layer"),
+    parseBaselineTableTatr = function(...) { calls <<- calls + 1L; NULL },
+    .ppImageOnlyPages = function(...) 1L)
+  expect_error(parseBaselineTable(src, ai = "never", tatrXml = xml, quiet = TRUE),
+               "no usable table")
+  expect_identical(calls, 1L)
+})
+
 test_that("a direct call removes the runner's work directory once the XML is consumed", {
   src <- syntheticPdfMeanSD()
   g <- meanSDGeometry()
