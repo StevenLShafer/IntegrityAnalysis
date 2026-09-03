@@ -86,6 +86,45 @@ library C:/Temp/ia-lib are theirs).
 
 ---
 
+## 33. The Table Transformer + tesseract seam: built; where it runs is the open question
+
+**Status: built 2026-09-02 (PR #147, `R/parseTatr.R`)** at Steve's
+direction, "Add tatr-tesseract to pdf parser workflow", after the
+run-along (issue 20's neighbour, PR #137) showed the model locating a
+griddable table in 84% of the text-layer articles the engine cannot grid
+and on 97% of scanned pages with no text layer at all.
+
+What is built: the model's XML (with `--write-empty`, so a scanned page
+keeps its geometry) goes through the Word path's adapter into the same
+block parser; on a page with no text layer, tesseract supplies the
+characters and each word is assigned to the cell holding at least half
+of its box. A rescue tier behind the text engine, ahead of the AI route
+and of plain OCR; the model never chooses the table. Measured in the PR
+on the corpus runs B (text layer) and C (scanned); numbers there.
+
+What is NOT decided, and is Steve's call:
+
+- **Where the model runs in deployment.** It needs the pegged Python
+  (`tools/tatrProvision.sh`), ~17 s per article on CPU, and weights on
+  disk. shinyapps.io cannot host it, so the free app is unchanged. The
+  API's Docker image could carry it (`INTEGRITY_TATR_PYTHON`), which
+  would also make the confidential tier's scans readable locally.
+  Cost, image size and the memory ceiling of issue 32 all bear on this.
+- **Per-cell OCR.** The pairing OCRs the whole page and assigns words;
+  OCRing each cell's crop separately, with a digits-friendly
+  configuration, is the next accuracy step and needs an image cropper
+  that is not ImageMagick (screen F1, 2026-09-02 - tesseract's own reader
+  can take a rectangle, which is the route to try).
+- **Value scoring.** "Baseline-like" is candidate recovery. Scoring the
+  seam's recovered numbers against Carlisle's published values on the
+  147 is the test that discharges the run-along's caveat, and it has not
+  been run.
+
+Done looks like: a deployment decision recorded here, and the value
+scoring run once on the 147.
+
+---
+
 ## 31. One corpus library, with an index that decides what may be shared
 
 **Status: built 2026-08-31** (`corpus/buildCorpusLibrary.R`,

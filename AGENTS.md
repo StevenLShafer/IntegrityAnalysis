@@ -255,6 +255,21 @@ The standing conclusions of the 2026-08-20 full-repository review:
   refuse absolute paths and `..` components, extract by basename into a
   fresh directory, cap entry count and total uncompressed size, and
   never recurse into nested archives.
+- **There are two subprocess launchers, and both are pinned** (the
+  second added 2026-09-02 with the Table Transformer seam, PR #147).
+  `parseBaselineTableFiles.R` runs `Rscript --vanilla` per file;
+  `parseTatr.R`'s `.ppTatrRun()` runs the pegged Python over one PDF -
+  pdfium and pdfminer are two more decoders on hostile bytes, so it is a
+  subprocess under an OS timeout, never the worker. Its properties are
+  reviewed in `tools/securityCheck.R` group 1 and verified to trip on a
+  break: interpreter and script from configuration, never from a
+  request; every argument `shQuote()`d and every path ours; offline
+  (no `--allow-download`); output read as XML data. It is absent on
+  shinyapps.io (no Python there), so the deployed app's surface did not
+  change; a Docker/API image that sets `INTEGRITY_TATR_PYTHON` takes it
+  on knowingly. The XML the model returns is data: nothing in it is
+  evaluated, and the model never decides which table is the baseline
+  table.
 
 ### Two instruments, two stopping rules (added 2026-08-27)
 
@@ -471,6 +486,12 @@ this section is your map.
   (`<journal>/<year>/<n.m>.pdf`), hard-linked to the same bytes, and the
   older `corpus/*.R` scripts still read it; new work should use the
   library and its index.
+- **The third engine** (2026-09-02, PR #147): `R/parseTatr.R` takes the
+  Table Transformer's geometry (`python/tatr/`, run on the Linux nodes or
+  wherever `tools/tatrProvision.sh` has been applied) and the PDF's own
+  characters - text layer, or tesseract on a scanned page - through the
+  same block parser. It is a rescue tier behind the text engine; the
+  model never chooses the table. Architecture guide 05d.
 - **The architecture**: [`docs/parsepdf-architecture.md`](docs/parsepdf-architecture.md)
   (with an HTML twin). Entry points: `parseBaselineTable()` (one PDF,
   deterministic-then-optional-AI), `parseBaselineTableFiles()` (batches;

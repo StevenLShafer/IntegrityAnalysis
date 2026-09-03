@@ -160,7 +160,11 @@ PDFs, most of them not journal articles.
 - **Out of domain on author manuscripts.** Quality is much lower on
   preprints than on typeset journal PDFs; the gate handles it, but the
   useful yield there is smaller.
-- **Scanned pages produce nothing.** TATR returns boxes with no text, so a
-  page with no text layer yields an empty grid. Pairing it with tesseract —
-  TATR for cell geometry, OCR *within* each cell — is the natural next step
-  and is not built here.
+- **Scanned pages produce empty cells - and since 2026-09-02 that is the
+  point.** TATR returns boxes with no text, so a page with no text layer
+  yields an empty grid, which the plausibility gate rejects. `--write-empty`
+  writes those text-less rejects anyway (`passed-plausibility="false"`),
+  and `R/parseTatr.R` fills them: tesseract reads the page, each OCR word
+  goes to the cell holding at least half of its box, and the grid enters the
+  deterministic engine like any other. The pairing is built; see the
+  architecture guide, section 05d.
