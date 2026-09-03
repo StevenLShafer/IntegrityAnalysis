@@ -243,7 +243,7 @@ endpoint; so is the app's own "Editor's View" download.
 | what | limit | on breach |
 |---|---|---|
 | request size | 25 MiB, `Content-Length` required | 413 / 411 |
-| JATS XML | 8 MiB on disk; not a gzip stream; no `<!ENTITY` declaration (no real JATS article needs one) | 422 with the reason |
+| JATS XML | 8 MiB on disk; UTF-8 text beginning with `<` (no NUL bytes, so no UTF-16); not a gzip stream; no `<!ENTITY` declaration (no real JATS article needs one); a table over 20,000 cells is skipped, and at most 100,000 cells and 20,000 body paragraphs are read per document | 422 with the reason |
 | picture of a table | 20 megapixels; up to 10 TIFF pages; JPEG, PNG or TIFF by its bytes, not its name | 422 with the reason |
 | spreadsheet archives (`.xlsx`) | 100 MiB uncompressed, 512 entries, compression ratio 200 | 422 |
 | parse time | 60 s per document (300 s with the AI assist) | 422, `stage: "parse"` |
