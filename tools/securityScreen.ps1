@@ -306,9 +306,12 @@ try {
   # is judged before the ledger moves: a non-zero exit, an empty body,
   # or a body that begins with the CLI's error prefix is a screen that
   # did not happen, and the range stays unclaimed for the next run.
+  # The prefix test looks at the START of the whole body only: a real
+  # report that quotes "API Error" on some later line is still a report
+  # (CodeRabbit on #148).
   $body = (@($out) | ForEach-Object { "$_" }) -join "`n"
   $failed = ($rc -ne 0) -or ($body.Trim().Length -eq 0) -or
-            ($body -match '(?m)^\s*API Error\b')
+            ($body.TrimStart() -match '^API Error\b')
   if ($failed) {
     Say "SCREEN FAILED (exit $rc): the model call returned no screen"
     Say ("  " + ($body.Trim() -split "`n")[0])
