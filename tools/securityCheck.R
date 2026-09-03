@@ -310,6 +310,131 @@ if (file.exists("R/parseBaselineTableFiles.R")) {
                "options blob again - that path carries apiKey (M4)"))
 }
 
+## 6 - table images: no ImageMagick, header before decoder -----------------
+# Added 2026-09-02 with image uploads (jpg/png/tif; Steve: "this creates
+# a new security surface (JPG malware)"). An image decoder is a classic
+# attack surface and the uploader is the author under investigation, so
+# these are pinned: hostile bytes never route through ImageMagick
+# (tesseract's own reader only); GIF stays out (screen F1: its header
+# cannot bound the decoder); the header read is bounded; and every path
+# that decodes or reads an image has refused oversized or malformed
+# headers FIRST, checked inside the function that does the decoding.
+#
+# SYNTAX-AWARE, NOT GREP (CodeRabbit on #145, after screen F4). The
+# checks read the R parser's own token table: comments are absent by
+# construction, a "#" inside a string is a string, and a string is seen
+# whichever quote it uses. Every assertion below was verified to trip on
+# a deliberate break in a scratch copy - see the verification loop in
+# the PR that added it (#145).
+if (file.exists("R/utils.R")) {
+  # code-only lines: every terminal token except comments, joined by
+  # spaces, on the line where it starts - with the line's brace delta
+  # taken from the '{' and '}' TOKENS, so a brace inside a regex string
+  # (this parser is full of them) cannot end a function body early
+  codeOf <- function(f) {
+    pd <- utils::getParseData(parse(f, keep.source = TRUE))
+    pd <- pd[pd$terminal & pd$token != "COMMENT", ]
+    n <- max(pd$line1)
+    txt <- character(n); delta <- integer(n)
+    for (ln in unique(pd$line1)) {
+      tk <- pd[pd$line1 == ln, ]
+      txt[ln]   <- paste(tk$text, collapse = " ")
+      delta[ln] <- sum(tk$token == "'{'") - sum(tk$token == "'}'")
+    }
+    structure(txt, delta = delta)
+  }
+  # the code lines of one top-level function, by token brace depth
+  bodyOf <- function(code, name) {
+    delta <- attr(code, "delta")
+    i <- grep(paste0("^", gsub(".", "\\.", name, fixed = TRUE),
+                     "\\s*<-\\s*function"), code)
+    if (!length(i)) return(character(0))
+    depth <- 0; opened <- FALSE; out <- character(0)
+    for (j in i[1]:length(code)) {
+      out <- c(out, code[j])
+      depth <- depth + delta[j]
+      if (depth > 0) opened <- TRUE
+      # not before the first brace: a signature can span several lines,
+      # and stopping at depth 0 there truncated the body to two lines
+      if (opened && depth <= 0) break
+    }
+    out
+  }
+  imgFiles <- c("R/utils.R", "R/parseBaselineTableHeuristics.R",
+                "R/parseBaselineTable.R", "R/aiFallback.R", "R/apiService.R",
+                "R/app_server.R")
+  # ImageMagick by any door: the package name as a token (magick::,
+  # library(magick), requireNamespace("magick")) or one of its functions
+  # called unqualified after an attach
+  magickFns <- paste0("\\b(image_read|image_info|image_write|image_convert|",
+                      "image_resize|image_scale|image_data|image_ocr)\\s*\\(")
+  for (f in imgFiles[file.exists(imgFiles)]) {
+    code <- codeOf(f)
+    if (any(grepl("\\bmagick\\b", code)) || any(grepl(magickFns, code)))
+      note(paste(f, "reaches ImageMagick (magick, or one of its functions",
+                 "unqualified) - the 2026-09-02 decision was tesseract's",
+                 "own reader only (review, image uploads)"))
+  }
+  ut <- codeOf("R/utils.R")
+  if (any(grepl("[\"']gif[\"']", ut)))
+    note(paste("R/utils.R accepts GIF again - the 2026-09-02 screen (F1)",
+               "showed its header cannot bound the decoder's allocation"))
+  # the bounded read itself, not the symbol's presence
+  dims <- bodyOf(ut, ".ppImageDims")
+  if (!length(dims) ||
+      !any(grepl(paste0("readBin\\s*\\(\\s*con\\s*,\\s*\"raw\"\\s*,\\s*n\\s*=\\s*",
+                        "min\\s*\\(\\s*size\\s*,\\s*\\.ppImageHeaderBytes\\s*\\)\\s*\\)"),
+                 dims)))
+    note(paste("R/utils.R: .ppImageDims() no longer reads the header through",
+               "readBin(con, \"raw\", n = min(size, .ppImageHeaderBytes)) -",
+               "a crafted image header is read without limit"))
+  # the TIFF dimension entry is one SHORT or LONG, else the file is
+  # refused - with another type or count the value field is an offset
+  # (screen 2026-09-03, F1)
+  if (length(dims) &&
+      !any(grepl("cnt\\s*!=\\s*1\\s*\\|\\|\\s*!\\s*typ\\s*%in%\\s*c\\s*\\(\\s*3\\s*,\\s*4\\s*\\)",
+                 dims)))
+    note(paste("R/utils.R: .ppImageDims() no longer refuses a TIFF dimension",
+               "entry whose count is not 1 or whose type is not SHORT/LONG -",
+               "an offset would be read as a small width"))
+  # ...and the cap reads EVERY directory, not the first alone
+  # (screen 2026-09-03, F2). This is a NEGATIVE grep - a rewrite that
+  # reads one directory some other way would not trip it; the property
+  # itself is carried by the two-page bomb in test-image-uploads.R
+  if (length(dims) && any(grepl("pages\\s*==\\s*1L", dims)))
+    note(paste("R/utils.R: .ppImageDims() reads dimensions from the first",
+               "TIFF directory only again - a tiny page 1 ahead of a huge",
+               "page 2 passes the cap"))
+  # preflight before decode, INSIDE the function that decodes
+  orderIn <- function(f, fn, before, after, what) {
+    if (!file.exists(f)) return(invisible())
+    b <- bodyOf(codeOf(f), fn)
+    if (!length(b)) { note(paste(f, "lost", fn, "- the image path moved")); return(invisible()) }
+    i <- grep(before, b); j <- grep(after, b)
+    if (length(j) && (!length(i) || min(i) > min(j))) note(what)
+  }
+  orderIn("R/parseBaselineTableHeuristics.R", "parseBaselineTableHeuristics",
+          "\\.ppImageOK\\s*\\(", "\\.ppImageData\\s*\\(",
+          paste("R/parseBaselineTableHeuristics.R decodes an image",
+                "(.ppImageData) without .ppImageOK() first, in the function",
+                "that decodes it"))
+  orderIn("R/apiService.R", ".apiReadUpload",
+          "\\.ppImageOK\\s*\\(", "parseBaselineTableFiles\\s*\\(",
+          paste("R/apiService.R: .apiReadUpload() spawns a child for an upload",
+                "without the image preflight (.ppImageOK) first"))
+  orderIn("R/aiFallback.R", ".ppImageFileB64",
+          "\\.ppImageOK\\s*\\(", "readBin\\s*\\(",
+          paste("R/aiFallback.R: .ppImageFileB64() reads image bytes for the",
+                "model without .ppImageOK() first"))
+  # ...and the model's own size limits, in the same function, before the
+  # bytes are read (screen 2026-09-03, N1)
+  orderIn("R/aiFallback.R", ".ppImageFileB64",
+          "\\.ppImageAiRefusal\\s*\\(", "readBin\\s*\\(",
+          paste("R/aiFallback.R: .ppImageFileB64() reads image bytes for the",
+                "model without .ppImageAiRefusal() first - a 20 MB image is",
+                "encoded for Anthropic to reject"))
+}
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -319,5 +444,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "5 property groups.
+    "6 property groups.
 ")

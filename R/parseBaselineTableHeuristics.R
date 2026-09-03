@@ -1163,11 +1163,25 @@ parseBaselineTableHeuristics <- function(pdfFile,
                                   roundObsDelta = roundObsDelta,
                                   maxCandidates = maxCandidates,
                                   pctApprox = pctApprox, quiet = quiet))
+  # A table IMAGE (jpg/png/tif; Steve, 2026-09-02) is a scanned page
+  # without the page: tesseract word boxes into this same engine, "ocr"
+  # provenance, cyan in the app. The header preflight runs FIRST - the
+  # file is hostile input, and no decoder touches it until its declared
+  # size and page count are known to be sane (see utils.R).
+  isImage <- .ppIsImageFile(pdfFile)
+  if (isImage) {
+    ok <- .ppImageOK(pdfFile)
+    if (!isTRUE(ok))
+      stop("Refused to read ", basename(pdfFile), ": ", attr(ok, "reason"),
+           ".", call. = FALSE)
+    ocr <- TRUE
+  }
   if (!requireNamespace("pdftools", quietly = TRUE))
     stop("Package 'pdftools' is required: install.packages('pdftools')")
   say <- function(...) if (!quiet) message(...)
 
-  allPages <- if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
+  allPages <- if (isImage) .ppImageData(pdfFile)
+              else if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
               else .ppPdfData(pdfFile)
   # Submitted manuscripts number every line down the left margin; strip the
   # rail before anything downstream sees it (2026-08-20, see pageLayout.R).

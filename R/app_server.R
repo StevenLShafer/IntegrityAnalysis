@@ -813,7 +813,8 @@ app_server <- function(input, output, session) {
         files <- files[!lock, , drop = FALSE]
       }
 
-      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx", "xml")
+      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx", "xml",
+                               .ppImageExts)
       for (nm in files$name[bad])
         outputComments(paste0(nm, " is not a supported file type."))
       files <- files[!bad, , drop = FALSE]
@@ -853,7 +854,7 @@ app_server <- function(input, output, session) {
       # survived the allowlist above and is not a parsed-document type
       # falls into readSheet(). A new document format must be excluded
       # here too, or it lands in the spreadsheet readers (issue 19).
-      for (i in which(!files$ext %in% c("pdf", "docx", "xml"))) {
+      for (i in which(!files$ext %in% c("pdf", "docx", "xml", .ppImageExts))) {
         # Journal-style wide tables first (issue 17): a sheet laid out
         # the way journals print Table 1 - including the Editor's View
         # workbook this app itself generates - parses into template
@@ -912,7 +913,11 @@ app_server <- function(input, output, session) {
       # real PDFs; a crafted docx can stall libxml2 - the author of a
       # manuscript under investigation is the threat model), engine
       # dispatch by extension inside parseBaselineTableHeuristics().
-      pdfIdx <- which(files$ext %in% c("pdf", "docx", "xml"))
+      # A picture of a table (jpg/png/tif; Steve, 2026-09-02) rides
+      # the same route: the child preflights the image header before any
+      # decoder runs, and reads it with local OCR - "ocr" provenance,
+      # whole-table cyan below.
+      pdfIdx <- which(files$ext %in% c("pdf", "docx", "xml", .ppImageExts))
       if (length(pdfIdx) > 0) {
         # ---- The AI assist: bring your own key (ISSUES.md issue 8) ----
         # The deployed default stays ai = "never": manuscripts are
@@ -1010,7 +1015,9 @@ app_server <- function(input, output, session) {
             # re-read automatically (see the aiKey observer). Files
             # whose AI attempt itself failed are not recorded - the
             # same key would just fail the same way.
-            if (files$ext[i] == "pdf" && !aiTried[k])
+            # (an image can retry too, if it is one the model accepts)
+            if (files$ext[i] %in% c("pdf", "jpg", "jpeg", "png") &&
+                !aiTried[k])
               failedParses <<- unique(rbind(
                 failedParses,
                 data.frame(name = files$name[i],
@@ -1023,6 +1030,7 @@ app_server <- function(input, output, session) {
             # for a .docx, `page` is the table's ordinal in the document
             if (identical(r$layout, "docx") || identical(r$layout, "jats"))
               paste0(": table ", res$page[k], " of the document, ")
+            else if (files$ext[i] %in% .ppImageExts) ": "
             else paste0(": table page ", res$page[k], ", "),
             res$arms[k], " arm(s) (",
             res$armsWithN[k], " with N), ", res$variables[k],
@@ -1080,21 +1088,30 @@ app_server <- function(input, output, session) {
           # a single misread digit (3/8, 1/7) would silently corrupt a
           # fraud screen. ROW/COL "*" = every cell of the trial.
           if (r$engine %in% c("heuristic-ocr", "heuristic-tatr-ocr")) {
+            # A TIFF cannot take the AI route (the model does not accept
+            # it), so do not promise one (CodeRabbit on #145): point at
+            # the conversion that would work instead.
+            isTiff <- files$ext[i] %in% c("tif", "tiff")
+            aiAdvice <- if (isTiff)
+              paste("or save the picture as a JPG or PNG and re-upload",
+                    "with an Anthropic API key for the higher-accuracy",
+                    "AI read (the model does not accept TIFF)")
+            else paste("or enter an Anthropic API key above and re-upload",
+                       "for the higher-accuracy AI read")
             outputComments(paste0(
-              files$name[i], ": the table page is a scanned image and ",
-              "was read by optical character recognition. The whole ",
+              files$name[i],
+              if (files$ext[i] %in% .ppImageExts) ": the picture was read by "
+              else ": the table page is a scanned image and was read by ",
+              "optical character recognition. The whole ",
               "table is shaded cyan - OCR can misread digits, so ",
-              "verify every value against the manuscript, or enter an ",
-              "Anthropic API key above and re-upload for the ",
-              "higher-accuracy AI read."))
+              "verify every value against the manuscript, ", aiAdvice, "."))
             derived <- rbind(derived, data.frame(
               ROW = "*", COL = "*", KIND = "ocr",
               NOTE = paste("this table was read by optical character",
                            "recognition from a scanned page. OCR can",
                            "misread digits (3 vs 8, 1 vs 7) - verify",
-                           "every value against the manuscript, or",
-                           "enter an API key for the higher-accuracy",
-                           "AI read"),
+                           "every value against the manuscript,",
+                           aiAdvice),
               stringsAsFactors = FALSE))
           }
           frames[[length(frames) + 1]] <-

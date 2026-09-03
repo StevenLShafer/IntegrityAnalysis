@@ -227,6 +227,31 @@ included in the build), percent-only tables with no counts, and fonts that drop 
 mean and SD fuse into one number ("47.714.9") — splitting those would be fabrication, not
 extraction.
 
+### 05c — Pictures of tables (jpg/png/tif, 2026-09-02)
+
+A screenshot or scan of Table 1 enters through `parseBaselineTableHeuristics()` like any file
+and takes the scanned-page road of issue 22, tier 2: tesseract word boxes into this same engine,
+`engine = "heuristic-ocr"`, `"ocr"` provenance on every row, whole-table cyan in the app. Two
+things differ from a scanned PDF page:
+
+- **Scale.** The engine's tolerances are in PDF points; an image carries no trustworthy dpi.
+  Measured on a journal page rendered at 300, 150 and 96 dpi, the median confident OCR word box
+  was 6.72 pt at every resolution, so `.ppImageData()` scales each image so that its median word
+  box lands at `.ppImageWordPt` (6.75 pt). A 150-dpi and a 300-dpi render of one page land on
+  the same coordinates, and the suite pins that.
+- **The header is read first, by us.** `.ppImageDims()` parses dimensions, page count and
+  format from the magic bytes with no decoder involved, and `.ppImageOK()` refuses anything over
+  20 megapixels, over 10 TIFF pages, a looping directory chain, or not a JPEG/PNG/TIFF whatever
+  the file is called. Only then does tesseract's own reader (leptonica — never ImageMagick)
+  decode it, inside the parse subprocess. GIF is refused by design: its header cannot bound its
+  decoder. A JPEG or PNG can take the AI route as an image block of its own type; a TIFF stays
+  with local OCR.
+
+Quality is what tesseract gives: a clean 300-dpi render reproduces the text-layer parse exactly
+(pinned for all three formats); at 96 dpi words begin to drop. `test-image-uploads.R` holds the
+header, bomb, scale and route tests; the security screen that adjudicated the feature is
+recorded in `docs/security-screens/log.md`.
+
 ### 05d — Table Transformer geometry, with tesseract on scanned pages (2026-09-02)
 
 The third route into `.ppParseBlock()`, beside the text-layer engine and the Word path. Microsoft's
@@ -287,7 +312,7 @@ never produced.
 | `R/parseBaselineTableHeuristics.R` | the deterministic engine; candidate enumeration, ranking, `.ppParseBlock()` |
 | `R/pageLayout.R` | page bands, caption anchors and scoring, best-caption page, line building, column clustering |
 | `R/tokenize.R` | one line of text → numeric cells |
-| `R/utils.R` | decimals, numeric coercion, label cleaning, rbind-fill, the template column list |
+| `R/utils.R` | decimals, numeric coercion, label cleaning, rbind-fill, the template column list; PDF/OCR word ingest, and the image header parser (`.ppImageDims`) that runs before any decoder |
 | `R/parseBaselineTable.R` | hybrid entry point, `reviewFlags()`, `print.ParsePDFTable()` |
 | `R/aiFallback.R` | **the only file that touches the network**; schema, prompts, request, response |
 | `R/parseBaselineTableFiles.R` | batch runner, one subprocess per file |
@@ -356,9 +381,12 @@ sheet 1; Provenance and Skipped go after it.
 
 ## How the Integrity-Analysis app will use this
 
-The app's intended shape (Steve, 2026-08-16): a user supplies **one of four**
-things — a path to a local PDF or a **folder** of PDFs, a single PDF, a
-spreadsheet already in `Example.xlsx` format, or **nothing at all**. All four
+The app's intended shape (Steve, 2026-08-16, extended 2026-09-02): a user
+supplies **one of five** things — a path to a local PDF or a **folder** of
+PDFs, a single PDF, a spreadsheet already in `Example.xlsx` format, a
+**picture of a table** (jpg/png/tif), or **nothing at all** — and any of
+the files may arrive inside a **zip archive**, which the app expands into
+its entries before anything else looks at them. All of these
 converge on the same data frame, which is shown in an **editable grid**
 (rhandsontable or similar), validated **cell by cell as it is entered**, and
 only then submitted to the Monte Carlo — which runs **trial by trial, keyed by
@@ -371,6 +399,7 @@ That end state settles several questions about this package:
 | a folder of PDFs | `parseBaselineTableFiles()` — **use it, not a loop** |
 | one PDF | `parseBaselineTable(ai = "never")` |
 | a spreadsheet | nothing needed; imported directly |
+| a picture of a table | `parseBaselineTable()` on the image file — the OCR road, shaded cyan (05c) |
 | nothing | an empty frame with these columns |
 
 Four things worth building around rather than discovering later:

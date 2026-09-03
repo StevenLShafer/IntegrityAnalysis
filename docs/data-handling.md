@@ -39,7 +39,10 @@ way is used to train a model, and it is deleted within about 30 days.
 ## What is processed, and what is not
 
 **Processed (transiently):** the uploaded file (PDF, Word manuscript,
-or spreadsheet), the baseline table extracted from it, any values a
+spreadsheet, or picture of a table - or a zip archive of those, which
+the app expands into its entries, each then handled exactly as a
+single upload and discarded with it), the baseline table extracted from
+it, any values a
 user types into the on-screen grid, and the analysis results.
 
 **Not collected:** account identities, IP addresses tied to content,
