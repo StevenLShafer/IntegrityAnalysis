@@ -1190,7 +1190,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
   say <- function(...) if (!quiet) message(...)
 
   allPages <- if (isImage) .ppImageData(pdfFile)
-              else if (isTRUE(ocr)) .ppOcrData(pdfFile, dpi = ocrDpi)
+              else if (isTRUE(ocr)) .ppOcrPagesAt(pdfFile, ocrDpi, pages)
               else .ppPdfData(pdfFile)
   # Submitted manuscripts number every line down the left margin; strip the
   # rail before anything downstream sees it (2026-08-20, see pageLayout.R).
