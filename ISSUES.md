@@ -99,8 +99,27 @@ keeps its geometry) goes through the Word path's adapter into the same
 block parser; on a page with no text layer, tesseract supplies the
 characters and each word is assigned to the cell holding at least half
 of its box. A rescue tier behind the text engine, ahead of the AI route
-and of plain OCR; the model never chooses the table. Measured in the PR
-on the corpus runs B (text layer) and C (scanned); numbers there.
+and of plain OCR; the model never chooses the table.
+
+**Measured 2026-09-02** on an installed snapshot, through the subprocess
+batcher. Run B (574 Carlisle articles with model geometry, text layer):
+the engine alone parses 523; of the **51 it cannot, the seam recovers
+25** (49%) - 8 of them with an N on every arm, 17 with continuous rows,
+and a tail of thin one-to-two-variable readings that the value scoring
+below would sort. The 26 still failing split between poppler timeouts
+(the same files time out with or without the seam) and tables the model
+found but the engine could not read as baseline data. Run C (the 300
+accessions of the scanned-set run, 192 with model geometry, 84 of them
+text-less tables kept by `--write-empty`): the engine alone parses
+106; of the 86 it cannot, the seam recovers **19 through the text
+layer** - the same mechanism as run B - but the **OCR pairing on real
+scans yielded only fragments**: 18 results, none with an N on two arms,
+one with a continuous row, mostly a single variable, and no better than
+plain OCR on the five files both read. The seam now gates a pairing
+result on arm identity exactly as the OCR rescue does, so those
+fragments do not surface. **Standing conclusion, unchanged from issue
+22: on a real scan the AI image route is the quality path; geometry
+from the model helps the text-layer failures, not (yet) the scans.**
 
 What is NOT decided, and is Steve's call:
 
@@ -110,11 +129,14 @@ What is NOT decided, and is Steve's call:
   API's Docker image could carry it (`INTEGRITY_TATR_PYTHON`), which
   would also make the confidential tier's scans readable locally.
   Cost, image size and the memory ceiling of issue 32 all bear on this.
-- **Per-cell OCR.** The pairing OCRs the whole page and assigns words;
-  OCRing each cell's crop separately, with a digits-friendly
-  configuration, is the next accuracy step and needs an image cropper
-  that is not ImageMagick (screen F1, 2026-09-02 - tesseract's own reader
-  can take a rectangle, which is the route to try).
+- **Per-cell OCR, and a higher render for scans.** The pairing OCRs the
+  whole page at 300 dpi and assigns words; on real scans that produced
+  fragments (above). OCRing each cell's crop separately, with a
+  digits-friendly configuration, and rendering scanned pages for the
+  model at more than 150 dpi are the next steps - and need an image
+  cropper that is not ImageMagick (screen F1, 2026-09-02; tesseract's own
+  reader can take a rectangle, which is the route to try). Arm 2's 99
+  real scans are the test set.
 - **Value scoring.** "Baseline-like" is candidate recovery. Scoring the
   seam's recovered numbers against Carlisle's published values on the
   147 is the test that discharges the run-along's caveat, and it has not

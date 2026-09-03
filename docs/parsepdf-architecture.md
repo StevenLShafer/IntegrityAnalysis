@@ -236,8 +236,13 @@ Word path uses**, so every cell rule applies unchanged.
   the seam is inert and the parser behaves exactly as before. The runner is the package's second
   subprocess launcher, reviewed and pinned in `tools/securityCheck.R` group 1: fixed interpreter
   and script, every argument quoted, offline, OS timeout, output read as XML data.
-- **Measured** on the corpus runs recorded in the PR that added it (#147): the text-layer set
-  (run B) and the scanned set with the pairing (run C).
+- **Measured** (2026-09-02, installed snapshot, PR #147). Text layer: of 574 Carlisle articles
+  with model geometry the engine alone parses 523, and of the 51 it cannot the seam recovers
+  25 (8 with an N on every arm, 17 with continuous rows). Scanned set: of 192 with geometry the
+  engine alone parses 106; the seam recovers 19 of the 86 failures through the text layer, but
+  the OCR pairing on real scans yielded only fragments (18 results, none with two arm Ns) and
+  is gated on arm identity like the OCR rescue. So the geometry earns its place on text-layer
+  failures; on a real scan the AI image route remains the quality path (issue 22).
 
 `tests/testthat/test-tatr.R` hand-builds the XML the model would write for the synthetic PDFs
 and pins: geometry + text layer reproduces the text-layer parse exactly; geometry + tesseract

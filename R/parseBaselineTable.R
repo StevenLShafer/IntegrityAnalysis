@@ -217,6 +217,17 @@ parseBaselineTable <- function(pdfFile,
                              ocr = ocrMode, quiet = quiet),
       error = function(e) { say("Table Transformer: ", conditionMessage(e)); NULL })
     if (is.null(r)) return(NULL)
+    # The OCR rescue's quality gate, applied here too: a pairing result
+    # with no arm name and no arm N cannot be analysed and would only
+    # erode trust surfaced as a cyan table. Measured 2026-09-02 on the
+    # scanned corpus set: 18 pairing results, none with two arm Ns, one
+    # with a continuous row - fragments, not tables. Gate them.
+    if (identical(r$engine, "heuristic-tatr-ocr") &&
+        !(any(!is.na(r$arms$arm) & nzchar(r$arms$arm)) || any(!is.na(r$arms$N)))) {
+      say("Table Transformer + OCR found a table but could not read any arm ",
+          "name or arm N - the scan is too degraded for OCR.")
+      return(NULL)
+    }
     r$flags <- c(tatrNote,
                  if (identical(r$engine, "heuristic-tatr-ocr"))
                    paste("scanned page(s) read by local OCR - OCR can misread",
