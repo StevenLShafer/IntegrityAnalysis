@@ -40,8 +40,14 @@
 #' The value is read, in order, from:
 #' \enumerate{
 #'   \item \code{RemoteSha} in the installed DESCRIPTION - written by
-#'     \code{remotes::install_github()}, which is how deploys install
-#'     this package (AGENTS.md, "Running, testing, deploying");
+#'     \code{remotes::install_github()}, which is how the deploy job
+#'     installs this package (AGENTS.md, "Running, testing, deploying");
+#'     or, failing that, \code{GithubSHA1}, the field packrat writes
+#'     when the shinyapps.io builder installs the package from GitHub
+#'     itself - which is what actually runs in production, since the
+#'     deploy bundles only \code{app.R} and leaves the install to the
+#'     builder (2026-09-03: five deploys after issue 28 the live app
+#'     still said "unknown", for exactly this reason);
 #'   \item \code{INTEGRITY_BUILD_SHA} in the environment, for container
 #'     builds that install by other means;
 #'   \item \code{git rev-parse HEAD} when running from a source tree,
@@ -56,10 +62,9 @@
 buildCommit <- function(short = FALSE) {
   sha <- NA_character_
 
-  # 1. how a deployed build knows: remotes wrote it at install time
-  d <- suppressWarnings(utils::packageDescription("IntegrityAnalysis"))
-  if (is.list(d) && !is.null(d$RemoteSha) && nzchar(d$RemoteSha))
-    sha <- d$RemoteSha
+  # 1. how a deployed build knows: the installer wrote it at install time
+  sha <- .buildCommitFromDescription(
+    suppressWarnings(utils::packageDescription("IntegrityAnalysis")))
 
   # 2. an explicit override, for container images built without remotes
   if (is.na(sha)) {
@@ -76,6 +81,25 @@ buildCommit <- function(short = FALSE) {
 
   if (is.na(sha) || !nzchar(sha)) return(NA_character_)
   if (short) substr(sha, 1, 8) else sha
+}
+
+# The commit an installed DESCRIPTION records, whichever installer wrote
+# it. remotes::install_github() writes RemoteSha. The shinyapps.io builder
+# installs from GitHub through packrat, which writes GithubSHA1 instead -
+# and that is the copy production runs, because the deploy bundles only
+# app.R. Until 2026-09-03 only RemoteSha was read, so every production
+# build since issue 28 reported "unknown" and the nightly deployed-build
+# check flagged it (tools/checkDeployedBuild.log, 2026-08-31 onward).
+# A separate function so a fake description can be handed to it in a test.
+.buildCommitFromDescription <- function(d) {
+  if (!is.list(d)) return(NA_character_)
+  for (field in c("RemoteSha", "GithubSHA1")) {
+    v <- d[[field]]
+    if (!is.null(v) && length(v) == 1L && !is.na(v) &&
+        grepl("^[0-9a-f]{7,40}$", v))
+      return(v)
+  }
+  NA_character_
 }
 
 # The development fallback, isolated so its one risky call is easy to
