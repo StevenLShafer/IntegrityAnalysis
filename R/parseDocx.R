@@ -211,7 +211,14 @@
       words[[length(words) + 1]] <-
         .ppDocxTextLine(txt, y, x0 = (cl - 1) * pitch, charW = charW)
     }
-    if (length(words) > 0) add(do.call(rbind, words))
+    if (length(words) > 0) {
+      row <- do.call(rbind, words)
+      # a row is capped at .ppMaxLineWords whatever its cells added up to:
+      # 200 cells of 500 words each made a 99,504-word line that spent the
+      # child budget in the tokenizer (third screen of PR #162)
+      if (nrow(row) > .ppMaxLineWords) row <- row[seq_len(.ppMaxLineWords), , drop = FALSE]
+      add(row)
+    }
     y <- y + 12
   }
   for (fn in footnotes) {

@@ -72,6 +72,11 @@ function() {
   list(ok = TRUE,
        service = "IntegrityAnalysis",
        version = as.character(utils::packageVersion("IntegrityAnalysis")),
+       # the XML parser the JATS route runs on: its entity accounting
+       # differs between the 2.9 and 2.11+ lines (screen of PR #162),
+       # so the running version is on record where a monitor reads it
+       libxml2 = tryCatch(as.character(xml2::libxml2_version()),
+                          error = function(e) NA_character_),
        # The commit this service was built from (issue 28), so an
        # operator - or tools/checkDeployedBuild.ps1 - can compare what
        # is RUNNING against what is in the repository. /health is the

@@ -162,10 +162,20 @@ if (file.exists("R/parseJats.R")) {
   if (sum(grepl("not\\(ancestor::p\\)", js)) < 3L ||
       !any(grepl("not\\(ancestor::td\\)", js)))
     note("R/parseJats.R: an XPath lost its outermost-node guard (not(ancestor::p) / not(ancestor::td)) - nested elements multiply the text")
-  # the budget must be APPLIED, not merely defined (a scratch break that
-  # kept the constant and dropped its use passed the first version)
-  if (!any(grepl("cumsum\\(nchar\\(fullText.*\\.ppJatsMaxTextChars", js)))
-    note("R/parseJats.R: the text-vector budget (.ppJatsMaxTextChars) is no longer applied to fullText")
+  # the budget must be APPLIED, incrementally - the loop stops when it is
+  # spent (a scratch break that kept the constant and dropped its use
+  # passed the first version of this pin)
+  if (!any(grepl("if\\s*\\(spent\\s*>\\s*\\.ppJatsMaxTextChars\\)\\s*break", js)))
+    note("R/parseJats.R: the text-vector budget (.ppJatsMaxTextChars) is no longer applied as the paragraphs are read")
+  # third screen of #162: every .//title in an XPath carries the
+  # outermost-title guard, and the gate refuses a declared entity
+  tl <- grep("title", js); tl <- tl[grepl("//\\*\\[|\\.//title|self::title", js[tl])]
+  if (length(tl) && !all(grepl("not\\(ancestor::title\\)", js[tl])))
+    note("R/parseJats.R: a caption XPath selects <title> without not(ancestor::title) - nested titles multiply the caption")
+  # the CALL, not the phrase (the refusal message names <!ENTITY too, and
+  # a scratch break that kept the message passed the first version)
+  if (!any(grepl("grepRaw\\(\"<!ENTITY\"", js)))
+    note("R/parseJats.R: .ppJatsOK() no longer refuses a declared internal entity (<!ENTITY)")
 }
 if (file.exists("R/parseDocx.R")) {
   dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))

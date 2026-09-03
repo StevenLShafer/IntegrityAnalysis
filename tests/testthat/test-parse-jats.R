@@ -232,16 +232,14 @@ test_that("nested paragraphs and rows do not multiply the text (second screen of
   d <- IntegrityAnalysis:::.ppJatsData(f)
   expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
   expect_lte(sum(nchar(d$fullText)), IntegrityAnalysis:::.ppMaxParaChars)
-  # an internal entity referenced many times inside the nesting: the
-  # budget bounds it whatever the XPath says
+  # an internal entity referenced many times inside the nesting used to be
+  # bounded by the budget; since the third screen a declared entity is
+  # refused before any parse (see the "declared entity" test below)
   g <- tmp()
   writeLines(c('<!DOCTYPE article [<!ENTITY e "', paste(rep("y", 400000), collapse = ""), '">]>',
                "<article><body>", open, paste(rep("&e;", 5), collapse = " "), close,
                "</body></article>"), g)
-  t0 <- Sys.time()
-  d2 <- IntegrityAnalysis:::.ppJatsData(g)
-  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
-  expect_lte(sum(nchar(d2$fullText)), IntegrityAnalysis:::.ppJatsMaxTextChars)
+  expect_error(IntegrityAnalysis:::.ppJatsData(g), "entity")
   # rows nested inside a cell are that cell's text, not more rows
   h <- tmp()
   inner <- paste(rep("<tr><td>", 120), collapse = "")
@@ -254,6 +252,35 @@ test_that("nested paragraphs and rows do not multiply the text (second screen of
   m <- d3$tables[[1]]$cells
   expect_equal(nrow(m), 2L)
   expect_lte(max(nchar(m)), IntegrityAnalysis:::.ppMaxCellChars)
+})
+
+test_that("nested caption titles, a declared entity, and a wide row are bounded (third screen of #162)", {
+  # 250 nested <title> around a 1 MB leaf inside a caption: the <title>
+  # branch lacked the outermost-node guard the <p> branch had
+  f <- tmp()
+  leaf <- paste(rep("x", 1000000), collapse = "")
+  open <- paste(rep("<title>", 250), collapse = ""); close <- paste(rep("</title>", 250), collapse = "")
+  writeLines(c("<article><body><table-wrap><label>Table 1</label><caption>", open, leaf, close,
+               "</caption><table><tr><td>a</td><td>1</td></tr><tr><td>b</td><td>2</td></tr></table></table-wrap></body></article>"), f)
+  t0 <- Sys.time()
+  d <- IntegrityAnalysis:::.ppJatsData(f)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  expect_lte(nchar(d$tables[[1]]$caption), IntegrityAnalysis:::.ppMaxParaChars + 20L)
+  # an internal entity declaration is refused by name, before any parse:
+  # no real JATS article declares one (0 of the corpus's 10,108)
+  g <- tmp()
+  writeLines(c('<!DOCTYPE article [<!ENTITY e "', paste(rep("y", 100000), collapse = ""), '">]>',
+               "<article><body><p>", paste(rep("&e;", 4), collapse = " "), "</p></body></article>"), g)
+  ok <- IntegrityAnalysis:::.ppJatsOK(g)
+  expect_false(isTRUE(ok))
+  expect_match(attr(ok, "reason"), "entity")
+  expect_error(IntegrityAnalysis:::.ppJatsRead(g), "entity")
+  # a row of 200 cells of 500 words is capped at .ppMaxLineWords words
+  m <- matrix(paste(rep("1", 500), collapse = " "), nrow = 2, ncol = 200)
+  t0 <- Sys.time()
+  ln <- IntegrityAnalysis:::.ppDocxLines(m)
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 10)
+  expect_true(all(vapply(ln$lines, nrow, integer(1)) <= IntegrityAnalysis:::.ppMaxLineWords))
 })
 
 test_that("a five-megabyte cell of one-character words does not stall the word adapter", {

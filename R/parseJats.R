@@ -113,9 +113,17 @@
   if (size > .ppJatsMaxBytes)
     return(no(sprintf("the file is %.1f MiB; a JATS article is read up to %d MiB",
                       size / 2^20, .ppJatsMaxBytes %/% 2^20)))
-  head <- readBin(file, "raw", n = 2L)
-  if (length(head) == 2L && identical(head, as.raw(c(0x1f, 0x8b))))
+  bytes <- readBin(file, "raw", n = size)     # bounded by the size check above
+  if (length(bytes) >= 2L && identical(bytes[1:2], as.raw(c(0x1f, 0x8b))))
     return(no("the file is a gzip stream, not XML - decompress it first"))
+  # An internal entity declaration is refused outright (third screen of
+  # PR #162): none of the corpus's 10,108 real JATS files declares one
+  # (the five predefined entities and numeric character references need
+  # no DTD), and a declared entity referenced many times inside ONE node
+  # is expanded by xml_text() before any clip can act - by a factor
+  # libxml2 caps on this build and may not on an older one.
+  if (length(grepRaw("<!ENTITY", bytes, fixed = TRUE, all = FALSE)))
+    return(no("the file declares an internal entity (<!ENTITY), which a JATS article does not need"))
   TRUE
 }
 
@@ -244,9 +252,15 @@
     capNode <- xml2::xml_find_first(tw, "./caption")
     cap <- ""
     if (!inherits(capNode, "xml_missing")) {
-      ps <- xml2::xml_find_all(capNode, ".//p[not(ancestor::p)]|.//title")
-      cap <- .ppSquish(paste(.ppClip(vapply(ps, xml2::xml_text, character(1)), .ppMaxParaChars),
-                             collapse = " "))
+      # outermost <p> OR <title> only (a <title> nested 250 deep multiplied
+      # the caption by the depth - third screen of #162), at most a few
+      # nodes (a real caption has one to three), and the JOINED caption
+      # clipped, since a per-node clip does not bound a join
+      ps <- xml2::xml_find_all(
+        capNode, ".//*[(self::p or self::title) and not(ancestor::p) and not(ancestor::title)]")
+      if (length(ps) > 5L) ps <- ps[seq_len(5L)]
+      cap <- .ppClip(.ppSquish(paste(.ppClip(vapply(ps, xml2::xml_text, character(1)), .ppMaxParaChars),
+                                     collapse = " ")), .ppMaxParaChars)
       if (!nzchar(cap)) cap <- .ppSquish(.ppClip(xml2::xml_text(capNode), .ppMaxParaChars))
     }
     caption <- .ppSquish(paste(c(lab, cap), collapse = " "))
@@ -262,12 +276,17 @@
   # inside the table is not independent evidence of the arm sizes the
   # same table is being asked to supply.
   body <- xml2::xml_find_all(doc, "//body//p[not(ancestor::table-wrap) and not(ancestor::p)]")
-  fullText <- vapply(body, function(n) .ppSquish(.ppClip(xml2::xml_text(n), .ppMaxParaChars)),
-                     character(1))
-  fullText <- fullText[nzchar(fullText)]
-  # the total budget: paragraphs kept in order until it is spent
-  keep <- cumsum(nchar(fullText, type = "bytes")) <= .ppJatsMaxTextChars
-  list(tables = tables, fullText = fullText[keep])
+  # the total budget, applied AS the paragraphs are read: the loop stops
+  # when it is spent, so no paragraph past the budget is ever built
+  fullText <- character(0); spent <- 0L
+  for (n in body) {
+    t <- .ppSquish(.ppClip(xml2::xml_text(n), .ppMaxParaChars))
+    if (!nzchar(t)) next
+    spent <- spent + nchar(t, type = "bytes")
+    if (spent > .ppJatsMaxTextChars) break
+    fullText[length(fullText) + 1L] <- t
+  }
+  list(tables = tables, fullText = fullText)
 }
 
 #' Parse a baseline table out of a JATS XML document
