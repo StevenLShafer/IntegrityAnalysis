@@ -65,6 +65,10 @@ test_that("the service honors the whole issue-1 contract", {
   h <- httr2::request(paste0(api$base, "/health")) |> httr2::req_perform()
   expect_equal(httr2::resp_status(h), 200)
   expect_true(httr2::resp_body_json(h)$ok)
+  # the libxml2 version the JATS route runs on is on record (screen of
+  # PR #162) - and it was null on every reply until the client script
+  # read it back, because xml2 does not export libxml2_version()
+  expect_match(httr2::resp_body_json(h)$libxml2, "^[0-9]+[.][0-9]+")
 
   # everything else is refused without a bearer token
   r <- httr2::request(paste0(api$base, "/parse")) |>

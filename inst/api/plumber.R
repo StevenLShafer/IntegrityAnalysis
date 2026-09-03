@@ -75,8 +75,14 @@ function() {
        # the XML parser the JATS route runs on: its entity accounting
        # differs between the 2.9 and 2.11+ lines (screen of PR #162),
        # so the running version is on record where a monitor reads it
-       libxml2 = tryCatch(as.character(xml2::libxml2_version()),
-                          error = function(e) NA_character_),
+       # xml2 does not EXPORT libxml2_version() (1.5.2 keeps it
+       # internal), so the exported call returned NA and the field was
+       # null on every reply - caught by tools/apiClient.R on 2026-09-03,
+       # after the screen that asked for it. getFromNamespace reaches
+       # it without the ':::' that R CMD check flags.
+       libxml2 = tryCatch(
+         as.character(utils::getFromNamespace("libxml2_version", "xml2")()),
+         error = function(e) NA_character_),
        # The commit this service was built from (issue 28), so an
        # operator - or tools/checkDeployedBuild.ps1 - can compare what
        # is RUNNING against what is in the repository. /health is the
