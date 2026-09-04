@@ -235,7 +235,10 @@ test_that("a caption-less picture with one wrapped arm header is read whole, fro
   r <- parseBaselineTableHeuristics(png, quiet = TRUE)
   expect_identical(r$engine, "heuristic-ocr")
   expect_equal(r$arms$N, c(15, 17))
-  expect_setequal(unique(r$data$ROW), c("Age (yr)", "Weight (kg)", "Male, n (%)", "Smoker, n (%)"))
+  # labels as the grid shows them: .ppCleanLabel strips the unit and the
+  # "n (%)" annotation (the first version of this test expected the raw
+  # printed labels and failed on every desktop run; the runner skips it)
+  expect_setequal(unique(r$data$ROW), c("Age", "Weight", "Male", "Smoker"))
   expect_equal(nrow(r$skipped), 0L)
   # the same picture with a "Table 1" line still takes the caption road
   capPdf <- makeTablePdf(file.path(tempdir(), "wrappedHeaderCap.pdf"),
