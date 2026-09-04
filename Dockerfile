@@ -62,5 +62,12 @@ RUN R CMD INSTALL --no-multiarch /build && rm -rf /build
 # The service. INTEGRITY_API_TOKENS must be supplied by the runtime
 # (App Runner environment configuration) - with none set the service
 # starts but refuses every data request (fail closed, by design).
+# The commit this image was built from, so /health can name it (issue
+# 28 for the container). CodeBuild passes CODEBUILD_RESOLVED_SOURCE_VERSION
+# as --build-arg BUILD_SHA (buildspec.yml); a local build without it
+# reports "unknown", which is the truth. Placed after the install so a
+# new SHA never invalidates the package layers above.
+ARG BUILD_SHA=unknown
+ENV INTEGRITY_BUILD_SHA=$BUILD_SHA
 EXPOSE 8080
 CMD ["Rscript", "-e", "IntegrityAnalysis::runApiService(port = 8080, host = '0.0.0.0')"]

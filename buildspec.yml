@@ -18,7 +18,10 @@ phases:
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   build:
     commands:
-      - docker build -t $IMAGE_REPO:latest .
+      # the commit goes INTO the image so /health can report it (the
+      # 2026-09-03 deploy of dbb2b0e answered commit "unknown")
+      - docker build --build-arg BUILD_SHA=$CODEBUILD_RESOLVED_SOURCE_VERSION
+        -t $IMAGE_REPO:latest .
       - docker tag $IMAGE_REPO:latest
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO:latest
   post_build:
