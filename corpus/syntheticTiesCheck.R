@@ -81,6 +81,9 @@
 # a progress line per 50 trials in <outDir>/progress.log, and a per-trial
 # row: cell, arm, trial, the row mid-p's, and the trial p under A, B, B2,
 # C0, C50, D1, D2. corpus/syntheticTiesReport.R summarises.
+#
+# Run 2 (2026-09-03, evening): the C arm corrected (see catSims and
+# llrTable); A, B, B2, D1, D2 unchanged and reproducible from the seeds.
 
 suppressPackageStartupMessages({ library(parallel) })
 args <- commandArgs(trailingOnly = TRUE)
@@ -143,9 +146,18 @@ catSims <- function(k, N, M, thetas) {
     p1 <- rbinom(M, N, pbar) / N; p2 <- rbinom(M, N, pbar) / N
     g <- (p1 + p2) / 2
     a <- round(N * (g + th * (p1 - g))); b <- round(N * (g + th * (p2 - g)))
-    Ea <- E   # the observed margins' expectation, as the statistic is defined
-    (a - Ea[1, 1])^2 / Ea[1, 1] + (N - a - Ea[1, 2])^2 / Ea[1, 2] +
-      (b - Ea[2, 1])^2 / Ea[2, 1] + (N - b - Ea[2, 2])^2 / Ea[2, 2]
+    # the statistic against the simulated table's OWN margins, as the
+    # fixed-margin null does implicitly: an alternative that makes the
+    # two arms identical must score 0, as an identical observed table
+    # does. (Run 1 scored the alternative against the observed table's
+    # margins, so theta = 0 did not put its mass on 0 and the LLR could
+    # not see an equal-counts sex row - corrected for run 2.)
+    tot <- a + b; Ea1 <- tot / 2; Eb1 <- tot / 2
+    Ea2 <- N - Ea1; Eb2 <- N - Eb1
+    out <- (a - Ea1)^2 / Ea1 + (N - a - Ea2)^2 / Ea2 +
+      (b - Eb1)^2 / Eb1 + (N - b - Eb2)^2 / Eb2
+    out[!is.finite(out)] <- 0
+    out
   })
   list(obs = obs, null = nullS, alt = altS, scale = NA_real_, dec = NA_integer_)
 }
@@ -170,10 +182,15 @@ llrTable <- function(nullS, altS) {
   kn <- key(nullS); ka <- key(altS)
   fn <- table(kn); fa <- table(ka)
   M <- length(nullS); eps <- 0.5 / M
-  f <- function(v) {
+  # `self`: the value is one of the null replicates, so its own count is
+  # removed before the frequency is read - otherwise every replicate has
+  # P_null >= 1/M by construction while the observed value may have 0,
+  # and the observed LLR is biased upward (run 1's excess at two decimals)
+  f <- function(v, self = FALSE) {
     k <- key(v)
     pn <- as.numeric(fn[k]); pa <- as.numeric(fa[k])
     pn[is.na(pn)] <- 0; pa[is.na(pa)] <- 0
+    if (self) pn <- pn - 1
     log((pa / M + eps) / (pn / M + eps))
   }
   f
@@ -225,7 +242,7 @@ trialP <- function(rows, M, thetas) {
   pC <- vapply(seq_along(thetas), function(j) {
     fs <- lapply(rows, function(r) llrTable(r$null, r$alt[[j]]))
     obsL <- sum(vapply(seq_along(rows), function(i) fs[[i]](rows[[i]]$obs), numeric(1)))
-    repL <- rowSums(sapply(seq_along(rows), function(i) fs[[i]](rows[[i]]$null)))
+    repL <- rowSums(sapply(seq_along(rows), function(i) fs[[i]](rows[[i]]$null, self = TRUE)))
     (sum(repL > obsL) + sum(repL == obsL) / 2) / M
   }, numeric(1))
   # D1 / D2: Steve's partition on continuous rows, mid-p elsewhere, Stouffer
