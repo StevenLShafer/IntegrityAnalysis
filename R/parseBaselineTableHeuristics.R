@@ -78,6 +78,15 @@
 # reading. Demographic vocabulary in the row labels is direct evidence of a
 # baseline table; "Unnamed" rows and implausibly many arms are evidence of a
 # mangled one.
+# The caption score of a parse result, 0 when it has no caption - the
+# comparison tatr = "always" makes between two engines' winners.
+.ppCaptionScoreOf <- function(caption) {
+  if (is.null(caption) || length(caption) != 1L || is.na(caption) || !nzchar(caption))
+    return(0)
+  s <- .ppCaptionScore(caption)
+  if (is.finite(s)) s else 0
+}
+
 .ppParseScore <- function(res) {
   if (is.null(res) || inherits(res, "error") || nrow(res$data) == 0) return(-Inf)
   contRows <- unique(res$data$ROW[!is.na(res$data$MEAN)])
