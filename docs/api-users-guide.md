@@ -215,10 +215,12 @@ The round-trip contract: the failure payload is the next call's input.
 
 | status | body | meaning |
 |---|---|---|
-| 401 | `{"ok": false, "error": "…"}` | missing or invalid bearer token |
-| 411 | `{"ok": false, "error": "…"}` | no `Content-Length` header; chunked uploads are not accepted |
-| 413 | `{"ok": false, "error": "…"}` | the request exceeds 25 MiB |
+| 401 | `{"ok": [false], "error": ["…"]}` | missing or invalid bearer token |
+| 411 | `{"ok": [false], "error": ["…"]}` | no `Content-Length` header; chunked uploads are not accepted |
+| 413 | `{"ok": [false], "error": ["…"]}` | the request exceeds 25 MiB |
 | 500 | `{"ok": false, "error": "internal", "id": "…"}` | an unexpected failure; the body carries a request id for support and nothing of the document |
+
+The three refusals above are produced by the request filters, whose JSON is boxed: each value arrives as a one-element array, as shown, where the endpoint replies use bare values. A client that reads `ok` should accept both forms.
 
 ## 6. The template layout
 
