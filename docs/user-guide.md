@@ -543,6 +543,58 @@ should refer allegations of fraud to the institution under whose
 authority the research was conducted. Institutions are responsible for
 ethical conduct of research.**
 
+## Rounding, large trials, and rows that cannot alarm
+
+A row's p can be unremarkable for a reason that has nothing to do with
+the data being honest or dishonest: the printed precision may be too
+coarse for the row to say anything at all. It is worth understanding
+this, because large trials show it on every integer-reported row.
+
+Under honest randomization the arms are samples of one population, so
+their means are estimates of the same number, and as the arms grow the
+estimates converge on it. The spread between two arm means shrinks like
+1/√N. At 1,000 patients per arm with an SD of 13 years, the standard
+error of an arm's mean age is 0.4 years. Reported to the nearest year,
+the two arms will print the *same* integer about half the time — not
+because anyone copied a number, but because both estimates landed
+within the same year of the truth, as convergence requires. Identical
+rounded means in a large trial are the expected outcome.
+
+The simulation knows this. It rounds its simulated arms exactly as the
+paper rounded its own, so its honest replicates tie on the same integer
+just as often as honest data does, and a row whose arms both report
+"55" gets a p near 0.27: the mid-point of a tie group that holds half of
+the honest distribution. That number is correct. There is no
+unexplained homogeneity in the row, so none is reported. Steve's way of
+putting it: *as N goes to infinity both arms converge to the population
+value; if you round, they converge to exactly the same number; there is
+no unexplained homogeneity in large N, because convergence is
+expected.*
+
+Three consequences follow:
+
+- **Such a row cannot convict on its own.** A fabricator who copies one
+  arm's integer mean into the other is, on that row alone,
+  indistinguishable from honest convergence. No statistic can extract
+  evidence the printing removed.
+- **Evidence comes from accumulation and from precision.** Many rows
+  that all sit at the bottom of their tie groups are collectively
+  improbable even when each is individually ordinary; that is what the
+  trial p measures, and why its combination step must be exact (see the
+  next section). And rows printed finely enough that convergence has
+  not erased the sampling scatter — two decimals, or a small N — carry
+  the row-level signal a coarse row cannot.
+- **A test that ignores rounding misreads convergence as fraud.** A
+  t-statistic computed from tied integer means treats the tie as exact
+  and reads it as under-dispersion. Rounding turns an expected agreement
+  into a false alarm for that test, and into an honest "nothing to see"
+  for this one.
+
+So when a large trial's integer-reported rows all show p values near
+0.2 to 0.3, read them as rows with nothing to say, not as rows that
+cleared the screen, and look to the trial p, which is where their
+collective evidence is added up correctly.
+
 ## What to do with a flag — Steve's recommendations
 
 *These are my recommendations, based on fifteen years of handling such

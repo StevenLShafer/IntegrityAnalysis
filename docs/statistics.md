@@ -87,6 +87,42 @@ challenged, so it reports only what the simulation actually supports.
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. |
 | Replicates | Simulations this row actually used (1,000 for unremarkable rows; up to 100,000 for alarming ones). |
 
+## Convergence under rounding: why a large trial's rows agree, and why that is not evidence
+
+Under honest randomization the arm means are estimates of one
+population mean, and as the arms grow they converge on it: the standard
+error of an arm mean falls like 1/√N. Once that standard error is
+smaller than the printed precision, the arms will often print the same
+number. At 1,000 per arm with SD 13, the standard error is 0.4; reported
+as integers, the two means agree about half the time. Identical rounded
+means in a large trial are the expected outcome of convergence, not an
+anomaly.
+
+The row simulation reproduces this exactly, because it rounds its
+replicates as the paper rounded its own. Its tie mass at the minimum of
+the statistic *is* the convergence, and a row whose arms both report
+"55" gets the mid-p of that tie group, about 0.27. That is the correct
+value: it says "half of honest tables look like this", and it cannot be
+made smaller, because the printing removed everything finer. There is
+no unexplained homogeneity in such a row, and the method reports none.
+(Steve Shafer, 2026-09-04: "As n goes to infinity, both arms
+necessarily converge to the true population value. If you round, then
+they will converge to exactly the same number. There is no unexplained
+homogeneity in large n, because convergence is expected.")
+
+The consequences shape the whole method. A coarsely printed row cannot
+convict on its own: a copied integer mean is indistinguishable from an
+honestly converged one. Evidence therefore comes from two places — the
+accumulation of many rows that each sit at the bottom of their tie
+groups, which is what the trial p measures and why its combination must
+be exact (next section), and rows printed finely enough that
+convergence has not erased the sampling scatter. And a test that
+ignores rounding reads convergence the wrong way: a t-statistic
+computed from tied integer means treats the tie as exact and reports
+under-dispersion, so honest large trials alarm. That is the failure
+measured for Barnett's test in the synthetic sweeps, and the reason
+this method models the rounding rather than the printed number.
+
 ## A correction to the combination step (2026-09-04)
 
 **What was wrong.** Until 2026-09-04 the trial p was Stouffer's
