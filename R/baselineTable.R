@@ -256,7 +256,7 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   # case: a trial p of exactly 0 or 1 maps to an infinite z; one sign of
   # infinity dominates legitimately, but both at once is 0/0 - reported
   # as not computable rather than silently dropped.
-  pAll <- suppressWarnings(as.numeric(s$P))
+  pAll <- .trialPNumeric(s$P)      # "<0.0001" combines as 1e-4
   ok <- !is.na(pAll)
   if (sum(ok) > 1) {
     overall <- sumz(pAll[ok])$p

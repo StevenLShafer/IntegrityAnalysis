@@ -47,10 +47,16 @@ test_that("rows with p < 0.001 carry an explicit upper bound", {
   expect_identical(r$ci, "")
 })
 
-test_that("the combined trial p is NOT floored and carries a bootstrap interval", {
+test_that("the combined trial p is the exact combination: bounded, licensed, with its own interval", {
   dqrng::dqset.seed(12); set.seed(12)
-  # four strongly homogeneous variables: each row small, combined far
-  # below the per-row 1e-4 floor - and that combined value must survive
+  # four strongly homogeneous variables: each row small; the trial's
+  # Stouffer sum is beyond every one of the 100,000 simulated honest
+  # sums, so the trial p is floored at 1/(m+1), displays "<0.0001"
+  # because the 97.5% bound (3.7e-05 at zero reaching sums) licenses it,
+  # and carries the exact Clopper-Pearson interval "0 to 3.7e-05".
+  # Before 2026-09-04 the closed-form Stouffer sum reported ~1e-9 here
+  # with a bootstrap interval; the exact combination cannot resolve
+  # below 1/(m+1), and says so.
   d <- do.call(rbind, lapply(1:4, function(k) {
     r <- rbind(meanrow(50 + k, 8.0), meanrow(50 + k, 8.0),
                meanrow(50 + k, 8.0))
@@ -58,9 +64,34 @@ test_that("the combined trial p is NOT floored and carries a bootstrap interval"
   }))
   x <- runP(d)
   s <- which(x$ROW == "Summary")
+  expect_identical(x$P[s], "<0.0001")
+  expect_identical(x$CI95[s], "0 to 3.7e-05")
+  expect_true(all(x$M[seq_len(s - 1)] == "1e+05"))   # every row escalated with the trial
+})
+
+test_that("the exact combination judges tie-ridden rows by their own null (the 2026-09-04 correction)", {
+  # Three rows of identical INTEGER means at N = 1,000 per arm: each
+  # row's statistic ties with about half of its honest replicates, so
+  # each row mid-p is about 0.28 and the closed-form Stouffer sum read
+  # p ~ 0.16 off the normal table. The exact combination asks how often
+  # honest trials tie on all three rows at once (ties half): about
+  # 0.08. Neither number is an alarm - three all-tied integer rows are
+  # what a sixth of honest large trials look like - but the exact one
+  # is the true share, and it is what makes the trial p calibrated at
+  # coarse rounding (corpus/syntheticTiesCheck.R, run 1).
+  dqrng::dqset.seed(21); set.seed(21)
+  d <- do.call(rbind, lapply(1:3, function(k) data.frame(
+    TRIAL = "T", ROW = paste0("V", k), N = 1000, MEAN = c(55, 55),
+    SD = c(13, 13), ROUND_MEAN = 0, ROUND_OBSERVATION = 0,
+    stringsAsFactors = FALSE)))
+  x <- runP(d, m = 10000)
+  s <- which(x$ROW == "Summary")
   p <- as.numeric(x$P[s])
-  expect_lt(p, 1e-4)
-  expect_match(x$CI95[s], "to")   # bootstrap interval present
+  rows <- as.numeric(x$P[seq_len(s - 1)])
+  expect_true(all(rows > 0.2 & rows < 0.35))
+  expect_gt(p, 0.04); expect_lt(p, 0.13)
+  # ...and the closed-form Stouffer of those row p's is larger: the lump
+  expect_gt(sumz(rows)$p, p)
 })
 
 test_that("mid-p point estimates are unchanged in spirit: direction holds", {

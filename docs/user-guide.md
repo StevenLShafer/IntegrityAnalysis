@@ -620,14 +620,31 @@ always know how much Monte Carlo noise is in a small p.
 
 ## Combining rows into a trial p
 
-The row p values of a trial are combined with Stouffer's Z method [5] —
-the same method used in the 2015 and 2017 papers. The combined value is
-*not* floored at the single-row resolution: ten rows each at p = 0.02
-legitimately combine to a far smaller number. When the trial p is below
-0.001, it is reported with a **95% Monte Carlo interval** — the
-uncertainty in the trial p arising from the finite simulation counts of
-its rows — so a headline number like 3 × 10⁻⁶ is never presented as more
-precise than the simulation supports.
+The row p values of a trial are combined by the **exact combination**:
+the rows' evidence is summed as Stouffer's z-scores [5], as in the 2015
+and 2017 papers, but the sum is judged against its own simulated
+distribution rather than the normal table. Every simulated replicate of
+every row is scored the way the observed row is, the scores are summed
+across rows replicate by replicate, and the trial p is the share of
+those simulated honest trials that agree at least as well as the
+printed one. Ten rows each at p = 0.02 still combine to a far smaller
+number. The trial p is floored at one over the replicate count, so a
+trial beyond every simulated honest trial reports "<0.0001" with an
+exact **95% Monte Carlo interval** ("0 to 3.7e-05" at 100,000
+replicates) rather than a number the simulation could not resolve.
+
+This replaced, on 2026-09-04, the closed-form Stouffer combination the
+app used before. The closed form assumes each row p is uniform under
+honest sampling, and at coarse rounding — integer means with hundreds of
+patients per arm — it is not: such a row has only a few possible
+statistics, its p is discrete, and the closed form read the sum off a
+table it does not follow. The consequence was a trial p that ran
+conservative (1.4 % of honest trials below 0.05 at integer means and
+1,000 per arm, against the nominal 5 %) and could not put a fabricated
+table with identical integer means below p = 0.01. The error was in the
+Monte Carlo's combination step, which is ours, not in Carlisle's method.
+`docs/statistics.md` gives the full account, including what was tested
+and rejected.
 
 ## Categorical variables
 
@@ -677,9 +694,9 @@ and a blank row between trials.
 |---|---|
 | `TRIAL` | the trial identifier, as it appeared in the grid. Blank on the Summary row, which prints beneath its own trial's rows |
 | `ROW` | the variable identifier for that line, or `Summary` |
-| `P (one-sided toward homogeneity)` | the mid-p described above — small means *more homogeneous than chance*. On the Summary row this is the Stouffer-combined trial p |
-| `95% Monte Carlo bound` | how precisely the simulation pinned that number: an upper bound on a row p too small to resolve, and on the Summary row a bootstrap interval for the trial p when it fell below 0.001. Blank when the estimate needs no caveat |
-| `Replicates` | how many simulations that row actually received (1,000 / 10,000 / 100,000 — the adaptive scheme stops as soon as the p is resolved, so most rows show 1,000) |
+| `P (one-sided toward homogeneity)` | the mid-p described above — small means *more homogeneous than chance*. On the Summary row this is the exact-combination trial p |
+| `95% Monte Carlo bound` | how precisely the simulation pinned that number: an upper bound on a row p too small to resolve, and on the Summary row the exact Clopper–Pearson interval for the trial p when it fell below 0.001. Blank when the estimate needs no caveat |
+| `Replicates` | how many simulations the rows received (1,000 / 10,000 / 100,000 — the adaptive scheme stops as soon as the trial and every row are resolved, so an unremarkable trial shows 1,000 on every row, and an alarming one escalates every row together) |
 
 *Sheet 2, `Baseline Tables`* — the reconstruction, one block per trial
 stacked down the sheet under a bold `Trial: <name>` heading: variables

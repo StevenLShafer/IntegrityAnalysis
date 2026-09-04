@@ -21,42 +21,46 @@
 #     Clopper-Pearson upper bound on the exceedance count clears 0.0001 -
 #     the claim is licensed by the upper confidence limit, not the point
 #     estimate. Ties count FULLY toward the bound (conservative).
-#   - The trial p (Stouffer across rows) is closed-form arithmetic with no
-#     simulation noise of its own and is NOT floored - accumulation across
-#     rows is the fraud signal (Fujii). Its Monte Carlo uncertainty is
-#     propagated from the rows' binomial counts by parametric bootstrap
-#     and reported as a 95% interval whenever the trial p < 0.001.
+#   - The trial p is the EXACT COMBINATION (2026-09-04, Steve's decision
+#     after the tie experiment, corpus/syntheticTiesCheck.R): the same
+#     Stouffer sum of row z-scores, but its null distribution is taken
+#     from the row simulations themselves rather than from the normal
+#     table. Every replicate is ranked within its own row, z-scored and
+#     summed across rows, replicate by replicate; the trial p is the
+#     share of replicate sums at or beyond the observed sum, ties half.
+#     WHY: Stouffer's closed form assumes each row p is uniform under the
+#     null. A row whose reported means are rounded coarsely relative to
+#     their standard error (integer means at N in the hundreds) has a
+#     handful of possible statistics, so its mid-p is discrete and the
+#     closed form read a lumpy sum off a smooth table: 1.4% of honest
+#     trials below p = 0.05 at N = 1,000 and integer means, and a
+#     fabricated table with identical integer means capped near p = 0.01
+#     however many rows agreed. The exact combination is calibrated by
+#     construction at every rounding and every N, and the fabricated
+#     table's p becomes the (small) share of honest trials whose rows all
+#     tie at their minima - the evidence the table actually holds. The
+#     staging is therefore per TRIAL: all usable rows draw the same
+#     number of replicates at each stage, and the trial escalates while
+#     its own mid-p or any row's is < 0.01. The trial p is floored at
+#     1/(m+1) like a row, displays "<0.0001" under the same bound rule,
+#     and carries an exact Clopper-Pearson 95% interval when < 0.001.
+#     This replaced the closed-form Stouffer sum and its parametric
+#     bootstrap; the error was in the Monte Carlo's combination step,
+#     which Steve wrote, not in Carlisle's method.
 
-#' Staged tail simulation: escalate replicates only when the row alarms
-#'
-#' Runs `simulate(n)` (a closure returning n simulated statistics) in
-#' cumulative stages 1,000 / 10,000 / `mMax`, stopping early once the
-#' running mid-p is >= 0.01 - precision there is worthless. Returns the
-#' accumulated counts below (`kLess`) and tied with (`kEq`) `statObs`,
-#' and the replicates actually used (`m`).
-#' @noRd
-.stagedTail <- function(simulate, statObs, mMax, keepDraws = FALSE) {
-  stages <- unique(pmin(c(1000, 10000, mMax), mMax))
-  kLess <- 0; kEq <- 0; mDone <- 0
-  draws <- NULL
-  for (s in stages) {
-    n <- s - mDone
-    if (n <= 0) next
-    sims <- simulate(n)
-    # Distribution graphs (issue 16): keep the FIRST stage's simulated
-    # statistics - they ARE the expected distribution under honest
-    # sampling, generated anyway and normally discarded. 1,000 draws is
-    # plenty for a density picture and costs 8 KB per row. Retention
-    # only: the RNG stream, the counts, and every returned number are
-    # untouched (pinned by the known-answer tests, which now run with
-    # collection on and off).
-    if (keepDraws && mDone == 0) draws <- sims
-    kLess <- kLess + sum(sims < statObs)
-    kEq   <- kEq   + sum(sims == statObs)
-    mDone <- s
-    if ((kLess + kEq / 2) / mDone >= 0.01) break
-  }
-  list(kLess = kLess, kEq = kEq, m = mDone, draws = draws)
+# The Davison-Hinkley floor and the 0.9999 ceiling, applied to a row's
+# mid-p and to every replicate's mid-p alike (the exact combination needs
+# both on the same footing).
+.floorP <- function(p, m) pmin(pmax(p, 1 / (m + 1)), 0.9999)
+
+# A trial p as a number, for the closed-form combination ACROSS trials
+# (results workbook, graphs, API): the exact combination reports
+# "<0.0001" when its bound licenses it, and that enters the combination
+# as 1e-4 - conservative, since the true value is smaller. Anything
+# that is not a number ("No values") stays NA and is left out.
+.trialPNumeric <- function(p) {
+  p <- as.character(p)
+  suppressWarnings(as.numeric(sub("^\\s*<\\s*", "", p)))
 }
 
 #' One-sided 97.5% Clopper-Pearson upper bound on a Monte Carlo p
@@ -100,8 +104,10 @@
 #' margins (`r2dtable`) and take the LOWER chi-square tail (counts more
 #' alike than chance). All rows use the staged replicate scheme and
 #' confidence-bounded reporting described at the top of this file, and
-#' combine across the trial with Stouffer's [sumz()] - unfloored, with a
-#' parametric-bootstrap 95% Monte Carlo interval when small.
+#' combine across the trial by the EXACT COMBINATION: Stouffer's sum of
+#' row z-scores, judged against its own simulated null rather than the
+#' normal table (see the header; the closed-form [sumz()] survives only
+#' for combining trial p-values across a file).
 #'
 #' @section Calling P_Calc directly:
 #'
@@ -197,14 +203,15 @@
 #'   right value in `$CategoryNames`.
 #'
 #' @param m maximum replicates per row - the final stage of the adaptive
-#'   scheme. The app uses 100,000. Rows resolve at 1,000 unless they look
-#'   alarming, so this is a ceiling, not a cost: typical rows never
-#'   approach it. Lower it to trade precision for speed on a large trial;
-#'   the reported `M` column says what each row actually used.
+#'   scheme. The app uses 100,000. A trial resolves at 1,000 per row
+#'   unless it, or one of its rows, looks alarming, so this is a
+#'   ceiling, not a cost. Lower it to trade precision for speed on a
+#'   large trial; the reported `M` column says what the rows used.
 #' @return a data.frame with columns TRIAL, ROW, P, CI95, M: one row per
-#'   data ROW (M = replicates actually used; CI95 = upper bound, shown
-#'   when P < 0.001), then a "Summary" row with the combined p and its
-#'   bootstrap interval, then a blank spacer row.
+#'   data ROW (M = replicates used; CI95 = upper bound, shown when
+#'   P < 0.001), then a "Summary" row with the exact-combination trial p
+#'   and its Clopper-Pearson 95% interval when P < 0.001, then a blank
+#'   spacer row.
 #' @noRd
 P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
 {
@@ -215,16 +222,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
   data <- DATA[DATA$TRIAL == TRIAL,]
   RowIDs <- unique(data$ROW)
 
-  x <- foreach(
-    j = 1:length(RowIDs),
-    .combine = rbind
-  ) %do%
+  # Pass 1: per row, either a refusal (Pdisp) or the simulation closure
+  # and the observed statistic. Nothing is simulated here: the exact
+  # combination needs every usable row drawn at the same replicate
+  # count, so the drawing happens in pass 2, stage by stage.
+  rows <- lapply(seq_along(RowIDs), function(j)
     {
       Row <- RowIDs[j]
       ROWS <- data[data$ROW == Row,]
 
-      Pdisp <- NA_character_; Pci <- ""; Pm <- NA_character_
-      Pnum <- NA_real_; PkLE <- NA_real_
+      Pdisp <- NA_character_
+      simRow <- NULL
 
       # Greater than 1 line?
       if (nrow(ROWS) > 1)
@@ -288,15 +296,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          sc <- .stagedTail(simulate, DiffSample, m,
-                            keepDraws = !is.null(graphs))
-          rep <- .rowReport(sc)
-          Pdisp <- rep$disp; Pci <- rep$ci; Pm <- as.character(rep$m)
-          Pnum <- rep$p; PkLE <- rep$kLE
-          if (!is.null(graphs))
-            graphs$rows[[length(graphs$rows) + 1]] <-
-              list(trial = TRIAL, row = Row, kind = "median",
-                   obs = DiffSample, draws = sc$draws, p = rep$p)
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median")
           }
           }
         }
@@ -348,15 +348,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          sc <- .stagedTail(simulate, DiffSample, m,
-                            keepDraws = !is.null(graphs))
-          rep <- .rowReport(sc)
-          Pdisp <- rep$disp; Pci <- rep$ci; Pm <- as.character(rep$m)
-          Pnum <- rep$p; PkLE <- rep$kLE
-          if (!is.null(graphs))
-            graphs$rows[[length(graphs$rows) + 1]] <-
-              list(trial = TRIAL, row = Row, kind = "continuous",
-                   obs = DiffSample, draws = sc$draws, p = rep$p)
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous")
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the
@@ -414,15 +406,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          sc <- .stagedTail(simulate, statObs, m,
-                            keepDraws = !is.null(graphs))
-          rep <- .rowReport(sc)
-          Pdisp <- rep$disp; Pci <- rep$ci; Pm <- as.character(rep$m)
-          Pnum <- rep$p; PkLE <- rep$kLE
-          if (!is.null(graphs))
-            graphs$rows[[length(graphs$rows) + 1]] <-
-              list(trial = TRIAL, row = Row, kind = "category",
-                   obs = statObs, draws = sc$draws, p = rep$p)
+          simRow <- list(simulate = simulate, obs = statObs, kind = "category")
           }
           }
         }
@@ -430,51 +414,85 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
         Pdisp <- "Only 1 Row"
       }
 
-      c(as.character(Row), Pdisp, Pci, Pm,
-        as.character(Pnum), as.character(PkLE))
+      list(Row = as.character(Row), Pdisp = Pdisp, sim = simRow)
+    })
+
+  # Pass 2: the exact combination, staged per TRIAL. At each stage every
+  # usable row draws the same number of replicates; each replicate is
+  # ranked within its row (average ranks: (rank - 1/2)/s is exactly the
+  # mid-p its own tie group would report), floored and z-scored like the
+  # observed row, and the z's are summed across rows replicate by
+  # replicate - legitimately, because the rows are simulated
+  # independently. The observed sum is judged against those sums. The
+  # trial escalates while its own mid-p or any row's is < 0.01, so an
+  # innocuous trial still costs 1,000 replicates per row.
+  usable <- which(vapply(rows, function(r) !is.null(r$sim), logical(1)))
+  stages <- unique(pmin(c(1000, 10000, m), m))
+  rowStat <- vector("list", length(rows))
+  trialStat <- NULL
+  for (s in stages) {
+    sumZ <- numeric(s); zObs <- 0
+    for (j in usable) {
+      sims <- rows[[j]]$sim$simulate(s)
+      obs  <- rows[[j]]$sim$obs
+      kLess <- sum(sims < obs); kEq <- sum(sims == obs)
+      # Distribution graphs (issue 16): keep the FIRST stage's simulated
+      # statistics - they ARE the expected distribution under honest
+      # sampling, generated anyway and normally discarded.
+      draws <- if (!is.null(graphs) && is.null(rowStat[[j]])) sims else rowStat[[j]]$draws
+      rowStat[[j]] <- list(kLess = kLess, kEq = kEq, m = s, draws = draws)
+      pRep <- .floorP((rank(sims, ties.method = "average") - 0.5) / s, s)
+      sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
+      zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
     }
-  # Single-row trials come back as a bare vector (now length 6).
-  if (length(x) == 6)
-  {
-    x <- as.data.frame(t(x))
-  } else {
-  x <- as.data.frame(x)
+    rowMid <- vapply(usable, function(j)
+      (rowStat[[j]]$kLess + rowStat[[j]]$kEq / 2) / s, numeric(1))
+    if (length(usable) > 1) {
+      kG <- sum(sumZ > zObs); kE <- sum(sumZ == zObs)
+      trialStat <- list(kG = kG, kE = kE, m = s)
+      trialMid <- (kG + kE / 2) / s
+    } else trialMid <- 1
+    if (trialMid >= 0.01 && all(rowMid >= 0.01)) break
   }
 
-  x <- cbind(NA, x)
-  x[1,1] <- TRIAL
-  x <- as.data.frame(x)
-  names(x) <- c("TRIAL", "ROW", "P", "CI95", "M", ".PNUM", ".KLE")
-  # FIX (carried): order x by RowIDs - for each RowID, find its position
-  # in x$ROW; the reversed match() applied the inverse permutation.
-  x <- x[match(RowIDs, x$ROW),]
+  # The rows' report lines, from the final stage's counts.
+  x <- do.call(rbind, lapply(seq_along(rows), function(j) {
+    r <- rows[[j]]
+    if (is.null(r$sim))
+      return(data.frame(ROW = r$Row, P = r$Pdisp, CI95 = "", M = NA_character_,
+                        .PNUM = NA_real_, .KLE = NA_real_, stringsAsFactors = FALSE))
+    rep <- .rowReport(rowStat[[j]])
+    if (!is.null(graphs))
+      graphs$rows[[length(graphs$rows) + 1]] <-
+        list(trial = TRIAL, row = r$Row, kind = r$sim$kind,
+             obs = r$sim$obs, draws = rowStat[[j]]$draws, p = rep$p)
+    data.frame(ROW = r$Row, P = rep$disp, CI95 = rep$ci, M = as.character(rep$m),
+               .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
+  }))
+  x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
 
-  Pv   <- suppressWarnings(as.numeric(x$.PNUM))
-  kLEv <- suppressWarnings(as.numeric(x$.KLE))
-  Mv   <- suppressWarnings(as.numeric(x$M))
+  Pv   <- x$.PNUM
   use  <- !is.na(Pv)
 
   ciStr <- ""
   if (sum(use) > 1)
   {
-    # Stouffer across rows: closed-form arithmetic on the row p-values -
-    # NO simulation noise is added here, and the result is deliberately
-    # NOT floored: accumulation across rows is the fraud signal (eight
-    # innocuous rows at p = 0.01 legitimately combine to ~5e-9). The
-    # Monte Carlo uncertainty that DOES exist - each row's binomial
-    # count - is propagated by parametric bootstrap and reported as a
-    # 95% interval whenever the combined p is small enough to matter.
-    P <- signif(sumz(Pv[use])$p, 4)
-    if (P < 0.001)
+    # The trial p: the share of simulated honest trials whose Stouffer
+    # sum reaches the observed one (ties half), floored like a row and
+    # displayed "<0.0001" only when the one-sided 97.5% upper bound on
+    # the reaching count licenses it. The 95% interval is exact
+    # Clopper-Pearson on that count - the Monte Carlo uncertainty of the
+    # trial p itself, no bootstrap needed.
+    kGE <- trialStat$kG + trialStat$kE
+    mT  <- trialStat$m
+    Pnum <- max((trialStat$kG + trialStat$kE / 2) / mT, 1 / (mT + 1))
+    if (Pnum >= 1) Pnum <- 0.9999
+    upper <- .mcUpper(kGE, mT)
+    P <- if (upper < 1e-4) "<0.0001" else signif(Pnum, 4)
+    if (Pnum < 0.001)
     {
-      boots <- replicate(1000, {
-        pStar <- (stats::rbinom(sum(use), Mv[use], Pv[use]) + 0.5) /
-                 (Mv[use] + 1)
-        sumz(pStar)$p
-      })
-      ciStr <- paste0(signif(stats::quantile(boots, 0.025, names = FALSE), 2),
-                      " to ",
-                      signif(stats::quantile(boots, 0.975, names = FALSE), 2))
+      lower <- if (kGE == 0) 0 else stats::qbeta(0.025, kGE, mT - kGE + 1)
+      ciStr <- paste0(signif(lower, 2), " to ", signif(upper, 2))
     }
   } else {
     # FIX (carried): length(Pv[use]) == 1 vs the old length(x == 1) trap

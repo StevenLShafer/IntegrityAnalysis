@@ -10,6 +10,14 @@
 # upgrade of R or dqrng moves them, re-pin and note the version. A
 # surprise failure here means the engine changed when it was not meant
 # to.
+#
+# RE-PINNED 2026-09-04 with the exact combination (PR "the exact
+# combination"): the staging is now per trial and each stage draws
+# afresh rather than cumulatively, so the RNG stream a row sees at its
+# final stage differs from before. "Three identical arms" moved from
+# p = 3e-04 (bound <=0.0013) to 1e-04 (bound <=0.00072): the same row,
+# the same 10,000 replicates, a different draw. The worked example
+# (stage 1 only, identical draws) is unchanged at 0.0495.
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast)
   library(dqrng)
@@ -35,9 +43,9 @@ test_that("three identical arms escalate and alarm", {
                   ROUND_MEAN = 1, ROUND_OBSERVATION = 1,
                   stringsAsFactors = FALSE)[rep(1, 3), ]
   x <- runP(d)
-  expect_equal(summaryP(x), 3e-04)
+  expect_equal(summaryP(x), 1e-04)
   expect_identical(x$M[1], "10000")         # escalated past stage 1
-  expect_identical(x$CI95[1], "<=0.0013")   # explicit Monte Carlo bound
+  expect_identical(x$CI95[1], "<=0.00072")  # explicit Monte Carlo bound
 })
 
 test_that("identical categorical arms give the pinned lower-tail mid-p", {
