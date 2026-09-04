@@ -75,7 +75,10 @@
 #'
 #' @return list: `p` (numeric mid-p, DH-floored), `disp` (display string:
 #'   "<0.0001" when licensed, else the number), `ci` (upper-bound string,
-#'   blank unless p < 0.001), `kLE`, `m`.
+#'   the exact Clopper-Pearson 95% interval on every row, "lower to
+#'   upper": lower from the strictly-below count, upper from the
+#'   at-or-below count, so the interval brackets the mid-p and errs wide
+#'   - Steve, 2026-09-04: "add the row confidence intervals"), `kLE`, `m`.
 #' @noRd
 .rowReport <- function(sc) {
   midp <- (sc$kLess + sc$kEq / 2) / sc$m
@@ -84,7 +87,8 @@
   kLE <- sc$kLess + sc$kEq
   upper <- .mcUpper(kLE, sc$m)
   disp <- if (upper < 1e-4) "<0.0001" else as.character(signif(p, 4))
-  ci <- if (p < 0.001) paste0("<=", signif(upper, 2)) else ""
+  lower <- if (sc$kLess == 0) 0 else stats::qbeta(0.025, sc$kLess, sc$m - sc$kLess + 1)
+  ci <- paste0(signif(lower, 2), " to ", signif(upper, 2))
   list(p = p, disp = disp, ci = ci, kLE = kLE, m = sc$m)
 }
 
@@ -208,10 +212,10 @@
 #'   ceiling, not a cost. Lower it to trade precision for speed on a
 #'   large trial; the reported `M` column says what the rows used.
 #' @return a data.frame with columns TRIAL, ROW, P, CI95, M: one row per
-#'   data ROW (M = replicates used; CI95 = upper bound, shown when
-#'   P < 0.001), then a "Summary" row with the exact-combination trial p
-#'   and its Clopper-Pearson 95% interval when P < 0.001, then a blank
-#'   spacer row.
+#'   data ROW (M = replicates used; CI95 = the exact Clopper-Pearson 95%
+#'   Monte Carlo interval of the row p, on every row), then a "Summary"
+#'   row with the exact-combination trial p and its interval when
+#'   P < 0.001, then a blank spacer row.
 #' @noRd
 P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
 {

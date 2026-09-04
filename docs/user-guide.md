@@ -614,9 +614,12 @@ boring rows finish fast, alarming rows get precise p values.
 With a finite number of replicates, the smallest honestly reportable p
 is bounded. A row's p is displayed as **"<0.0001"** only when the upper
 95% confidence bound on the p value itself clears 1 in 10,000 —
-otherwise the display shows the estimate with its bound. Rows with
-p < 0.001 carry an explicit upper bound in the results ("≤ …"), so you
-always know how much Monte Carlo noise is in a small p.
+otherwise the display shows the estimate with its bound. Every row
+carries its exact 95% Monte Carlo interval in the results ("0.27 to
+0.33" for an unremarkable row at 1,000 replicates), so you always know
+how much simulation noise is in a p. The interval is about the
+simulation, not the data: it says how precisely the replicates pinned
+that row's p.
 
 ## Combining rows into a trial p
 
@@ -695,7 +698,7 @@ and a blank row between trials.
 | `TRIAL` | the trial identifier, as it appeared in the grid. Blank on the Summary row, which prints beneath its own trial's rows |
 | `ROW` | the variable identifier for that line, or `Summary` |
 | `P (one-sided toward homogeneity)` | the mid-p described above — small means *more homogeneous than chance*. On the Summary row this is the exact-combination trial p |
-| `95% Monte Carlo bound` | how precisely the simulation pinned that number: an upper bound on a row p too small to resolve, and on the Summary row the exact Clopper–Pearson interval for the trial p when it fell below 0.001. Blank when the estimate needs no caveat |
+| `95% Monte Carlo interval` | how precisely the simulation pinned that number: the exact Clopper–Pearson 95% interval of the row p on every row, and on the Summary row the interval for the trial p when it fell below 0.001 |
 | `Replicates` | how many simulations the rows received (1,000 / 10,000 / 100,000 — the adaptive scheme stops as soon as the trial and every row are resolved, so an unremarkable trial shows 1,000 on every row, and an alarming one escalates every row together) |
 
 *Sheet 2, `Baseline Tables`* — the reconstruction, one block per trial

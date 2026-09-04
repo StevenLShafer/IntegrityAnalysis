@@ -40,11 +40,17 @@ test_that("'<0.0001' appears only when the upper bound licenses it", {
   expect_identical(r3$disp, "<0.0001")
 })
 
-test_that("rows with p < 0.001 carry an explicit upper bound", {
+test_that("every row carries its exact 95% Monte Carlo interval (2026-09-04)", {
   r <- .rowReport(list(kLess = 10, kEq = 0, m = 100000))
-  expect_match(r$ci, "^<=")
+  expect_identical(r$ci, "4.8e-05 to 0.00018")
   r <- .rowReport(list(kLess = 300, kEq = 0, m = 1000))
-  expect_identical(r$ci, "")
+  expect_identical(r$ci, "0.27 to 0.33")          # an unremarkable row, honestly wide
+  r <- .rowReport(list(kLess = 0, kEq = 0, m = 100000))
+  expect_identical(r$ci, "0 to 3.7e-05")           # nothing at or below: lower is 0
+  # ties widen the upper end only: the mid-p sits inside
+  r <- .rowReport(list(kLess = 100, kEq = 100, m = 1000))
+  lo <- as.numeric(sub(" to .*", "", r$ci)); hi <- as.numeric(sub(".* to ", "", r$ci))
+  expect_lt(lo, r$p); expect_gt(hi, r$p)
 })
 
 test_that("the combined trial p is the exact combination: bounded, licensed, with its own interval", {

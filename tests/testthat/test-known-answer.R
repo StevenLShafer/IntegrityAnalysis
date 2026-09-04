@@ -45,7 +45,7 @@ test_that("three identical arms escalate and alarm", {
   x <- runP(d)
   expect_equal(summaryP(x), 1e-04)
   expect_identical(x$M[1], "10000")         # escalated past stage 1
-  expect_identical(x$CI95[1], "<=0.00072")  # explicit Monte Carlo bound
+  expect_identical(x$CI95[1], "0 to 0.00072")  # the row's Monte Carlo interval
 })
 
 test_that("identical categorical arms give the pinned lower-tail mid-p", {

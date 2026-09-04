@@ -55,9 +55,14 @@ challenged, so it reports only what the simulation actually supports.
    bound (exact Clopper–Pearson, ties counted fully — conservative) on
    its simulated count clears 0.0001. At zero exceedances this needs
    roughly 30,000+ replicates; at 100,000 replicates the bound is
-   3.7 × 10⁻⁵, comfortably below. Rows with p < 0.001 also show the
-   bound explicitly ("<=4.6e-05"), and every row reports how many
-   replicates it used.
+   3.7 × 10⁻⁵, comfortably below. Every row also shows its exact
+   Clopper–Pearson 95% Monte Carlo interval ("0.27 to 0.33" for an
+   unremarkable row at 1,000 replicates; "0 to 3.7e-05" for a row with
+   nothing at or below at 100,000), and how many replicates it used.
+   The interval is the simulation's uncertainty about the row's p, not
+   uncertainty about the trial's data; its lower end comes from the
+   strictly-below count and its upper end from the at-or-below count,
+   so it brackets the mid-p and errs wide.
 4. **The trial p is the exact combination.** The rows' evidence is
    summed as Stouffer's z-scores, and that sum is judged against its own
    simulated null: every replicate of every row is ranked within its
@@ -79,7 +84,7 @@ challenged, so it reports only what the simulation actually supports.
 | Column | Meaning |
 |---|---|
 | P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
-| 95% Monte Carlo bound | For rows: the upper confidence bound, shown when P < 0.001. For the Summary row: the exact Clopper–Pearson 95% interval of the trial p, shown when P < 0.001. |
+| 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. |
 | Replicates | Simulations this row actually used (1,000 for unremarkable rows; up to 100,000 for alarming ones). |
 
 ## A correction to the combination step (2026-09-04)

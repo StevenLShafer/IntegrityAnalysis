@@ -173,7 +173,7 @@ writeBaselineTablesXlsx <- function(tables, file) {
 #' with three sheets -
 #' \itemize{
 #'   \item \strong{Test Results}: the per-line results exactly as
-#'     before (TRIAL, ROW, one-sided P, Monte Carlo bound, replicates).
+#'     before (TRIAL, ROW, one-sided P, Monte Carlo interval, replicates).
 #'   \item \strong{Baseline Tables}: the journal-style reconstruction of
 #'     every trial's baseline table (the same cells, organized as they
 #'     appeared in the original article), stacked with a bold trial
@@ -204,7 +204,7 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   ## 1 -- Test Results: the sheet exactly as the download always was
   out <- results
   names(out) <- c("TRIAL", "ROW", "P (one-sided toward homogeneity)",
-                  "95% Monte Carlo bound", "Replicates")
+                  "95% Monte Carlo interval", "Replicates")
   openxlsx::addWorksheet(wb, "Test Results")
   openxlsx::writeData(wb, "Test Results", out, headerStyle = headStyle)
   openxlsx::setColWidths(wb, "Test Results", cols = seq_along(out),
