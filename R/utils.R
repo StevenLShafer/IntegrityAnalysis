@@ -512,16 +512,101 @@
 # median confident word box is .ppImageWordPt points tall (see above).
 # Callers MUST have passed .ppImageOK() first; the engine and the API
 # gate both do, and tools/securityCheck.R checks the order.
+# A screen-resolution picture is too small for tesseract. A pasted
+# screenshot is ~96 dpi: its word boxes are ~10 px tall, and tesseract
+# drops most of them as noise (measured 2026-09-03 on the ticagrelor
+# table page: 43 confident words from the 96 dpi raster, 338 after a
+# two-times pixel replication, 347 from a true 300 dpi render; the DPI
+# hint and the page-segmentation mode changed nothing). So a picture
+# whose median confident word box is under .ppImageUpscaleMin pixels is
+# decoded, its pixels replicated (nearest neighbour: no interpolation,
+# no new library, and the letters stay crisp) until the boxes reach
+# about .ppImageUpscaleTarget pixels, written as an uncompressed BMP
+# (which the OCR engine reads natively) and read again. Only PNG and
+# JPEG are decoded - the two formats a clipboard or a phone produces;
+# a TIFF is a scan and arrives at its scanner's resolution. The pixel
+# ceiling .ppImageMaxPixels bounds the enlarged picture too.
+.ppImageUpscaleMin    <- 20      # px: median word box below this loses words
+.ppImageUpscaleTarget <- 30      # px: about a 300 dpi page's word box
+.ppImageUpscaleMax    <- 4L      # replication factor ceiling
+
+# The picture as a grey matrix (columns = x, rows = y), or NULL when it
+# is not a PNG or JPEG the decoders read.
+.ppImageGrey <- function(imgFile) {
+  dims <- .ppImageDims(imgFile)
+  if (is.null(dims) || !(dims$format %in% c("png", "jpeg"))) return(NULL)
+  a <- tryCatch(
+    if (dims$format == "png") png::readPNG(imgFile) else jpeg::readJPEG(imgFile),
+    error = function(e) NULL)
+  if (is.null(a)) return(NULL)
+  if (length(dim(a)) == 2L) g <- a
+  else if (dim(a)[3] >= 3L) g <- 0.299 * a[, , 1] + 0.587 * a[, , 2] + 0.114 * a[, , 3]
+  else g <- a[, , 1]
+  t(g)                                     # to x-by-y
+}
+
+# Replicate every pixel k times in both directions and write a 24-bit
+# BMP; returns the file (in the same directory as the picture, so it dies
+# with the upload) or NULL when the enlargement would pass the pixel cap.
+.ppImageUpscaled <- function(imgFile, k) {
+  g <- .ppImageGrey(imgFile)
+  if (is.null(g)) return(NULL)
+  k <- as.integer(k)
+  while (k > 1L && as.numeric(ncol(g)) * nrow(g) * k * k > .ppImageMaxPixels) k <- k - 1L
+  if (k < 2L) return(NULL)
+  m <- g[rep(seq_len(nrow(g)), each = k), rep(seq_len(ncol(g)), each = k), drop = FALSE]
+  out <- tempfile("upscaled", tmpdir = dirname(imgFile), fileext = ".bmp")
+  .ppWriteBmp(m, out)
+  out
+}
+
+# An uncompressed 24-bit BMP from a grey matrix in [0, 1] (x-by-y): 54
+# bytes of header, then rows bottom-up, each padded to four bytes.
+.ppWriteBmp <- function(m, file) {
+  w <- nrow(m); h <- ncol(m)
+  rowBytes <- (3L * w + 3L) %/% 4L * 4L; pad <- rowBytes - 3L * w
+  con <- file(file, "wb"); on.exit(close(con), add = TRUE)
+  i4 <- function(v) writeBin(as.integer(v), con, size = 4L, endian = "little")
+  i2 <- function(v) writeBin(as.integer(v), con, size = 2L, endian = "little")
+  writeBin(charToRaw("BM"), con); i4(54 + rowBytes * h); i4(0); i4(54)
+  i4(40); i4(w); i4(h); i2(1); i2(24); i4(0); i4(rowBytes * h)
+  i4(2835); i4(2835); i4(0); i4(0)
+  bytes <- as.integer(round(pmin(pmax(m, 0), 1) * 255))
+  padRaw <- as.raw(rep(0L, pad))
+  for (y in h:1) writeBin(c(as.raw(rep(bytes[(y - 1L) * w + seq_len(w)], each = 3L)), padRaw), con)
+  invisible(file)
+}
+
 .ppImageData <- function(imgFile, wordPt = .ppImageWordPt) {
   if (!requireNamespace("tesseract", quietly = TRUE))
     stop("Reading a table image needs the 'tesseract' package: ",
          "install.packages(\"tesseract\")", call. = FALSE)
   d <- as.data.frame(tesseract::ocr_data(imgFile), stringsAsFactors = FALSE)
+  rulerOf <- function(d) {
+    if (!nrow(d)) return(list(ruler = NA_real_, good = 0L))
+    bb <- do.call(rbind, lapply(strsplit(d$bbox, ","), as.numeric))
+    h  <- bb[, 4] - bb[, 2]
+    good <- d$confidence > 50 & nchar(d$word) >= 2 & h > 0
+    list(ruler = if (any(good)) stats::median(h[good]) else stats::median(h[h > 0]),
+         good = sum(good))
+  }
+  r <- rulerOf(d)
+  # small words, or (almost) none read at all: enlarge and read again,
+  # keeping the reading that found more confident words
+  if (!nrow(d) || (is.finite(r$ruler) && r$ruler < .ppImageUpscaleMin)) {
+    k <- if (is.finite(r$ruler) && r$ruler > 0)
+      min(.ppImageUpscaleMax, max(2L, ceiling(.ppImageUpscaleTarget / r$ruler)))
+    else 3L
+    up <- .ppImageUpscaled(imgFile, k)
+    if (!is.null(up)) {
+      on.exit(unlink(up), add = TRUE)
+      d2 <- as.data.frame(tesseract::ocr_data(up), stringsAsFactors = FALSE)
+      r2 <- rulerOf(d2)
+      if (r2$good > r$good) { d <- d2; r <- r2 }
+    }
+  }
   if (!nrow(d)) return(list(.ppOcrBoxes(d, 1)))
-  bb <- do.call(rbind, lapply(strsplit(d$bbox, ","), as.numeric))
-  h  <- bb[, 4] - bb[, 2]
-  good  <- d$confidence > 50 & nchar(d$word) >= 2 & h > 0
-  ruler <- if (any(good)) stats::median(h[good]) else stats::median(h[h > 0])
+  ruler <- r$ruler
   scale <- wordPt / ruler
   # a ruler outside 72-1440 dpi is not a photograph of a table; fall back
   # to 300 dpi rather than blow every tolerance up or down by orders

@@ -351,3 +351,67 @@ test_that("the API preflights an image before spending a child on it", {
   expect_match(r$reasons, "megapixel")
   expect_identical(spawned, 0L)
 })
+
+# ---- screen-resolution pictures are enlarged before OCR (2026-09-03) -------
+
+test_that("a screen-resolution picture is enlarged before OCR and reads whole", {
+  skip_if_not_installed("tesseract")
+  skip_on_cran()
+  skip_if(isTRUE(as.logical(Sys.getenv("CI", "false"))),
+          "exact OCR equality is certified on the desktop and the nodes, not the runner's tesseract")
+  # a pasted screenshot: the synthetic table rendered at 96 dpi, whose
+  # word boxes are about 9 px tall - tesseract drops many of them
+  pdf <- syntheticPdfMeanSD()
+  lo <- imgFrom(pdf, "png", dpi = 96)
+  raw <- as.data.frame(tesseract::ocr_data(lo))
+  raw <- raw[raw$confidence > 50 & nchar(raw$word) >= 2, ]
+  words <- IntegrityAnalysis:::.ppImageData(lo)[[1]]
+  expect_gt(nrow(words), nrow(raw))
+  r <- parseBaselineTableHeuristics(lo, quiet = TRUE)
+  expect_identical(r$engine, "heuristic-ocr")
+  expect_true(all(is.finite(r$arms$N)))          # both "(n = ...)" headers read
+  # measured 2026-09-03 on the desktop engine: 49 confident words raw, 61
+  # after enlargement, arm Ns 15/17 (NA/17 without it at 72 dpi); the
+  # synthetic table's small type still loses a row or two at 96 dpi,
+  # which is why the guide keeps its verify-every-value warning
+  expect_true("Weight" %in% r$data$ROW)
+})
+
+test_that("the enlargement writes a BMP of k times the size, decodes PNG and JPEG only, and keeps to the pixel ceiling", {
+  pdf <- syntheticPdfMeanSD()
+  lo <- imgFrom(pdf, "png", dpi = 72)
+  d0 <- IntegrityAnalysis:::.ppImageDims(lo)
+  up <- IntegrityAnalysis:::.ppImageUpscaled(lo, 2L)
+  expect_true(file.exists(up))
+  expect_identical(dirname(up), dirname(lo))          # dies with the upload
+  con <- file(up, "rb"); on.exit(close(con), add = TRUE)
+  expect_identical(readBin(con, "raw", 2), charToRaw("BM"))
+  seek(con, 18)
+  wh <- readBin(con, "integer", 2, size = 4, endian = "little")
+  expect_equal(wh, c(d0$width * 2, d0$height * 2))
+  expect_equal(file.size(up), 54 + ((3 * d0$width * 2 + 3) %/% 4 * 4) * d0$height * 2)
+  unlink(up)
+  jpg <- imgFrom(pdf, "jpg", dpi = 72)
+  upj <- IntegrityAnalysis:::.ppImageUpscaled(jpg, 3L)
+  expect_true(file.exists(upj)); unlink(upj)
+  # a TIFF is a scan at its scanner's resolution: not decoded, not enlarged
+  expect_null(IntegrityAnalysis:::.ppImageUpscaled(imgFrom(pdf, "tiff", dpi = 72), 2L))
+  # not an image at all
+  expect_null(IntegrityAnalysis:::.ppImageGrey(pdf))
+  # the pixel ceiling bounds the ENLARGED picture: the factor drops, and
+  # below two there is nothing to gain
+  testthat::local_mocked_bindings(.ppImageMaxPixels = d0$width * d0$height * 3)
+  expect_null(IntegrityAnalysis:::.ppImageUpscaled(lo, 4L))
+})
+
+test_that("a picture at document resolution is read once, without enlargement", {
+  skip_if_not_installed("tesseract")
+  skip_on_cran()
+  pdf <- syntheticPdfMeanSD()
+  hi <- imgFrom(pdf, "png", dpi = 300)
+  calls <- 0L
+  testthat::local_mocked_bindings(.ppImageUpscaled = function(...) { calls <<- calls + 1L; NULL })
+  words <- IntegrityAnalysis:::.ppImageData(hi)[[1]]
+  expect_gt(nrow(words), 10)
+  expect_identical(calls, 0L)
+})
