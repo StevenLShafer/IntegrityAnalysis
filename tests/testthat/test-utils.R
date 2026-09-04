@@ -47,6 +47,10 @@ test_that("a thousands-separated number tokenises as one cell", {
 
 test_that("row labels are cleaned without losing category information", {
   expect_equal(.ppCleanLabel("Age (yr)"),          "Age")
+  # zero-width space left by a typesetter (ticagrelor article, seen in
+  # the API results CSV 2026-09-03) - invisible, and it broke matching
+  expect_equal(.ppCleanLabel("ACA\u200b"),         "ACA")
+  expect_equal(.ppCleanLabel("Age\u200b (yr)"),    "Age")
   expect_equal(.ppCleanLabel("Weight (kg)"),       "Weight")
   expect_equal(.ppCleanLabel("Male sex, n (%)"),   "Male sex")
   expect_equal(.ppCleanLabel("Diabetes  no. (%)"), "Diabetes")
