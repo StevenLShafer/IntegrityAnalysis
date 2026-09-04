@@ -511,6 +511,14 @@ if (file.exists("R/utils.R")) {
   if (!length(decAll) || length(decAll) != length(decIn))
     note(paste("R/utils.R: png::readPNG / jpeg::readJPEG are called outside",
                ".ppImageGrey() (or not at all) - the decoders have one gated site"))
+  # ...and .ppImageGrey() has exactly one caller, .ppImageUpscaled(), which
+  # judged the cap first (second screen of PR #168, note 1)
+  gCalls <- grep("\\.ppImageGrey\\s*\\(", ut)
+  gDef   <- grep("^\\.ppImageGrey\\s*<-\\s*function", ut)
+  gIn    <- grep("\\.ppImageGrey\\s*\\(", bodyOf(ut, ".ppImageUpscaled"))
+  if (length(setdiff(gCalls, gDef)) != length(gIn))
+    note(paste("R/utils.R: .ppImageGrey() is called somewhere other than",
+               ".ppImageUpscaled() - the decoder has one caller, behind the cap"))
   orderIn("R/utils.R", ".ppImageUpscaled",
           "\\.ppImageDims\\s*\\(", "\\.ppImageGrey\\s*\\(",
           paste("R/utils.R: .ppImageUpscaled() decodes the picture before",

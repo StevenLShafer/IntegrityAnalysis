@@ -540,6 +540,9 @@
 .ppImageGrey <- function(imgFile) {
   dims <- .ppImageDims(imgFile)
   if (is.null(dims) || !(dims$format %in% c("png", "jpeg"))) return(NULL)
+  # the cap enforced HERE too, not only by the caller (second screen of
+  # PR #168, note 1): a future direct call must not decode 20 megapixels
+  if (as.numeric(dims$width) * dims$height > .ppImageMaxPixels) return(NULL)
   a <- tryCatch(
     if (dims$format == "png") png::readPNG(imgFile) else jpeg::readJPEG(imgFile),
     error = function(e) NULL)
@@ -554,8 +557,8 @@
 }
 
 # Replicate every pixel k times in both directions and write a 24-bit
-# BMP; returns the file (in the same directory as the picture, so it dies
-# with the upload) or NULL when the enlargement would pass the pixel cap.
+# BMP; returns the file (in the session's temporary directory, which the
+# parent removes) or NULL when the enlargement would pass the pixel cap.
 # The factor is decided from the HEADER, before any decode: the screen of
 # PR #168 (F1) showed an 88 KB blank PNG over 5 megapixels costing a
 # gigabyte to decode for an enlargement the cap then refused.
@@ -569,7 +572,9 @@
   if (is.null(g)) return(NULL)
   m <- g[rep(seq_len(nrow(g)), each = k), rep(seq_len(ncol(g)), each = k), drop = FALSE]
   rm(g)
-  out <- tempfile("upscaled", tmpdir = dirname(imgFile), fileext = ".bmp")
+  # in the child's own temporary directory, which the parent removes
+  # whatever the child's fate (second screen of PR #168, note 2)
+  out <- tempfile("upscaled", fileext = ".bmp")
   .ppWriteBmp(m, out)
   out
 }

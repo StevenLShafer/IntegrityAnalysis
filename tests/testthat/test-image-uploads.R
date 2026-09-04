@@ -383,7 +383,7 @@ test_that("the enlargement writes a BMP of k times the size, decodes PNG and JPE
   d0 <- IntegrityAnalysis:::.ppImageDims(lo)
   up <- IntegrityAnalysis:::.ppImageUpscaled(lo, 2L)
   expect_true(file.exists(up))
-  expect_identical(dirname(up), dirname(lo))          # dies with the upload
+  expect_identical(normalizePath(dirname(up)), normalizePath(tempdir()))   # the child's tempdir
   con <- file(up, "rb"); on.exit(close(con), add = TRUE)
   expect_identical(readBin(con, "raw", 2), charToRaw("BM"))
   seek(con, 18)
@@ -428,6 +428,9 @@ test_that("an over-cap picture is refused from its header, never decoded", {
     .ppImageGrey = function(...) { decoded <<- decoded + 1L; NULL })
   expect_null(IntegrityAnalysis:::.ppImageUpscaled(lo, 4L))
   expect_identical(decoded, 0L)
+  # ...and the decoder refuses an over-cap picture on its own, too
+  testthat::local_mocked_bindings(.ppImageMaxPixels = d0$width * d0$height - 1)
+  expect_null(IntegrityAnalysis:::.ppImageGrey(lo))
 })
 
 test_that("the BMP writer pads rows to four bytes and writes bottom-up, in one call", {
