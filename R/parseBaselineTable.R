@@ -425,11 +425,33 @@ parseBaselineTable <- function(pdfFile,
   tatrFlags <- NULL
   if (tatr == "always") {
     tt <- tatrParse("auto")
-    if (!is.null(tt) && .ppParseScore(tt) > .ppParseScore(het)) {
-      say("Keeping the Table Transformer reading (parse score ",
-          round(.ppParseScore(tt), 1), " vs ", round(.ppParseScore(het), 1), ").")
-      tatrFlags <- setdiff(tt$flags, reviewFlags(tt))
-      het <- tt
+    # The caption rule (whole-corpus comparison, 2026-09-03): by parse
+    # score alone the model's reading won 441 of 1,654 articles both
+    # engines parsed, and a share of those wins were a DIFFERENT table -
+    # a results or outcomes table the model read fluently, displacing
+    # the text engine's captioned baseline table. Parse score measures
+    # how well a table was read, not which table it is. So the model
+    # replaces the text engine only when its own caption is at least as
+    # convincing: a strong caption (score >= 3, the threshold the
+    # candidate ordering uses on every route) is never displaced by a
+    # weaker one, and when neither or both are strong the parse score
+    # decides as before.
+    if (!is.null(tt)) {
+      capText <- .ppCaptionScoreOf(het$caption)
+      capTatr <- .ppCaptionScoreOf(tt$caption)
+      better  <- .ppParseScore(tt) > .ppParseScore(het)
+      displaces <- !(capText >= 3 && capTatr < 3)
+      if (better && displaces) {
+        say("Keeping the Table Transformer reading (parse score ",
+            round(.ppParseScore(tt), 1), " vs ", round(.ppParseScore(het), 1), ").")
+        tatrFlags <- setdiff(tt$flags, reviewFlags(tt))
+        het <- tt
+      } else if (better) {
+        say("The Table Transformer read a table better (parse score ",
+            round(.ppParseScore(tt), 1), " vs ", round(.ppParseScore(het), 1),
+            ") but its caption does not announce a baseline table and the ",
+            "text engine's does - keeping the text engine's table.")
+      }
     }
   }
 

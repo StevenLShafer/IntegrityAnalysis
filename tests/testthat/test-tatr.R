@@ -316,3 +316,37 @@ test_that("the batch runner leaves no child temporary directory behind", {
   # and the parent's own environment is restored
   expect_false(nzchar(Sys.getenv("INTEGRITY_PARSE_BUDGET")))
 })
+
+test_that("tatr = \"always\" does not displace a captioned baseline table with an uncaptioned one", {
+  # The whole-corpus comparison (2026-09-03) found the model's parse-score
+  # wins included a different table - fluently read, but not the baseline
+  # table the text engine had found under its caption. A strong caption
+  # on the text engine's side is not displaced by a caption-less reading,
+  # however well it scored.
+  src <- syntheticPdfMeanSD()
+  g <- meanSDGeometry()
+  xml <- tatrXmlFor(tempfile(fileext = ".tatr.xml"), 1L, g$rows, g$cols, g$cells)
+  text <- parseBaselineTableHeuristics(src, quiet = TRUE)
+  expect_gte(IntegrityAnalysis:::.ppCaptionScoreOf(text$caption), 3)
+  # the model's reading: the same rows, strictly better score, no caption
+  model <- parseBaselineTableTatr(src, xml, quiet = TRUE)
+  model$caption <- NA_character_
+  weak <- text
+  weak$data <- weak$data[weak$data$ROW == "Age", ]
+  weak$arms$N[] <- NA
+  testthat::local_mocked_bindings(
+    parseBaselineTableHeuristics = function(...) weak,
+    parseBaselineTableTatr = function(...) model)
+  expect_gt(IntegrityAnalysis:::.ppParseScore(model), IntegrityAnalysis:::.ppParseScore(weak))
+  r <- parseBaselineTable(src, ai = "never", tatr = "always", tatrXml = xml, quiet = TRUE)
+  expect_identical(r$engine, "heuristic")              # the captioned table stays
+  # ...and with a caption of its own the model's better reading wins again
+  model$caption <- "Table 1. Baseline patient characteristics"
+  r2 <- parseBaselineTable(src, ai = "never", tatr = "always", tatrXml = xml, quiet = TRUE)
+  expect_identical(r2$engine, "heuristic-tatr")
+  # a text engine result WITHOUT a strong caption is displaced as before
+  weak$caption <- "Table 3. Intraoperative drug usage"
+  model$caption <- NA_character_
+  r3 <- parseBaselineTable(src, ai = "never", tatr = "always", tatrXml = xml, quiet = TRUE)
+  expect_identical(r3$engine, "heuristic-tatr")
+})
