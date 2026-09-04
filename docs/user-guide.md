@@ -212,12 +212,17 @@ taken to *be* the table: it is read whole, from its first line, with no
 search for a "Table 1" caption (one may be present or not) and no
 attempt to split it into page columns, so a screenshot of just the
 table is the ideal input. It works best on a clean picture at 200–300
-dpi; at screen resolution (96 dpi) small type is at the edge of what
-OCR reads reliably, so check the cyan values with particular care. The
-picture is decoded by the app's own OCR reader, never by ImageMagick,
-and its declared dimensions are checked from the file header before any
-decoder runs — an oversized or malformed image is refused with a
-message. (GIF is deliberately not accepted: its header cannot bound
+dpi. A screenshot is smaller than that (96 dpi, with letters about ten
+pixels tall, which OCR largely drops), so a picture whose type is that
+small is enlarged before it is read — its pixels replicated two to four
+times, with no smoothing, until the letters are the size of a printed
+page's — which recovers nearly all of the words; even so, check the cyan
+values with particular care. A png or jpg is decoded by the app's own
+readers (the png and jpeg packages), a tif by the OCR engine itself,
+never by ImageMagick, and every picture's declared dimensions are
+checked from the file header before any decoder runs — an oversized or
+malformed image is refused with a message, and the enlarged picture is
+held to the same pixel ceiling. (GIF is deliberately not accepted: its header cannot bound
 what its decoder allocates.) With an API key entered, a jpg or png is
 sent to the AI assist as an image (a tif is read by OCR only; the model
 does not accept it).

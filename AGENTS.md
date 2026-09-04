@@ -292,8 +292,17 @@ The standing conclusions of the 2026-08-20 full-repository review:
   AI route runs the same preflight before reading bytes for the model.
   Tripwire group 6 pins all of this from the R parser's token table and
   checks preflight-before-decode inside each function that decodes.
-  Still open: a memory ceiling on the child (ISSUES 32) - the header
-  check narrows the window, it does not close it.
+  **Since 2026-09-03 (PR #168) two more decoders run in the same
+  child**: a PNG or JPEG whose type is screen-sized is decoded by libpng
+  or libjpeg through the `png` and `jpeg` packages so it can be enlarged
+  before OCR. `.ppImageUpscaled()` decides the factor from the header
+  and returns before any decode when the enlargement would pass the
+  pixel cap; `.ppImageGrey()` is the ONLY caller of the two decoders and
+  turns the pixels into one byte each at once; the BMP the engine then
+  reads is our own bytes. Group 6 pins the single decoder site and the
+  header-before-decode order. Still open: a memory ceiling on the child
+  (ISSUES 32) - the header check narrows the window, it does not close
+  it.
 - **There are two subprocess launchers, and both are pinned** (the
   second added 2026-09-02 with the Table Transformer seam, PR #147).
   `parseBaselineTableFiles.R` runs `Rscript --vanilla` per file;
