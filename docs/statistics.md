@@ -20,8 +20,10 @@ The answer is a one-sided p-value toward *excessive homogeneity*:
   not reported: it is not a known fabrication signal, and reporting it
   invites false accusations against merely-variable data.
 
-The per-variable p-values combine across the trial with Stouffer's
-method into a single trial p.
+The per-variable p-values combine across the trial into a single trial
+p by the **exact combination** described below (a correction made on
+2026-09-04; the section "A correction to the combination step" says
+what was wrong and what changed).
 
 ## Where the numbers come from, and why they carry uncertainty
 
@@ -53,25 +55,99 @@ challenged, so it reports only what the simulation actually supports.
    bound (exact Clopper–Pearson, ties counted fully — conservative) on
    its simulated count clears 0.0001. At zero exceedances this needs
    roughly 30,000+ replicates; at 100,000 replicates the bound is
-   3.7 × 10⁻⁵, comfortably below. Rows with p < 0.001 also show the
-   bound explicitly ("<=4.6e-05"), and every row reports how many
-   replicates it used.
-4. **The trial p is not floored.** Combining rows is exact arithmetic —
-   no simulation noise is added — and accumulation across rows is the
-   fraud signal: eight individually unremarkable rows at p = 0.01
-   legitimately combine to about 5 × 10⁻⁹. What the trial p inherits is
-   the rows' simulation uncertainty, which is propagated (parametric
-   bootstrap over the rows' binomial counts) and shown as a 95% Monte
-   Carlo interval whenever the trial p < 0.001, e.g.
-   "p = 3.1e-07 (95% Monte Carlo interval 1.2e-07 to 8.9e-07)".
+   3.7 × 10⁻⁵, comfortably below. Every row also shows its exact
+   Clopper–Pearson 95% Monte Carlo interval ("0.27 to 0.33" for an
+   unremarkable row at 1,000 replicates; "0 to 3.7e-05" for a row with
+   nothing at or below at 100,000), and how many replicates it used.
+   The interval is the simulation's uncertainty about the row's p, not
+   uncertainty about the trial's data; its lower end comes from the
+   strictly-below count and its upper end from the at-or-below count,
+   so it brackets the mid-p and errs wide.
+4. **The trial p is the exact combination.** The rows' evidence is
+   summed as Stouffer's z-scores, and that sum is judged against its own
+   simulated null: every replicate of every row is ranked within its
+   row, z-scored and summed across rows, replicate by replicate, and the
+   trial p is the share of those simulated honest sums that reach the
+   observed one (ties half). Accumulation across rows is still the fraud
+   signal — eight individually unremarkable rows at p = 0.01 still
+   combine to a very small trial p — but the trial p is now bounded by
+   what its simulation can resolve: it is floored at 1/(replicates + 1)
+   like a row, displays "<0.0001" only when the 97.5% upper bound on the
+   reaching count licenses it, and carries an exact Clopper–Pearson 95%
+   interval whenever it is below 0.001, e.g. "p < 0.0001 (95% Monte
+   Carlo interval 0 to 3.7e-05)". The staging is per trial: every usable
+   row draws the same number of replicates at each stage, and the trial
+   escalates while its own p or any row's is below 0.01.
 
 ## Reading the results table
 
 | Column | Meaning |
 |---|---|
 | P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
-| 95% Monte Carlo bound | For rows: the upper confidence bound, shown when P < 0.001. For the Summary row: the 95% bootstrap interval of the trial p. |
+| 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. |
 | Replicates | Simulations this row actually used (1,000 for unremarkable rows; up to 100,000 for alarming ones). |
+
+## A correction to the combination step (2026-09-04)
+
+**What was wrong.** Until 2026-09-04 the trial p was Stouffer's
+closed-form combination: each row's simulated p was converted to a
+normal score, the scores were summed, and the sum was read off the
+normal distribution. That closed form assumes each row's p is uniformly
+distributed when the trial is honest. It is not, whenever the reported
+means are rounded coarsely relative to their standard error — integer
+means with hundreds of patients per arm, say. A row like that has only
+a handful of possible values of its statistic, so its simulated p is
+discrete (a row whose two arms both report "55" has a mid-p near 0.27
+however honest it is), and the sum of a few such p's was being read off
+a smooth table it does not follow. Measured on synthetic honest trials
+(`corpus/syntheticTiesCheck.R`): at integer means and 1,000 per arm,
+1.4 % of honest trials fell below p = 0.05 instead of 5 %, the lowest
+decile of trial p's was 43 % under-filled, and a fabricated table with
+identical integer means on every row could not reach p = 0.01 however
+many rows agreed. The screen failed in the safe direction — it accused
+no one — but it was miscalibrated, and it was blind to a fabrication it
+should have seen. The error was in the Monte Carlo's combination step,
+which Steve Shafer wrote; it is not part of Carlisle's method, and none
+of Carlisle's published values depend on it.
+
+**What changed.** Nothing about the rows. The row statistic, its
+rounding-faithful simulation, the mid-p and the bound rules are exactly
+as before, and the row p's shown in the grid are unchanged in kind. The
+only change is how the rows are combined. The statistic is still
+Stouffer's sum of row z-scores. Its null distribution is no longer
+assumed normal; it is taken from the same simulations that produce the
+row p's. Each simulated replicate of each row is ranked within its row,
+given the mid-p its own rank implies, floored and z-scored exactly as
+the observed row is, and the z's are summed across rows replicate by
+replicate. That is legitimate because the rows are simulated
+independently. The observed sum is then compared with the simulated
+sums, ties counting half. The result is a trial p that is uniform under
+honest sampling by construction, at every rounding and every N (on the
+same synthetic trials: 4.8 to 5.8 % below 0.05 in every integer cell),
+and that finds the fabricated table: identical integer means on three
+rows now give the share of honest trials whose rows all tie at once,
+which is the evidence the table actually holds.
+
+**What it costs.** The trial p can no longer be resolved below
+1/(replicates + 1): a trial whose observed sum exceeds every one of
+100,000 simulated sums reports "<0.0001" with the interval "0 to
+3.7e-05", where the closed form used to print a number like 3 × 10⁻⁹.
+That number was never resolvable by the simulation; the new report says
+what the simulation supports and no more. Replicates are shared by the
+whole trial, so an alarming trial escalates every row rather than only
+the alarming ones, which is why the `Replicates` column now shows the
+same count on every row of a trial.
+
+**Ideas that were tested and rejected**, so that nobody repeats them:
+ignoring ties (placing the observed statistic at the floor of its tie
+group) gave 10 to 43 % false alarms at integer rounding; placing it at
+the chi-square median of its tie group reproduced the old numbers
+exactly, because any rule that assigns one number to each reported
+pattern leaves the distribution as lumpy as it found it; a
+log-likelihood-ratio combination against a stated fabrication model was
+calibrated but sees only the alternative it was built for. The exact
+combination needs no alternative and was never worse than the better of
+those on that alternative's own ground.
 
 ## One sentence for the skeptical reader
 
@@ -129,5 +205,7 @@ one variable alone. And it does not model rounding: when the reported
 precision is coarse relative to the standard error of the arm mean —
 integer-reported means in a large trial, say — the t-statistics
 concentrate at zero and honest data reads as under-dispersed. Ours
-models the rounding explicitly and fails the other way, becoming
-conservative instead. Neither is uniform under those conditions.
+models the rounding explicitly, and until 2026-09-04 failed the other
+way at the combination step, becoming conservative (see the correction
+above); with the exact combination it is uniform under those conditions,
+and his is not.

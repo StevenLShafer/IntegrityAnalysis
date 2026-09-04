@@ -137,6 +137,9 @@ res <- iaParallel(specs, function(s)
 res <- do.call(rbind, Filter(Negate(is.null), res))
 cat("  done in", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1),
     "min\n")
+# the directory is created here, not assumed: a 51-minute run on i5 was
+# lost at this line on 2026-09-04 because it was not
+dir.create(outDir, recursive = TRUE, showWarnings = FALSE)
 utils::write.csv(res, file.path(outDir, "syntheticAge.csv"), row.names = FALSE)
 
 ## ---- report --------------------------------------------------------------

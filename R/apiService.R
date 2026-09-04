@@ -668,11 +668,14 @@
   # per-trial summary p's, plus the overall Stouffer combination across
   # trials (the same closure the results workbook reports)
   sm <- OUTPUT[!is.na(OUTPUT$ROW) & OUTPUT$ROW == "Summary", , drop = FALSE]
-  trialP <- suppressWarnings(as.numeric(sm$P))
+  # "<0.0001" (the exact combination's licensed bound) combines as 1e-4
+  # and passes through unchanged when it is the only trial
+  trialP <- .trialPNumeric(sm$P)
   ok <- !is.na(trialP)
   overall <- if (sum(ok) > 1) signif(sumz(trialP[ok])$p, 4)
-             else if (sum(ok) == 1) trialP[ok]
-             else NA_real_
+             else if (sum(ok) == 1) {
+               if (grepl("^\\s*<", as.character(sm$P[ok]))) as.character(sm$P[ok]) else trialP[ok]
+             } else NA_real_
   # The journal-style reconstructed table (issue 15) travels with the
   # response: for the editor email workflow it is the artifact compared
   # against the manuscript page, and returning it here saves a second

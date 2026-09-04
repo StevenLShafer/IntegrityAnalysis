@@ -29,7 +29,7 @@ for how long).
   own reader - no ImageMagick), with an opt-in AI tier for scans.
 - **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
   rounding treatment, median/IQR rows via a metalog null, one-sided p
-  toward homogeneity, Stouffer combination; validated against
+  toward homogeneity, exact combination across rows; validated against
   Carlisle's 2017 analysis of 5,080 trials (r = 0.993, 99.0% alarm
   concordance).
 - **The REST API** (`R/apiService.R`, `inst/api/`, `Dockerfile`) — the

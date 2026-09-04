@@ -120,7 +120,7 @@ writeGraphsPptx <- function(results, collector, file, rowCutoff = 0.01,
   for (i in seq_len(nrow(results))) {
     if (!is.na(results$TRIAL[i])) trial <- as.character(results$TRIAL[i])
     if (!is.na(results$ROW[i]) && results$ROW[i] == "Summary") {
-      pv <- suppressWarnings(as.numeric(results$P[i]))
+      pv <- .trialPNumeric(results$P[i])   # "<0.0001" plots as 1e-4
       if (!is.na(pv)) { trials <- c(trials, trial); tp <- c(tp, pv) }
     }
   }
