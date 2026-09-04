@@ -530,8 +530,13 @@
 .ppImageUpscaleTarget <- 30      # px: about a 300 dpi page's word box
 .ppImageUpscaleMax    <- 4L      # replication factor ceiling
 
-# The picture as a grey matrix (columns = x, rows = y), or NULL when it
-# is not a PNG or JPEG the decoders read.
+# The picture as a matrix of grey BYTES (columns = x, rows = y), or NULL
+# when it is not a PNG or JPEG the decoders read. This is the only place
+# the two decoders are called (tripwire group 6). The decoded doubles are
+# turned into one byte per pixel at once, so everything downstream - the
+# replication, the BMP - is a raw vector: the screen of PR #168 measured
+# the double-precision road at 765 MB for an ordinary 5-megapixel
+# screenshot, and the child has no memory ceiling (ISSUES 32).
 .ppImageGrey <- function(imgFile) {
   dims <- .ppImageDims(imgFile)
   if (is.null(dims) || !(dims$format %in% c("png", "jpeg"))) return(NULL)
@@ -542,38 +547,52 @@
   if (length(dim(a)) == 2L) g <- a
   else if (dim(a)[3] >= 3L) g <- 0.299 * a[, , 1] + 0.587 * a[, , 2] + 0.114 * a[, , 3]
   else g <- a[, , 1]
-  t(g)                                     # to x-by-y
+  rm(a)
+  m <- matrix(as.raw(as.integer(round(pmin(pmax(g, 0), 1) * 255))), nrow = nrow(g))
+  rm(g)
+  t(m)                                     # to x-by-y, one byte per pixel
 }
 
 # Replicate every pixel k times in both directions and write a 24-bit
 # BMP; returns the file (in the same directory as the picture, so it dies
 # with the upload) or NULL when the enlargement would pass the pixel cap.
+# The factor is decided from the HEADER, before any decode: the screen of
+# PR #168 (F1) showed an 88 KB blank PNG over 5 megapixels costing a
+# gigabyte to decode for an enlargement the cap then refused.
 .ppImageUpscaled <- function(imgFile, k) {
+  dims <- .ppImageDims(imgFile)
+  if (is.null(dims) || !(dims$format %in% c("png", "jpeg"))) return(NULL)
+  k <- as.integer(k)
+  while (k > 1L && as.numeric(dims$width) * dims$height * k * k > .ppImageMaxPixels) k <- k - 1L
+  if (k < 2L) return(NULL)
   g <- .ppImageGrey(imgFile)
   if (is.null(g)) return(NULL)
-  k <- as.integer(k)
-  while (k > 1L && as.numeric(ncol(g)) * nrow(g) * k * k > .ppImageMaxPixels) k <- k - 1L
-  if (k < 2L) return(NULL)
   m <- g[rep(seq_len(nrow(g)), each = k), rep(seq_len(ncol(g)), each = k), drop = FALSE]
+  rm(g)
   out <- tempfile("upscaled", tmpdir = dirname(imgFile), fileext = ".bmp")
   .ppWriteBmp(m, out)
   out
 }
 
-# An uncompressed 24-bit BMP from a grey matrix in [0, 1] (x-by-y): 54
-# bytes of header, then rows bottom-up, each padded to four bytes.
+# An uncompressed 24-bit BMP from a matrix of grey bytes (x-by-y): 54
+# bytes of header, then rows bottom-up, each padded to four bytes. The
+# pixel block is built with vector operations and written ONCE - a
+# per-row write loop cost 4.5 us a row, and a 1 x 5,000,000 picture has
+# ten million rows at factor two (screen of PR #168, F2).
 .ppWriteBmp <- function(m, file) {
   w <- nrow(m); h <- ncol(m)
   rowBytes <- (3L * w + 3L) %/% 4L * 4L; pad <- rowBytes - 3L * w
+  px <- rep(as.vector(m[, rev(seq_len(h)), drop = FALSE]), each = 3L)
+  if (pad > 0L)
+    px <- as.vector(rbind(matrix(px, nrow = 3L * w),
+                          matrix(as.raw(0L), nrow = pad, ncol = h)))
   con <- file(file, "wb"); on.exit(close(con), add = TRUE)
   i4 <- function(v) writeBin(as.integer(v), con, size = 4L, endian = "little")
   i2 <- function(v) writeBin(as.integer(v), con, size = 2L, endian = "little")
   writeBin(charToRaw("BM"), con); i4(54 + rowBytes * h); i4(0); i4(54)
   i4(40); i4(w); i4(h); i2(1); i2(24); i4(0); i4(rowBytes * h)
   i4(2835); i4(2835); i4(0); i4(0)
-  bytes <- as.integer(round(pmin(pmax(m, 0), 1) * 255))
-  padRaw <- as.raw(rep(0L, pad))
-  for (y in h:1) writeBin(c(as.raw(rep(bytes[(y - 1L) * w + seq_len(w)], each = 3L)), padRaw), con)
+  writeBin(px, con)
   invisible(file)
 }
 

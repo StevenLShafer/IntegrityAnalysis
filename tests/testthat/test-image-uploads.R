@@ -415,3 +415,29 @@ test_that("a picture at document resolution is read once, without enlargement", 
   expect_gt(nrow(words), 10)
   expect_identical(calls, 0L)
 })
+
+test_that("an over-cap picture is refused from its header, never decoded", {
+  # screen of PR #168, F1: an 88 KB blank PNG over five megapixels cost a
+  # gigabyte to decode for an enlargement the cap then refused
+  pdf <- syntheticPdfMeanSD()
+  lo <- imgFrom(pdf, "png", dpi = 72)
+  d0 <- IntegrityAnalysis:::.ppImageDims(lo)
+  decoded <- 0L
+  testthat::local_mocked_bindings(
+    .ppImageMaxPixels = d0$width * d0$height * 3,
+    .ppImageGrey = function(...) { decoded <<- decoded + 1L; NULL })
+  expect_null(IntegrityAnalysis:::.ppImageUpscaled(lo, 4L))
+  expect_identical(decoded, 0L)
+})
+
+test_that("the BMP writer pads rows to four bytes and writes bottom-up, in one call", {
+  m <- matrix(as.raw(1:15), nrow = 5)           # 5 x 3 grey bytes: pad = 1
+  f <- tempfile(fileext = ".bmp")
+  IntegrityAnalysis:::.ppWriteBmp(m, f)
+  expect_equal(file.size(f), 54 + 16 * 3)
+  bytes <- readBin(f, "raw", file.size(f))
+  first <- bytes[55:70]                          # the BOTTOM row: m[, 3], then padding
+  expect_identical(first, as.raw(c(rep(11:15, each = 3), 0)))
+  last <- bytes[87:102]                          # the TOP row: m[, 1]
+  expect_identical(last, as.raw(c(rep(1:5, each = 3), 0)))
+})

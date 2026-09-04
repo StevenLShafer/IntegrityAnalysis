@@ -501,6 +501,21 @@ if (file.exists("R/utils.R")) {
     i <- grep(before, b); j <- grep(after, b)
     if (length(j) && (!length(i) || min(i) > min(j))) note(what)
   }
+  # the two decoders added with the screenshot enlargement (PR #168):
+  # png::readPNG / jpeg::readJPEG are called ONLY inside .ppImageGrey(),
+  # and .ppImageUpscaled() decides the factor from the header before it
+  # decodes - the screen measured an 88 KB blank PNG over the cap costing
+  # a gigabyte to decode for an enlargement then refused (F1)
+  decAll <- grep("readPNG|readJPEG", ut)
+  decIn  <- grep("readPNG|readJPEG", bodyOf(ut, ".ppImageGrey"))
+  if (!length(decAll) || length(decAll) != length(decIn))
+    note(paste("R/utils.R: png::readPNG / jpeg::readJPEG are called outside",
+               ".ppImageGrey() (or not at all) - the decoders have one gated site"))
+  orderIn("R/utils.R", ".ppImageUpscaled",
+          "\\.ppImageDims\\s*\\(", "\\.ppImageGrey\\s*\\(",
+          paste("R/utils.R: .ppImageUpscaled() decodes the picture before",
+                "judging the factor from its header (.ppImageDims) - an",
+                "over-cap picture is decoded for nothing (screen of PR #168, F1)"))
   orderIn("R/parseBaselineTableHeuristics.R", "parseBaselineTableHeuristics",
           "\\.ppImageOK\\s*\\(", "\\.ppImageData\\s*\\(",
           paste("R/parseBaselineTableHeuristics.R decodes an image",
