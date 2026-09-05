@@ -203,6 +203,21 @@ whole trial, so an alarming trial escalates every row rather than only
 the alarming ones, which is why the `Replicates` column now shows the
 same count on every row of a trial.
 
+**Revalidated against Carlisle 2017 (2026-09-04).** The 5,080 trials of
+the 2017 analysis were rerun on the corrected engine. Against Carlisle's
+stored trial p-values the agreement is essentially unchanged (r 0.993
+before, 0.992 after; alarm concordance at p < 0.05 99.0 % before,
+98.3 % after; his values were computed with the same closed-form
+combination this correction replaced). Against the previous engine the
+typical trial moved by about one hundredth (median |change| 0.013;
+r = 0.997), the number of trials below p = 0.05 rose from 348 to 392,
+and the largest shifts were in the largest trials (over 300 per arm),
+where rounded rows converge and carry the least information each. That
+is the intended effect: the trial p now reflects the amount of
+information in each row, and for a rounded row that amount falls as N
+grows, because convergence takes the arms below what rounded numbers
+can distinguish.
+
 **Ideas that were tested and rejected**, so that nobody repeats them:
 ignoring ties (placing the observed statistic at the floor of its tie
 group) gave 10 to 43 % false alarms at integer rounding; placing it at
