@@ -98,6 +98,28 @@ test_that("the exact combination judges tie-ridden rows by their own null (the 2
   expect_gt(p, 0.04); expect_lt(p, 0.13)
   # ...and the closed-form Stouffer of those row p's is larger: the lump
   expect_gt(sumz(rows)$p, p)
+  # every one of those rows sits at its attainable floor: both arms
+  # printed the same integer, which is the most homogeneous a row at
+  # this precision can be, and the note says so
+  expect_true(all(x$NOTE[seq_len(s - 1)] == "attainable floor"))
+  expect_identical(x$NOTE[s], "")
+})
+
+test_that("the attainable-floor note appears only on rows that sit at their floor", {
+  dqrng::dqset.seed(22); set.seed(22)
+  d <- rbind(
+    data.frame(TRIAL = "T", ROW = "Age", N = 1000, MEAN = c(55, 55), SD = c(13, 13),
+               ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE),
+    data.frame(TRIAL = "T", ROW = "Weight", N = 1000, MEAN = c(80, 82), SD = c(18, 18),
+               ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE),
+    data.frame(TRIAL = "T", ROW = "BMI", N = 20, MEAN = c(27.13, 26.42), SD = c(3.9, 4.1),
+               ROUND_MEAN = 2, ROUND_OBSERVATION = 2, stringsAsFactors = FALSE))
+  x <- runP(d, m = 10000)
+  note <- setNames(x$NOTE, x$ROW)
+  expect_identical(unname(note["Age"]), "attainable floor")   # tied integers: the floor
+  expect_identical(unname(note["Weight"]), "")                # two apart: not the floor
+  expect_identical(unname(note["BMI"]), "")                   # fine precision, ordinary p
+  expect_true("NOTE" %in% names(x))
 })
 
 test_that("mid-p point estimates are unchanged in spirit: direction holds", {

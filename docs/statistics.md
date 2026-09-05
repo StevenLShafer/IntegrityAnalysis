@@ -85,6 +85,7 @@ challenged, so it reports only what the simulation actually supports.
 |---|---|
 | P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. |
+| Note | "attainable floor" when the row sits at the smallest p its printed precision allows (no honest replicate agrees better than the printed arms). See "Convergence under rounding". Blank otherwise. |
 | Replicates | Simulations this row actually used (1,000 for unremarkable rows; up to 100,000 for alarming ones). |
 
 ## Convergence under rounding: why a large trial's rows agree, and why that is not evidence
@@ -109,6 +110,34 @@ no unexplained homogeneity in such a row, and the method reports none.
 necessarily converge to the true population value. If you round, then
 they will converge to exactly the same number. There is no unexplained
 homogeneity in large n, because convergence is expected.")
+
+**The attainable floor.** Every row has a smallest p its printed
+precision allows: the mid-p of the most homogeneous outcome the
+simulation can produce — both arms printing the same value — which is
+half the share of honest replicates that land there. The results table
+marks a row that sits at that floor with the note **"attainable
+floor"**. For integer age in a large trial the floor is high (about
+0.27 at 1,000 per arm) and the note says: this row has said everything
+its rounding lets it say, and it cannot alarm however the data were
+made. For a finely printed row the floor is small and a row at it
+alarms; the note then says: nothing agrees better than this, and this
+is as low as the row can go. The floor is a property of the printing
+and the sample size, not of the data.
+
+**How this trap was found, twice.** Carlisle's original method used
+normal theory for the comparison of arm means. Under normal theory two
+random samples never agree exactly, so a row whose arms reported
+identical means had p = 0, and Fujii's tables looked statistically
+impossible on rows that were merely rounded. Steve Shafer replaced the
+normal theory with the Monte Carlo simulation described above, which
+rounds its replicates as the paper rounded its own and so gives
+identical rounded means the probability they actually have. The
+combination step corrected on 2026-09-04 was the same trap one level
+up: the closed-form Stouffer sum assumed each row p uniform, which
+identical-rounded-means rows are not. Barnett's dispersion test, which
+computes t-statistics from the printed means as if they were exact,
+falls into the original trap: tied integer means read as
+under-dispersion.
 
 The consequences shape the whole method. A coarsely printed row cannot
 convict on its own: a copied integer mean is indistinguishable from an
