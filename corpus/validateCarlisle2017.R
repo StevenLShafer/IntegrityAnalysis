@@ -95,8 +95,18 @@ osKey <- paste(prefMap[prefix], num)
 
 ## ------------------------------------------------------- validate once
 
+# The app's per-arm ceiling (.iaMaxArmN = 5,000, an editorial choice
+# added 2026-08-27 - see P_Calc's "Calling P_Calc directly") would refuse
+# the 63 JAMA / NEJM trials over it and with them the whole sheet. The
+# engine itself has no such limit and the 2026-08-21 run predates the
+# ceiling, so the corpus run lifts it to keep all 5,080 trials
+# comparable (found 2026-09-04 when the exact-combination rerun refused).
+assignInNamespace(".iaMaxArmN", 1e9, "IntegrityAnalysis")
 v <- shiny::isolate(validateData(os))
-if (isTRUE(v$FAIL)) stop("validateData refused the One Sheet data")
+if (isTRUE(v$FAIL)) {
+  if (!is.null(v$issues)) print(utils::head(v$issues, 10))
+  stop("validateData refused the One Sheet data")
+}
 DATA <- v$DATA
 # validateData may relabel trials; carry the wide-file key by original
 # TRIAL string (validateData preserves TRIAL values for this input)
