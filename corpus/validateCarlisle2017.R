@@ -53,6 +53,13 @@ options(ECHO_OUTPUT_COMMENTS = NA)   # P_Calc narrates; a 5,088-trial run must n
 args  <- commandArgs(trailingOnly = TRUE)
 pilot <- "--pilot" %in% args
 mMax  <- if (pilot) 15000 else 100000
+# INTEGRITY_MMAX overrides the ceiling: the exact combination (2026-09-04)
+# escalates every row of an alarming trial together, and the corpus's
+# largest trials (tens of thousands per arm, dozens of rows) then cost
+# an hour each at 100,000. The 2026-09-04 rerun finished its last 1,355
+# trials at 10,000, which changes nothing above p = 1e-4.
+mEnv  <- suppressWarnings(as.integer(Sys.getenv("INTEGRITY_MMAX", "")))
+if (!is.na(mEnv) && mEnv > 0) mMax <- mEnv
 root  <- Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis")
 outDir <- file.path(root, ".NewCarlisle", "validation2017")
 dir.create(outDir, recursive = TRUE, showWarnings = FALSE)
