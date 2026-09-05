@@ -211,9 +211,11 @@
 #'   unless it, or one of its rows, looks alarming, so this is a
 #'   ceiling, not a cost. Lower it to trade precision for speed on a
 #'   large trial; the reported `M` column says what the rows used.
-#' @return a data.frame with columns TRIAL, ROW, P, CI95, M: one row per
-#'   data ROW (M = replicates used; CI95 = the exact Clopper-Pearson 95%
-#'   Monte Carlo interval of the row p, on every row), then a "Summary"
+#' @return a data.frame with columns TRIAL, ROW, P, CI95, M, NOTE: one
+#'   row per data ROW (M = replicates used; CI95 = the exact
+#'   Clopper-Pearson 95% Monte Carlo interval of the row p, on every row;
+#'   NOTE = "attainable floor" when the row sits at the smallest p its
+#'   printed precision allows, else blank), then a "Summary"
 #'   row with the exact-combination trial p and its interval when
 #'   P < 0.001, then a blank spacer row.
 #' @noRd
@@ -444,7 +446,18 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       # statistics - they ARE the expected distribution under honest
       # sampling, generated anyway and normally discarded.
       draws <- if (!is.null(graphs) && is.null(rowStat[[j]])) sims else rowStat[[j]]$draws
-      rowStat[[j]] <- list(kLess = kLess, kEq = kEq, m = s, draws = draws)
+      # THE ATTAINABLE FLOOR (Steve, 2026-09-04). A row sits at its floor
+      # when no honest replicate agrees better than the printed table:
+      # the observed statistic is at (or below) the smallest simulated
+      # one, so its mid-p is the smallest value this row's printed
+      # precision allows. For integer means in a large trial that floor
+      # is high - both arms converge on the same integer, as they must -
+      # and the row cannot alarm however the data were made; for a
+      # finely printed row it is small and the row alarms. Either way
+      # the note tells the reader the row has said everything its
+      # rounding lets it say.
+      rowStat[[j]] <- list(kLess = kLess, kEq = kEq, m = s, draws = draws,
+                           atFloor = kLess == 0)
       pRep <- .floorP((rank(sims, ties.method = "average") - 0.5) / s, s)
       sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
       zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
@@ -464,13 +477,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     r <- rows[[j]]
     if (is.null(r$sim))
       return(data.frame(ROW = r$Row, P = r$Pdisp, CI95 = "", M = NA_character_,
-                        .PNUM = NA_real_, .KLE = NA_real_, stringsAsFactors = FALSE))
+                        NOTE = "", .PNUM = NA_real_, .KLE = NA_real_,
+                        stringsAsFactors = FALSE))
     rep <- .rowReport(rowStat[[j]])
     if (!is.null(graphs))
       graphs$rows[[length(graphs$rows) + 1]] <-
         list(trial = TRIAL, row = r$Row, kind = r$sim$kind,
              obs = r$sim$obs, draws = rowStat[[j]]$draws, p = rep$p)
     data.frame(ROW = r$Row, P = rep$disp, CI95 = rep$ci, M = as.character(rep$m),
+               NOTE = if (isTRUE(rowStat[[j]]$atFloor)) "attainable floor" else "",
                .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
   }))
   x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
@@ -512,13 +527,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     P = c(as.character(P), NA),
     CI95 = c(ciStr, NA),
     M = c(NA, NA),
+    NOTE = c("", NA),
     .PNUM = c(NA, NA),
     .KLE = c(NA, NA)
   )
 
   x <- rbind(x, lastline)
   # internal bookkeeping columns stay out of the results
-  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M")]
+  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M", "NOTE")]
   outputComments(
     paste0("Trial ", TRIAL,": p = ", P,
            if (nzchar(ciStr)) paste0(" (95% Monte Carlo interval ",

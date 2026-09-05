@@ -186,7 +186,7 @@ writeBaselineTablesXlsx <- function(tables, file) {
 #' }
 #'
 #' @param results the accumulated raw results (columns TRIAL, ROW, P,
-#'   CI95, M - P_Calc's output, possibly several trials with NA spacer
+#'   CI95, M, NOTE - P_Calc's output, possibly several trials with NA spacer
 #'   rows).
 #' @param validated the validated data frame the analysis ran on
 #'   (validateData()$DATA).
@@ -204,7 +204,7 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   ## 1 -- Test Results: the sheet exactly as the download always was
   out <- results
   names(out) <- c("TRIAL", "ROW", "P (one-sided toward homogeneity)",
-                  "95% Monte Carlo interval", "Replicates")
+                  "95% Monte Carlo interval", "Replicates", "Note")
   openxlsx::addWorksheet(wb, "Test Results")
   openxlsx::writeData(wb, "Test Results", out, headerStyle = headStyle)
   openxlsx::setColWidths(wb, "Test Results", cols = seq_along(out),

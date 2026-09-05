@@ -595,6 +595,26 @@ So when a large trial's integer-reported rows all show p values near
 cleared the screen, and look to the trial p, which is where their
 collective evidence is added up correctly.
 
+**The "attainable floor" note.** The results table says this for you.
+Every row has a smallest p its printed precision allows — the p of the
+most homogeneous outcome the simulation can produce, which is both arms
+printing the same value. When a row sits at that floor, its Note column
+reads **attainable floor**: no honest replicate agreed better than the
+printed arms did. For integer age at 1,000 per arm the floor is about
+0.27, and the note means the row cannot alarm and should not be read as
+reassurance either. For a row printed to two decimals the floor is
+small, and a row at it alarms; the note then means this is as far as
+the row can go. The floor depends on the printing and the sample size,
+never on the data.
+
+This is the same trap, met twice. Carlisle's original method used
+normal theory, under which two random samples never agree exactly, so
+rows with identical printed means had p = 0 and Fujii's rounded tables
+looked impossible; the Monte Carlo simulation in this app replaced that
+normal theory so that identical rounded means get the probability they
+actually have. The 2026-09-04 correction to the combination step (next
+section) removed the same assumption one level up.
+
 ## What to do with a flag — Steve's recommendations
 
 *These are my recommendations, based on fifteen years of handling such
@@ -752,6 +772,7 @@ and a blank row between trials.
 | `P (one-sided toward homogeneity)` | the mid-p described above — small means *more homogeneous than chance*. On the Summary row this is the exact-combination trial p |
 | `95% Monte Carlo interval` | how precisely the simulation pinned that number: the exact Clopper–Pearson 95% interval of the row p on every row, and on the Summary row the interval for the trial p when it fell below 0.001 |
 | `Replicates` | how many simulations the rows received (1,000 / 10,000 / 100,000 — the adaptive scheme stops as soon as the trial and every row are resolved, so an unremarkable trial shows 1,000 on every row, and an alarming one escalates every row together) |
+| `Note` | `attainable floor` when the row sits at the smallest p its printed precision allows — no honest replicate agreed better than the printed arms (see "Rounding, large trials, and rows that cannot alarm"). Blank otherwise |
 
 *Sheet 2, `Baseline Tables`* — the reconstruction, one block per trial
 stacked down the sheet under a bold `Trial: <name>` heading: variables
