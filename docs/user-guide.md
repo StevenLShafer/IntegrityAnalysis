@@ -492,6 +492,38 @@ category row, `N`, `MEAN`, and `SD` must be blank (blue cells point at
 violations). A column is recognized as categorical when it is numeric,
 integer-valued, and not filled on every line.
 
+**The long layout: one line per level.** A table with many categories
+gets wide in that form, and wide is hard to edit. Since 2026-09-05 the
+same variables may be entered one line per category level per arm, with
+the level named in a `LEVEL` column and its count in `N`:
+
+| ROW | LEVEL | N | MEAN | SD |
+|---|---|---|---|---|
+| Sex | Male | 40 | | |
+| Sex | Male | 34 | | |
+| Sex | Female | 10 | | |
+| Sex | Female | 16 | | |
+| Surgery | Upper | 7 | | |
+| Surgery | Upper | 7 | | |
+| Surgery | Lower | 8 | | |
+| Surgery | Lower | 15 | | |
+| Surgery | Urologic | 35 | | |
+| Surgery | Urologic | 28 | | |
+| Weight | | 15 | 63 | 13 |
+| Weight | | 17 | 68 | 12 |
+
+The arms are the lines that share a `ROW` and a `LEVEL`, in file order,
+exactly as the lines sharing a `ROW` are the arms of a continuous
+variable; so you may list all of one arm's levels together or all arms
+of one level together. `MEAN` and `SD` stay blank on a level line, and
+`LEVEL` stays blank on a continuous line. Both layouts are accepted in
+one file, and a file in either is converted on upload to the wide form,
+which is what the grid shows and the downloads carry; nothing that reads
+the wide layout changes. A level named like a base column ("N") is
+prefixed with its variable's name in the grid. A binary variable still
+needs both of its levels ("Male" and "Not male"), because a level line
+does not carry the arm's total.
+
 ## Multiple trials
 
 A `TRIAL` column separates trials; each is analyzed independently. With

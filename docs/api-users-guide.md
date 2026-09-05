@@ -240,6 +240,15 @@ arm:
 A file in this layout, saved as `.csv`, is valid input to either
 endpoint; so is the app's own "Editor's View" download.
 
+**The long layout is accepted as input too** (since 2026-09-05). A
+categorical variable may be sent one line per category level per arm: a
+`LEVEL` column (alias `CATEGORY`) names the level, `N` holds its count,
+`MEAN` and `SD` are blank, and the lines sharing `ROW` and `LEVEL` are
+the arms, in order. Both layouts may appear in one file. The service
+converts on receipt and its replies (`templateCsv`, `journalTables`)
+carry the wide layout, so a script that reads replies sees one layout
+whichever it sent.
+
 ## 7. Limits
 
 | what | limit | on breach |

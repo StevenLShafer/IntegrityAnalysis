@@ -99,6 +99,10 @@ validateData <- function(DATA) {
   # shared function stays a pure renaming and the API gates cannot
   # acquire a hidden column as a side effect of being gated.
   if (!("TRIAL" %in% names(DATA))) DATA$TRIAL <- 1
+  # The long categorical layout (one line per level, count in N) becomes
+  # the wide one here, so every check below sees one layout. Both are
+  # accepted; the grid, the workbook and the API emit the wide one.
+  DATA <- .iaLongToWide(DATA)
   ColumnNames <- names(DATA)
 
   ##############################################
@@ -314,13 +318,17 @@ validateData <- function(DATA) {
                                     "ROUND_OBSERVATION", "ROUND_MEAN",
                                     "ROUND_DISPERSION")]
   MiscNames <- NULL
+  # count columns built from the long layout are categories by
+  # construction (see .iaLongToWide): is_category()'s "has an NA" test
+  # would reject them in a file whose every row is categorical
+  levelCols <- attr(DATA, "iaLevelColumns")
   if (length(CategoryNames) == 0)
   {
     CategoryNames <- NULL
   } else {
     for (i in 1:length(CategoryNames))
     {
-      if (!is_category(DATA[,CategoryNames[i]]))
+      if (!(CategoryNames[i] %in% levelCols) && !is_category(DATA[,CategoryNames[i]]))
       {
         # Issue 13: a column that LOOKS like a category (numeric, has
         # NAs) but is rejected only because some values are not

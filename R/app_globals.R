@@ -120,8 +120,97 @@ m <- 100000
   nm <- names(DATA)
   i <- grep("ROW", nm)
   if (length(i)) names(DATA)[i[1]] <- "ROW"
-
+  # The long categorical layout's column (2026-09-05): LEVEL, or its
+  # alias CATEGORY, matched EXACTLY - a grep would swallow a category
+  # column that happens to contain the word.
+  nm <- names(DATA)
+  i <- which(nm %in% c("LEVEL", "CATEGORY"))
+  if (length(i)) names(DATA)[i[1]] <- "LEVEL"
   DATA
+}
+
+# THE LONG CATEGORICAL LAYOUT (Steve, 2026-09-05: "would it be more
+# logical on the input spreadsheet to use the column N for categorical
+# variables ... As it is, the spreadsheet becomes quite wide when there
+# are many categories"; and: "add the new format while retaining the old
+# format so that both can be parsed"). A categorical variable may be
+# entered one line per LEVEL per arm - ROW = the variable, LEVEL = the
+# category, N = the count, MEAN and SD blank - instead of one line per
+# arm with a column per level. This converts the long lines into the
+# wide rows every downstream consumer expects (validateData's checks,
+# P_Calc's category columns, the grid, the workbook), so the rest of the
+# code sees one layout. Arms are the lines sharing TRIAL, ROW and LEVEL,
+# in file order - the same rule as for continuous lines - so a file may
+# list all of one arm's levels together or all arms of one level
+# together. A level's count column is the level name in upper case; a
+# name that collides with a base column ("N", "MEAN") is prefixed with
+# the variable's. Lines without a LEVEL pass through untouched; a file
+# without a LEVEL column is returned as it came.
+.iaLongToWide <- function(DATA) {
+  if (is.null(DATA) || !("LEVEL" %in% names(DATA)) || !("ROW" %in% names(DATA)))
+    return(DATA)
+  lv <- trimws(as.character(DATA$LEVEL))
+  isLevel <- !is.na(lv) & nzchar(lv)
+  if (!any(isLevel)) { DATA$LEVEL <- NULL; return(DATA) }
+  if (!("TRIAL" %in% names(DATA))) DATA$TRIAL <- 1
+  base <- c("TRIAL", "ROW", "N", "MEAN", "SD", "SE", "Q1", "Q3", "LEVEL",
+            "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION")
+  key <- paste(DATA$TRIAL, DATA$ROW, sep = "\r")
+  levelKeys <- unique(key[isLevel])
+  # the count column for each (variable, level): the level in upper case,
+  # like a wide file's headers - unless that would be a base column or
+  # would contain one of the substrings the normaliser and validateData
+  # grep for (a level "Obstetric" would be taken for an OBSERVATION
+  # rounding column; "Brown" for ROW), in which case the variable's name
+  # and the level, in lower case, which no upper-case grep can match
+  tokens <- "TRIAL|MEASURE|DECM|NUMBER|GROUP|ROW|MEAN|OBS|LEVEL|CATEGORY"
+  colOf <- function(row, level) {
+    nm <- toupper(level)
+    if (nm %in% base || grepl(tokens, nm)) nm <- tolower(paste(row, level))
+    nm
+  }
+  newCols <- character(0)
+  wide <- list()          # per level key: the wide rows (one per arm)
+  for (k in levelKeys) {
+    rows <- which(key == k & isLevel)
+    levels <- unique(lv[rows])
+    nArms <- max(vapply(levels, function(l) sum(lv[rows] == l), integer(1)))
+    proto <- DATA[rows[1], , drop = FALSE]
+    out <- proto[rep(1, nArms), , drop = FALSE]
+    out$N <- NA_real_; out$LEVEL <- NA
+    for (cc in intersect(c("MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(out)))
+      out[[cc]] <- NA
+    for (l in levels) {
+      cn <- colOf(DATA$ROW[rows[1]], l)
+      newCols <- union(newCols, cn)
+      lrows <- rows[lv[rows] == l]
+      counts <- suppressWarnings(as.numeric(DATA$N[lrows]))
+      if (!(cn %in% names(out))) out[[cn]] <- NA_real_
+      out[[cn]][seq_along(lrows)] <- counts
+    }
+    wide[[k]] <- out
+  }
+  # every count column exists on every row, NA where a variable does not use it
+  for (cn in newCols) if (!(cn %in% names(DATA))) DATA[[cn]] <- NA_real_
+  for (k in names(wide)) for (cn in newCols) if (!(cn %in% names(wide[[k]]))) wide[[k]][[cn]] <- NA_real_
+  # rebuild in file order: continuous lines as they are, each level
+  # group's wide rows where its first line stood
+  pieces <- list(); placed <- character(0)
+  for (i in seq_len(nrow(DATA))) {
+    if (!isLevel[i]) { pieces[[length(pieces) + 1]] <- DATA[i, , drop = FALSE]; next }
+    k <- key[i]
+    if (k %in% placed) next
+    placed <- c(placed, k)
+    pieces[[length(pieces) + 1]] <- wide[[k]][, names(DATA), drop = FALSE]
+  }
+  out <- do.call(rbind, pieces)
+  rownames(out) <- NULL
+  out$LEVEL <- NULL
+  # the columns this layout created are categories by construction; the
+  # attribute lets validateData accept them even when every row of the
+  # file is categorical and no count column has an NA to prove it by
+  attr(out, "iaLevelColumns") <- newCols
+  out
 }
 
 # After normalizing, two source columns can collapse onto one name (a

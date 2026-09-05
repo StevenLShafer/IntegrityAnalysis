@@ -342,7 +342,12 @@
 # Duplicate names after normalizing are REFUSED rather than resolved:
 # R's $ takes the first silently, so the gate and the simulator can
 # otherwise mean different columns.
-.apiNormalizeNames <- function(DATA) .iaNormalizeNames(DATA)
+# ...and the long categorical layout converted, so the categorical work
+# gate counts the level columns the validator will build (an unconverted
+# long frame has NO category columns and its counts sit in N, which the
+# gate would score as continuous work: an under-count, which is the
+# unsafe direction).
+.apiNormalizeNames <- function(DATA) .iaLongToWide(.iaNormalizeNames(DATA))
 
 # Which columns look like category columns, on the RAW frame - the gate
 # runs before validateData has computed CategoryNames, so it has to
