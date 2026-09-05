@@ -135,3 +135,31 @@ test_that("mid-p point estimates are unchanged in spirit: direction holds", {
   expect_lt(pH, 0.05)
   expect_gt(pT, 0.9)
 })
+
+test_that("the direct draw reproduces the full simulation above the threshold (2026-09-05)", {
+  # A row at 200 per arm, integer observations, integer means: the arm
+  # mean drawn directly (Normal with Sheppard's correction, then the
+  # printed rounding) must give the same row p as N observations drawn
+  # and averaged. Run both on the same table; the threshold is forced
+  # above N for the full run and below it for the direct one.
+  d <- data.frame(TRIAL = "T", ROW = "Age", N = 200, MEAN = c(55, 55), SD = c(13, 13),
+                  ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)
+  runAt <- function(thr, seed) {
+    testthat::local_mocked_bindings(.iaDirectDrawN = thr)
+    dqrng::dqset.seed(seed); set.seed(seed)
+    x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 20000)))
+    as.numeric(x$P[which(x$ROW == "Age")])
+  }
+  # an unremarkable row stops at the first stage (1,000 replicates), so
+  # one run resolves the mid-p only to about +/- 0.007; eight seeds each
+  # bring the means to +/- 0.0025 and the tolerance is six times that
+  pFull <- mean(vapply(1:8, function(k) runAt(1e9L, k), numeric(1)))
+  pDirect <- mean(vapply(1:8, function(k) runAt(100L, k), numeric(1)))
+  # both arms tied at the floor: the mid-p is half the tie mass, about
+  # 0.15 at this N and SD
+  expect_gt(pFull, 0.10); expect_lt(pFull, 0.20)
+  expect_lt(abs(pDirect - pFull), 0.015)
+  # ...and the direct draw is not used below the threshold, so the
+  # known-answer values (N <= 40) are the full simulation's
+  expect_lt(40, IntegrityAnalysis:::.iaDirectDrawN)
+})

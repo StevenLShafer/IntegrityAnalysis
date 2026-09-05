@@ -214,6 +214,61 @@ calibrated but sees only the alternative it was built for. The exact
 combination needs no alternative and was never worse than the better of
 those on that alternative's own ground.
 
+## Large trials: the arm mean drawn directly (2026-09-05)
+
+**What changed.** A continuous row's replicate used to draw every one
+of the N observations in each arm, round each to the observation
+precision, average them, and round the mean to the printed precision.
+That is exact, and it costs N random draws per arm per replicate, so a
+row with 5,000 patients per arm costs 250 times a row with 20, and once
+the exact combination escalated every row of an alarming trial together
+the largest trials of the Carlisle corpus took an hour each. Now, when
+an arm has at least 100 patients and the row's SD is at least three
+times the observation grid, the arm *mean* is drawn directly: one Normal
+draw with variance (SD² + h²/12)/N, where h is the observation grid, and
+then the rounding of the *printed* mean is applied exactly as before.
+Below either threshold the full simulation runs unchanged for that arm.
+
+**Why it is legitimate.** The mean of N observations is, by the central
+limit theorem, Normal to within Monte Carlo error once N is large, and
+rounding each observation to a grid of width h adds h²/12 to its
+variance (Sheppard's correction) without moving its mean. The only
+rounding that creates ties between arms is the rounding of the printed
+mean, and that is still applied to every simulated mean, so the tie
+mass at the floor, the discrete null of the row statistic, and
+everything the exact combination reads from it are preserved. What the
+shortcut removes is the cost of simulating N individual patients whose
+average the theorem already describes.
+
+**How it was tested.** The full simulation and the direct draw were
+run side by side on the two-arm row statistic, 100,000 replicates per
+cell, and compared on the tie mass at zero, the mid-p at a tie, and the
+largest difference between the two cumulative distributions over the
+statistic's support (Monte Carlo noise at this size is about 0.004).
+Across N of 10 to 300, printed to 0 or 1 decimals, with the observation
+grid at 1/13 of the SD (age) and 1/45 of it (BMI), the largest
+difference was 0.007 and the tie masses agreed to the third decimal at
+every N from 10 upward. With the grid comparable to the SD the direct
+draw is wrong at small N (SD 0.7 against integer observations: 0.047 at
+N = 10, 0.019 at N = 100) and right only where the grid is fine relative
+to the SD: sweeping the SD from 1.5 to 8 grid steps at N = 100, 300 and
+1,000, the difference is at most 0.008 at 1.5 to 2 steps and within
+noise from 3 steps up. Hence the two thresholds: 100 per arm and three
+grid steps of SD. On a six-row table at 5,000 per arm the two methods
+gave the same row and trial p-values to Monte Carlo precision and the
+direct draw was thirty times faster (0.2 s against 7.3 s for 10,000
+replicates). A unit test holds the row p of a 200-per-arm tied-integer
+row within 0.015 between the two methods, and every known-answer value,
+all at 40 per arm or fewer, is untouched. The measurement scripts and
+their output are kept with the corpus tooling.
+
+**What it does not change.** The statistic, the mid-p, the bounds, the
+exact combination, the attainable floor, and every row below the
+thresholds. Median rows still draw their N observations, because a
+median's sampling distribution is not the theorem's Normal at the same
+N; they can be given the same treatment later if a large-trial median
+row proves costly.
+
 ## One sentence for the skeptical reader
 
 Every "<" statement this tool prints is licensed by an exact upper
