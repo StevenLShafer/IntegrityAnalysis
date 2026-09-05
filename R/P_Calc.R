@@ -53,6 +53,36 @@
 # both on the same footing).
 .floorP <- function(p, m) pmin(pmax(p, 1 / (m + 1)), 0.9999)
 
+# THE DIRECT DRAW (Steve, 2026-09-05: "Build the direct draw into P_Calc").
+# A continuous row's replicate draws N observations per arm, rounds each
+# to the observation precision, averages, and rounds the mean to the
+# printed precision. That is exact and it costs N draws per arm per
+# replicate, so a 5,000-per-arm row costs 250 times a 20-per-arm row,
+# and the exact combination (which escalates every row of an alarming
+# trial together) made the Carlisle corpus's largest trials an hour each.
+# Above .iaDirectDrawN per arm the arm MEAN is drawn directly: the mean of
+# N observations each rounded to a grid of width h is, by the central
+# limit theorem, Normal with variance (SD^2 + h^2/12)/N - Sheppard's
+# correction adds the rounding's variance - and only the rounding of the
+# PRINTED mean is then applied exactly, which is the rounding that makes
+# ties. Two conditions, both measured against the full simulation
+# (C:/dev/Corpus/synthetic/direct-draw, 2026-09-05, 100,000 replicates per
+# cell; recorded in docs/statistics.md). N per arm at least
+# .iaDirectDrawN: at 100 the tie mass and the mid-p at a tie agree to the
+# third decimal and the largest CDF difference over the statistic's
+# support is within Monte Carlo noise (under 0.005) for every ordinary
+# grid; at 30 and below the coarse grids diverge. And the SD at least
+# .iaDirectDrawSdOverGrid times the observation grid: Sheppard's
+# correction assumes the density varies little across one grid step, and
+# with SD below the grid (0.7 against integer observations) the rounded
+# observations take a few values and the mean is not normal (CDF
+# difference 0.019 at N = 100); from 3 grid steps up the difference is
+# noise at every N. Either condition unmet, the full simulation runs
+# unchanged for that arm, so every pinned known-answer value (N <= 40)
+# is untouched.
+.iaDirectDrawN          <- 100L
+.iaDirectDrawSdOverGrid <- 3
+
 # A trial p as a number, for the closed-form combination ACROSS trials
 # (results workbook, graphs, API): the exact combination reports
 # "<0.0001" when its bound licenses it, and that enters the combination
@@ -333,14 +363,24 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # misalign arms within a replication; simulated column means
           # round to ROUND_MEAN (the printed precision), observations to
           # ROUND_OBSERVATION.
+          # per arm: the full simulation below .iaDirectDrawN, the direct
+          # draw of the arm mean at or above it (see the constant's note)
+          hObs   <- 10^(-ROWS$ROUND_OBSERVATION)
+          direct <- ROWS$N >= .iaDirectDrawN & Meansd >= .iaDirectDrawSdOverGrid * hObs
+          sdMean <- sqrt((Meansd^2 + hObs^2 / 12) / ROWS$N)
+          # the chunk size is set by the arms still simulated in full;
+          # a row of direct-draw arms costs one draw per arm per replicate
+          Nfull <- sum(ROWS$N[!direct])
           simulate <- function(n) {
             out <- numeric(0); left <- n
             while (left > 0) {
-              ch <- min(left, max(1, floor(1e8 / max(1, N))))
+              ch <- min(left, max(1, floor(1e8 / max(1, Nfull))))
               meansim <- dqrnorm(ch, mean = Meanmean, sd = SEMsample)
               MCMean <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
-                MCMean[,i] <- round(
+                MCMean[,i] <- if (direct[i]) {
+                  round(rnorm(ch, meansim, sdMean[i]), ROWS$ROUND_MEAN[i])
+                } else round(
                   rowmeans(round(
                     matrix(rnorm(ROWS$N[i] * ch,
                                  rep(meansim, ROWS$N[i]), Meansd),
