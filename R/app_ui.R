@@ -234,7 +234,7 @@ app_ui <- function(testNote = NULL)
             "anywhere on this page, and a screenshot of a table can be ",
             "pasted (Ctrl+V / Cmd+V).</b><br>")),
           fileInput("upload", NULL, multiple = TRUE,
-                    accept = c(".csv", ".xls", ".xlsx", ".pdf", ".docx", ".xml",
+                    accept = c(".csv", ".xlsx", ".pdf", ".docx", ".xml",
                                ".jpg", ".jpeg", ".png", ".tif", ".tiff",
                                ".zip")),
           # Opt-in approximation (Steve, 2026-08-21): percent-only cells

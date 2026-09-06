@@ -37,7 +37,6 @@ run_app <- function(testNote = NULL,
   suppressWarnings(suppressPackageStartupMessages({
     library(shiny)
     library(openxlsx)       # read.xlsx / write.xlsx (xlsx upload + results download)
-    library(readxl)         # read_excel (legacy .xls upload)
     library(Rfast)          # rowmeans / rowsums on the Monte Carlo matrix
     library(shinyjs)
     library(shinyWidgets)   # actionBttn

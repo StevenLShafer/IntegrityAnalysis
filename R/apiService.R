@@ -497,7 +497,7 @@
   declared / onDisk <= .apiMaxZipRatio
 }
 
-# The on-disk ceiling for a non-zip spreadsheet (.xls) - the request
+# The on-disk ceiling for a non-zip spreadsheet (.xls, no longer accepted) - the request
 # filter already caps the upload, this is defense in depth for direct
 # callers of the helper.
 .apiMaxBytesOnDisk <- 26214400L
@@ -565,7 +565,11 @@
          skipped = if (nrow(r$skipped)) r$skipped else NULL,
          flags = r$flags %||% character(0),
          engine = r$engine)
-  } else if (ext %in% c("csv", "xls", "xlsx")) {
+  } else if (ext == "xls") {
+    # dropped 2026-09-06 (security screen 2026-09-05-2117 F3): see .wideRawCells
+    list(ok = FALSE, reasons = paste0(name, ": ", .iaXlsMessage()),
+         data = NULL, skipped = NULL, flags = character(0), engine = NA_character_)
+  } else if (ext %in% c("csv", "xlsx")) {
     # Decompression-bomb preflight before any in-process read (H3).
     if (!.apiZipInflationOK(path, ext))
       return(list(ok = FALSE,
@@ -591,11 +595,9 @@
       if (ext == "csv") {
         if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"))
         utils::read.csv(path, check.names = FALSE, nrows = .iaSheetRowCap + 1L)
-      } else if (ext == "xlsx") {
+      } else {
         openxlsx::read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
                             cols = seq_len(.iaSheetColCap + 1L))
-      } else {
-        as.data.frame(readxl::read_excel(path, n_max = .iaSheetRowCap + 1L))   # one read (F3)
       }
     }, error = function(e) NULL)
     if (!is.null(d) && (nrow(d) > .iaSheetRowCap || ncol(d) > .iaSheetColCap)) d <- NULL
@@ -769,7 +771,6 @@ runApiService <- function(port = 8080, host = "0.0.0.0") {
   suppressWarnings(suppressPackageStartupMessages({
     library(shiny)      # outputComments isolates; no UI is started
     library(openxlsx)
-    library(readxl)
     library(Rfast)
     library(foreach)
     library(MBESS)

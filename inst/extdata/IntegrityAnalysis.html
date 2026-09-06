@@ -224,25 +224,28 @@ grid, is left to do what it always did. On a phone, whether a page-level
 paste of a picture reaches the app depends on the browser; the picker
 and the drop always work.</em></p>
 <p><strong>A template spreadsheet.</strong> A spreadsheet in the app’s
-own long format (Excel <code>.xlsx</code>/<code>.xls</code> or
-<code>.csv</code>) uploads directly. The column layout is described in
-<em>Preparing your data</em> below — but few users should ever need to
-build one by hand: upload the article itself, or use the journal-style
-route next, and note that the app’s own table downloads are all valid
-input files. (The sidebar’s Template and Example downloads were retired
-in August 2026 for the same reason.)</p>
+own long format (Excel <code>.xlsx</code> or <code>.csv</code>) uploads
+directly. The column layout is described in <em>Preparing your data</em>
+below — but few users should ever need to build one by hand: upload the
+article itself, or use the journal-style route next, and note that the
+app’s own table downloads are all valid input files. (The sidebar’s
+Template and Example downloads were retired in August 2026 for the same
+reason.)</p>
 <p><strong>A journal-style baseline table.</strong> A spreadsheet laid
 out the way journals print Table 1 — variables as rows, arms as columns
 with their sizes in the headers (“Control (n = 50)”), cells like “45.3
 (12.1)” — uploads directly; the app recognizes the layout and converts
-it into template rows itself. <strong>Any spreadsheet format works here
-— Excel <code>.xlsx</code> and <code>.xls</code>, and plain
-<code>.csv</code></strong> — so a table pasted out of a manuscript into
-a CSV is as good an input as a workbook. The app’s own <strong>Editor’s
-View</strong> download is exactly this format, so a table downloaded
-from one session (or received from a colleague) is valid input to the
-next. What the cells may hold: “mean (SD)” and “mean ± SD”; “median [Q1,
-Q3]” <strong>when the row label says the interval is an IQR</strong> (a
+it into template rows itself. <strong>Excel <code>.xlsx</code> and plain
+<code>.csv</code> both work here</strong> — so a table pasted out of a
+manuscript into a CSV is as good an input as a workbook. The old Excel
+format, <code>.xls</code>, is no longer accepted: its reader builds a
+sheet’s declared size in memory before any limit can apply, which is a
+security risk, so support was dropped on 2026-09-06. Save the workbook
+as <code>.xlsx</code>. The app’s own <strong>Editor’s View</strong>
+download is exactly this format, so a table downloaded from one session
+(or received from a colleague) is valid input to the next. What the
+cells may hold: “mean (SD)” and “mean ± SD”; “median [Q1, Q3]”
+<strong>when the row label says the interval is an IQR</strong> (a
 median with a min–max range, or with an unlabeled interval, is flagged
 for hand entry instead — the analysis needs quartiles, and the app will
 not guess); “n (%)” counts, which become a category with its complement;
@@ -339,8 +342,9 @@ Carlisle’s 2012 review of Fujii’s 168 trials (<a href="https://pubmed.ncbi.n
 one file per trial in the archive and every entry becomes its own trial
 in the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
-csv/xls/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note, an
-archive inside the archive is not expanded, and a corrupt archive is
+csv/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note (an
+<code>.xls</code> with the note that the format is no longer accepted),
+an archive inside the archive is not expanded, and a corrupt archive is
 reported rather than analyzed.</p>
 <p>The limits, and what they mean in practice:</p>
 <ul>

@@ -797,7 +797,9 @@ app_server <- function(input, output, session) {
     if (length(bad))
       outputComments(paste0(
         "Not opened: ", paste(bad, collapse = ", "),
-        " - ", tolower(how), " files must be csv, xls, xlsx, pdf, docx, xml, jpg, png, tif, or zip."))
+        " - ", tolower(how), " files must be csv, xlsx, pdf, docx, xml, jpg, png, tif, or zip",
+        if (any(grepl("\\.xls$", bad, ignore.case = TRUE)))
+          paste0(" (", .iaXlsMessage(), ")") else "", "."))
   })
 
   observeEvent(
@@ -874,7 +876,7 @@ app_server <- function(input, output, session) {
         files <- files[!lock, , drop = FALSE]
       }
 
-      bad <- !files$ext %in% c("csv", "xlsx", "xls", "pdf", "docx", "xml",
+      bad <- !files$ext %in% c("csv", "xlsx", "pdf", "docx", "xml",
                                .ppImageExts)
       for (nm in files$name[bad])
         outputComments(paste0(nm, " is not a supported file type."))
@@ -922,13 +924,10 @@ app_server <- function(input, output, session) {
           if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
           return(capped(read.csv(path, nrows = .iaSheetRowCap + 1L)))
         }
-        if (ext == "xlsx")
-          return(capped(read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
-                                  cols = seq_len(.iaSheetColCap + 1L))))
-        # FIX (from the single-file code): read.xl() never existed;
-        # readxl::read_excel() is the reader, as.data.frame() because a
-        # tibble's [,col] semantics break the column handling downstream.
-        capped(as.data.frame(read_excel(path, n_max = .iaSheetRowCap + 1L)))   # one read (F3)
+        # (.xls was read here by readxl until 2026-09-06; dropped - see
+        # .wideRawCells. The allowlist above no longer admits it.)
+        capped(read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
+                         cols = seq_len(.iaSheetColCap + 1L)))
       }
       # NOTE this is an EXCLUSION list, not a whitelist: everything that
       # survived the allowlist above and is not a parsed-document type

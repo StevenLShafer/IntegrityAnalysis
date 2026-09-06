@@ -128,22 +128,17 @@
     names(out) <- sheets
     return(out)
   }
-  # .xls via readxl, ONE row-bounded read per sheet and the column cap
-  # judged on its result: libxls parses the whole sheet and allocates the
-  # declared grid before n_max applies (screen 2026-09-05-2117 F3), so a
-  # separate zero-row "preflight" read only doubled that cost
-  sheets <- readxl::excel_sheets(path)
-  if (length(sheets) > .iaSheetCountCap)
-    stop("the workbook has more than ", .iaSheetCountCap, " sheets and was not read", call. = FALSE)
-  out <- lapply(sheets, function(s)
-    toMat(capped(as.data.frame(readxl::read_excel(path, sheet = s,
-                                                  col_names = FALSE,
-                                                  col_types = "text",
-                                                  n_max = .iaSheetRowCap + 1L)),
-                 paste("sheet", s))))
-  names(out) <- sheets
-  out
+  # .xls: DROPPED (Steve, 2026-09-06, on security screen 2026-09-05-2117
+  # F3). libxls parses a whole sheet and allocates its declared grid
+  # before any row limit applies, so a few-KB file declaring row 65,535
+  # x 256 cells costs ~800 MB per read inside the worker. Rather than
+  # read it in a subprocess, the format is refused everywhere - every
+  # spreadsheet program saves as .xlsx - and readxl has left the package.
+  stop(.iaXlsMessage(), call. = FALSE)
 }
+.iaXlsMessage <- function() paste0("the old Excel format (.xls) is no longer accepted: its reader ",
+                                   "builds a sheet's declared size before any limit can apply (a ",
+                                   "security decision, 2026-09-06). Save the workbook as .xlsx")
 
 # Find the wide table's header row in `cells` (a character matrix), or NA.
 # Conservative on purpose: anything not confidently wide falls through to

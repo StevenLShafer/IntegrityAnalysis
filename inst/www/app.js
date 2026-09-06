@@ -36,7 +36,7 @@ $(document).on('shiny:value', function(event) {
 // the picker's dialog), and its name goes to the server as `dropRejected`
 // so the comments log can say what happened and what is accepted.
 (function () {
-  var ACCEPT = ['.csv', '.xls', '.xlsx', '.pdf', '.docx', '.xml',
+  var ACCEPT = ['.csv', '.xlsx', '.pdf', '.docx', '.xml',
                 '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.zip'];
   var depth = 0;   // dragenter/dragleave fire per element crossed; count them
 

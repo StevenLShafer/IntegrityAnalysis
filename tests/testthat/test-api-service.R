@@ -392,10 +392,11 @@ test_that("the zip preflight does not fall open on a non-zip xlsx", {
   fake <- tempfile(fileext = ".xlsx")
   writeBin(as.raw(rep(0, 64)), fake)
   expect_false(.apiZipInflationOK(fake, "xlsx"))
-  # .xls is legitimately not a zip - bounded by file size instead
+  # .xls is refused outright since 2026-09-06 (security screen 2117 F3)
   fakeXls <- tempfile(fileext = ".xls")
   writeBin(as.raw(rep(0, 64)), fakeXls)
-  expect_true(.apiZipInflationOK(fakeXls, "xls"))
+  r <- .apiReadUpload(fakeXls, "old.xls")
+  expect_false(isTRUE(r$ok)); expect_match(r$reasons, "no longer accepted"); expect_match(r$reasons, "xlsx")
   # a real workbook still passes
   ex <- system.file("extdata", "Example.xlsx", package = "IntegrityAnalysis")
   skip_if(!nzchar(ex), "Example.xlsx not installed")

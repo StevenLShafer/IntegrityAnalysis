@@ -125,7 +125,7 @@ test_that("the build commit reaches the SERVED html, not just the object", {
     suppressWarnings(suppressPackageStartupMessages({
       library(shiny); library(shinydashboard); library(shinyjs)
       library(shinyWidgets); library(bslib); library(rhandsontable)
-      library(openxlsx); library(readxl); library(Rfast); library(foreach)
+      library(openxlsx); library(Rfast); library(foreach)
       library(MBESS); library(dqrng)
     }))
     shiny::addResourcePath("www",

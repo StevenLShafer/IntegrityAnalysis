@@ -7,7 +7,7 @@
 # validated result must match the frame it came from. Fixture and
 # comparison helpers live in helper-baselineTable.R.
 suppressWarnings(suppressPackageStartupMessages({
-  library(shiny); library(openxlsx); library(readxl); library(Rfast)
+  library(shiny); library(openxlsx); library(Rfast)
   library(foreach); library(MBESS); library(dqrng)
 }))
 

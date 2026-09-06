@@ -30,7 +30,6 @@ Imports:
   openxlsx,
   pdftools,
   png,
-  readxl,
   Rfast,
   rhandsontable,
   rvg,
