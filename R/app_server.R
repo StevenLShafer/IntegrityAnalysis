@@ -736,10 +736,17 @@ app_server <- function(input, output, session) {
       for (i in 1:LengthTrials)
       {
         TRIAL <- TRIALS[i]
-        OUTPUT <<- rbind(
-          OUTPUT,
-          P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData)
-        )
+        # Defense in depth (screen 2026-09-06-0514 F1): an engine error
+        # the validator did not foresee is a message and a stopped
+        # analysis, never a dead session.
+        one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData),
+                        error = function(e) {
+                          outputComments(paste0("Trial ", .escapeHtml(TRIAL), " could not be analyzed: ",
+                                                .escapeHtml(conditionMessage(e)), "."))
+                          NULL
+                        })
+        if (is.null(one)) next
+        OUTPUT <<- rbind(OUTPUT, one)
         progress$set(
           value = i / LengthTrials,
           detail = paste0(TRIAL, ", P = ",OUTPUT$P[nrow(OUTPUT)-1]))

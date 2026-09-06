@@ -686,7 +686,13 @@
                   stringsAsFactors = FALSE),
                 templateCsv = .apiTemplateCsv(NULL)))
   }
-  v <- validateData(DATA)
+  # Defense in depth (screen 2026-09-06-0514 F1): an error the validator
+  # or the engine did not foresee is a 422 naming the stage, never a 500
+  v <- tryCatch(validateData(DATA), error = function(e)
+    list(FAIL = TRUE, issues = data.frame(
+      row = NA_integer_, col = NA_character_, code = "error",
+      note = paste0("the table could not be validated: ", conditionMessage(e)),
+      stringsAsFactors = FALSE)))
   if (isTRUE(v$FAIL)) {
     return(list(ok = FALSE, stage = "validation",
                 issues = if (!is.null(v$issues)) v$issues else NULL,
@@ -697,9 +703,17 @@
   # the same file, seed and build give the same numbers on any service
   if (!is.null(seed)) .iaSetSeed(seed)
   OUTPUT <- NULL
-  for (TRIAL in v$TRIALS)
-    OUTPUT <- rbind(OUTPUT,
-                    P_Calc(TRIAL, v$DATA, v$CategoryNames, m))
+  for (TRIAL in v$TRIALS) {
+    one <- tryCatch(P_Calc(TRIAL, v$DATA, v$CategoryNames, m), error = function(e) e)
+    if (inherits(one, "error"))
+      return(list(ok = FALSE, stage = "analysis",
+                  issues = data.frame(row = NA_integer_, col = NA_character_, code = "error",
+                                      note = paste0("trial ", TRIAL, " could not be analyzed: ",
+                                                    conditionMessage(one)),
+                                      stringsAsFactors = FALSE),
+                  templateCsv = .apiTemplateCsv(v$DATA)))
+    OUTPUT <- rbind(OUTPUT, one)
+  }
   # per-trial summary p's, plus the overall Stouffer combination across
   # trials (the same closure the results workbook reports)
   sm <- OUTPUT[!is.na(OUTPUT$ROW) & OUTPUT$ROW == "Summary", , drop = FALSE]
