@@ -136,11 +136,29 @@ function(req, res, file) {
 #* @serializer unboxedJSON
 #* @post /analyze
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
-#* @param seed:int Optional Monte Carlo seed, 1 to 2147483647: the same document, seed and build give the same numbers. Echoed in the reply.
+#* @param seed:int Optional Monte Carlo seed, 1 to 2147483647, sent as ?seed=N on the URL: the same document, seed and build give the same numbers. Echoed in the reply.
 function(req, res, file, seed = NULL) {
   # the seed is judged before the upload is read: a bad one is a 422
-  # that costs nothing
+  # that costs nothing.
+  #
+  # TRANSPORT (found 2026-09-05, the first seeded call to the deployed
+  # service): a multipart text part that carries no Content-Type header
+  # - which is what curl -F seed=7, httr2's req_body_multipart and a
+  # hand-built body all send - reaches this function as an EMPTY LIST:
+  # plumber's multipart parser drops a part it has no parser for. The
+  # value is gone by the time we see it. So the seed travels on the URL
+  # (?seed=N), which plumber binds to this argument reliably; a text
+  # part sent WITH "Content-Type: text/plain" also arrives. The empty
+  # list is recognised and the 422 says what to do instead.
   seedValue <- NULL
+  if (is.list(seed) && !length(seed)) {
+    res$status <- 422
+    return(list(ok = FALSE, stage = "request", file = names(file)[1],
+                reasons = paste("seed was sent as a form part without a Content-Type",
+                                "and was dropped: send it on the URL as ?seed=N"),
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
+                deleted = TRUE))
+  }
   if (!is.null(seed) && nzchar(trimws(as.character(seed[1])))) {
     seedValue <- IntegrityAnalysis:::.iaSeedValue(seed)
     if (is.null(seedValue)) {

@@ -100,7 +100,7 @@ Extract (if needed), validate, and run the Monte Carlo. Same request as
 
 | field | type | meaning |
 |---|---|---|
-| `seed` | integer, 1 to 2147483647 | a Monte Carlo seed. The same document, seed and service build (`commit` in `/health`) give the same numbers; the reply echoes it as `seed`. Without it the numbers differ from run to run within the reported Monte Carlo interval, as an unseeded simulation should. A seed that is not a whole number in range is refused with 422, stage `request`, before the document is read |
+| `seed` | integer, 1 to 2147483647, **on the URL**: `POST /analyze?seed=12345` | a Monte Carlo seed. The same document, seed and service build (`commit` in `/health`) give the same numbers; the reply echoes it as `seed`. Send it as a query parameter, not as a form part: a multipart text part without a `Content-Type` header (what most HTTP libraries send) is dropped by the service's multipart parser and refused with 422 saying so; a part sent with `Content-Type: text/plain` is also accepted. Without it the numbers differ from run to run within the reported Monte Carlo interval, as an unseeded simulation should. A seed that is not a whole number in range is refused with 422, stage `request`, before the document is read |
 
 There is no knob for the number of replications: every trial runs the
 same staged scheme as the app (1,000 replicates per row, then 10,000
