@@ -347,18 +347,25 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           COLS <- nrow(ROWS)
           N <- sum(ROWS$N)
           Meanmean <- sum(ROWS$N*ROWS$MEAN) / N
-          # The calculation of Meanvar is OK. SD^2 is an unbiased estimate
-          # of variance
-          Meanvar <-  sum(ROWS$N*ROWS$SD^2) / N
-
-          # However, this next calculatiion is biased. s.u. will correct it
-          # If N > 30, then the correction is < 1 %. It blows up if N > 343!
-          if (N < 30)
-          {
-            Meansd <- s.u(sqrt(Meanvar), N)
-          } else {
-            Meansd <- sqrt(Meanvar)
-          }
+          # THE POOLED SD (Steve's decision 2026-09-05, after the outside
+          # review's finding 8). Each arm's SD was computed about its own
+          # mean, so arm i carries N_i - 1 degrees of freedom and the
+          # pooled variance has N - k of them (k arms). Pooling by those
+          # degrees of freedom is the minimum-variance unbiased estimate
+          # of a common variance, and exactly the chi-square shape the
+          # square-root correction below assumes.
+          #
+          # Its square root is biased low (Jensen): E[s] = c4 * sigma
+          # with c4 = sqrt(2/df) * Gamma((df+1)/2) / Gamma(df/2). The
+          # previous code corrected with MBESS::s.u(sd, N), i.e. df = N - 1
+          # - one degree of freedom too many per arm beyond the first -
+          # and only below N = 30, leaving a 1% step there and a 3.8%
+          # shortfall for two arms of two. Now: df = N - k, at every N,
+          # through lgamma so it neither steps nor overflows.
+          df <- N - COLS
+          Meanvar <- sum((ROWS$N - 1) * ROWS$SD^2) / df
+          c4 <- sqrt(2 / df) * exp(lgamma((df + 1) / 2) - lgamma(df / 2))
+          Meansd <- sqrt(Meanvar) / c4
           SEMsample <- Meansd/sqrt(mean(ROWS$N))
           DiffSample <- sum((ROWS$MEAN - Meanmean)^2) # Squared difference of column means
           # Monte Carlo Simulation. The simulation body is unchanged from

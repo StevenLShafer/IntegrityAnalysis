@@ -42,7 +42,7 @@ run_app <- function(testNote = NULL,
     library(shinyjs)
     library(shinyWidgets)   # actionBttn
     library(foreach)        # %do% loop over rows in P_Calc
-    library(MBESS)          # s.u: unbiased SD correction for small N
+    library(MBESS)          # (no longer used by the engine since the c4 correction moved in-house, 2026-09-05; kept for the corpus scripts that attach it)
     library(dqrng)          # dqrnorm: fast RNG for the simulated means
     library(bslib)          # input_task_button
     library(shinydashboard)

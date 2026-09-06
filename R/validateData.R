@@ -326,7 +326,7 @@ validateData <- function(DATA) {
   # print a standard deviation or a standard error, never a variance, so
   # ParsePDF records whichever was printed in its own column and leaves the
   # conversion to us: it needs N, and the sample SD is a biased estimator
-  # of sigma (Jensen's inequality), which is what s.u() below corrects.
+  # of sigma (Jensen's inequality), which P_Calc's c4 correction undoes.
   # ROUND_DISPERSION is the printed granularity of whichever value was
   # given, and cannot be inferred from ROUND_MEAN - a table may print
   # "39 (4.06)".

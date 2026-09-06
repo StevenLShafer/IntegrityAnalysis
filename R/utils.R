@@ -757,8 +757,8 @@
 # was printed keeps every number traceable to a cell on the page, and leaves
 # the conversion - and the small-sample bias correction that goes with it,
 # since the sample SD is a biased estimator of sigma by Jensen's inequality -
-# to the analysis, which applies it once, in one place (MBESS::s.u in the
-# Integrity-Analysis server).
+# to the analysis, which applies it once, in one place (the c4 correction
+# of the pooled SD in P_Calc).
 #
 # ROUND_DISPERSION is the printed granularity of whichever of SD or SE was
 # given. It cannot be inferred from ROUND_MEAN: a table may print "39 (4.06)".
