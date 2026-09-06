@@ -589,14 +589,13 @@
     d <- tryCatch({
       # bounded like .wideRawCells (the sparse-sheet expansion, 2026-09-05)
       if (ext == "csv") {
-        if (.iaCsvColumns(path) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"))
+        if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"))
         utils::read.csv(path, check.names = FALSE, nrows = .iaSheetRowCap + 1L)
       } else if (ext == "xlsx") {
         openxlsx::read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
                             cols = seq_len(.iaSheetColCap + 1L))
       } else {
-        if (ncol(readxl::read_excel(path, n_max = 0)) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"))
-        as.data.frame(readxl::read_excel(path, n_max = .iaSheetRowCap + 1L))
+        as.data.frame(readxl::read_excel(path, n_max = .iaSheetRowCap + 1L))   # one read (F3)
       }
     }, error = function(e) NULL)
     if (!is.null(d) && (nrow(d) > .iaSheetRowCap || ncol(d) > .iaSheetColCap)) d <- NULL

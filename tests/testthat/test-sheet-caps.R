@@ -41,12 +41,27 @@ test_that("a sheet within the caps still reads", {
   expect_identical(dim(m[[1]]), c(50L, 10L))
 })
 
-test_that("a CSV with too many columns is refused from its first line", {
+test_that("a CSV with too many columns on ANY line is refused; an unbalanced quote refuses too", {
   f <- tempfile(fileext = ".csv")
   writeLines(c(paste(rep("h", 600), collapse = ","), paste(rep("1", 600), collapse = ",")), f)
   expect_gt(IntegrityAnalysis:::.iaCsvColumns(f), 500)
   expect_error(IntegrityAnalysis:::.wideRawCells(f, "csv"), "more than 10000 rows or 500 columns")
+  # screen 2026-09-05-2117 F1: a narrow first line, wide lines 2-5
+  f2 <- tempfile(fileext = ".csv")
+  writeLines(c("a,b", rep(paste(rep("", 3001), collapse = ","), 4), rep("x", 20)), f2)
+  expect_true(IntegrityAnalysis:::.iaCsvTooWide(f2))
+  expect_error(IntegrityAnalysis:::.wideRawCells(f2, "csv"), "more than 10000 rows or 500 columns")
+  # F5: an unbalanced quote
+  f3 <- tempfile(fileext = ".csv"); writeLines(c('a,"b,c', "1,2"), f3)
+  expect_true(IntegrityAnalysis:::.iaCsvTooWide(f3))
   g <- tempfile(fileext = ".csv")
   writeLines(c("TRIAL,ROW,N,MEAN,SD", "T,Age,10,50,10", "T,Age,10,51,11"), g)
   expect_identical(IntegrityAnalysis:::.iaCsvColumns(g), 5L)
+})
+
+test_that("a workbook with too many sheets is refused before its sheets are read", {
+  wb <- createWorkbook()
+  for (i in 1:12) { addWorksheet(wb, paste0("S", i)); writeData(wb, paste0("S", i), "x", 1, 1) }
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  expect_error(IntegrityAnalysis:::.wideRawCells(f, "xlsx"), "more than 10 sheets")
 })

@@ -919,7 +919,7 @@ app_server <- function(input, output, session) {
           d
         }
         if (ext == "csv") {
-          if (.iaCsvColumns(path) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"), call. = FALSE)
+          if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
           return(capped(read.csv(path, nrows = .iaSheetRowCap + 1L)))
         }
         if (ext == "xlsx")
@@ -928,9 +928,7 @@ app_server <- function(input, output, session) {
         # FIX (from the single-file code): read.xl() never existed;
         # readxl::read_excel() is the reader, as.data.frame() because a
         # tibble's [,col] semantics break the column handling downstream.
-        if (ncol(read_excel(path, n_max = 0)) > .iaSheetColCap)
-          stop(.iaSheetCapMessage("the sheet"), call. = FALSE)
-        capped(as.data.frame(read_excel(path, n_max = .iaSheetRowCap + 1L)))
+        capped(as.data.frame(read_excel(path, n_max = .iaSheetRowCap + 1L)))   # one read (F3)
       }
       # NOTE this is an EXCLUSION list, not a whitelist: everything that
       # survived the allowlist above and is not a parsed-document type
