@@ -121,3 +121,11 @@ test_that("an alias-named rounding column is clamped too (screen 0617 F1)", {
   }
   expect_identical(nchar(IntegrityAnalysis:::.fmtAt(1.5, 2e9)), 22L)   # "1." + 20 decimals, not 2e9
 })
+
+test_that("a rejected observation precision is inferred from the mean's, not left at zero (review of #190)", {
+  d <- data.frame(TRIAL = "T", ROW = "X", N = 30, MEAN = c(1.25, 1.30), SD = 0.1,
+                  ROUND_OBSERVATION = c(21, Inf), stringsAsFactors = FALSE)
+  v <- vd(d)
+  expect_identical(v$DATA$ROUND_MEAN, c(2, 2))
+  expect_identical(v$DATA$ROUND_OBSERVATION, c(2, 2))
+})

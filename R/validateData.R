@@ -390,6 +390,9 @@ validateData <- function(DATA) {
         DATA[[col]] <- suppressWarnings(as.numeric(DATA[[col]]))
       DATA[[col]][!is.na(DATA[[col]]) & (!is.finite(DATA[[col]]) | abs(DATA[[col]]) > 20)] <- NA_real_
     }
+  # a rejected observation precision is now a BLANK one: it is inferred
+  # from the mean's like any other blank (review of #190)
+  obsInferred <- obsInferred | is.na(DATA$ROUND_OBSERVATION)
   for (col in c("ROUND_MEAN", "ROUND_OBSERVATION"))
     DATA[[col]][is.na(DATA[[col]])] <- 0
 
