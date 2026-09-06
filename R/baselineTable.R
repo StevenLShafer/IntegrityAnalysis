@@ -316,11 +316,15 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
                error = function(e) "unknown"),
       paste(R.version$major, R.version$minor, sep = "."),
       paste("Carlisle-Shafer Monte Carlo; one-sided toward excessive",
-            "homogeneity; mid-p; Stouffer combination across rows"),
+            "homogeneity; mid-p; exact combination across rows (Stouffer's",
+            "sum judged against its own simulated null)"),
       paste("Install the engine commit above from",
             "github.com/StevenLShafer/IntegrityAnalysis and re-run this",
-            "table. The commit pins the code; renv.lock at that commit",
-            "pins every package version.")),
+            "table with the Monte Carlo seed recorded on the Summary sheet",
+            "(?seed=N in the app, seed in the API). The commit pins the",
+            "code; renv.lock at that commit pins every package version;",
+            "the seed pins the draw. Without the seed a rerun lands within",
+            "the Monte Carlo interval, not on the same number.")),
     stringsAsFactors = FALSE)
   openxlsx::addWorksheet(wb, "Provenance")
   openxlsx::writeData(wb, "Provenance", prov, headerStyle = headStyle)

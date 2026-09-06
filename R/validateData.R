@@ -21,7 +21,7 @@
 #' @param x a column of the uploaded table.
 #' @return `TRUE` if the column should be treated as categorical counts.
 #' @noRd
-is_category <- function(x) {
+is_category <- function(x, requireNA = TRUE) {
   # Remove NAs first for efficiency, then check if all values are integers
 
   # FIX: text columns (e.g. a comments column) previously crashed the app:
@@ -31,8 +31,9 @@ is_category <- function(x) {
   if (!is.numeric(x))
     return(FALSE)
 
-  # If there are no na values, then it can't be a category
-  if (sum(is.na(x)) == 0)
+  # If there are no na values, then it can't be a category (unless the
+  # caller knows the table has no continuous line to leave one)
+  if (requireNA && sum(is.na(x)) == 0)
     return(FALSE)
 
   # If the vector is empty after removing NAs then it is not a category
@@ -284,8 +285,17 @@ validateData <- function(DATA) {
   if (length(ObservationColumns) == 0)
   {
     DATA$ROUND_OBSERVATION <- DATA$ROUND_MEAN
+    # FIX (outside review, 2026-09-05): this copy happens BEFORE the
+    # per-line decimal bump below raises ROUND_MEAN, so a table without
+    # rounding columns whose means were 1.20 and 1.25 used to simulate
+    # with mean precision 1 and 2 but OBSERVATION precision 0 - every
+    # simulated measurement rounded to a whole number. Remember which
+    # observation cells were inferred (all of them, here; the blank
+    # cells of a supplied column, below) and re-copy after the bump.
+    obsInferred <- rep(TRUE, nrow(DATA))
   } else {
     names(DATA)[ObservationColumns[1]] <- "ROUND_OBSERVATION"
+    obsInferred <- is.na(suppressWarnings(as.numeric(DATA$ROUND_OBSERVATION)))
   }
   ColumnNames <- names(DATA)
 
@@ -333,13 +343,20 @@ validateData <- function(DATA) {
   # construction (see .iaLongToWide): is_category()'s "has an NA" test
   # would reject them in a file whose every row is categorical
   levelCols <- attr(DATA, "iaLevelColumns")
+  # A table that is nothing but counts - a sex distribution and no
+  # continuous variable - has no continuous line to leave the blank that
+  # is_category() keys on, and used to be refused for it (outside
+  # review, 2026-09-05). When no line carries a MEAN or an SD there is
+  # nothing to tell a count column from, so the blank is not required.
+  countsOnly <- all(is.na(DATA$MEAN)) && all(is.na(DATA$SD))
   if (length(CategoryNames) == 0)
   {
     CategoryNames <- NULL
   } else {
     for (i in 1:length(CategoryNames))
     {
-      if (!(CategoryNames[i] %in% levelCols) && !is_category(DATA[,CategoryNames[i]]))
+      if (!(CategoryNames[i] %in% levelCols) &&
+          !is_category(DATA[,CategoryNames[i]], requireNA = !countsOnly))
       {
         # Issue 13: a column that LOOKS like a category (numeric, has
         # NAs) but is rejected only because some values are not
@@ -498,6 +515,19 @@ validateData <- function(DATA) {
         }
       }
     }
+  }
+
+  # The inferred precisions, finished (outside review, 2026-09-05). A
+  # variable is printed at one precision, so a mean typed as 1.20 beside
+  # one typed as 1.25 (the trailing zero is lost when text becomes a
+  # number) is a 2-decimal variable on both lines: raise ROUND_MEAN to
+  # the variable's maximum. Then an observation precision that was not
+  # supplied follows the mean's - the inference the guide documents -
+  # rather than the 0 it was copied from before the bump.
+  if (nrow(DATA) > 0)
+  {
+    DATA$ROUND_MEAN <- stats::ave(DATA$ROUND_MEAN, DATA$TRIAL, DATA$ROW, FUN = max)
+    DATA$ROUND_OBSERVATION[obsInferred] <- DATA$ROUND_MEAN[obsInferred]
   }
 
   # A SINGLE-LINE categorical variable is unanalyzable: the method

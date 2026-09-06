@@ -22,9 +22,12 @@ blankStyle <- function(MEAN, ROUND_MEAN = NA_real_) data.frame(
 test_that("a decimal mean with an empty ROUND_MEAN validates (no crash)", {
   v <- vd(blankStyle(MEAN = c(45.3, 46.1)))
   expect_false(v$FAIL)
-  # the inference: NA -> 0, then bumped to the typed precision
+  # the inference: NA -> 0, then bumped to the typed precision; the
+  # observation precision follows the mean's (it used to stay at 0,
+  # which rounded every simulated measurement to a whole number -
+  # outside review, 2026-09-05)
   expect_identical(v$DATA$ROUND_MEAN, c(1, 1))
-  expect_identical(v$DATA$ROUND_OBSERVATION, c(0, 0))
+  expect_identical(v$DATA$ROUND_OBSERVATION, c(1, 1))
 })
 
 test_that("integer means with empty rounding columns stay at 0", {

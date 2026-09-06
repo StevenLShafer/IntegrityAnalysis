@@ -535,9 +535,15 @@ numbers were rounded — the heart of the method.
 <code>ROUND OBSERVATION</code> is the precision of the raw data (0 =
 integers); <code>ROUND MEAN</code> is the decimal places of the printed
 mean. If omitted, the app infers them from the decimal places of the
-values themselves. An optional <code>ROUND DISPERSION</code> column
-gives the printed precision of the SD when it differs from the mean’s (a
-table may print “39 (4.06)”).</p>
+values themselves: <code>ROUND MEAN</code> becomes the most decimal
+places any of the variable’s means shows (a trailing zero is lost when a
+spreadsheet stores 1.20 as a number, so the variable’s maximum is used),
+and <code>ROUND OBSERVATION</code> follows it. That second inference is
+a guess — a mean printed to one decimal is often computed from integer
+measurements — so when you know the raw precision, say so in the column.
+An optional <code>ROUND DISPERSION</code> column gives the printed
+precision of the SD when it differs from the mean’s (a table may print
+“39 (4.06)”).</p>
 <p>If the paper reports a <strong>standard error</strong> instead of a
 standard deviation, enter it in an <code>SE</code> column. The analysis
 needs an SD; the app deliberately does not convert for you (the
@@ -832,30 +838,33 @@ one-sided, toward homogeneity</h2>
 arm, N subjects are drawn from a normal distribution with the pooled
 mean and (bias-corrected) SD; each simulated observation is rounded like
 the raw data; each simulated mean is rounded like the printed mean; and
-the weighted sum of squared deviations of arm means from the grand mean
-is computed. The <strong>p value is the fraction of simulations at least
-as homogeneous as the reported data</strong> (a mid-p: ties count half).
-Small p means the printed means are closer together than random sampling
-can readily explain — the Fujii signature. This is deliberately
-one-sided: the earlier practice of doubling the proximity p was, in
-retrospect, a mistake, and this implementation reports the one-sided
-value only.</p>
+the sum of squared deviations of the arm means from their N-weighted
+grand mean is computed. The <strong>p value is the fraction of
+simulations at least as homogeneous as the reported data</strong> (a
+mid-p: ties count half). Small p means the printed means are closer
+together than random sampling can readily explain — the Fujii signature.
+This is deliberately one-sided: the earlier practice of doubling the
+proximity p was, in retrospect, a mistake, and this implementation
+reports the one-sided value only.</p>
 <p>A small p value is a <strong>screening signal, not a
 verdict</strong>. Innocent explanations include stratified or blocked
 allocation, correlated variables, mislabeled SEMs, and transcription
 errors — Carlisle’s 2017 paper [6] discusses them at length. A trial
 flagged here deserves scrutiny of the original data, not summary
 judgment.</p>
-<p><strong>CAVEAT: Chance alone will produce P ≤ 0.05 in 1 in 20 papers,
-and P ≤ 0.01 in 1 in 100 papers. Research fraud should never be alleged
-by a single manuscript flagged by IntegrityAnalysis. Confirmation such
-as multiple suspicious papers (e.g., Fujii, Boldt) should be sought.
-Authors or journal editors should be contacted before any public
-allegations of research fraud. Journals do not have the authority,
-resources, or responsibility for investigating fraud. Journal editors
-should refer allegations of fraud to the institution under whose
+<p><strong>CAVEAT: Chance alone will produce P ≤ 0.05 in about 1 in 20
+honest papers, and P ≤ 0.01 in about 1 in 100</strong> (about, because
+the combination treats the variables as independent, and a table that
+reports weight and BMI, or a measurement and its categorised version,
+repeats some of its evidence; see <a href="statistics.md">statistics.md</a>). ** Research fraud should never
+be alleged by a single manuscript flagged by IntegrityAnalysis.
+Confirmation such as multiple suspicious papers (e.g., Fujii, Boldt)
+should be sought. Authors or journal editors should be contacted before
+any public allegations of research fraud. Journals do not have the
+authority, resources, or responsibility for investigating fraud. Journal
+editors should refer allegations of fraud to the institution under whose
 authority the research was conducted. Institutions are responsible for
-ethical conduct of research.</strong></p>
+ethical conduct of research.**</p>
 <h2 id="rounding-large-trials-and-rows-that-cannot-alarm">Rounding,
 large trials, and rows that cannot alarm</h2>
 <p>A row’s p can be unremarkable for a reason that has nothing to do
@@ -1064,12 +1073,13 @@ size changes.</li>
 the log as it completes. (The user interface is otherwise occupied
 during a long run — live progress display is a known limitation on the
 roadmap.)</p>
-<p><strong>Download Results</strong> — one workbook, three worksheets.
-Together they answer three different questions: what happened line by
-line, what the app believed the data were, and what to report. Ticking
-<strong>Graph results</strong> before downloading adds a PowerPoint of
-actual-vs-expected distribution graphs, and the download becomes a zip
-holding both files (described after the worksheets below).</p>
+<p><strong>Download Results</strong> — one workbook, four worksheets.
+Together they answer four different questions: what happened line by
+line, what the app believed the data were, what to report, and what ran.
+Ticking <strong>Graph results</strong> before downloading adds a
+PowerPoint of actual-vs-expected distribution graphs, and the download
+becomes a zip holding both files (described after the worksheets
+below).</p>
 <p><em>Sheet 1, <code>Test Results</code></em> — the audit trail: every
 line the analysis touched, in the order it ran, with a
 <strong>Summary</strong> row closing each trial and a blank row between
@@ -1156,6 +1166,15 @@ author’s trials becomes visible. Trials whose P could not be computed
 combined. This is the sheet to keep when screening many manuscripts —
 the per-line detail stays in sheet 1 for the ones worth a second
 look.</p>
+<p><em>Sheet 4, <code>Provenance</code></em> — what ran: the date and
+time, the package version and the engine commit, the R version, a
+one-line statement of the method, and how to reproduce the analysis.
+Reproduction needs three things: the same engine commit (which pins the
+code and, through <code>renv.lock</code>, every package version), the
+same table, and the same seed — the Summary sheet records the seed when
+one was set (see “Reproducing a result exactly”). Without a seed the
+rerun draws afresh and lands within the Monte Carlo interval, not on the
+same number.</p>
 <p><strong>Graph results — the PowerPoint of distributions.</strong>
 Tick the box next to Download Results (before or after the analysis — it
 only changes what the download builds) and the download delivers a zip:

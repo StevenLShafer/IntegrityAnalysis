@@ -31,7 +31,10 @@ Each row's p is estimated by simulation: the app draws many replicate
 trials under the random-sampling hypothesis, rounds the simulated
 summaries exactly as the paper rounded its own, and counts how often the
 simulated arms agree at least as well as the printed ones (ties count
-half — the "mid-p" convention, which reproduces Carlisle's published
+half — the "mid-p" convention, a deliberate choice: a mid-p is centred
+on the right value on average but is not exactly uniform for every
+fixed margin of a discrete table, where an inclusive-tail p would be
+conservative instead; it reproduces Carlisle's published
 2017 values, r = 0.991 over 5,080 trials).
 
 A simulated p-value is itself an estimate. If 0 of 1,000 replicates
@@ -93,7 +96,13 @@ precision is the replicate count, which the adaptive scheme below sets.
    trial p is the share of those simulated honest sums that reach the
    observed one (ties half). Accumulation across rows is still the fraud
    signal — eight individually unremarkable rows at p = 0.01 still
-   combine to a very small trial p — but the trial p is now bounded by
+   combine to a very small trial p (2.4 × 10⁻¹¹ by the closed form,
+   which the simulation reports as its floor) — and it rests on the
+   rows being independent: weight and BMI, or a measurement and its
+   categorised version, repeat some of their evidence, and a summary
+   table gives no way to recover the correlation, so a table with
+   overlapping variables overstates its trial p by an amount the
+   reader must judge. The trial p is bounded by
    what its simulation can resolve: it is floored at 1/(replicates + 1)
    like a row, displays "<0.0001" only when the 97.5% upper bound on the
    reaching count licenses it, and carries an exact Clopper–Pearson 95%
@@ -331,13 +340,22 @@ answer, together with a multiplier saying by how much. Arms that are too
 alike read as under-dispersion; arms too far apart read as
 over-dispersion.
 
-**How that differs from ours.** The method described above tests the
-*shape* of a whole distribution. Barnett's tests *one moment* of it.
-That distinction matters because a shape test fires on skew, on
-categorical data and on rounding, none of which is misconduct, while a
-variance test largely does not. So the two disagreeing about the same
-table is diagnostic rather than embarrassing: it localises the anomaly
-to the shape of the distribution rather than the spread of the data.
+**How that differs from ours.** The method described above asks, one
+variable at a time, whether the arm means sit closer together than
+random sampling *with the paper's rounding* allows, against a null
+simulated for that variable, and combines the variables by Stouffer's
+sum judged against its own simulated null. Barnett's reduces every
+variable to a t-statistic that takes the printed numbers as exact,
+categorical rows included, and asks one question of the whole set: is
+their spread the spread a t-distribution predicts? The two differ in
+what they take as input (a rounding-aware null versus exact printed
+values), in what they test (each variable's homogeneity versus the
+dispersion of the collection), and in framework (a simulated one-sided
+p versus a posterior under a spike-and-slab prior). When they disagree
+about a table, any of those differences can be the reason — rounding is
+the one we have documented, with the exclusion rule Barnett's method
+needs at the attainable floor (see "Convergence under rounding" above)
+— so a disagreement is a prompt to look, not a diagnosis.
 
 Their agreement should not be over-read either. Both compute from the
 same table and both assume the rows are independent — ours in the
