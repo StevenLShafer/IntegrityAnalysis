@@ -108,6 +108,7 @@ test_that("decimal places are read off a plain rendering, never scientific notat
   expect_identical(f(0.5), 1L); expect_identical(f(45.3), 1L); expect_identical(f(0.0012), 4L)
   expect_identical(f(0.0001), 4L); expect_identical(f(0.000015), 6L); expect_identical(f(1e-10), 10L)
   expect_identical(f(77), 0L); expect_identical(f(NA_real_), 0L); expect_identical(f(Inf), 0L)
+  expect_identical(f(1e-300), 20L)          # capped at the clamp's range (screen 0703 I1)
   d <- data.frame(TRIAL = "T", ROW = "X", N = 30, MEAN = c(0.0001, 0.0002), SD = 0.00005, stringsAsFactors = FALSE)
   v <- vd(d); expect_identical(v$DATA$ROUND_MEAN, c(4, 4))
 })
@@ -128,4 +129,40 @@ test_that("a rejected observation precision is inferred from the mean's, not lef
   v <- vd(d)
   expect_identical(v$DATA$ROUND_MEAN, c(2, 2))
   expect_identical(v$DATA$ROUND_OBSERVATION, c(2, 2))
+})
+
+test_that("the direct draw keeps the grid integer observations force on a mean (outside audit, 2026-09-06)", {
+  d <- data.frame(TRIAL = "T", ROW = "V", N = 100, MEAN = c(50, 50), SD = 3,
+                  ROUND_MEAN = 6, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)
+  dqrng::dqset.seed(12345); set.seed(12345)
+  direct <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
+  old <- IntegrityAnalysis:::.iaDirectDrawN
+  assignInNamespace(".iaDirectDrawN", 1e9L, "IntegrityAnalysis")
+  on.exit(assignInNamespace(".iaDirectDrawN", old, "IntegrityAnalysis"), add = TRUE)
+  dqrng::dqset.seed(12345); set.seed(12345)
+  full <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
+  pd <- as.numeric(sub("^<", "", direct$P[1])); pf <- as.numeric(sub("^<", "", full$P[1]))
+  expect_false(grepl("^<", direct$P[1]))          # it used to print <0.0001
+  expect_gt(pd, 0.002); expect_lt(pd, 0.01)
+  expect_lt(abs(pd - pf), 0.003)                  # Monte Carlo agreement at 100,000
+})
+
+test_that("an explicit per-arm printed precision is kept; only a blank takes the variable's maximum", {
+  d <- data.frame(TRIAL = "T", ROW = "X", N = 30, MEAN = c(77, 78.1), SD = 10,
+                  ROUND_MEAN = c(0, 1), ROUND_OBSERVATION = c(0, 0), stringsAsFactors = FALSE)
+  expect_identical(vd(d)$DATA$ROUND_MEAN, c(0, 1))
+  d$ROUND_MEAN <- c(NA, 1)
+  expect_identical(vd(d)$DATA$ROUND_MEAN, c(1, 1))    # the blank follows the variable
+})
+
+test_that("'attainable floor' means the arms agree exactly, not merely that no replicate beat them", {
+  dqrng::dqset.seed(1); set.seed(1)
+  d <- data.frame(TRIAL = "T", ROW = "W", N = 6, MEAN = c(77, 77.000001), SD = 30,
+                  ROUND_MEAN = 6, ROUND_OBSERVATION = 6, stringsAsFactors = FALSE)
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
+  expect_identical(x$NOTE[1], "")
+  d$MEAN <- c(77, 77)
+  dqrng::dqset.seed(1); set.seed(1)
+  y <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
+  expect_identical(y$NOTE[1], "attainable floor")
 })

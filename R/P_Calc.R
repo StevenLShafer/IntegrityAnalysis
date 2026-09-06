@@ -187,7 +187,10 @@
 #'   Optional columns:
 #'   \describe{
 #'     \item{`SE`}{standard error, if the paper printed SE rather than
-#'       SD; converted internally. Give one or the other, not both.}
+#'       SD. NOT converted here: [validateData()] refuses a row with an
+#'       SE and no SD, and the app asks the user to supply the SD (SD =
+#'       SE x sqrt(N) only when the SE describes the plain sample mean).
+#'       A direct caller must supply SD.}
 #'     \item{`Q1`, `Q3`}{the quartiles, for a median row.}
 #'     \item{`ROUND_MEAN`}{decimal places the MEAN was PRINTED to. This
 #'       is not cosmetic - the whole method rests on rounding simulated
@@ -408,7 +411,21 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
               MCMean <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
                 MCMean[,i] <- if (direct[i]) {
-                  round(rnorm(ch, meansim, sqrt((sig^2 + hObs[i]^2 / 12) / ROWS$N[i])), ROWS$ROUND_MEAN[i])
+                  # THE MEAN'S OWN GRID (outside audit, 2026-09-06): N
+                  # observations on a grid of width h have a mean on a grid
+                  # of width h/N, whatever precision the mean is printed
+                  # to. A continuous draw ignored that grid, so with
+                  # integer observations and a six-decimal printed mean
+                  # (N = 100, SD 3, identical means) the direct draw gave
+                  # p < 0.0001 where the full simulation gives 0.0045: the
+                  # ties the grid creates were erased. The draw is snapped
+                  # to that grid before the printed rounding. Where the
+                  # printed precision is coarser than h/N the snap changes
+                  # nothing, which is why the 0- and 1-decimal validation
+                  # cells never showed it.
+                  g <- hObs[i] / ROWS$N[i]
+                  round(round(rnorm(ch, meansim, sqrt((sig^2 + hObs[i]^2 / 12) / ROWS$N[i])) / g) * g,
+                        ROWS$ROUND_MEAN[i])
                 } else round(
                   rowmeans(round(
                     matrix(rnorm(ROWS$N[i] * ch,
@@ -533,7 +550,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       # the note tells the reader the row has said everything its
       # rounding lets it say.
       rowStat[[j]] <- list(kLess = kLess, kEq = kEq, m = s, draws = draws,
-                           atFloor = kLess == 0)
+                           # the floor is a property of the OUTCOME, not of a
+                           # simulation that happened not to visit the tail:
+                           # the observed statistic must be the minimum
+                           # (zero: the arms agree exactly) AND no replicate
+                           # beat it. Two means of 77 and 77.000001 used to
+                           # carry the note (outside audit, 2026-09-06).
+                           atFloor = kLess == 0 && isTRUE(obs == 0))
       pRep <- .floorP((rank(sims, ties.method = "average") - 0.5) / s, s)
       sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
       zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)

@@ -4,7 +4,12 @@ Statistical screening of randomized controlled trials for fabricated or
 erroneous baseline data, by the Carlisle–Shafer Monte Carlo method: the
 baseline arms of an honest RCT are random samples of one population,
 and means that agree *too well*, variable after variable, are evidence
-that no randomization ever happened.
+against the random-sampling model the table claims — a reason to verify
+the table, the allocation and the data, not a verdict on how the table
+came to be.
+
+The engine's agreement with Carlisle's 2017 corpus, run by run, is in
+[docs/validation-ledger.md](docs/validation-ledger.md).
 
 **Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —
 upload (or drop anywhere on the page) an article PDF, a Word

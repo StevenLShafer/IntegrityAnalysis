@@ -176,16 +176,20 @@ of 77. The difference between the groups is 0, and under normal
 statistical theory a difference of exactly 0 between two random samples
 is impossible — the p value degenerates. In the real world it happens
 all the time, because published data are rounded.</p>
-<p>The way out is to abandon normal theory and instead <strong>replicate
-the study by Monte Carlo simulation</strong>, rounding the simulated
-data exactly as the published table was rounded. John Carlisle and Steve
-Shafer spent several years developing this method and in 2015 published
-a re-analysis of the Fujii data [4]: same verdicts, and in simulation
-the Monte Carlo approach proved more robust than normal theory. In 2017,
-Carlisle applied the approach to 5,087 randomized controlled trials from
-eight journals [6]. This app is the current implementation of that
-method, and its engine has been validated line by line against
-Carlisle’s 2017 results (see <em>Validation</em> below).</p>
+<p>The way out is to leave the closed-form, unrounded normal-theory p
+behind and instead <strong>replicate the study by Monte Carlo
+simulation</strong>, rounding the simulated data exactly as the
+published table was rounded. (The simulation still draws normally
+distributed observations; what it stops doing is comparing rounded
+numbers with a formula written for unrounded ones.) John Carlisle and
+Steve Shafer spent several years developing this method and in 2015
+published a re-analysis of the Fujii data [4]: same verdicts, and in
+simulation the Monte Carlo approach proved more robust than normal
+theory. In 2017, Carlisle applied the approach to 5,087 randomized
+controlled trials from eight journals [6]. This app is the current
+implementation of that method, and its engine has been validated line by
+line against Carlisle’s 2017 results (see <em>Validation</em>
+below).</p>
 <h1 id="quick-start">Quick start</h1>
 <ol type="1">
 <li>Open <a href="https://steveshafer.shinyapps.io/IntegrityAnalysis/" class="uri">https://steveshafer.shinyapps.io/IntegrityAnalysis/</a>.</li>
@@ -479,7 +483,7 @@ SD)</h2>
 <tbody>
 <tr>
 <td><code>ROW</code></td>
-<td>what is measured — “Weight”, “Age”, “Duration of surgery”</td>
+<td>what is measured — “Weight”, “Age”, “Duration of symptoms”</td>
 </tr>
 <tr>
 <td><code>N</code></td>
@@ -562,8 +566,10 @@ quartile (Q1) to the third (Q3). Enter these with two additional
 columns, <code>Q1</code> and <code>Q3</code>. On a row where both
 quartiles are filled in, <strong>the MEAN column holds the
 median</strong>, and the SD and SE cells must be empty.</p>
-<p>A study reporting duration of surgery as median [Q1, Q3] in two
-arms:</p>
+<p>A study reporting the duration of symptoms before enrolment as median
+[Q1, Q3] in two arms (a baseline variable: measured before allocation,
+so randomization is what makes the arms comparable — an outcome such as
+the duration of surgery is not one):</p>
 <table>
 <thead>
 <tr>
@@ -577,7 +583,7 @@ arms:</p>
 </thead>
 <tbody>
 <tr>
-<td>Duration of surgery</td>
+<td>Duration of symptoms</td>
 <td>127</td>
 <td>50</td>
 <td>98</td>
@@ -585,7 +591,7 @@ arms:</p>
 <td>0</td>
 </tr>
 <tr>
-<td>Duration of surgery</td>
+<td>Duration of symptoms</td>
 <td>133</td>
 <td>50</td>
 <td>101</td>
@@ -921,14 +927,16 @@ collective evidence is added up correctly.</p>
 <p><strong>The “attainable floor” note.</strong> The results table says
 this for you. Every row has a smallest p its printed precision allows —
 the p of the most homogeneous outcome the simulation can produce, which
-is both arms printing the same value. When a row sits at that floor, its
-Note column reads <strong>attainable floor</strong>: no honest replicate
-agreed better than the printed arms did. For integer age at 1,000 per
-arm the floor is about 0.27, and the note means the row cannot alarm and
-should not be read as reassurance either. For a row printed to two
-decimals the floor is small, and a row at it alarms; the note then means
-this is as far as the row can go. The floor depends on the printing and
-the sample size, never on the data.</p>
+is both arms printing the same value. When a row sits at that floor —
+the printed arms agree exactly <em>and</em> no honest replicate agreed
+better — its Note column reads <strong>attainable floor</strong>. (A row
+whose arms differ, however slightly, never carries the note, even when
+no replicate happened to beat it; its interval says so instead.) For
+integer age at 1,000 per arm the floor is about 0.27, and the note means
+the row cannot alarm and should not be read as reassurance either. For a
+row printed to two decimals the floor is small, and a row at it alarms;
+the note then means this is as far as the row can go. The floor depends
+on the printing and the sample size, never on the data.</p>
 <p>This is the same trap, met twice. Carlisle’s original method used
 normal theory, under which two random samples never agree exactly, so
 rows with identical printed means had p = 0 and Fujii’s rounded tables
@@ -948,7 +956,7 @@ most journals follow. — Steve Shafer</em></p>
 is imperfect. Check the flagged trial’s values against the printed table
 — especially any cell the app colored green (derived or AI-read) or cyan
 (read by OCR). A flag built on a misread digit is not a finding.</li>
-<li><strong>A single flagged paper is not evidence of
+<li><strong>A single flagged paper is not sufficient evidence of
 misconduct.</strong> One paper at P ≤ 0.05 is expected once in twenty
 honest papers. What made the Fujii and Boldt cases conclusive was the
 <em>pattern</em> across many papers by the same author.</li>
@@ -999,8 +1007,8 @@ never as a verdict on its own.</p>
 and every row’s, is 0.1 or more stops there; one below 0.1 escalates to
 10,000, and one still below 0.01 to 100,000. This spends computation
 where it matters — unremarkable trials finish fast, borderline ones get
-a p resolved to about ±0.002 instead of ±0.007, alarming ones get the
-precision a small p needs.</p>
+a p with a Monte Carlo standard error of about 0.002 instead of 0.007,
+alarming ones get the precision a small p needs.</p>
 <p><strong>Reproducing a result exactly.</strong> An unseeded Monte
 Carlo is not meant to give identical numbers from run to run: two runs
 of the same table differ within the reported Monte Carlo interval. To
@@ -1167,9 +1175,13 @@ trial name, its combined <code>P (one-sided toward homogeneity)</code>,
 and the <code>95% Monte Carlo interval</code> where one was reported.
 When the analysis holds <strong>two or more trials</strong>, a closing
 bold row gives the <strong>overall P for the entire analysis</strong> —
-the same Stouffer (sum-of-z) combination the app applies within each
-trial, now applied across the trial P values. This is the step Carlisle
-took to reach a single p for the whole body of Fujii’s work (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>):
+a closed-form Stouffer (sum-of-z) combination of the trial P values
+against the normal table. That is a different procedure from the
+within-trial combination, which is judged against its own simulated
+null: across trials the P values are treated as continuous and
+independent, and a trial reported as “&lt;0.0001” enters as 0.0001, on
+the conservative side. This is the step Carlisle took to reach a single
+p for the whole body of Fujii’s work (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>):
 each trial may look only mildly improbable, but improbability
 <em>accumulates</em>, and the overall P is where a pattern across an
 author’s trials becomes visible. Trials whose P could not be computed

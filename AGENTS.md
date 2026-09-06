@@ -60,11 +60,17 @@ missing N or a mistyped SD in place; "Apply Edits & Revalidate") →
 column-name normalization by grep (any "MEAN"-containing name that isn't
 MEAN → `ROUND_MEAN`, "OBS" → `ROUND_OBSERVATION`, "TRIAL", "ROW"/"GROUP",
 "NUMBER" → N) → per-line validation (continuous rows need N/MEAN/SD;
-category rows must be numeric, integer-valued, with at least one NA in the
-column) → per-trial `P_Calc()`: closed-form weighted means, Monte Carlo of
-rounded simulated means (continuous) or simulated chi-square under fixed
-margins (categorical), **mid-p** ties, rows combined with Stouffer's
-`sumz()` into a **single one-sided p toward excessive homogeneity**
+category rows must be numeric and whole-valued; a count column is
+recognised by a blank on a continuous line, or by construction in a table
+that is nothing but counts or one in the long LEVEL layout) → per-trial
+`P_Calc()`: variances pooled by degrees of freedom, a sigma drawn per
+replicate, Monte Carlo of rounded simulated means (continuous; the arm
+mean drawn directly on its h/N grid at N >= 100), a metalog fit for
+median/IQR rows, simulated chi-square under fixed margins (categorical),
+**mid-p** ties, rows combined by the EXACT COMBINATION (Stouffer's sum of
+row z-scores judged against its own simulated null; the closed-form
+`sumz()` survives only across trials) into a **single one-sided p toward
+excessive homogeneity**
 (issue 6: small p = data more similar across arms than random sampling
 explains — the fraud signal; heterogeneity is deliberately not reported,
 and the categorical branch takes the lower tail, not `chisq.test`'s
