@@ -122,10 +122,24 @@ if (file.exists("R/parseTatr.R")) {
   if (!any(grepl("TMPDIR = childTmp", pf, fixed = TRUE)) || !any(grepl("unlink(childTmp", pf, fixed = TRUE)))
     note("R/parseBaselineTableFiles.R: the parent no longer owns and removes the child's tempdir (screen F4)")
   ut <- sub("#.*$", "", srcOf("R/utils.R"))
+  # Since 2026-09-06 (repeat outside screen, F3) the page-size cap lives in
+  # ONE gate, .ppRenderablePages(), which every rasteriser must call: local
+  # OCR in utils.R and the AI route's .ppPageImagesB64() in aiFallback.R.
+  gp <- grep("^\\.ppRenderablePages\\s*<-\\s*function", ut)
+  gbody <- if (length(gp)) ut[gp[1]:min(gp[1] + 12, length(ut))] else character(0)
+  if (!any(grepl("pdf_pagesize", gbody, fixed = TRUE)) || !any(grepl("\\.ppRasterMaxPixels", gbody)))
+    note("R/utils.R: .ppRenderablePages() does not apply the page-size cap (screen F1 / repeat F3)")
   op <- grep("^\\.ppOcrPages\\s*<-\\s*function", ut)
   obody <- if (length(op)) ut[op[1]:min(op[1] + 40, length(ut))] else character(0)
-  if (!any(grepl("pdf_pagesize", obody, fixed = TRUE)) || !any(grepl("\\.ppRasterMaxPixels", obody)))
-    note("R/utils.R: .ppOcrPages() rasterises pages without the size cap (screen F1)")
+  if (!any(grepl("\\.ppRenderablePages\\(", obody)))
+    note("R/utils.R: .ppOcrPages() rasterises pages without .ppRenderablePages() (screen F1)")
+  if (file.exists("R/aiFallback.R")) {
+    af <- sub("#.*$", "", srcOf("R/aiFallback.R"))
+    ap <- grep("^\\.ppPageImagesB64\\s*<-\\s*function", af)
+    abody <- if (length(ap)) af[ap[1]:min(ap[1] + 12, length(af))] else character(0)
+    if (!any(grepl("\\.ppRenderablePages\\(", abody)))
+      note("R/aiFallback.R: .ppPageImagesB64() rasterises pages without .ppRenderablePages() (repeat screen F3)")
+  }
 }
 
 ## 1b - the JATS reader parses bytes it has bounded ------------------------

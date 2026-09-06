@@ -46,9 +46,12 @@ function(req, res) {
 # writeBin second copy, the parse, the simulation - and it makes the
 # refusal cheap and explicit.
 #
-# THE REAL BODY CAP MUST LIVE IN FRONT OF THE SERVICE (a proxy/WAF ahead
-# of App Runner). That is tracked in ISSUES.md issue 1; do not delete
-# this comment believing the filter alone closes H1.
+# Since 2026-09-06 runApiService() sets options(plumber.maxRequestSize)
+# to the same cap, which httpuv applies from the headers before any body
+# is buffered (a declared size over the cap is refused 413 at once). This
+# filter remains the explicit, tested refusal and the guard for a request
+# that lies about or omits its length. A proxy/WAF cap in front of App
+# Runner is still the right belt for the braces (ISSUES.md issue 1).
 #
 # A request with NO Content-Length (chunked transfer-encoding) is
 # REFUSED rather than forwarded: the re-review found that falling open

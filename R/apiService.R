@@ -806,6 +806,13 @@ runApiService <- function(port = 8080, host = "0.0.0.0") {
     message("WARNING: INTEGRITY_API_TOKENS is empty - every /parse and ",
             "/analyze request will be refused 401. Set it to a ",
             "comma-separated token list before exposing the service.")
+  # F1 of the repeat security screen (2026-09-06): plumber's own request
+  # cap, applied by httpuv from the headers BEFORE the body is buffered,
+  # was unset (0 = unlimited), so the sizelimit filter in plumber.R only
+  # ever refused a body already resident in memory. Set here, before the
+  # router is built, to the same 25 MiB the filter enforces: an oversized
+  # Content-Length is now refused 413 with nothing buffered.
+  options(plumber.maxRequestSize = .apiMaxBytes)
   pr <- plumber::pr(system.file("api", "plumber.R",
                                 package = "IntegrityAnalysis"))
   # A fixed, contentless 500 (security review M6): plumber's default

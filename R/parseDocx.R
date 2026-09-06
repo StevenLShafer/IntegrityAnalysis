@@ -71,6 +71,14 @@
 .ppDocxTableMatrix <- function(tbl) {
   rows <- xml2::xml_find_all(tbl, "./w:tr")
   if (length(rows) == 0) return(NULL)
+  # The JATS sibling's bounds, applied BEFORE the dense matrix is
+  # allocated (repeat security screen 2026-09-06, F2: one row of 100
+  # cells at the permitted span of 50, followed by 100 narrow rows, made
+  # a 101 x 5,000 matrix from 15 KB of XML - every span legal, the
+  # product not). Rows past .ppMaxTableRows are dropped; a table wider
+  # than .ppMaxTableCols after spans, or with more than .ppMaxTableCells
+  # cells, is not a table the engine reads.
+  if (length(rows) > .ppMaxTableRows) rows <- rows[seq_len(.ppMaxTableRows)]
   cellsList <- lapply(rows, function(tr) {
     tcs <- xml2::xml_find_all(tr, "./w:tc")
     if (length(tcs) == 0) return(character(0))
@@ -102,6 +110,7 @@
   })
   nc <- max(lengths(cellsList))
   if (nc == 0) return(NULL)
+  if (nc > .ppMaxTableCols || nc * length(cellsList) > .ppMaxTableCells) return(NULL)
   mat <- matrix("", nrow = length(cellsList), ncol = nc)
   for (r in seq_along(cellsList)) {
     cl <- cellsList[[r]]
@@ -119,6 +128,15 @@
 # live in the rest. A NON-empty paragraph between two tables - the next
 # table's caption - blocks stitching.
 .ppDocxData <- function(docxFile) {
+  # A .docx is a zip archive, and officer::read_docx() unpacks it: the
+  # same decompression preflight the spreadsheet route has runs here
+  # first, for the app and the API alike (repeat security screen
+  # 2026-09-06, F2 - a 17 KB file declaring 4 MiB of padding was read).
+  # An unreadable archive is refused: a .docx must be a zip.
+  if (!isTRUE(.apiZipInflationOK(docxFile, "xlsx")))
+    stop("the Word file's archive declares more than ",
+         round(.apiMaxUncompressed / 1024^2), " MB uncompressed, or is not ",
+         "a Word archive, and was not read", call. = FALSE)
   x <- officer::read_docx(docxFile)
   body <- xml2::xml_find_first(x$doc_obj$get(), "//w:body")
   kids <- xml2::xml_children(body)
@@ -131,6 +149,8 @@
         data.frame(doc_index = i, text = xml2::xml_text(kids[[i]]),
                    stringsAsFactors = FALSE)
     } else if (nm == "tbl") {
+      # the JATS sibling's cap on tables materialised per document
+      if (length(tabs) >= .ppMaxTableWraps) next
       mat <- .ppDocxTableMatrix(kids[[i]])
       if (!is.null(mat))
         tabs[[length(tabs) + 1]] <-

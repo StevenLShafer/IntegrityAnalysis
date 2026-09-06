@@ -240,16 +240,7 @@
   # bitmap, and the OS timeout on the parse child bounds time, not memory.
   # Pages over 30 inches on a side or over .ppRasterMaxPixels at this dpi
   # are not rendered; a journal page is 8.4 megapixels at 300 dpi.
-  ps <- tryCatch(pdftools::pdf_pagesize(pdfFile), error = function(e) NULL)
-  # Fail CLOSED (screen 2026-09-03, N2): a document whose page sizes cannot
-  # be read is not rendered at all, rather than rendered uncapped. The
-  # short-count case cannot occur (pdftools preallocates one row per page)
-  # but is treated the same way so the cap never depends on that.
-  if (is.null(ps) || nrow(ps) < max(pages))
-    return(if (want == "text") character(0) else list())
-  w <- ps$width[pages]; h <- ps$height[pages]
-  big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
-  pages <- pages[!big]
+  pages <- .ppRenderablePages(pdfFile, pages, dpi)
   if (length(pages) == 0)
     return(if (want == "text") character(0) else list())
 
@@ -275,6 +266,21 @@
   out
 }
 
+# The one page-geometry gate for every rasteriser (repeat security screen
+# 2026-09-06, F3: the AI route's renderer had none, so a 4 KB PDF
+# declaring 200 x 200 inch pages reached pdf_convert at 150 dpi - 900
+# megapixels). Returns the subset of `pages` that may be rendered at
+# `dpi`; fails CLOSED (screen 2026-09-03, N2): a document whose page sizes
+# cannot be read renders nothing. Pages over 30 inches on a side, or over
+# .ppRasterMaxPixels at this dpi, are dropped.
+.ppRenderablePages <- function(pdfFile, pages, dpi) {
+  if (!length(pages)) return(integer(0))
+  ps <- tryCatch(pdftools::pdf_pagesize(pdfFile), error = function(e) NULL)
+  if (is.null(ps) || nrow(ps) < max(pages)) return(integer(0))
+  w <- ps$width[pages]; h <- ps$height[pages]
+  big <- w > 30 * 72 | h > 30 * 72 | (w * dpi / 72) * (h * dpi / 72) > .ppRasterMaxPixels
+  pages[!big]
+}
 .ppRasterMaxPixels <- 20e6
 
 .ppOcrData <- function(pdfFile, dpi = 300, pages = NULL) {
