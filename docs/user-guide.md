@@ -83,7 +83,7 @@ enough apart to suggest different populations.
 
 It is a different question whether they are **too close**. If random
 chance says that 96% of the time the means would be further apart, then
-only 4% of the time would they be this close. Seen once, that is no big
+only 4% of the time would they be this close (the app's simulation, which also models the rounding, puts it at about 0.044). Seen once, that is no big
 deal — it is expected in 4% of random samples. Seen again and again, in
 variable after variable and trial after trial, something is definitely
 amiss.
@@ -564,7 +564,7 @@ along untouched and ignored by the analysis.
 
 For each variable, the app simulates the trial many times: for every
 arm, N subjects are drawn from a normal distribution with the pooled
-mean and (bias-corrected) SD; each simulated observation is rounded like
+mean and a population SD drawn, for each simulated trial, from the spread the pooled variance and its degrees of freedom allow; each simulated observation is rounded like
 the raw data; each simulated mean is rounded like the printed mean; and
 the sum of squared deviations of the arm means from their N-weighted
 grand mean is computed. The **p value is the fraction of simulations at least as

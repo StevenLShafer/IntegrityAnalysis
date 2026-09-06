@@ -362,11 +362,41 @@ test_that("an oversized upload is refused 413 over HTTP", {
   # suite, and is itself a live demonstration of the re-review's H1
   # point: the body is consumed before this filter ever runs.
   big <- as.raw(rep(0L, .apiMaxBytes + 1024L))
-  r <- apiReq(api$base, "/parse") |>
-    httr2::req_body_raw(big) |>
-    httr2::req_timeout(120) |>
-    httr2::req_perform()
-  expect_equal(httr2::resp_status(r), 413)
+  # Since 2026-09-06 (repeat screen F1) plumber's native cap refuses the
+  # request from its headers and closes the connection while the client
+  # may still be sending, so curl can report a send failure instead of
+  # reading the 413. Either outcome is the refusal this test pins: no
+  # body was buffered. What must NOT happen is a 2xx, or a dead service.
+  r <- tryCatch(apiReq(api$base, "/parse") |>
+                  httr2::req_body_raw(big) |>
+                  httr2::req_timeout(120) |>
+                  httr2::req_perform(),
+                error = function(e) e)
+  if (inherits(r, "error")) {
+    expect_match(conditionMessage(r), "reset|Failed sending|peer|closed", ignore.case = TRUE)
+  } else {
+    expect_equal(httr2::resp_status(r), 413)
+  }
+  h <- httr2::req_perform(httr2::req_timeout(httr2::request(paste0(api$base, "/health")), 30))
+  expect_equal(httr2::resp_status(h), 200)          # the service survived the refusal
+  # A request with no Content-Length (chunked transfer) is refused before
+  # any filter runs: plumber's native cap treats an undeclared size as
+  # unbounded and answers 413 itself, where the sizelimit filter used to
+  # answer 411 - and it does so before auth (review of #194: recorded in
+  # the API guide). Either way nothing is buffered and the service lives.
+  r2 <- tryCatch(apiReq(api$base, "/parse") |>
+                   httr2::req_headers("Transfer-Encoding" = "chunked") |>
+                   httr2::req_body_raw(as.raw(rep(0L, 4096L))) |>
+                   httr2::req_timeout(60) |>
+                   httr2::req_perform(),
+                 error = function(e) e)
+  if (inherits(r2, "error")) {
+    expect_match(conditionMessage(r2), "reset|Failed sending|peer|closed", ignore.case = TRUE)
+  } else {
+    expect_true(httr2::resp_status(r2) %in% c(411L, 413L))
+  }
+  h2 <- httr2::req_perform(httr2::req_timeout(httr2::request(paste0(api$base, "/health")), 30))
+  expect_equal(httr2::resp_status(h2), 200)
 })
 
 test_that("the analyze gate also bounds arm N and column count", {

@@ -222,8 +222,8 @@ The round-trip contract: the failure payload is the next call's input.
 | status | body | meaning |
 |---|---|---|
 | 401 | `{"ok": [false], "error": ["…"]}` | missing or invalid bearer token |
-| 411 | `{"ok": [false], "error": ["…"]}` | no `Content-Length` header; chunked uploads are not accepted |
-| 413 | `{"ok": [false], "error": ["…"]}` | the request exceeds 25 MiB |
+| 411 | `{"ok": [false], "error": ["…"]}` | no `Content-Length` header (a chunked upload). Since 2026-09-06 the service's native request cap answers this itself, as **413**, before the request reaches authentication or the size filter; the filter's 411 remains behind it. Chunked uploads are not accepted either way |
+| 413 | `{"ok": [false], "error": ["…"]}` | the request exceeds 25 MiB. Refused from the `Content-Length` header before any of the body is read, and before authentication — so an oversized request gets 413 rather than 401 even without a token |
 | 500 | `{"ok": false, "error": "internal", "id": "…"}` | an unexpected failure; the body carries a request id for support and nothing of the document |
 
 The three refusals above are produced by the request filters, whose JSON is boxed: each value arrives as a one-element array, as shown, where the endpoint replies use bare values. A client that reads `ok` should accept both forms.
@@ -259,7 +259,7 @@ whichever it sent.
 
 | what | limit | on breach |
 |---|---|---|
-| request size | 25 MiB, `Content-Length` required | 413 / 411 |
+| request size | 25 MiB, `Content-Length` required | 413 (411 from the size filter only if the native cap were unset) |
 | JATS XML | 8 MiB on disk; UTF-8 text beginning with `<` (no NUL bytes, so no UTF-16); not a gzip stream; no `<!ENTITY` declaration (no real JATS article needs one); a table over 20,000 cells is skipped, and at most 100,000 cells and 20,000 body paragraphs are read per document | 422 with the reason |
 | picture of a table | 20 megapixels; up to 10 TIFF pages; JPEG, PNG or TIFF by its bytes, not its name | 422 with the reason |
 | spreadsheet archives (`.xlsx`) | 100 MiB uncompressed, 512 entries, compression ratio 200 | 422 |
