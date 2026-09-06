@@ -102,6 +102,47 @@ precision is the replicate count, which the adaptive scheme below sets.
    row draws the same number of replicates at each stage, and the trial
    escalates while its own p or any row's is below 0.01.
 
+## The pooled SD, and its correction (2026-09-05)
+
+The mean/SD simulation needs one population SD. Each arm reports an SD
+computed about its own mean, so arm *i* carries N<sub>i</sub> − 1
+degrees of freedom and the pooled variance — each arm's variance
+weighted by its degrees of freedom — has N − k of them for k arms. That
+pooling is the minimum-variance unbiased estimate of a common variance.
+Its square root is biased low (Jensen's inequality): E[s] = c₄ σ with
+c₄ = √(2/df) Γ((df+1)/2) / Γ(df/2), so the simulation uses s / c₄.
+
+Until 2026-09-05 the code weighted the variances by N<sub>i</sub>
+rather than N<sub>i</sub> − 1 (also unbiased, but not the chi-square
+shape the correction assumes), corrected with N − 1 degrees of freedom
+rather than N − k (one too many per arm beyond the first, so it
+under-corrected), and only below N = 30, leaving a 1% step there. The
+shortfall was 3.8% for two arms of two and under 0.1% for two arms of
+twelve; a low SD makes the simulated arms sit closer together, so the
+error was conservative. Raised by an outside review (finding 8).
+
+The change was checked on an honest null: one continuous row, two equal
+arms of 3, 5, 10, 20 or 50, honest normal data, 2,000 trials per cell,
+printed finely (two decimals) and coarsely (integer observations, means
+to one decimal). Both engines sit at the nominal rates within Monte
+Carlo error at every N (the share of row p ≤ 0.05 ranges 4.5–5.6%
+with a standard error of 0.5 points, and the mean p is 0.50–0.52), and
+the pooled engine moves each cell by 0.1 point or less: the plug-in SD
+was never the problem it could have been, because the test is
+one-sided toward homogeneity and the lower tail of the ratio of the
+between-arm scatter to the pooled variance barely feels the variance's
+own uncertainty. The worked example (77 vs 78, SD 30, n = 6) moved from
+0.0481 to 0.0475.
+
+On the Carlisle 2017 corpus (5,011 usable trials, both engines run with
+a 10,000-replicate ceiling on the same day) the pooled SD moved the
+trial p by a median of 0.007 (90th percentile 0.03), downward in 57% of
+trials and most in trials of 30 or fewer per arm (median change
+-0.002); the correlation with Carlisle's stored values went from 0.9922
+to 0.9925, the share within 0.05 of his value from 88.0% to 88.5%, and
+the alarm concordance from 98.6% to 98.5% (alarms 407 to 413: 9 in, 3
+out).
+
 ## Reading the results table
 
 | Column | Meaning |

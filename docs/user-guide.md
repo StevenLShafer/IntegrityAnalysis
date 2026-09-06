@@ -779,9 +779,12 @@ analyzed.
 
 ## Statistical details
 
-- Reported SDs are corrected for small-sample bias before simulation
-  (the standard deviation of a sample underestimates the population
-  value; the correction is the standard Γ-function factor [3]).
+- The arms' reported SDs are pooled into one population SD, weighting
+  each arm's variance by its degrees of freedom (N − 1), and the square
+  root is corrected for small-sample bias with the standard Γ-function
+  factor [3] using the pooled degrees of freedom (N minus the number of
+  arms). The correction is applied at every N; it is 4% for two arms of
+  two and under 1% above about 30 patients in total.
 - Simulated observations are rounded to `ROUND OBSERVATION` decimals and
   simulated means to `ROUND MEAN` decimals, so the simulation reproduces
   the granularity of the printed table — including printed means that

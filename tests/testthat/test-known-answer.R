@@ -25,6 +25,13 @@
 # value on a fresh stage-2 draw. Worked example 0.0495 -> 0.04805 (M
 # 10,000); identical categorical arms 0.089 -> 0.08245; median/IQR pair
 # 0.0555 -> 0.0464. Same rows, same seed, more replicates.
+#
+# Re-pinned 2026-09-05 (the pooled SD: (N_i - 1)-weighted variance, c4
+# with N - k degrees of freedom at every N, Steve's decision after the
+# outside review's finding 8): the worked example 0.04805 -> 0.04750 -
+# its SD is now corrected with 10 degrees of freedom, not 11, and every
+# row above N = 30 now receives the (sub-1%) correction it used to skip.
+# The categorical and median pins do not touch the pooled SD.
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast)
   library(dqrng)
@@ -41,7 +48,7 @@ test_that("the documentation's worked example: 77 vs 78, SD 30, n = 6", {
   x <- runP(data.frame(
     TRIAL = "T", ROW = "Weight", N = 6, MEAN = c(77, 78), SD = c(30, 30),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.04805)         # the guide's "about 4%"
+  expect_equal(summaryP(x), 0.04750)         # the guide's "about 4%"
   expect_identical(x$M[1], "10000")         # borderline (p < 0.1) - escalates to stage 2
 })
 
