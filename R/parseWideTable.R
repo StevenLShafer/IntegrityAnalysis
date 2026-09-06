@@ -45,6 +45,26 @@
 # table - validateData()'s substring grep is the right reader for it.
 .wideTemplateNames <- c("TRIAL", "ROW", "N", "MEAN", "SD", "SE")
 
+# SECURITY (2026-09-05, an outside reviewer's reproduction): a 6 KB
+# workbook with one cell at row 400,000, column 2,000 passes the
+# decompression preflight (19 KB declared) and then expands, in the
+# reader that keeps empty rows and columns, to a 400,000 x 2,000 table -
+# 3.2 GB in 19 seconds - before any row or column gate runs. Every
+# spreadsheet read is now bounded to these caps FIRST: a sheet that
+# reaches either cap is refused, not read. The caps are far above any
+# baseline table (the API's gates are 5,000 rows and 200 columns).
+.iaSheetRowCap <- 10000L
+.iaSheetColCap <- 500L
+.iaSheetCapMessage <- function(what = "sheet")
+  paste0(what, " has more than ", .iaSheetRowCap, " rows or ",
+         .iaSheetColCap, " columns and was not read")
+# the CSV column count from its first line, without reading the file
+.iaCsvColumns <- function(path) {
+  first <- readLines(path, n = 1L, warn = FALSE)
+  if (!length(first)) return(0L)
+  utils::count.fields(textConnection(first), sep = ",", quote = "\"")[1]
+}
+
 # Read every sheet of `path` as a matrix of raw cell TEXT, untyped and
 # headerless, named by sheet. Raw text matters twice: openxlsx's
 # colNames = TRUE mangles header text ("Arm 1 (n = 20)" becomes
@@ -63,27 +83,41 @@
     }, character(nrow(d)))
     matrix(m, nrow = nrow(d))
   }
+  capped <- function(d, what) {
+    if (!is.null(d) && (nrow(d) > .iaSheetRowCap || ncol(d) > .iaSheetColCap))
+      stop(.iaSheetCapMessage(what), call. = FALSE)
+    d
+  }
   if (ext == "csv") {
+    if (.iaCsvColumns(path) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"), call. = FALSE)
     d <- utils::read.csv(path, header = FALSE, colClasses = "character",
-                         check.names = FALSE)
-    return(list(toMat(d)))
+                         check.names = FALSE, nrows = .iaSheetRowCap + 1L)
+    return(list(toMat(capped(d, "the file"))))
   }
   if (ext == "xlsx") {
     sheets <- openxlsx::getSheetNames(path)
     out <- lapply(sheets, function(s)
-      toMat(tryCatch(openxlsx::read.xlsx(path, sheet = s, colNames = FALSE,
-                                         skipEmptyRows = FALSE,
-                                         skipEmptyCols = FALSE),
-                     error = function(e) NULL)))
+      toMat(capped(tryCatch(openxlsx::read.xlsx(path, sheet = s, colNames = FALSE,
+                                                skipEmptyRows = FALSE,
+                                                skipEmptyCols = FALSE,
+                                                rows = seq_len(.iaSheetRowCap + 1L),
+                                                cols = seq_len(.iaSheetColCap + 1L)),
+                            error = function(e) NULL), paste("sheet", s))))
     names(out) <- sheets
     return(out)
   }
-  # .xls via readxl
+  # .xls via readxl: the column count first (n_max = 0 reads only the
+  # header row of the used range), then a row-bounded read
   sheets <- readxl::excel_sheets(path)
-  out <- lapply(sheets, function(s)
-    toMat(as.data.frame(readxl::read_excel(path, sheet = s,
-                                           col_names = FALSE,
-                                           col_types = "text"))))
+  out <- lapply(sheets, function(s) {
+    if (ncol(readxl::read_excel(path, sheet = s, n_max = 0)) > .iaSheetColCap)
+      stop(.iaSheetCapMessage(paste("sheet", s)), call. = FALSE)
+    toMat(capped(as.data.frame(readxl::read_excel(path, sheet = s,
+                                                  col_names = FALSE,
+                                                  col_types = "text",
+                                                  n_max = .iaSheetRowCap + 1L)),
+                 paste("sheet", s)))
+  })
   names(out) <- sheets
   out
 }
