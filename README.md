@@ -8,7 +8,11 @@ against the random-sampling model the table claims — a reason to verify
 the table, the allocation and the data, not a verdict on how the table
 came to be.
 
-The engine's agreement with Carlisle's 2017 corpus, run by run, is in
+The method as it runs today is described in
+[docs/statistics.md](docs/statistics.md); what changed from the original
+Carlisle–Shafer method, and when, is in
+[docs/method-history.md](docs/method-history.md); the engine's agreement
+with Carlisle's 2017 corpus, run by run, is in
 [docs/validation-ledger.md](docs/validation-ledger.md).
 
 **Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —
@@ -34,9 +38,10 @@ for how long).
   own reader - no ImageMagick), with an opt-in AI tier for scans.
 - **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
   rounding treatment, median/IQR rows via a metalog null, one-sided p
-  toward homogeneity, exact combination across rows; validated against
-  Carlisle's 2017 analysis of 5,080 trials (r = 0.993, 99.0% alarm
-  concordance).
+  toward homogeneity, exact combination across rows; measured against
+  Carlisle's 2017 analysis run by run (the current engine: r = 0.993 and
+  98.5% alarm concordance over 5,041 usable trials; every run in
+  [docs/validation-ledger.md](docs/validation-ledger.md)).
 - **The REST API** (`R/apiService.R`, `inst/api/`, `Dockerfile`) — the
   same analysis for editorial systems: bearer-token auth, round-trip
   failure payloads, per-request AI assist, nothing retained.

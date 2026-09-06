@@ -1,446 +1,305 @@
 # How IntegrityAnalysis computes and reports its p-value
 
-Provenance: written by Claude Code (model Claude Fable 5), 2026-08-17,
-with the adaptive-replicates implementation; the scheme is Steve Shafer's
-decision following the replicate-count analysis (independently convergent
-with a Gemini analysis he commissioned). This is the user-facing
-explanation; it will fold into the full documentation rewrite (issue 14).
+This is the method as it runs today. How it came to be — every change
+from the original Carlisle–Shafer Monte Carlo, dated, with what was
+measured — is in [method-history.md](method-history.md), and every
+corpus figure quoted here traces to a row of
+[the validation ledger](validation-ledger.md).
+
+Provenance: first written by Claude Code (model Claude Fable 5) on
+2026-08-17 with the adaptive-replicates implementation; restructured
+2026-09-06 to describe the present method only, at Steve Shafer's
+request. The design decisions are Steve Shafer's.
 
 ## What the p-value means
 
 For every baseline variable (each ROW of the table), IntegrityAnalysis
-asks one question: **if the arms really were random samples from a single
-population, how often would their printed summaries agree this well?**
-The answer is a one-sided p-value toward *excessive homogeneity*:
+asks one question: **if the arms really were random samples from a
+single population, how often would their printed summaries agree this
+well?** The answer is a one-sided p-value toward *excessive
+homogeneity*:
 
 - **Small p** = the arms are more alike than random sampling explains —
-  the demonstrated fraud signal (it is how Fujii's fabricated trials were
-  caught).
-- Large p = nothing remarkable. Excessive *heterogeneity* is deliberately
-  not reported: it is not a known fabrication signal, and reporting it
-  invites false accusations against merely-variable data.
+  the demonstrated fraud signal (it is how Fujii's fabricated trials
+  were caught).
+- Large p = nothing remarkable *for this screen*. Excessive
+  *heterogeneity* is not reported: the app has no heterogeneity alarm,
+  and reporting one would invite false accusations against merely
+  variable data.
 
-The per-variable p-values combine across the trial into a single trial
-p by the **exact combination** described below (a correction made on
-2026-09-04; the section "A correction to the combination step" says
-what was wrong and what changed).
+A small p is a reason to verify the table, the allocation method and
+the underlying data. It is not the probability that the study is
+honest or fraudulent, and a large p does not establish integrity. The
+per-variable p's combine across the trial into one trial p, and trial
+p's combine across a file into one overall p; each step rests on
+assumptions stated below.
+
+## The algorithm in one table
+
+| Component | What runs | What it assumes |
+|---|---|---|
+| Mean/SD variable | Common mean (N-weighted); variances pooled with weights N<sub>i</sub> − 1 (df = ΣN − k); each replicate draws σ² = s²·df/χ²(df), then N observations per arm around a common location, rounds each to the observation precision, averages, rounds the mean as printed; statistic = sum of squared deviations of the arm means from their N-weighted centre | Independent normal observations from one population; the printed SDs and Ns are the sample's; the rounding columns are right |
+| Large arms (N ≥ 100 and SD ≥ 3 observation-grid steps) | The arm mean is drawn directly with variance (σ² + h²/12)/N, snapped to the h/N grid the observations force on a mean, then rounded as printed | The central limit theorem at that N; Sheppard's correction for the grid |
+| Median/IQR variable | A three-term metalog fitted to the N-weighted arm medians and quartiles; N observations per arm drawn from it, rounded; the sample median rounded as printed; the same statistic on the medians | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support |
+| Categorical variable | Random 2 × c tables with the observed arm and category totals fixed (`r2dtable`); the lower tail of Pearson's chi-square | Mutually exclusive, exhaustive levels; the counts are the arms' |
+| Row p | The share of replicates at least as homogeneous as the printed row, ties counted by halves (mid-p), floored at 1/(replicates + 1) | — |
+| Trial p | Stouffer's sum of the rows' z-scores, judged against the same sum computed for every replicate (rows simulated independently), ties by halves | The variables are independent |
+| Overall p (several trials) | The closed-form Stouffer combination of the trial p's against the normal table; a trial reported as "<0.0001" enters as 0.0001 | Independent trials; continuous trial p's |
+
+Every trial starts with 1,000 replicates per row and escalates to 10,000
+while the trial's p or any row's is below 0.1, and to 100,000 while
+below 0.01. Each stage draws afresh; the `Replicates` column reports the
+final batch, and every usable row of a trial shares it.
 
 ## Where the numbers come from, and why they carry uncertainty
 
 Each row's p is estimated by simulation: the app draws many replicate
 trials under the random-sampling hypothesis, rounds the simulated
-summaries exactly as the paper rounded its own, and counts how often the
-simulated arms agree at least as well as the printed ones (ties count
-half — the "mid-p" convention, a deliberate choice: a mid-p is centred
-on the right value on average but is not exactly uniform for every
-fixed margin of a discrete table, where an inclusive-tail p would be
-conservative instead; it reproduces Carlisle's published
-2017 values, r = 0.991 over 5,080 trials).
+summaries exactly as the paper rounded its own, and counts how often
+the simulated arms agree at least as well as the printed ones. Ties
+count half — the mid-p convention, a deliberate choice. A mid-p is
+centred on the right value on average, and it reproduces Carlisle's
+published 2017 values (r = 0.991 over 5,080 trials), but it is not
+exactly uniform for every fixed margin of a discrete table: where the
+tie mass is large, the share of honest tables below 0.05 can sit above
+or below 5%. (An inclusive-tail p, counting every tie, would be
+conservative instead.)
 
 A simulated p-value is itself an estimate. If 0 of 1,000 replicates
 agree as well as the printed data, the true p could still plausibly be
-0.003 — so reporting "p < 0.001" from 1,000 replicates overstates the
-evidence. IntegrityAnalysis is a screening tool whose verdicts may be
-challenged, so it reports only what the simulation actually supports.
+0.003 — so reporting "p < 0.001" from 1,000 replicates would overstate
+the evidence. IntegrityAnalysis is a screening tool whose verdicts may
+be challenged, so it reports only what the simulation supports:
 
-## Reproducibility, and the seed
+- **No literal zeros.** A row where no replicate matched is floored at
+  1/(replicates + 1) (Davison & Hinkley).
+- **"<0.0001" is a confidence statement.** A row displays "<0.0001" only
+  when the one-sided 97.5% upper Clopper–Pearson bound on its simulated
+  count (ties counted fully — conservative) clears 0.0001. At zero hits
+  this needs roughly 30,000 replicates; at 100,000 the bound is
+  3.7 × 10⁻⁵.
+- **Every row carries a 95% Monte Carlo interval**, exact
+  Clopper–Pearson, its lower end from the strictly-below count and its
+  upper end from the at-or-below count, so it brackets the mid-p and
+  errs wide ("0.27 to 0.33" for an unremarkable row at 1,000
+  replicates; "0 to 3.7e-05" for a row with nothing at or below at
+  100,000). It is the simulation's uncertainty about the row's p, not
+  uncertainty about the trial's data.
+- **Precision by stage.** At 1,000 replicates a p near 0.05 has a Monte
+  Carlo standard error of about 0.007 (95% half-width about 0.014); at
+  10,000 about 0.002 (half-width 0.004). This is why a borderline row is
+  escalated.
+- **One qualification.** The batch the interval is computed from is the
+  one the staging chose to stop at, and that choice looks at the batch's
+  own p, so the interval is not exactly a fixed-sample 95% interval. By
+  exact enumeration, coverage is about 93.5% for a row whose true p is
+  near an escalation threshold (93.7% at p = 0.008, 93.4% at 0.085,
+  93.6% at 0.09) and the nominal 95% away from them (95.2% at 0.05, 0.10
+  and 0.20). The interval is a guide to the simulation's precision, not
+  a certified confidence statement; the "<0.0001" bound is unaffected.
 
-A Monte Carlo result is not meant to be identical from run to run. Two
-unseeded runs of the same table give p-values that differ within the
-reported Monte Carlo interval, and the interval is there so that the
-difference is never a surprise. When identical numbers are wanted — to
-reproduce a published screen, to compare two builds, to show a reviewer
-exactly what was run — set the seed: in the app, add `?seed=12345` to
-the page's address before pressing Analyze (or start a local copy with
-`run_app(seed = 12345)`); in the API, send `seed` with the request. The
-same table, the same seed and the same build then give the same numbers
-on any machine, the log and the results workbook record the seed, and
-the API echoes it. The build matters as much as the seed: any change to
-how the simulation draws (the direct draw of 2026-09-05, for instance)
-changes what a seed produces, so record the build commit — the health
-endpoint's `commit`, or the workbook's About sheet — beside the seed. A
-seed makes a number reproducible; it does not make it more precise. The
-precision is the replicate count, which the adaptive scheme below sets.
+## The mean/SD model
 
-## The adaptive scheme
-
-1. **Staged replicates.** Every trial starts with 1,000 replicates per
-   row. If the trial's running p and every row's are ≥ 0.1, the
-   simulation stops — extra precision on an unremarkable p changes
-   nothing. Otherwise it escalates to 10,000, and if the trial or a row
-   is still < 0.01, to 100,000. Computation concentrates where precision
-   matters: at 1,000 replicates a p near 0.05 carries a Monte Carlo
-   standard error of about 0.007 (a 95% half-width of about 0.014),
-   which let the guide's worked example land on either side of 0.05
-   from run to run; at 10,000 the standard error is about 0.002 (half-
-   width 0.004). (The
-   threshold for the first escalation was 0.01 until 2026-09-05.)
-2. **No literal zeros.** A row where *no* replicate matched is floored at
-   1/(replicates + 1) (Davison & Hinkley) — the smallest value the
-   simulation can honestly claim.
-3. **"< 0.0001" is a confidence statement, not an estimate.** A row
-   displays "<0.0001" only when the one-sided 97.5% upper confidence
-   bound (exact Clopper–Pearson, ties counted fully — conservative) on
-   its simulated count clears 0.0001. At zero exceedances this needs
-   roughly 30,000+ replicates; at 100,000 replicates the bound is
-   3.7 × 10⁻⁵, comfortably below. Every row also shows its exact
-   Clopper–Pearson 95% Monte Carlo interval ("0.27 to 0.33" for an
-   unremarkable row at 1,000 replicates; "0 to 3.7e-05" for a row with
-   nothing at or below at 100,000), and how many replicates it used.
-   The interval is the simulation's uncertainty about the row's p, not
-   uncertainty about the trial's data; its lower end comes from the
-   strictly-below count and its upper end from the at-or-below count,
-   so it brackets the mid-p and errs wide. One qualification, found by
-   an outside audit (2026-09-06) and confirmed by exact enumeration: the
-   batch the interval is computed from is the one the staging chose to
-   stop at, and that choice looks at the batch's own p, so the interval
-   is not exactly a fixed-sample 95% interval. For a row whose true p is
-   near an escalation threshold the coverage is about 93.5% (93.7% at p =
-   0.008, 93.4% at 0.085, 93.6% at 0.09); away from the thresholds it is
-   the nominal 95% (95.2% at 0.05, 0.10 and 0.20). The interval is a
-   guide to the simulation's precision, not a certified confidence
-   statement, and the "<0.0001" bound is unaffected.
-4. **The trial p is the exact combination.** The rows' evidence is
-   summed as Stouffer's z-scores, and that sum is judged against its own
-   simulated null: every replicate of every row is ranked within its
-   row, z-scored and summed across rows, replicate by replicate, and the
-   trial p is the share of those simulated honest sums that reach the
-   observed one (ties half). Accumulation across rows is still the fraud
-   signal — eight rows each at p = 0.05, none alarming on its own,
-   combine to about 1.6 × 10⁻⁶ by the closed form; the simulation,
-   floored at 1/(replicates + 1), reports that as "<0.0001" with its
-   Monte Carlo interval — and it rests on the
-   rows being independent: weight and BMI, or a measurement and its
-   categorised version, repeat some of their evidence, and a summary
-   table gives no way to recover the correlation, so a table with
-   overlapping variables understates its trial p — overstates the
-   evidence — by an amount the reader must judge (ten copies of one
-   row at p = 0.044 combine to "< 0.0001" and contain no more evidence
-   than the one). The trial p is bounded by
-   what its simulation can resolve: it is floored at 1/(replicates + 1)
-   like a row, displays "<0.0001" only when the 97.5% upper bound on the
-   reaching count licenses it, and carries an exact Clopper–Pearson 95%
-   interval whenever it is below 0.001, e.g. "p < 0.0001 (95% Monte
-   Carlo interval 0 to 3.7e-05)". That interval is built like a row's:
-   its lower end from the count of simulated sums strictly beyond the
-   observed one, its upper end from the count at or beyond it, so it
-   brackets the mid-p. (Until 2026-09-06 both ends came from the
-   at-or-beyond count; at the attainable floor, where every "beyond" is
-   a tie, the mid-p is half the tie count and printed below its own
-   interval — "0.00042, interval 0.00067 to 0.001". Found by an outside
-   review and reproduced.) The staging is per trial: every usable row
-   draws the same number of replicates at each stage, and the trial
-   escalates while its own p or any row's is below 0.1 (to 10,000) and
-   below 0.01 (to 100,000).
-
-## The pooled SD, and its correction (2026-09-05)
-
-The mean/SD simulation needs one population SD. Each arm reports an SD
-computed about its own mean, so arm *i* carries N<sub>i</sub> − 1
-degrees of freedom and the pooled variance — each arm's variance
-weighted by its degrees of freedom — has N − k of them for k arms. That
-pooling is the minimum-variance unbiased estimate of a common variance.
-Its square root is biased low (Jensen's inequality): E[s] = c₄ σ with
-c₄ = √(2/df) Γ((df+1)/2) / Γ(df/2), so the simulation uses s / c₄.
-
-Until 2026-09-05 the code weighted the variances by N<sub>i</sub>
-rather than N<sub>i</sub> − 1 (also unbiased, but not the chi-square
-shape the correction assumes), corrected with N − 1 degrees of freedom
-rather than N − k (one too many per arm beyond the first, so it
-under-corrected), and only below N = 30, leaving a 1% step there. The
-shortfall was 3.8% for two arms of two and under 0.1% for two arms of
-twelve; a low SD makes the simulated arms sit closer together, so the
-error was conservative. Raised by an outside review (finding 8).
-
-The change was checked on an honest null: one continuous row, two equal
-arms of 3, 5, 10, 20 or 50, honest normal data, 2,000 trials per cell,
-printed finely (two decimals) and coarsely (integer observations, means
-to one decimal). Both engines sit at the nominal rates within Monte
-Carlo error at every N (the share of row p ≤ 0.05 ranges 4.5–5.6%
-with a standard error of 0.5 points, and the mean p is 0.50–0.52), and
-the pooled engine moves each cell by 0.1 point or less: the plug-in SD
-was never the problem it could have been, because the test is
-one-sided toward homogeneity and the lower tail of the ratio of the
-between-arm scatter to the pooled variance barely feels the variance's
-own uncertainty. The worked example (77 vs 78, SD 30, n = 6) moved from
-0.0481 to 0.0475.
-
-On the Carlisle 2017 corpus (5,011 usable trials, both engines run with
-a 10,000-replicate ceiling on the same day) the pooled SD moved the
-trial p by a median of 0.007 (90th percentile 0.03), downward in 57% of
-trials and most in trials of 30 or fewer per arm (median change
--0.002); the correlation with Carlisle's stored values went from 0.9922
-to 0.9925, the share within 0.05 of his value from 88.0% to 88.5%, and
-the alarm concordance from 98.6% to 98.5% (alarms 407 to 413: 9 in, 3
-out).
-
-## The SD is drawn, not plugged in (2026-09-06)
-
-The pooled SD above is an estimate with N − k degrees of freedom, and a
-plug-in value — however well unbiased — understates the null spread of
-the arm means: it is the z test where a t test belongs. Each replicate
-of the mean/SD simulation therefore draws its own population variance,
-σ² = s² · df / χ²(df), from the scaled inverse chi-square implied by the
-pooled variance, and generates that replicate's observations and its
+**The population SD.** Each arm reports an SD computed about its own
+mean, so arm *i* carries N<sub>i</sub> − 1 degrees of freedom and the
+pooled variance — each arm's variance weighted by its degrees of
+freedom — has N − k of them for k arms: the minimum-variance unbiased
+estimate of a common variance. The simulation does not treat that
+pooled SD as known. Each replicate draws its own population variance,
+σ² = s² · df / χ²(df), from the scaled inverse chi-square the pooled
+variance implies, and generates that replicate's observations and its
 common location with that σ. The observed between-arm statistic is
-judged against replicates whose σ varies as the data's own uncertainty
-says it should, so the simulated statistic behaves like the F it should
-rather than the chi-square a fixed σ gives. No square-root correction is
-applied to the draw, and no point estimate of σ is plugged in. What is
-still taken as given: the pooled variance and the common location
-(both estimated from the printed table), the printed rounding, the arm
-sizes, and — for a median row — the fitted distribution. The SD's own
-printed rounding (`ROUND_DISPERSION`) is not integrated over.
+therefore judged against replicates whose σ varies as the data's own
+uncertainty says it should — the simulated statistic behaves like the F
+it should rather than the chi-square a fixed σ gives. This matters
+below about ten patients per arm; above that the draws are so tight
+that nothing changes. What is still taken as given: the pooled variance
+and the common location (both estimated from the printed table), the
+printed rounding, and the arm sizes. The SD's own printed rounding
+(`ROUND_DISPERSION`) is not integrated over. (A point estimate of σ,
+corrected for the square root's small-sample bias with c₄ at N − k
+degrees of freedom, survives only to decide whether an arm qualifies
+for the direct draw.)
 
-Measured before adoption (Steve's ask of 2026-09-05; data in
-`C:/dev/Corpus/synthetic/sd-null/`):
+**The common location.** Each replicate draws one true mean for all
+arms, Normal about the N-weighted pooled mean with standard deviation
+σ/√(mean N). For unrounded data this draw cancels from the statistic,
+which measures the arms' deviations from their own centre; it matters
+only through where the location sits relative to the rounding grid,
+which decides how often two arm means print the same value. The scale
+is inherited from the original simulation (the pooled mean's own
+sampling standard deviation would be σ/√ΣN, narrower by √k); see the
+notes at the end of [method-history.md](method-history.md).
 
-- **Honest null** (one continuous row, two equal arms of 3, 5, 10, 20
-  or 50, honest normal data, 2,000 trials per cell, fine and coarse
-  printing). The share of row p ≤ 0.05 and ≤ 0.01 is nominal for the
-  plug-in and the draw alike at every N — the tails were never the
-  problem. The body of the distribution was: with a plug-in SD the mean
-  p at three per arm is 0.52 and the Kolmogorov–Smirnov distance from
-  uniform 0.07; with the draw 0.50 and 0.016. At ten per arm and above
-  the two are indistinguishable.
-- **Carlisle 2017 corpus** (5,041 usable trials, 10,000-replicate
-  ceiling, same day as the pooled-SD run). Against Carlisle's stored
-  values (the run from the merged engine) the correlation rose from
-  0.9925 to 0.9929 and the share within 0.05 from 88.5% to 89.1%; alarm
-  concordance 98.5% either way (alarms 418 → 420, 11 in, 9 out). Draw
-  against plug-in: median |Δp| 0.009, 90th percentile 0.033, the shift
-  confined to trials of 30 or fewer per arm (median −0.004) and zero
-  above 300 per arm. One trial of 20 per arm moved by 0.34 (0.28 to
-  0.62; Carlisle 0.25), the largest mover in either direction.
+**The direct draw for large arms.** When an arm has at least 100
+patients and the SD is at least three observation-grid steps, the arm
+mean is drawn directly: one Normal draw with variance (σ² + h²/12)/N,
+where h is the observation grid (Sheppard's correction for rounding
+each observation), snapped to the grid of width h/N that N rounded
+observations force on their mean, and then rounded as the printed mean
+was. Below either threshold every observation is simulated. Tested
+against the full simulation on the two-arm statistic, 100,000 replicates
+per cell, N from 10 to 300, printed to 0 or 1 decimals, and on the
+integer-observation, six-decimal-mean case that first exposed the need
+for the snap; the two agree to Monte Carlo precision, and the direct
+draw is about thirty times faster at 5,000 per arm. Median rows always
+draw their observations.
 
-The worked example (77 vs 78, SD 30, n = 6) moved from 0.0475 to 0.0442 (0.04415):
-two arms of six carry ten degrees of freedom, and the uncertainty in
-their SD is real.
-
-Every corpus figure quoted in this document traces to a row of
-[the validation ledger](validation-ledger.md).
-
-## Reading the results table
-
-| Column | Meaning |
-|---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
-| 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. |
-| Note | "attainable floor" when the row sits at the smallest p its printed precision allows (no honest replicate agrees better than the printed arms). See "Convergence under rounding". Blank otherwise. |
-| Replicates | Simulations this row actually used (1,000 for unremarkable rows; up to 100,000 for alarming ones). |
-
-## Convergence under rounding: why a large trial's rows agree, and why that is not evidence
+## Rounding, convergence, and the attainable floor
 
 Under honest randomization the arm means are estimates of one
 population mean, and as the arms grow they converge on it: the standard
 error of an arm mean falls like 1/√N. Once that standard error is
 smaller than the printed precision, the arms will often print the same
-number. At 1,000 per arm with SD 13, the standard error is 0.4; reported
-as integers, the two means agree about half the time. Identical rounded
-means in a large trial are the expected outcome of convergence, not an
-anomaly.
+number. At 1,000 per arm with SD 13, the standard error is 0.4;
+reported as integers, the two means agree about half the time.
+Identical rounded means in a large trial are the expected outcome of
+convergence, not an anomaly.
 
 The row simulation reproduces this exactly, because it rounds its
 replicates as the paper rounded its own. Its tie mass at the minimum of
 the statistic *is* the convergence, and a row whose arms both report
 "55" gets the mid-p of that tie group, about 0.27. That is the correct
 value: it says "half of honest tables look like this", and it cannot be
-made smaller, because the printing removed everything finer. There is
-no unexplained homogeneity in such a row, and the method reports none.
-(Steve Shafer, 2026-09-04: "As n goes to infinity, both arms
-necessarily converge to the true population value. If you round, then
-they will converge to exactly the same number. There is no unexplained
-homogeneity in large n, because convergence is expected.")
+made smaller, because the printing removed everything finer. (Steve
+Shafer: "As n goes to infinity, both arms necessarily converge to the
+true population value. If you round, then they will converge to exactly
+the same number. There is no unexplained homogeneity in large n,
+because convergence is expected.")
 
 **The attainable floor.** Every row has a smallest p its printed
 precision allows: the mid-p of the most homogeneous outcome the
-simulation can produce — both arms printing the same value — which is
-half the share of honest replicates that land there. The results table
-marks a row that sits at that floor with the note **"attainable
-floor"**. For integer age in a large trial the floor is high (about
-0.27 at 1,000 per arm) and the note says: this row has said everything
-its rounding lets it say, and it cannot alarm however the data were
-made. For a finely printed row the floor is small and a row at it
-alarms; the note then says: nothing agrees better than this, and this
-is as low as the row can go. The floor is a property of the printing
-and the sample size, not of the data.
-
-**How this trap was found, twice.** Carlisle's original method used
-normal theory for the comparison of arm means. Under normal theory two
-random samples never agree exactly, so a row whose arms reported
-identical means had p = 0, and Fujii's tables looked statistically
-impossible on rows that were merely rounded. Steve Shafer replaced the
-normal theory with the Monte Carlo simulation described above, which
-rounds its replicates as the paper rounded its own and so gives
-identical rounded means the probability they actually have. The
-combination step corrected on 2026-09-04 was the same trap one level
-up: the closed-form Stouffer sum assumed each row p uniform, which
-identical-rounded-means rows are not. Barnett's dispersion test, which
-computes t-statistics from the printed means as if they were exact,
-falls into the original trap: tied integer means read as
-under-dispersion.
+simulation can produce — the arms printing exactly the same value —
+which is half the share of honest replicates that land there. The
+results table marks a row with the note **"attainable floor"** when its
+arms agree exactly *and* no honest replicate agreed better. For integer
+age in a large trial the floor is high (about 0.27 at 1,000 per arm)
+and the note says: this row has said everything its rounding lets it
+say, and it cannot alarm however the data were made. For a finely
+printed row the floor is small and a row at it alarms; the note then
+says: nothing agrees better than this. The floor's value depends on the
+printing, the sample size and where the population sits relative to
+the grid, never on the data. A row whose arms differ, however slightly,
+never carries the note, even when no replicate happened to beat it.
 
 The consequences shape the whole method. A coarsely printed row cannot
-convict on its own: a copied integer mean is indistinguishable from an
-honestly converged one. Evidence therefore comes from two places — the
+carry a finding on its own: a copied integer mean is indistinguishable
+from an honestly converged one. Evidence comes from two places — the
 accumulation of many rows that each sit at the bottom of their tie
-groups, which is what the trial p measures and why its combination must
-be exact (next section), and rows printed finely enough that
-convergence has not erased the sampling scatter. And a test that
-ignores rounding reads convergence the wrong way: a t-statistic
+groups, which is what the trial p measures and why its null must be
+simulated rather than assumed (next section), and rows printed finely
+enough that convergence has not erased the sampling scatter. A test
+that ignores rounding reads convergence the wrong way: a t-statistic
 computed from tied integer means treats the tie as exact and reports
-under-dispersion, so honest large trials alarm. That is the failure
-measured for Barnett's test in the synthetic sweeps, and the reason
-this method models the rounding rather than the printed number.
+under-dispersion, so honest large trials alarm. That is why this method
+models the rounding rather than the printed number.
 
-## A correction to the combination step (2026-09-04)
+## Combining rows into a trial p
 
-**What was wrong.** Until 2026-09-04 the trial p was Stouffer's
-closed-form combination: each row's simulated p was converted to a
-normal score, the scores were summed, and the sum was read off the
-normal distribution. That closed form assumes each row's p is uniformly
-distributed when the trial is honest. It is not, whenever the reported
-means are rounded coarsely relative to their standard error — integer
-means with hundreds of patients per arm, say. A row like that has only
-a handful of possible values of its statistic, so its simulated p is
-discrete (a row whose two arms both report "55" has a mid-p near 0.27
-however honest it is), and the sum of a few such p's was being read off
-a smooth table it does not follow. Measured on synthetic honest trials
-(`corpus/syntheticTiesCheck.R`): at integer means and 1,000 per arm,
-1.4 % of honest trials fell below p = 0.05 instead of 5 %, the lowest
-decile of trial p's was 43 % under-filled, and a fabricated table with
-identical integer means on every row could not reach p = 0.01 however
-many rows agreed. The screen failed in the safe direction — it accused
-no one — but it was miscalibrated, and it was blind to a fabrication it
-should have seen. The error was in the Monte Carlo's combination step,
-which Steve Shafer wrote; it is not part of Carlisle's method, and none
-of Carlisle's published values depend on it.
+The rows' evidence is summed as Stouffer's z-scores, and that sum is
+judged against its own simulated null: every replicate of every row is
+ranked within its row, given the mid-p its rank implies, floored and
+z-scored exactly as the observed row is, and the z's are summed across
+rows replicate by replicate. That is legitimate because the rows are
+simulated independently. The observed sum is compared with the
+simulated sums, ties counting half. The result is a trial p judged at
+the same rounding and the same N as the data — not against a normal
+table that assumes continuous, uniform row p's — and so one that is
+centred where it should be at every rounding and every N (on synthetic
+honest trials: 4.8 to 5.8% below 0.05 in every integer cell). It is a
+mid-p on a discrete statistic, so it is not exactly uniform and does not
+promise exactly 5% below 0.05 for every table. It finds the fabricated
+table: identical integer means on three rows give the share of honest
+trials whose rows all tie at once, which is the evidence the table
+actually holds.
 
-**What changed.** Nothing about the rows. The row statistic, its
-rounding-faithful simulation, the mid-p and the bound rules are exactly
-as before, and the row p's shown in the grid are unchanged in kind. The
-only change is how the rows are combined. The statistic is still
-Stouffer's sum of row z-scores. Its null distribution is no longer
-assumed normal; it is taken from the same simulations that produce the
-row p's. Each simulated replicate of each row is ranked within its row,
-given the mid-p its own rank implies, floored and z-scored exactly as
-the observed row is, and the z's are summed across rows replicate by
-replicate. That is legitimate because the rows are simulated
-independently. The observed sum is then compared with the simulated
-sums, ties counting half. The result is a trial p judged against its
-own simulated null at the same rounding and the same N — not against
-a normal table that assumes continuous, uniform row p's — and so one
-that is centred where it should be at every rounding and every N (on
-the same synthetic trials: 4.8 to 5.8% below 0.05 in every integer
-cell). It is a mid-p on a discrete statistic, so it is not exactly
-uniform and does not promise exactly 5% below 0.05 for every table:
-where the tie mass at the floor is large the share can sit above or
-below the nominal level. It finds the fabricated table: identical integer means on three
-rows now give the share of honest trials whose rows all tie at once,
-which is the evidence the table actually holds.
+Accumulation across rows is the fraud signal — eight rows each at
+p = 0.05, none alarming on its own, combine to about 1.6 × 10⁻⁶ by the
+closed form; the simulation, floored at 1/(replicates + 1), reports that
+as "<0.0001" with its Monte Carlo interval. And it rests on the rows
+being independent: weight and BMI, or a measurement and its
+categorised version, repeat some of their evidence, and a summary table
+gives no way to recover the correlation, so a table with overlapping
+variables understates its trial p — overstates the evidence — by an
+amount the reader must judge (ten copies of one row at p = 0.044
+combine to "<0.0001" and contain no more evidence than the one). Before
+reading a trial p, identify duplicated or derived variables.
 
-**What it costs.** The trial p can no longer be resolved below
-1/(replicates + 1): a trial whose observed sum exceeds every one of
-100,000 simulated sums reports "<0.0001" with the interval "0 to
-3.7e-05", where the closed form used to print a number like 3 × 10⁻⁹.
-That number was never resolvable by the simulation; the new report says
-what the simulation supports and no more. Replicates are shared by the
-whole trial, so an alarming trial escalates every row rather than only
-the alarming ones, which is why the `Replicates` column now shows the
-same count on every row of a trial.
+The trial p is bounded by what its simulation can resolve: it is
+floored at 1/(replicates + 1) like a row, displays "<0.0001" only when
+the 97.5% upper bound on the reaching count licenses it, and carries an
+exact Clopper–Pearson 95% interval whenever it is below 0.001, built
+like a row's (lower end from the strictly-beyond count, upper end from
+the at-or-beyond count, so it brackets the mid-p), e.g. "p < 0.0001
+(95% Monte Carlo interval 0 to 3.7e-05)". Replicates are shared by the
+whole trial, so an alarming trial escalates every row.
 
-**Revalidated against Carlisle 2017 (2026-09-04).** The 5,080 trials of
-the 2017 analysis were rerun on the corrected engine. Against Carlisle's
-stored trial p-values the agreement is essentially unchanged (r 0.993
-before, 0.992 after; alarm concordance at p < 0.05 99.0 % before,
-98.3 % after; his values were computed with the same closed-form
-combination this correction replaced). Against the previous engine the
-typical trial moved by about one hundredth (median |change| 0.013;
-r = 0.997), the number of trials below p = 0.05 rose from 348 to 392,
-and the largest shifts were in the largest trials (over 300 per arm),
-where rounded rows converge and carry the least information each. That
-is the intended effect: the trial p now reflects the amount of
-information in each row, and for a rounded row that amount falls as N
-grows, because convergence takes the arms below what rounded numbers
-can distinguish.
+## Combining trials into an overall p
 
-**Ideas that were tested and rejected**, so that nobody repeats them:
-ignoring ties (placing the observed statistic at the floor of its tie
-group) gave 10 to 43 % false alarms at integer rounding; placing it at
-the chi-square median of its tie group reproduced the old numbers
-exactly, because any rule that assigns one number to each reported
-pattern leaves the distribution as lumpy as it found it; a
-log-likelihood-ratio combination against a stated fabrication model was
-calibrated but sees only the alternative it was built for. The exact
-combination needs no alternative and was never worse than the better of
-those on that alternative's own ground.
+When a file holds several trials, the Summary sheet's closing row is
+the closed-form Stouffer combination of the trial p's against the normal
+table — a different procedure from the within-trial combination, which
+is judged against its own simulated null. It treats the trial p's as
+continuous and independent; a trial reported as "<0.0001" enters as
+0.0001, on the conservative side; trials that could not be computed are
+left out and the row says how many combined. This is the step Carlisle
+took to reach a single p for the whole body of Fujii's work. Define the
+set of trials before looking at their p's: combining only papers already
+flagged, or counting several publications of one trial as independent
+studies, biases the result.
 
-## Large trials: the arm mean drawn directly (2026-09-05)
+## Reproducibility, and the seed
 
-**What changed.** A continuous row's replicate used to draw every one
-of the N observations in each arm, round each to the observation
-precision, average them, and round the mean to the printed precision.
-That is exact, and it costs N random draws per arm per replicate, so a
-row with 5,000 patients per arm costs 250 times a row with 20, and once
-the exact combination escalated every row of an alarming trial together
-the largest trials of the Carlisle corpus took an hour each. Now, when
-an arm has at least 100 patients and the row's SD is at least three
-times the observation grid, the arm *mean* is drawn directly: one Normal
-draw with variance (SD² + h²/12)/N, where h is the observation grid, and
-then the rounding of the *printed* mean is applied exactly as before.
-Below either threshold the full simulation runs unchanged for that arm.
+A Monte Carlo result is not meant to be identical from run to run. Two
+unseeded runs of the same table give p-values that differ, usually on
+the scale of their Monte Carlo standard errors, and the interval is
+there so that the difference is never a surprise. When identical
+numbers are wanted — to reproduce a published screen, to compare two
+builds, to show a reviewer exactly what was run — set the seed: in the
+app, add `?seed=12345` to the page's address before pressing Analyze (or
+start a local copy with `run_app(seed = 12345)`); in the API, send
+`seed` with the request. The same normalized table, the same seed and
+the same build then give the same numbers on any machine; the log and
+the results workbook record the seed, and the API echoes it. The build
+matters as much as the seed, because any change to how the simulation
+draws changes what a seed produces: record the build commit (the health
+endpoint's `commit`, or the workbook's Provenance sheet) beside the
+seed. Re-extracting a document through OCR or the AI assist is not part
+of that guarantee; the guarantee starts at the normalized table. A seed
+makes a number reproducible; it does not make it more precise.
 
-**Why it is legitimate.** The mean of N observations is, by the central
-limit theorem, Normal to within Monte Carlo error once N is large, and
-rounding each observation to a grid of width h adds h²/12 to its
-variance (Sheppard's correction) without moving its mean. The only
-rounding that creates ties between arms is the rounding of the printed
-mean, and that is still applied to every simulated mean, so the tie
-mass at the floor, the discrete null of the row statistic, and
-everything the exact combination reads from it are preserved. What the
-shortcut removes is the cost of simulating N individual patients whose
-average the theorem already describes.
+## Reading the results table
 
-**How it was tested.** The full simulation and the direct draw were
-run side by side on the two-arm row statistic, 100,000 replicates per
-cell, and compared on the tie mass at zero, the mid-p at a tie, and the
-largest difference between the two cumulative distributions over the
-statistic's support (Monte Carlo noise at this size is about 0.004).
-Across N of 10 to 300, printed to 0 or 1 decimals, with the observation
-grid at 1/13 of the SD (age) and 1/45 of it (BMI), the largest
-difference was 0.007 and the tie masses agreed to the third decimal at
-every N from 10 upward. With the grid comparable to the SD the direct
-draw is wrong at small N (SD 0.7 against integer observations: 0.047 at
-N = 10, 0.019 at N = 100) and right only where the grid is fine relative
-to the SD: sweeping the SD from 1.5 to 8 grid steps at N = 100, 300 and
-1,000, the difference is at most 0.008 at 1.5 to 2 steps and within
-noise from 3 steps up. Hence the two thresholds: 100 per arm and three
-grid steps of SD. On a six-row table at 5,000 per arm the two methods
-gave the same row and trial p-values to Monte Carlo precision and the
-direct draw was thirty times faster (0.2 s against 7.3 s for 10,000
-replicates). A unit test holds the row p of a 200-per-arm tied-integer
-row within 0.015 between the two methods, and every known-answer value,
-all at 40 per arm or fewer, is untouched. The measurement scripts and
-their output are kept with the corpus tooling.
+| Column | Meaning |
+|---|---|
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
+| 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
+| Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better. See "Rounding, convergence, and the attainable floor". Blank otherwise. |
+| Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
 
-**A correction (2026-09-06).** An outside audit found a case the tests
-above did not cover: integer observations with the mean printed to six
-decimals (N = 100, SD 3, identical means). N observations on a grid of
-width h have a mean on a grid of width h/N whatever the printed
-precision, and a continuous draw ignored that grid, so the direct draw
-reported p < 0.0001 where the full simulation gives 0.0045 — the ties
-the grid creates were erased. The drawn mean is now snapped to the
-h/N grid before the printed rounding. Where the printed precision is
-coarser than h/N (every 0- and 1-decimal cell in the test above) the
-snap changes nothing, which is why those cells never showed it. On the
-audit's case the two methods now agree to Monte Carlo precision.
+## What this method assumes, and what it does not measure
 
-**What it does not change.** The statistic, the mid-p, the bounds, the
-exact combination, the attainable floor, and every row below the
-thresholds. Median rows still draw their N observations, because a
-median's sampling distribution is not the theorem's Normal at the same
-N; they can be given the same treatment later if a large-trial median
-row proves costly.
+- **Eligibility.** A baseline variable measured before allocation in a
+  trial that randomized individuals. Covariate-adaptive allocation,
+  matching, cluster randomization, or a table restricted to completers
+  changes the reference distribution and is not modelled. A variable
+  measured after allocation (the duration of surgery, say) is an
+  outcome, not a baseline.
+- **Independence of variables** within a trial, and of trials across a
+  file, as above.
+- **The row models**: normal observations for mean/SD rows; a metalog
+  for median/IQR rows, whose calibration across skewed, bounded and
+  heavy-tailed populations is not yet established; fixed margins for
+  categorical rows.
+- **The printed values and the rounding columns are right.** A misread
+  digit, a standard error entered as a standard deviation, or an
+  observation precision guessed wrongly changes the answer; the app
+  infers a missing precision from the printed decimals and says so, and
+  that inference should be checked.
+- **The Monte Carlo interval** describes the simulation's precision
+  under the model. It does not include extraction error, an unsuitable
+  randomization model, dependence, or the probability of fraud, and
+  more replicates cannot correct those.
 
 ## One sentence for the skeptical reader
 
@@ -480,12 +339,12 @@ dispersion of the collection), and in framework (a simulated one-sided
 p versus a posterior under a spike-and-slab prior). When they disagree
 about a table, any of those differences can be the reason — rounding is
 the one we have documented, with the exclusion rule Barnett's method
-needs at the attainable floor (see "Convergence under rounding" above)
-— so a disagreement is a prompt to look, not a diagnosis.
+needs at the attainable floor — so a disagreement is a prompt to look,
+not a diagnosis.
 
 Their agreement should not be over-read either. Both compute from the
 same table and both assume the rows are independent — ours in the
-`sqrt(k)` denominator of Stouffer's combination, his in treating each
+simulated sum of independently generated rows, his in treating each
 t-statistic as a separate draw. That is a *common-mode* assumption, so
 the two agreeing says nothing about whether it holds.
 
@@ -507,7 +366,5 @@ one variable alone. And it does not model rounding: when the reported
 precision is coarse relative to the standard error of the arm mean —
 integer-reported means in a large trial, say — the t-statistics
 concentrate at zero and honest data reads as under-dispersed. Ours
-models the rounding explicitly, and until 2026-09-04 failed the other
-way at the combination step, becoming conservative (see the correction
-above); with the exact combination it is uniform under those conditions,
-and his is not.
+models the rounding explicitly and is centred under those conditions;
+his is not.

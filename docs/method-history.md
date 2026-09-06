@@ -1,0 +1,219 @@
+# What changed from the original Carlisle–Shafer method
+
+The method IntegrityAnalysis runs today is described, without history,
+in [statistics.md](statistics.md). This document is the record of how it
+got there: every change to the statistical engine since the original
+Carlisle–Shafer Monte Carlo, dated, with what was wrong, what changed,
+and what was measured. It exists so that the current description can
+stay clean and so that nobody repeats an experiment that was already
+run. Corpus figures trace to [the validation ledger](validation-ledger.md).
+
+Provenance: assembled 2026-09-06 by Claude Code (model Claude Fable 5.1)
+from the dated sections that previously lived in `statistics.md`, at
+Steve Shafer's request that the user-facing documents describe the
+present method and keep the history apart.
+
+## The original method
+
+John Carlisle's 2012 analysis of Fujii's trials compared baseline arm
+means with normal theory and combined the variables with Stouffer's
+closed-form sum of z-scores. Under normal theory two random samples
+never agree exactly, so a row whose arms reported identical rounded
+means had p = 0, and rounded tables looked statistically impossible.
+Steve Shafer replaced the normal theory with a Monte Carlo simulation
+that rounds its replicates as the paper rounded its own, so that
+identical rounded means get the probability they actually have. That
+simulation, per variable, with the closed-form Stouffer combination
+across variables and across trials, is the Carlisle–Shafer method of the
+2015 and 2017 papers, and it is what the app shipped with in August
+2026 (r = 0.993 against Carlisle's stored 2017 values over 5,080
+trials; 99.0% alarm concordance).
+
+## 2026-08-16 — the mid-p convention
+
+Ties (simulated tables exactly as homogeneous as the printed one) are
+counted by halves. Counting every tie ran systematically high on
+discretised statistics (median absolute difference from Carlisle's
+values 0.076); the mid-p reproduces his values (r 0.995 in the pilot,
+0.991 over the full corpus). A mid-p is centred on the right value on
+average but is not exactly uniform for every fixed margin of a discrete
+table, where an inclusive-tail p would be conservative instead; the
+choice is deliberate and documented in the current method.
+
+## 2026-08-17 — one-sided toward homogeneity; staged replicates
+
+The p became one-sided toward excessive homogeneity (small p = arms more
+alike than random sampling explains); excessive heterogeneity is not
+reported. Replicates became staged: 1,000 per row, escalating to 10,000
+and 100,000 while a p was below 0.01 (below 0.1 for the first step
+since 2026-09-05). Zero-hit rows were floored at 1/(replicates + 1) and
+"<0.0001" was made a confidence statement licensed by the 97.5% upper
+Clopper–Pearson bound on the simulated count.
+
+## 2026-09-04 — the exact combination
+
+**What was wrong.** The trial p was Stouffer's closed-form combination:
+each row's simulated p converted to a normal score, the scores summed,
+the sum read off the normal distribution. That assumes each row's p is
+uniformly distributed when the trial is honest. It is not, whenever the
+reported means are rounded coarsely relative to their standard error —
+integer means with hundreds of patients per arm. Such a row has only a
+handful of possible values of its statistic, so its simulated p is
+discrete (a row whose two arms both report "55" has a mid-p near 0.27
+however honest it is), and the sum of a few such p's was being read off
+a smooth table it does not follow. Measured on synthetic honest trials
+(`corpus/syntheticTiesCheck.R`): at integer means and 1,000 per arm,
+1.4% of honest trials fell below p = 0.05 instead of 5%, the lowest
+decile of trial p's was 43% under-filled, and a fabricated table with
+identical integer means on every row could not reach p = 0.01 however
+many rows agreed. The screen failed in the safe direction but was
+miscalibrated and blind to a fabrication it should have seen. The error
+was in the Monte Carlo's combination step, which Steve Shafer wrote.
+Carlisle's published values were computed by his own closed-form
+combination, not by this code, so this correction changed none of them;
+the miscalibration described here is a property of the closed form
+under coarse rounding, which his values therefore share.
+
+**What changed.** Nothing about the rows. The statistic is still
+Stouffer's sum of row z-scores; its null distribution is taken from the
+same simulations that produce the row p's (each replicate of each row
+ranked within its row, given the mid-p its rank implies, floored and
+z-scored as the observed row is, summed across rows replicate by
+replicate). The observed sum is compared with the simulated sums, ties
+half. On the same synthetic trials 4.8 to 5.8% of honest trials fell
+below 0.05 in every integer cell, and the fabricated table was found.
+
+**What it costs.** The trial p can no longer be resolved below
+1/(replicates + 1); a trial beyond every simulated sum reports
+"<0.0001" with an interval, where the closed form printed numbers like
+3 × 10⁻⁹ that the simulation never supported. Replicates are shared by
+the whole trial, so an alarming trial escalates every row.
+
+**Revalidated.** The 5,080 trials of Carlisle 2017 rerun against his
+stored values (the comparator, computed with his closed-form
+combination): the August engine, with the same closed form, agreed at
+r 0.993 and 99.0% alarm concordance; the corrected engine at r 0.992
+and 98.3%. The small drop is the difference between the two
+combinations, not a loss of accuracy against the truth, which his
+values do not represent. Against the previous
+engine the typical trial moved by about one hundredth (median |change|
+0.013), trials below 0.05 rose from 348 to 392, and the largest shifts
+were in the largest trials, where rounded rows converge and carry the
+least information each.
+
+**Tested and rejected:** ignoring ties (10 to 43% false alarms at
+integer rounding); placing the observed statistic at the chi-square
+median of its tie group (reproduces the old numbers exactly: any rule
+that assigns one number to each reported pattern leaves the
+distribution as lumpy as it found it); a log-likelihood-ratio
+combination against a stated fabrication model (calibrated, but sees
+only the alternative it was built for).
+
+## 2026-09-05 — the attainable floor note
+
+A row whose arms print exactly the same value, and which no honest
+replicate beats, is marked "attainable floor". Since 2026-09-06 the
+note requires both conditions: a row whose arms differ, however
+slightly, never carries it even when no replicate happened to beat it
+(an outside audit found 77 vs 77.000001 labelled).
+
+## 2026-09-05 — the 0.1 escalation and the seed
+
+Twelve unseeded runs of the guide's worked example (77 vs 78, SD 30,
+n = 6) spread 0.034 to 0.057 at 1,000 replicates, so a trial or row
+below 0.1 now advances to 10,000 (below 0.01 to 100,000). A seed can be
+set (`?seed=` in the app, `seed` in the API) for exact reproduction.
+
+## 2026-09-05 — the pooled SD
+
+The code weighted the arms' variances by N<sub>i</sub> rather than
+N<sub>i</sub> − 1, corrected the square root with N − 1 degrees of
+freedom rather than N − k (one too many per arm beyond the first), and
+only below N = 30, leaving a 1% step. The shortfall was 3.8% for two
+arms of two and under 0.1% for two arms of twelve; a low SD is
+conservative for this test. Now: pooling by degrees of freedom, c₄ with
+N − k, at every N. Honest null (two arms of 3 to 50, 2,000 trials per
+cell, fine and coarse printing): both engines nominal at 0.05 and 0.01,
+each cell moved by ≤ 0.1 point. Carlisle corpus: median |Δp| 0.007;
+r 0.9922 → 0.9925. Worked example 0.0481 → 0.0475.
+
+## 2026-09-05 — the direct draw for large arms
+
+A continuous row's replicate drew every one of the N observations per
+arm; the largest Carlisle trials took an hour each once the exact
+combination escalated every row together. When an arm has at least 100
+patients and the SD is at least three observation-grid steps, the arm
+mean is drawn directly with variance (SD² + h²/12)/N (Sheppard's
+correction) and then rounded as printed. Tested against the full
+simulation on the two-arm statistic, 100,000 replicates per cell, N 10
+to 300, printed to 0 or 1 decimals, grids at 1/13 and 1/45 of the SD:
+largest difference in the cumulative distributions 0.007, tie masses
+agreeing to the third decimal. With the grid comparable to the SD the
+direct draw is wrong at small N (0.047 at N = 10 for SD 0.7 against
+integer observations), hence the two thresholds. Thirty times faster on
+a six-row table at 5,000 per arm.
+
+**Corrected 2026-09-06.** N observations on a grid of width h have a
+mean on a grid of width h/N whatever the printed precision. The
+continuous draw ignored that grid, so with integer observations and a
+six-decimal printed mean (N = 100, SD 3, identical means) it reported
+p < 0.0001 where the full simulation gives 0.0045. The drawn mean is
+now snapped to the h/N grid before the printed rounding; where the
+printed precision is coarser than h/N (every cell of the test above)
+the snap changes nothing. Found by an outside audit.
+
+## 2026-09-06 — the SD is drawn per replicate
+
+A plug-in SD, however well unbiased, understates the null spread of the
+arm means (the z test where a t test belongs). Each replicate draws its
+own population variance σ² = s² · df / χ²(df) from the scaled inverse
+chi-square implied by the pooled variance. Honest null: the 5% and 1%
+rates were nominal before and after; the body of the distribution was
+not — at three per arm the mean row p was 0.52 and the
+Kolmogorov–Smirnov distance from uniform 0.07, now 0.50 and 0.016; at
+ten per arm and above the two are indistinguishable. Carlisle corpus
+(5,041 usable trials, 10,000 ceiling): r 0.9925 → 0.9929, within 0.05
+88.5% → 89.1%, alarm concordance 98.5% either way; median |Δp| 0.009,
+confined to trials of 30 or fewer per arm; one trial of 20 per arm
+moved by 0.34 (0.28 → 0.62; Carlisle 0.25). Worked example 0.0475 →
+0.0442.
+
+## 2026-09-06 — the trial interval's lower end
+
+The trial's 95% Monte Carlo interval took both ends from the
+at-or-beyond count while the mid-p counts ties by halves, so at the
+attainable floor — where every "beyond" is a tie — the trial printed
+below its own interval ("0.00042, interval 0.00067 to 0.001"). The lower
+end now comes from the strictly-beyond count, as a row's does. Found by
+an outside review and reproduced six times in six.
+
+## 2026-09-06 — precision inference
+
+Decimal places were counted on `as.character()`, which prints 0.0001
+as "1e-04": 5 decimals for 0.0001, 5 for 0.000015, 5 for 1e-10. A
+helper reads a plain rendering (capped at 20). An explicitly supplied
+per-arm precision is no longer overwritten by the variable's maximum;
+only blank cells take it. An observation precision left blank follows
+the mean's after the decimal bump, not the zero it was copied from
+before it.
+
+## Ideas noted for later
+
+- The interval computed from the batch the staging stopped at is not a
+  fixed-sample 95% interval: coverage is 93.4–93.7% for a true p near an
+  escalation threshold and 95% elsewhere (exact enumeration, 2026-09-06).
+  A confirmatory batch after the stopping decision, or a sequentially
+  valid interval, would restore nominal coverage at the cost of more
+  replicates on borderline trials.
+- The common location of a replicate is drawn with standard deviation
+  σ/√(mean N) — a choice inherited from the original simulation. The
+  pooled mean's own sampling standard deviation is σ/√(ΣN), narrower by
+  √k. The draw cancels from unrounded contrasts and matters only through
+  where the location sits relative to the rounding grid; a derivation of
+  the intended mixture, or a measurement of the two scales on the
+  honest null and the corpus, is owed.
+- The median/IQR branch fits a three-term metalog to N-weighted arm
+  quartiles and is validated only by a smoke test; broad calibration
+  across skewed, bounded and heavy-tailed populations is open.
+- Median rows still draw their N observations; the direct draw could be
+  extended to them if a large-trial median row proves costly.

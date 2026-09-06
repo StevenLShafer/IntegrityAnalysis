@@ -509,7 +509,7 @@ violations). A column is recognized as categorical when it is numeric,
 integer-valued, and not filled on every line.
 
 **The long layout: one line per level.** A table with many categories
-gets wide in that form, and wide is hard to edit. Since 2026-09-05 the
+gets wide in that form, and wide is hard to edit. The
 same variables may be entered one line per category level per arm, with
 the level named in a `LEVEL` column and its count in `N`:
 
@@ -666,8 +666,10 @@ normal theory, under which two random samples never agree exactly, so
 rows with identical printed means had p = 0 and Fujii's rounded tables
 looked impossible; the Monte Carlo simulation in this app replaced that
 normal theory so that identical rounded means get the probability they
-actually have. The 2026-09-04 correction to the combination step (next
-section) removed the same assumption one level up.
+actually have. The combination step (next section) removes the same
+assumption one level up: the summed evidence of a trial's rows is judged
+against its own simulated distribution, not a formula that assumes each
+row's p is continuous.
 
 ## What to do with a flag — Steve's recommendations
 
@@ -776,18 +778,13 @@ trial beyond every simulated honest trial reports "<0.0001" with an
 exact **95% Monte Carlo interval** ("0 to 3.7e-05" at 100,000
 replicates) rather than a number the simulation could not resolve.
 
-This replaced, on 2026-09-04, the closed-form Stouffer combination the
-app used before. The closed form assumes each row p is uniform under
-honest sampling, and at coarse rounding — integer means with hundreds of
-patients per arm — it is not: such a row has only a few possible
-statistics, its p is discrete, and the closed form read the sum off a
-table it does not follow. The consequence was a trial p that ran
-conservative (1.4 % of honest trials below 0.05 at integer means and
-1,000 per arm, against the nominal 5 %) and could not put a fabricated
-table with identical integer means below p = 0.01. The error was in the
-Monte Carlo's combination step, which is ours, not in Carlisle's method.
-`docs/statistics.md` gives the full account, including what was tested
-and rejected.
+The rows are treated as independent: two variables that carry the same
+information (weight and BMI, a measurement and its categorised version)
+repeat their evidence and make the trial p smaller than it should be,
+so look for duplicated or derived variables before reading a trial p.
+`docs/statistics.md` describes the combination as it runs today; how it
+differs from the closed-form combination of the 2015 and 2017 papers,
+and why it changed, is in `docs/method-history.md`.
 
 ## Categorical variables
 
