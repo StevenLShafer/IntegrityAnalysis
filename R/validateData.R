@@ -21,6 +21,8 @@
 #' @param x a column of the uploaded table.
 #' @return `TRUE` if the column should be treated as categorical counts.
 #' @noRd
+.iaMaxMagnitude <- 1e12   # |value| at or beyond this is not a measurement (validateData)
+
 is_category <- function(x, requireNA = TRUE) {
   # Remove NAs first for efficiency, then check if all values are integers
 
@@ -243,7 +245,38 @@ validateData <- function(DATA) {
         unreadable[[paste(i, col)]] <- TRUE
       }
     }
+    # BREAK TEST (2026-09-06, Steve: "is there anything a user can enter
+    # from the keyboard that halts shinyapps with a reload error?"): yes -
+    # "Inf" or "-Inf" typed into a MEAN cell. as.numeric reads it as a
+    # number, is.na() passes it, and `Inf %% 1` is NaN, so the decimal
+    # bump's if() met NA and the session died. A non-finite number is
+    # UNREADABLE (red), like text; a magnitude no measurement reaches
+    # (1e12 and beyond - 1e300 squared is Inf, which reached the engine
+    # through the API as a 500) is refused as incongruent.
+    if (!is.null(DATA[[col]]) && is.numeric(DATA[[col]]))
+    {
+      v <- DATA[[col]]
+      inf <- which(!is.na(v) & !is.finite(v))
+      for (i in inf) {
+        addIssue(i, col, "unreadable")
+        unreadable[[paste(i, col)]] <- TRUE
+      }
+      DATA[[col]][inf] <- NA_real_
+      huge <- which(is.finite(v) & abs(v) >= .iaMaxMagnitude)
+      for (i in huge) {
+        addIssue(i, col, "incongruent",
+                 paste0(col, " is beyond ", format(.iaMaxMagnitude, scientific = TRUE),
+                        ", which no measurement reaches"))
+        unreadable[[paste(i, col)]] <- TRUE
+      }
+      DATA[[col]][huge] <- NA_real_
+      if (length(huge)) FAIL <- TRUE
+    }
   }
+  # the rounding columns too: "Inf" decimals is a number to as.numeric
+  for (col in c("ROUND_MEAN", "ROUND_OBSERVATION", "ROUND_DISPERSION"))
+    if (!is.null(DATA[[col]]) && is.numeric(DATA[[col]]))
+      DATA[[col]][!is.na(DATA[[col]]) & (!is.finite(DATA[[col]]) | abs(DATA[[col]]) > 20)] <- NA_real_
   isUnreadable <- function(row, col)
     isTRUE(unreadable[[paste(row, col)]])
   # the range rules (2026-09-05): a sample size is a whole number of at
@@ -422,6 +455,19 @@ validateData <- function(DATA) {
           addIssue(i, cn, "incongruent", "a count cannot be negative")
           FAIL <- TRUE
         }
+      # ...and the arm ceiling applies to counts as it does to N: a line
+      # of category counts IS an arm, and r2dtable on a billion patients
+      # asked for 134 million TB (break test, 2026-09-06, via the API)
+      armTotal <- sum(unlist(DATA[i, CategoryNames]), na.rm = TRUE)
+      if (is.finite(armTotal) && armTotal > .iaMaxArmN)
+      {
+        for (cn in CategoryNames)
+          if (!is.na(DATA[[cn]][i]))
+            addIssue(i, cn, "too_large",
+                     paste0("the counts total more than ", format(.iaMaxArmN, big.mark = ","),
+                            " in this arm - see the user guide"))
+        FAIL <- TRUE
+      }
       if (any(!is.na(DATA[i, intersect(c("N", "MEAN", "SD", "Q1", "Q3"),
                                        names(DATA))])))
       {

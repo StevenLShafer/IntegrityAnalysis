@@ -547,6 +547,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     } else trialMid <- 1
     k <- match(s, stages)
     if (k >= length(stages)) break
+    # an NA mid-p (a degenerate row the validator did not catch) must not
+    # crash the stage loop - treat it as resolved (break test, 2026-09-06)
+    if (is.na(trialMid)) trialMid <- 1
+    rowMid[is.na(rowMid)] <- 1
     if (trialMid >= advanceBelow[k] && all(rowMid >= advanceBelow[k])) break
   }
 

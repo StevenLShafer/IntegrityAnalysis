@@ -5,6 +5,19 @@
 # helpers, which the test suite exercises directly. Loaded by
 # runApiService() via plumber::pr().
 
+#* @filter sanity
+function(req, res) {
+  # a NUL byte in the query string ("?seed=%00") errors inside plumber's
+  # own query parser, after every filter - a 500 (break test, 2026-09-06).
+  # Refuse it here, on the raw string, before that parser runs.
+  q <- req$QUERY_STRING
+  if (!is.null(q) && grepl("%00", q, fixed = TRUE)) {
+    res$status <- 400
+    return(list(ok = FALSE, error = "the query string contains a NUL byte"))
+  }
+  plumber::forward()
+}
+
 #* @filter auth
 function(req, res) {
   # /health stays open: it serves load balancers and carries no data.
@@ -109,12 +122,27 @@ function(req, res, file) {
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
   dir.create(work)
   on.exit(unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
+  # An empty part (a zero-byte file), or no part at all (a filename with
+  # a quote and a line break breaks the multipart header and the part is
+  # dropped), reaches here as something writeBin cannot take - both were
+  # 500s (break test, 2026-09-06); say so instead, BEFORE touching the name.
+  if (is.null(file) || !length(file) || !is.raw(file[[1]]) || !length(file[[1]])) {
+    res$status <- 422
+    return(list(ok = FALSE, stage = "request", file = "",
+                reasons = "the uploaded file is empty or its file part could not be read",
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL), deleted = TRUE))
+  }
   name <- names(file)[1]
+  if (is.null(name) || !nzchar(name)) name <- "upload"
+  name <- gsub("[[:cntrl:]]", "_", name)          # a control character is not a file name
   path <- file.path(work, basename(name))
   writeBin(file[[1]], path)
 
   key <- req$HTTP_X_ANTHROPIC_KEY
   r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key)
+  # a reason from a reader may quote the file's path (the docx zip
+  # error does): the server's temp directory is not the caller's business
+  r$reasons <- IntegrityAnalysis:::.apiScrubPath(r$reasons, work, name)
   if (!isTRUE(r$ok)) {
     res$status <- 422
     return(list(ok = FALSE, file = name, reasons = r$reasons,
@@ -172,12 +200,27 @@ function(req, res, file, seed = NULL) {
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
   dir.create(work)
   on.exit(unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
+  # An empty part (a zero-byte file), or no part at all (a filename with
+  # a quote and a line break breaks the multipart header and the part is
+  # dropped), reaches here as something writeBin cannot take - both were
+  # 500s (break test, 2026-09-06); say so instead, BEFORE touching the name.
+  if (is.null(file) || !length(file) || !is.raw(file[[1]]) || !length(file[[1]])) {
+    res$status <- 422
+    return(list(ok = FALSE, stage = "request", file = "",
+                reasons = "the uploaded file is empty or its file part could not be read",
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL), deleted = TRUE))
+  }
   name <- names(file)[1]
+  if (is.null(name) || !nzchar(name)) name <- "upload"
+  name <- gsub("[[:cntrl:]]", "_", name)          # a control character is not a file name
   path <- file.path(work, basename(name))
   writeBin(file[[1]], path)
 
   key <- req$HTTP_X_ANTHROPIC_KEY
   r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key)
+  # a reason from a reader may quote the file's path (the docx zip
+  # error does): the server's temp directory is not the caller's business
+  r$reasons <- IntegrityAnalysis:::.apiScrubPath(r$reasons, work, name)
   if (!isTRUE(r$ok)) {
     res$status <- 422
     return(list(ok = FALSE, stage = "parse", file = name,

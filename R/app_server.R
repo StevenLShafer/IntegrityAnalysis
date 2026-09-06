@@ -1316,7 +1316,16 @@ app_server <- function(input, output, session) {
       # (R/validateData.R). It reports problems itself through
       # outputComments() and returns the derived state; assignment to the
       # per-session variables stays here, where the session is.
-      v <- validateData(DATA)
+      # Defense in depth (break test, 2026-09-06): validateData() reports
+      # what it can; anything it did not foresee becomes a message and a
+      # refused table rather than an uncaught error, which ends the
+      # session with the grey "reload" overlay.
+      v <- tryCatch(validateData(DATA), error = function(e) {
+        outputComments(paste0("The table could not be validated: ",
+                              .escapeHtml(conditionMessage(e)),
+                              ". Check the cells for values that are not numbers."))
+        list(FAIL = TRUE)
+      })
       # Issue 13: publish the cell-issue map (colors) from this pass -
       # including the soft warnings a successful pass can carry.
       rIssues(if (!is.null(v$issues) && nrow(v$issues) > 0) v$issues

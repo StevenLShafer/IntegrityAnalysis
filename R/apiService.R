@@ -42,6 +42,18 @@
 
 # ---- request helpers (plain functions, unit-testable without a server) ---
 
+# Strip the request's working directory (either slash style) from a
+# reason string, leaving the file's own name (break test, 2026-09-06: the
+# docx reader's zip error quoted the full temp path back to the caller)
+.apiScrubPath <- function(reasons, work, name) {
+  if (is.null(reasons) || !is.character(reasons)) return(reasons)
+  ws <- unique(c(work, normalizePath(work, winslash = "/", mustWork = FALSE),
+                 normalizePath(work, winslash = "\\", mustWork = FALSE)))
+  for (w in ws) for (sep in c("/", "\\", ""))
+    reasons <- gsub(paste0(w, sep), "", reasons, fixed = TRUE)
+  reasons
+}
+
 .apiTokens <- function()
   trimws(strsplit(Sys.getenv("INTEGRITY_API_TOKENS", ""), ",")[[1]])
 
