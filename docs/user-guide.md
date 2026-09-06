@@ -710,10 +710,24 @@ never as a verdict on its own.
 
 ## How many simulations? (adaptive replicates)
 
-Every row starts with 1,000 replicates. Rows that look unremarkable stop
-there; rows running alarming (mid-p < 0.01) escalate to 10,000, and if
-still alarming to 100,000. This spends computation where it matters —
-boring rows finish fast, alarming rows get precise p values.
+Every trial starts with 1,000 replicates per row. A trial whose p, and
+every row's, is 0.1 or more stops there; one below 0.1 escalates to
+10,000, and one still below 0.01 to 100,000. This spends computation
+where it matters — unremarkable trials finish fast, borderline ones get
+a p resolved to about ±0.002 instead of ±0.007, alarming ones get the
+precision a small p needs.
+
+**Reproducing a result exactly.** An unseeded Monte Carlo is not meant
+to give identical numbers from run to run: two runs of the same table
+differ within the reported Monte Carlo interval. To get identical
+numbers, set a seed by adding `?seed=12345` (any whole number from 1 to
+2,147,483,647) to the page's address before pressing Analyze; the log
+confirms it and the results workbook's Summary sheet records it. The
+same table, the same seed and the same build then give the same numbers
+anywhere. Record the build with the seed (the About sheet carries it),
+because a change to the simulation changes what a seed produces. A
+local copy can be started with a seed for every analysis:
+`IntegrityAnalysis::run_app(seed = 12345)`.
 
 With a finite number of replicates, the smallest honestly reportable p
 is bounded. A row's p is displayed as **"<0.0001"** only when the upper

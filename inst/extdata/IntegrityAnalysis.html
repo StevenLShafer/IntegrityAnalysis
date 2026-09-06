@@ -55,6 +55,8 @@ trials</a></li>
 <ul>
 <li><a href="#the-p-value-one-sided-toward-homogeneity" id="toc-the-p-value-one-sided-toward-homogeneity">The p value:
 one-sided, toward homogeneity</a></li>
+<li><a href="#rounding-large-trials-and-rows-that-cannot-alarm" id="toc-rounding-large-trials-and-rows-that-cannot-alarm">Rounding,
+large trials, and rows that cannot alarm</a></li>
 <li><a href="#what-to-do-with-a-flag-steves-recommendations" id="toc-what-to-do-with-a-flag-steves-recommendations">What to do with a
 flag — Steve’s recommendations</a></li>
 <li><a href="#what-this-screen-does-not-catch" id="toc-what-this-screen-does-not-catch">What this screen does not
@@ -281,15 +283,21 @@ The picture is taken to <em>be</em> the table: it is read whole, from
 its first line, with no search for a “Table 1” caption (one may be
 present or not) and no attempt to split it into page columns, so a
 screenshot of just the table is the ideal input. It works best on a
-clean picture at 200–300 dpi; at screen resolution (96 dpi) small type
-is at the edge of what OCR reads reliably, so check the cyan values with
-particular care. The picture is decoded by the app’s own OCR reader,
-never by ImageMagick, and its declared dimensions are checked from the
-file header before any decoder runs — an oversized or malformed image is
-refused with a message. (GIF is deliberately not accepted: its header
-cannot bound what its decoder allocates.) With an API key entered, a jpg
-or png is sent to the AI assist as an image (a tif is read by OCR only;
-the model does not accept it).</p>
+clean picture at 200–300 dpi. A screenshot is smaller than that (96 dpi,
+with letters about ten pixels tall, which OCR largely drops), so a
+picture whose type is that small is enlarged before it is read — its
+pixels replicated two to four times, with no smoothing, until the
+letters are the size of a printed page’s — which recovers nearly all of
+the words; even so, check the cyan values with particular care. A png or
+jpg is decoded by the app’s own readers (the png and jpeg packages), a
+tif by the OCR engine itself, never by ImageMagick, and every picture’s
+declared dimensions are checked from the file header before any decoder
+runs — an oversized or malformed image is refused with a message, and
+the enlarged picture is held to the same pixel ceiling. (GIF is
+deliberately not accepted: its header cannot bound what its decoder
+allocates.) With an API key entered, a jpg or png is sent to the AI
+assist as an image (a tif is read by OCR only; the model does not accept
+it).</p>
 <p><strong>A Word manuscript (.docx).</strong> A submission in Word
 format uploads the same way as a PDF: the app examines every table in
 the document — submissions put them at the end, with the caption just
@@ -687,6 +695,120 @@ a category row, <code>N</code>, <code>MEAN</code>, and <code>SD</code>
 must be blank (blue cells point at violations). A column is recognized
 as categorical when it is numeric, integer-valued, and not filled on
 every line.</p>
+<p><strong>The long layout: one line per level.</strong> A table with
+many categories gets wide in that form, and wide is hard to edit. Since
+2026-09-05 the same variables may be entered one line per category level
+per arm, with the level named in a <code>LEVEL</code> column and its
+count in <code>N</code>:</p>
+<table>
+<thead>
+<tr>
+<th>ROW</th>
+<th>LEVEL</th>
+<th>N</th>
+<th>MEAN</th>
+<th>SD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sex</td>
+<td>Male</td>
+<td>40</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Sex</td>
+<td>Male</td>
+<td>34</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Sex</td>
+<td>Female</td>
+<td>10</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Sex</td>
+<td>Female</td>
+<td>16</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Upper</td>
+<td>7</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Upper</td>
+<td>7</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Lower</td>
+<td>8</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Lower</td>
+<td>15</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Urologic</td>
+<td>35</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Surgery</td>
+<td>Urologic</td>
+<td>28</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Weight</td>
+<td></td>
+<td>15</td>
+<td>63</td>
+<td>13</td>
+</tr>
+<tr>
+<td>Weight</td>
+<td></td>
+<td>17</td>
+<td>68</td>
+<td>12</td>
+</tr>
+</tbody>
+</table>
+<p>The arms are the lines that share a <code>ROW</code> and a
+<code>LEVEL</code>, in file order, exactly as the lines sharing a
+<code>ROW</code> are the arms of a continuous variable; so you may list
+all of one arm’s levels together or all arms of one level together.
+<code>MEAN</code> and <code>SD</code> stay blank on a level line, and
+<code>LEVEL</code> stays blank on a continuous line. Both layouts are
+accepted in one file, and a file in either is converted on upload to the
+wide form, which is what the grid shows and the downloads carry; nothing
+that reads the wide layout changes. A level named like a base column
+(“N”) is prefixed with its variable’s name in the grid. A binary
+variable still needs both of its levels (“Male” and “Not male”), because
+a level line does not carry the arm’s total.</p>
 <h2 id="multiple-trials">Multiple trials</h2>
 <p>A <code>TRIAL</code> column separates trials; each is analyzed
 independently. With no TRIAL column, everything is one trial. Lines of
@@ -734,6 +856,73 @@ resources, or responsibility for investigating fraud. Journal editors
 should refer allegations of fraud to the institution under whose
 authority the research was conducted. Institutions are responsible for
 ethical conduct of research.</strong></p>
+<h2 id="rounding-large-trials-and-rows-that-cannot-alarm">Rounding,
+large trials, and rows that cannot alarm</h2>
+<p>A row’s p can be unremarkable for a reason that has nothing to do
+with the data being honest or dishonest: the printed precision may be
+too coarse for the row to say anything at all. It is worth understanding
+this, because large trials show it on every integer-reported row.</p>
+<p>Under honest randomization the arms are samples of one population, so
+their means are estimates of the same number, and as the arms grow the
+estimates converge on it. The spread between two arm means shrinks like
+1/√N. At 1,000 patients per arm with an SD of 13 years, the standard
+error of an arm’s mean age is 0.4 years. Reported to the nearest year,
+the two arms will print the <em>same</em> integer about half the time —
+not because anyone copied a number, but because both estimates landed
+within the same year of the truth, as convergence requires. Identical
+rounded means in a large trial are the expected outcome.</p>
+<p>The simulation knows this. It rounds its simulated arms exactly as
+the paper rounded its own, so its honest replicates tie on the same
+integer just as often as honest data does, and a row whose arms both
+report “55” gets a p near 0.27: the mid-point of a tie group that holds
+half of the honest distribution. That number is correct. There is no
+unexplained homogeneity in the row, so none is reported. Steve’s way of
+putting it: <em>as N goes to infinity both arms converge to the
+population value; if you round, they converge to exactly the same
+number; there is no unexplained homogeneity in large N, because
+convergence is expected.</em></p>
+<p>Three consequences follow:</p>
+<ul>
+<li><strong>Such a row cannot convict on its own.</strong> A fabricator
+who copies one arm’s integer mean into the other is, on that row alone,
+indistinguishable from honest convergence. No statistic can extract
+evidence the printing removed.</li>
+<li><strong>Evidence comes from accumulation and from
+precision.</strong> Many rows that all sit at the bottom of their tie
+groups are collectively improbable even when each is individually
+ordinary; that is what the trial p measures, and why its combination
+step must be exact (see the next section). And rows printed finely
+enough that convergence has not erased the sampling scatter — two
+decimals, or a small N — carry the row-level signal a coarse row
+cannot.</li>
+<li><strong>A test that ignores rounding misreads convergence as
+fraud.</strong> A t-statistic computed from tied integer means treats
+the tie as exact and reads it as under-dispersion. Rounding turns an
+expected agreement into a false alarm for that test, and into an honest
+“nothing to see” for this one.</li>
+</ul>
+<p>So when a large trial’s integer-reported rows all show p values near
+0.2 to 0.3, read them as rows with nothing to say, not as rows that
+cleared the screen, and look to the trial p, which is where their
+collective evidence is added up correctly.</p>
+<p><strong>The “attainable floor” note.</strong> The results table says
+this for you. Every row has a smallest p its printed precision allows —
+the p of the most homogeneous outcome the simulation can produce, which
+is both arms printing the same value. When a row sits at that floor, its
+Note column reads <strong>attainable floor</strong>: no honest replicate
+agreed better than the printed arms did. For integer age at 1,000 per
+arm the floor is about 0.27, and the note means the row cannot alarm and
+should not be read as reassurance either. For a row printed to two
+decimals the floor is small, and a row at it alarms; the note then means
+this is as far as the row can go. The floor depends on the printing and
+the sample size, never on the data.</p>
+<p>This is the same trap, met twice. Carlisle’s original method used
+normal theory, under which two random samples never agree exactly, so
+rows with identical printed means had p = 0 and Fujii’s rounded tables
+looked impossible; the Monte Carlo simulation in this app replaced that
+normal theory so that identical rounded means get the probability they
+actually have. The 2026-09-04 correction to the combination step (next
+section) removed the same assumption one level up.</p>
 <h2 id="what-to-do-with-a-flag-steves-recommendations">What to do with a
 flag — Steve’s recommendations</h2>
 <p><em>These are my recommendations, based on fifteen years of handling
@@ -793,28 +982,59 @@ primary data — and it should be used as a reason to look more closely,
 never as a verdict on its own.</p>
 <h2 id="how-many-simulations-adaptive-replicates">How many simulations?
 (adaptive replicates)</h2>
-<p>Every row starts with 1,000 replicates. Rows that look unremarkable
-stop there; rows running alarming (mid-p &lt; 0.01) escalate to 10,000,
-and if still alarming to 100,000. This spends computation where it
-matters — boring rows finish fast, alarming rows get precise p
-values.</p>
+<p>Every trial starts with 1,000 replicates per row. A trial whose p,
+and every row’s, is 0.1 or more stops there; one below 0.1 escalates to
+10,000, and one still below 0.01 to 100,000. This spends computation
+where it matters — unremarkable trials finish fast, borderline ones get
+a p resolved to about ±0.002 instead of ±0.007, alarming ones get the
+precision a small p needs.</p>
+<p><strong>Reproducing a result exactly.</strong> An unseeded Monte
+Carlo is not meant to give identical numbers from run to run: two runs
+of the same table differ within the reported Monte Carlo interval. To
+get identical numbers, set a seed by adding <code>?seed=12345</code>
+(any whole number from 1 to 2,147,483,647) to the page’s address before
+pressing Analyze; the log confirms it and the results workbook’s Summary
+sheet records it. The same table, the same seed and the same build then
+give the same numbers anywhere. Record the build with the seed (the
+About sheet carries it), because a change to the simulation changes what
+a seed produces. A local copy can be started with a seed for every
+analysis: <code>IntegrityAnalysis::run_app(seed = 12345)</code>.</p>
 <p>With a finite number of replicates, the smallest honestly reportable
 p is bounded. A row’s p is displayed as <strong>“&lt;0.0001”</strong>
 only when the upper 95% confidence bound on the p value itself clears 1
 in 10,000 — otherwise the display shows the estimate with its bound.
-Rows with p &lt; 0.001 carry an explicit upper bound in the results (“≤
-…”), so you always know how much Monte Carlo noise is in a small p.</p>
+Every row carries its exact 95% Monte Carlo interval in the results
+(“0.27 to 0.33” for an unremarkable row at 1,000 replicates), so you
+always know how much simulation noise is in a p. The interval is about
+the simulation, not the data: it says how precisely the replicates
+pinned that row’s p.</p>
 <h2 id="combining-rows-into-a-trial-p">Combining rows into a trial
 p</h2>
-<p>The row p values of a trial are combined with Stouffer’s Z method [5]
-— the same method used in the 2015 and 2017 papers. The combined value
-is <em>not</em> floored at the single-row resolution: ten rows each at p
-= 0.02 legitimately combine to a far smaller number. When the trial p is
-below 0.001, it is reported with a <strong>95% Monte Carlo
-interval</strong> — the uncertainty in the trial p arising from the
-finite simulation counts of its rows — so a headline number like 3 ×
-10⁻⁶ is never presented as more precise than the simulation
-supports.</p>
+<p>The row p values of a trial are combined by the <strong>exact
+combination</strong>: the rows’ evidence is summed as Stouffer’s
+z-scores [5], as in the 2015 and 2017 papers, but the sum is judged
+against its own simulated distribution rather than the normal table.
+Every simulated replicate of every row is scored the way the observed
+row is, the scores are summed across rows replicate by replicate, and
+the trial p is the share of those simulated honest trials that agree at
+least as well as the printed one. Ten rows each at p = 0.02 still
+combine to a far smaller number. The trial p is floored at one over the
+replicate count, so a trial beyond every simulated honest trial reports
+“&lt;0.0001” with an exact <strong>95% Monte Carlo interval</strong> (“0
+to 3.7e-05” at 100,000 replicates) rather than a number the simulation
+could not resolve.</p>
+<p>This replaced, on 2026-09-04, the closed-form Stouffer combination
+the app used before. The closed form assumes each row p is uniform under
+honest sampling, and at coarse rounding — integer means with hundreds of
+patients per arm — it is not: such a row has only a few possible
+statistics, its p is discrete, and the closed form read the sum off a
+table it does not follow. The consequence was a trial p that ran
+conservative (1.4 % of honest trials below 0.05 at integer means and
+1,000 per arm, against the nominal 5 %) and could not put a fabricated
+table with identical integer means below p = 0.01. The error was in the
+Monte Carlo’s combination step, which is ours, not in Carlisle’s method.
+<code>docs/statistics.md</code> gives the full account, including what
+was tested and rejected.</p>
 <h2 id="categorical-variables">Categorical variables</h2>
 <p>Category tables are simulated by drawing random tables with the same
 margins (row and column totals) as the reported one, and asking how
@@ -878,21 +1098,28 @@ Summary row, which prints beneath its own trial’s rows</td>
 <tr>
 <td><code>P (one-sided toward homogeneity)</code></td>
 <td>the mid-p described above — small means <em>more homogeneous than
-chance</em>. On the Summary row this is the Stouffer-combined trial
+chance</em>. On the Summary row this is the exact-combination trial
 p</td>
 </tr>
 <tr>
-<td><code>95% Monte Carlo bound</code></td>
-<td>how precisely the simulation pinned that number: an upper bound on a
-row p too small to resolve, and on the Summary row a bootstrap interval
-for the trial p when it fell below 0.001. Blank when the estimate needs
-no caveat</td>
+<td><code>95% Monte Carlo interval</code></td>
+<td>how precisely the simulation pinned that number: the exact
+Clopper–Pearson 95% interval of the row p on every row, and on the
+Summary row the interval for the trial p when it fell below 0.001</td>
 </tr>
 <tr>
 <td><code>Replicates</code></td>
-<td>how many simulations that row actually received (1,000 / 10,000 /
-100,000 — the adaptive scheme stops as soon as the p is resolved, so
-most rows show 1,000)</td>
+<td>how many simulations the rows received (1,000 / 10,000 / 100,000 —
+the adaptive scheme stops as soon as the trial and every row are
+resolved, so an unremarkable trial shows 1,000 on every row, and an
+alarming one escalates every row together)</td>
+</tr>
+<tr>
+<td><code>Note</code></td>
+<td><code>attainable floor</code> when the row sits at the smallest p
+its printed precision allows — no honest replicate agreed better than
+the printed arms (see “Rounding, large trials, and rows that cannot
+alarm”). Blank otherwise</td>
 </tr>
 </tbody>
 </table>
