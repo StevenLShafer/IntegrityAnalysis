@@ -109,6 +109,40 @@ $(document).on('shiny:value', function(event) {
   // paste on the page at large is taken. On iOS and Android a page-level
   // paste of an image reaches the browser in some browsers and not others;
   // the drop and the picker are the sure routes there.
+  // SECURITY (2026-09-05, an outside reviewer's reproduction): the grid's
+  // paste handler (Handsontable 6.2.2, CopyPaste plugin) takes the
+  // clipboard's text/html, sets it as the innerHTML of a scratch div and
+  // looks for a table in it. Setting innerHTML runs an image tag's error
+  // handler even on a detached element, so a rich-text clipboard copied
+  // from a hostile page executed script in the editor's session when
+  // pasted into the grid. This capture-phase listener runs before the
+  // plugin's: when a paste aimed at the grid carries HTML, it stops that
+  // event and re-dispatches one carrying the clipboard's PLAIN TEXT only,
+  // which the plugin parses as tab-separated cells - what a spreadsheet
+  // paste is anyway. The plugin listens on its own hidden textarea
+  // (class HandsontableCopyPaste), which is not inside the grid's box,
+  // so both targets are recognised.
+  document.addEventListener('paste', function (e) {
+    var cd = e.clipboardData;
+    if (!cd || !cd.types) return;
+    var t = e.target;
+    var forGrid = t && ((t.classList && (t.classList.contains('HandsontableCopyPaste') ||
+                                          t.classList.contains('handsontableInput'))) ||
+                        (t.closest && t.closest('.handsontable')));
+    if (!forGrid) return;
+    var types = Array.prototype.slice.call(cd.types);
+    if (types.indexOf('text/html') < 0) return;
+    var text = cd.getData('text/plain') || '';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var plain;
+    try {
+      plain = new DataTransfer();
+      plain.setData('text/plain', text);
+    } catch (err) { return; }                 // no constructor: the paste is simply dropped
+    t.dispatchEvent(new ClipboardEvent('paste', { clipboardData: plain, bubbles: true, cancelable: true }));
+  }, true);
+
   $(document).on('paste', function (e) {
     var cd = e.originalEvent && e.originalEvent.clipboardData;
     if (!cd || !cd.items) return;

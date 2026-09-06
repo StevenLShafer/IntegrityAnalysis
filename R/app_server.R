@@ -430,6 +430,16 @@ app_server <- function(input, output, session) {
                      roles = roles)
     w <- rhandsontable::rhandsontable(
       d,
+      # SECURITY (2026-09-05, an outside reviewer's reproduction):
+      # Handsontable renders column headers with innerHTML, and the
+      # headers are the uploaded file's column names - so a header cell
+      # holding an image tag with an error handler ran script in the
+      # editor's session the moment the grid drew, whatever door the
+      # file came through. Cells are safe (the text renderer sets
+      # textContent); headers must be escaped by hand.
+      # (hot_col() below resolves a column by matching these headers, so
+      # it is handed the same escaped name.)
+      colHeaders = .escapeHtml(names(d)),
       cellIssues = issPayload,
       cellNotes = notePayload,
       roundFmt = roundFmt,
@@ -521,19 +531,19 @@ app_server <- function(input, output, session) {
     for (nm in names(d)) {
       v <- d[[nm]]
       if (!is.numeric(v)) {
-        w <- rhandsontable::hot_col(w, nm, renderer = paintJS)
+        w <- rhandsontable::hot_col(w, .escapeHtml(nm), renderer = paintJS)
         next
       }
       if (nm %in% measureCols) {
-        w <- rhandsontable::hot_col(w, nm, format = "0.[00000]",
+        w <- rhandsontable::hot_col(w, .escapeHtml(nm), format = "0.[00000]",
                                     renderer = paintJS)
       } else if (all(is.na(v) | v %% 1 == 0)) {
         # N, ROUND_MEAN, ROUND_DISPERSION, ROUND_OBSERVATION, category
         # counts - anything whole-numbered
-        w <- rhandsontable::hot_col(w, nm, format = "0",
+        w <- rhandsontable::hot_col(w, .escapeHtml(nm), format = "0",
                                     renderer = paintJS)
       } else {
-        w <- rhandsontable::hot_col(w, nm, format = "0.[00000]",
+        w <- rhandsontable::hot_col(w, .escapeHtml(nm), format = "0.[00000]",
                                     renderer = paintJS)
       }
     }
@@ -883,12 +893,33 @@ app_server <- function(input, output, session) {
       nPrior <- length(frames)
 
       readSheet <- function(path, ext) {
-        if (ext == "csv")  return(read.csv(path))
-        if (ext == "xlsx") return(read.xlsx(path))
+        # SECURITY (2026-09-05): the API's decompression preflight, which
+        # this path never had - a workbook whose central directory
+        # declares gigabytes is refused before openxlsx inflates it -
+        # and the same read caps as .wideRawCells, so a sparse sheet
+        # cannot expand into a table the gates never see.
+        if (ext == "xlsx" && !.apiZipInflationOK(path, ext))
+          stop("the workbook expands to more than ",
+               round(.apiMaxUncompressed / 1024^2),
+               " MB when decompressed and was not read", call. = FALSE)
+        capped <- function(d) {
+          if (nrow(d) > .iaSheetRowCap || ncol(d) > .iaSheetColCap)
+            stop(.iaSheetCapMessage("the sheet"), call. = FALSE)
+          d
+        }
+        if (ext == "csv") {
+          if (.iaCsvColumns(path) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"), call. = FALSE)
+          return(capped(read.csv(path, nrows = .iaSheetRowCap + 1L)))
+        }
+        if (ext == "xlsx")
+          return(capped(read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
+                                  cols = seq_len(.iaSheetColCap + 1L))))
         # FIX (from the single-file code): read.xl() never existed;
         # readxl::read_excel() is the reader, as.data.frame() because a
         # tibble's [,col] semantics break the column handling downstream.
-        as.data.frame(read_excel(path))
+        if (ncol(read_excel(path, n_max = 0)) > .iaSheetColCap)
+          stop(.iaSheetCapMessage("the sheet"), call. = FALSE)
+        capped(as.data.frame(read_excel(path, n_max = .iaSheetRowCap + 1L)))
       }
       # NOTE this is an EXCLUSION list, not a whitelist: everything that
       # survived the allowlist above and is not a parsed-document type
