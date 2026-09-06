@@ -51,6 +51,7 @@ app_server <- function(input, output, session) {
   # assignments below now bind to these because server() is the nearest
   # enclosing environment.
   OUTPUT <- NULL         # accumulated results across trials, for download
+  seedUsed <- NULL       # the Monte Carlo seed of the last analysis, if one was set
   graphsData <- NULL     # per-row Monte Carlo draws for the issue-16
                          # graphs; refilled by every Analyze run
   DATA <- NULL           # validated data table for the current upload
@@ -686,6 +687,23 @@ app_server <- function(input, output, session) {
       # built only at download time, and only when the "Graph results"
       # box is checked - so the box can be ticked AFTER the analysis.
       graphsData <<- newGraphCollector()
+      # The Monte Carlo seed (2026-09-05): ?seed=12345 on the page's URL,
+      # else run_app(seed =). Set here, once per Analyze, so every trial
+      # of this run draws from the seeded streams; recorded for the
+      # workbook's Summary sheet.
+      qs <- tryCatch(shiny::parseQueryString(session$clientData$url_search),
+                     error = function(e) list())
+      seedUsed <<- .iaSeedValue(qs$seed)
+      if (is.null(seedUsed)) seedUsed <<- .iaSeedValue(getOption("IntegrityAnalysis.seed"))
+      if (!is.null(seedUsed)) {
+        .iaSetSeed(seedUsed)
+        outputComments(paste0(
+          "Monte Carlo seed ", seedUsed, " set: this run's numbers are ",
+          "reproducible with the same seed on the same build",
+          if (!is.na(buildCommit())) paste0(" (", substr(buildCommit(), 1, 8), ")") else "",
+          ". Without a seed the draws differ from run to run within the ",
+          "reported Monte Carlo interval."))
+      }
       start_time <- Sys.time()
       # (Progress message wording below taken from the 2025-09-01 local copy
       # on g:, which post-dated the GitHub upload.)
@@ -1356,7 +1374,7 @@ app_server <- function(input, output, session) {
       # R/baselineTable.R.
       if (!isTRUE(input$graphResults)) {
         writeResultsWorkbook(OUTPUT, reactiveDataValidated(),
-                             CategoryNames, file)
+                             CategoryNames, file, seed = seedUsed)
         return(invisible(NULL))
       }
       # Graph results checked (issue 16): the same workbook plus the
@@ -1383,7 +1401,7 @@ app_server <- function(input, output, session) {
       xf <- file.path(stage, "Integrity Analysis Results.xlsx")
       pf <- file.path(stage, "Integrity Analysis Graphs.pptx")
       writeResultsWorkbook(OUTPUT, reactiveDataValidated(),
-                           CategoryNames, xf)
+                           CategoryNames, seed = seedUsed, xf)
       writeGraphsPptx(OUTPUT, graphsData, pf,
                       progress = function(done, total)
                         progress$set(value = done / total,

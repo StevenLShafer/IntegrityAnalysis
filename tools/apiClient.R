@@ -16,7 +16,10 @@
 #
 #   Rscript tools/apiClient.R health  <base-url>
 #   Rscript tools/apiClient.R parse   <base-url> <file>
-#   Rscript tools/apiClient.R analyze <base-url> <file>
+#   Rscript tools/apiClient.R analyze <base-url> <file> [--seed N]
+#
+#   --seed N   a Monte Carlo seed (1 to 2147483647): the same file, seed
+#              and service build give the same numbers; the reply echoes it.
 #
 #   <file>     an article PDF, Word manuscript (.docx), JATS XML (.xml),
 #              spreadsheet (csv/xls/xlsx), or picture of a table
@@ -49,8 +52,14 @@ args <- commandArgs(trailingOnly = TRUE)
 usage <- function() {
   cat("usage: Rscript tools/apiClient.R health  <base-url>\n",
       "       Rscript tools/apiClient.R parse   <base-url> <file>\n",
-      "       Rscript tools/apiClient.R analyze <base-url> <file>\n", sep = "")
+      "       Rscript tools/apiClient.R analyze <base-url> <file> [--seed N]\n", sep = "")
   quit(status = 2)
+}
+seed <- NULL
+if (length(args) >= 2 && "--seed" %in% args) {
+  k <- match("--seed", args)
+  if (k == length(args)) usage()
+  seed <- args[k + 1]; args <- args[-c(k, k + 1)]
 }
 if (length(args) < 2) usage()
 verb <- args[1]; base <- sub("/+$", "", args[2])
@@ -84,6 +93,7 @@ req <- request(paste0(base, "/", verb)) |>
   req_timeout(if (verb == "analyze") 900 else 300) |>
   req_error(is_error = function(resp) FALSE)
 body <- list(file = form_file(file))
+if (!is.null(seed) && verb == "analyze") body$seed <- as.character(seed)
 req <- req_body_multipart(req, !!!body)
 
 t0 <- Sys.time()

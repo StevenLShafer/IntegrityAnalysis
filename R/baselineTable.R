@@ -195,7 +195,7 @@ writeBaselineTablesXlsx <- function(tables, file) {
 #' @param file path of the xlsx to write.
 #' @noRd
 writeResultsWorkbook <- function(results, validated, categoryNames,
-                                 file) {
+                                 file, seed = NULL) {
   wb <- openxlsx::createWorkbook()
   headStyle <- openxlsx::createStyle(textDecoration = "bold",
                                      border = "bottom")
@@ -269,6 +269,12 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
       CI = "", stringsAsFactors = FALSE))
   }
 
+  # the seed, when one was set, so the workbook says how to reproduce
+  # itself (2026-09-05); the build is on the About sheet already
+  if (!is.null(seed))
+    s <- rbind(s, data.frame(TRIAL = paste0("Monte Carlo seed ", seed,
+                                            " (reproducible with the same seed and build)"),
+                             P = "", CI = "", stringsAsFactors = FALSE))
   names(s) <- c("TRIAL", "P (one-sided toward homogeneity)",
                 "95% Monte Carlo interval")
   openxlsx::addWorksheet(wb, "Summary")

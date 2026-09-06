@@ -23,7 +23,12 @@
 #'
 #' @export
 run_app <- function(testNote = NULL,
-                    countUsage = is.null(testNote)) {
+                    countUsage = is.null(testNote),
+                    seed = NULL) {
+  # A Monte Carlo seed for every analysis this app runs (see .iaSeedValue
+  # in app_globals.R); the page's ?seed= parameter overrides it per
+  # session. NULL, the default, leaves the draws unseeded.
+  options(IntegrityAnalysis.seed = .iaSeedValue(seed))
   # Anonymous usage counting (see R/usageCount.R): ON only for
   # production (PR test apps pass a testNote, which disables it, so the
   # counts reflect real use). The option is what countUsage() checks.

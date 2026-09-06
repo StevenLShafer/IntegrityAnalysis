@@ -213,6 +213,29 @@ m <- 100000
   out
 }
 
+# THE MONTE CARLO SEED (Steve, 2026-09-05, answering an outside review
+# that saw the same table land on both sides of 0.05 across runs: "The
+# Monte Carlo results should not return identical results unless the
+# seed is fixed. The seed is not fixed ... allow a command line argument
+# in the web application, and an argument in the API, that permits the
+# user to set a seed."). Unseeded, the draws differ from run to run
+# within the reported Monte Carlo interval, which is what a simulation
+# should do. With a seed - the page's ?seed=12345, run_app(seed =), or
+# the API's seed field - the same table, the same seed and the same
+# build give the same numbers. Both generators are seeded: P_Calc draws
+# with base R's rnorm and with dqrng's dqrnorm / dqrunif.
+.iaSeedValue <- function(x) {
+  if (is.null(x) || !length(x)) return(NULL)
+  v <- suppressWarnings(as.numeric(trimws(as.character(x[1]))))
+  if (length(v) != 1L || !is.finite(v) || v < 1 || v > 2147483647 || v %% 1 != 0)
+    return(NULL)
+  as.integer(v)
+}
+.iaSetSeed <- function(seed) {
+  set.seed(seed); dqrng::dqset.seed(seed)
+  invisible(seed)
+}
+
 # After normalizing, two source columns can collapse onto one name (a
 # frame carrying both NUMBER and N ends with two called N). R's $ and
 # [[ ]] silently take the FIRST, so the reader and the writer can

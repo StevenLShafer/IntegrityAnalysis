@@ -9,7 +9,7 @@ against a local service and the deployed one before the API User's Guide
 Usage:
     python tools/apiClient.py health  <base-url>
     python tools/apiClient.py parse   <base-url> <file>
-    python tools/apiClient.py analyze <base-url> <file>
+    python tools/apiClient.py analyze <base-url> <file> [--seed N]
 
 <file> is an article PDF, a Word manuscript (.docx), a JATS XML article
 (.xml), a spreadsheet (csv/xls/xlsx), or a picture of a table
@@ -78,6 +78,13 @@ def save_csv(stem, suffix, text):
 
 
 def main(argv):
+    seed = None
+    if "--seed" in argv:                      # a Monte Carlo seed: same file, seed and build -> same numbers
+        k = argv.index("--seed")
+        if k + 1 >= len(argv):
+            usage()
+        seed = argv[k + 1]
+        argv = argv[:k] + argv[k + 2:]
     if len(argv) < 2 or argv[0] not in ("health", "parse", "analyze"):
         usage()
     verb, base = argv[0], argv[1].rstrip("/")
@@ -93,7 +100,9 @@ def main(argv):
     if not os.path.exists(path):
         print("no such file: %s" % path)
         sys.exit(2)
-    fields = {}   # the service takes only the file; no form fields
+    fields = {}
+    if seed is not None and verb == "analyze":
+        fields["seed"] = str(seed)
     body, ctype = multipart(fields, "file", path)
     req = urllib.request.Request(base + "/" + verb, data=body, method="POST",
                                  headers={"Authorization": "Bearer " + token,

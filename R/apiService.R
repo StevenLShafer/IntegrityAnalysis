@@ -603,7 +603,7 @@
 }
 
 # The /analyze pipeline after reading: validate, then Monte Carlo.
-.apiAnalyze <- function(DATA) {
+.apiAnalyze <- function(DATA, seed = NULL) {
   # Gate a frame whose names mean what they say - see .apiNormalizeNames.
   DATA <- .apiNormalizeNames(DATA)
   # Size gate BEFORE any simulation (H2): a crafted oversized table
@@ -666,6 +666,9 @@
                 templateCsv = .apiTemplateCsv(
                   if (!is.null(v$DATA)) v$DATA else DATA)))
   }
+  # the caller's seed (2026-09-05): set once, before the first trial, so
+  # the same file, seed and build give the same numbers on any service
+  if (!is.null(seed)) .iaSetSeed(seed)
   OUTPUT <- NULL
   for (TRIAL in v$TRIALS)
     OUTPUT <- rbind(OUTPUT,
