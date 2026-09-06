@@ -107,8 +107,9 @@ precision is the replicate count, which the adaptive scheme below sets.
    trial p is the share of those simulated honest sums that reach the
    observed one (ties half). Accumulation across rows is still the fraud
    signal — eight rows each at p = 0.05, none alarming on its own,
-   combine to about 1.6 × 10⁻⁶ by the closed form, which the simulation
-   reports as its floor — and it rests on the
+   combine to about 1.6 × 10⁻⁶ by the closed form; the simulation,
+   floored at 1/(replicates + 1), reports that as "<0.0001" with its
+   Monte Carlo interval — and it rests on the
    rows being independent: weight and BMI, or a measurement and its
    categorised version, repeat some of their evidence, and a summary
    table gives no way to recover the correlation, so a table with
