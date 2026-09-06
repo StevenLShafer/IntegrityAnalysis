@@ -365,8 +365,23 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           df <- N - COLS
           Meanvar <- sum((ROWS$N - 1) * ROWS$SD^2) / df
           c4 <- sqrt(2 / df) * exp(lgamma((df + 1) / 2) - lgamma(df / 2))
-          Meansd <- sqrt(Meanvar) / c4
-          SEMsample <- Meansd/sqrt(mean(ROWS$N))
+          Meansd <- sqrt(Meanvar) / c4          # the point estimate: direct-draw threshold only
+          # THE SIGMA DRAW (Steve's decision 2026-09-06, "step 3"). With
+          # N - k degrees of freedom the population SD is not a number but
+          # an uncertain quantity, and a plug-in value - however well
+          # unbiased - understates the null spread of the arm means, the
+          # difference between a z test and a t test. Each replicate now
+          # draws its own sigma from the scaled inverse chi-square implied
+          # by the pooled variance, sigma^2 = s^2 * df / chisq(df), so the
+          # simulated between-arm statistic behaves like the F it should
+          # rather than the chi-square a fixed sigma gives. Measured
+          # (docs/statistics.md): at three per arm the row p's distance
+          # from uniform under an honest null fell 0.07 -> 0.016; the
+          # 5% and 1% rates were unchanged; on the Carlisle corpus the
+          # agreement with his values rose (r 0.9925 -> 0.9931), the shift
+          # confined to trials of 30 or fewer per arm. No c4 correction is
+          # applied to the draw: no point estimate is plugged in.
+          sigmaDraw <- function(ch) sqrt(Meanvar * df / stats::rchisq(ch, df))
           DiffSample <- sum((ROWS$MEAN - Meanmean)^2) # Squared difference of column means
           # Monte Carlo Simulation. The simulation body is unchanged from
           # the Carlisle-validated implementation (issue 3, r = 0.991);
@@ -380,7 +395,6 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # draw of the arm mean at or above it (see the constant's note)
           hObs   <- 10^(-ROWS$ROUND_OBSERVATION)
           direct <- ROWS$N >= .iaDirectDrawN & Meansd >= .iaDirectDrawSdOverGrid * hObs
-          sdMean <- sqrt((Meansd^2 + hObs^2 / 12) / ROWS$N)
           # the chunk size is set by the arms still simulated in full;
           # a row of direct-draw arms costs one draw per arm per replicate
           Nfull <- sum(ROWS$N[!direct])
@@ -388,15 +402,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out <- numeric(0); left <- n
             while (left > 0) {
               ch <- min(left, max(1, floor(1e8 / max(1, Nfull))))
-              meansim <- dqrnorm(ch, mean = Meanmean, sd = SEMsample)
+              sig <- sigmaDraw(ch)                      # one sigma per replicate
+              # (rnorm, not dqrnorm: dqrnorm takes a scalar sd)
+              meansim <- rnorm(ch, Meanmean, sig / sqrt(mean(ROWS$N)))
               MCMean <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
                 MCMean[,i] <- if (direct[i]) {
-                  round(rnorm(ch, meansim, sdMean[i]), ROWS$ROUND_MEAN[i])
+                  round(rnorm(ch, meansim, sqrt((sig^2 + hObs[i]^2 / 12) / ROWS$N[i])), ROWS$ROUND_MEAN[i])
                 } else round(
                   rowmeans(round(
                     matrix(rnorm(ROWS$N[i] * ch,
-                                 rep(meansim, ROWS$N[i]), Meansd),
+                                 rep(meansim, ROWS$N[i]), rep(sig, ROWS$N[i])),
                            nrow = ch, byrow = FALSE),
                     ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])

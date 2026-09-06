@@ -152,6 +152,45 @@ to 0.9925, the share within 0.05 of his value from 88.0% to 88.5%, and
 the alarm concordance from 98.6% to 98.5% (alarms 407 to 413: 9 in, 3
 out).
 
+## The SD is drawn, not plugged in (2026-09-06)
+
+The pooled SD above is an estimate with N − k degrees of freedom, and a
+plug-in value — however well unbiased — understates the null spread of
+the arm means: it is the z test where a t test belongs. Each replicate
+of the mean/SD simulation therefore draws its own population variance,
+σ² = s² · df / χ²(df), from the scaled inverse chi-square implied by the
+pooled variance, and generates that replicate's observations and its
+common location with that σ. The observed between-arm statistic is
+judged against replicates whose σ varies as the data's own uncertainty
+says it should, so the simulated statistic behaves like the F it should
+rather than the chi-square a fixed σ gives. No square-root correction is
+applied to the draw; nothing is plugged in.
+
+Measured before adoption (Steve's ask of 2026-09-05; data in
+`C:/dev/Corpus/synthetic/sd-null/`):
+
+- **Honest null** (one continuous row, two equal arms of 3, 5, 10, 20
+  or 50, honest normal data, 2,000 trials per cell, fine and coarse
+  printing). The share of row p ≤ 0.05 and ≤ 0.01 is nominal for the
+  plug-in and the draw alike at every N — the tails were never the
+  problem. The body of the distribution was: with a plug-in SD the mean
+  p at three per arm is 0.52 and the Kolmogorov–Smirnov distance from
+  uniform 0.07; with the draw 0.50 and 0.016. At ten per arm and above
+  the two are indistinguishable.
+- **Carlisle 2017 corpus** (5,041 usable trials, 10,000-replicate
+  ceiling, same day as the pooled-SD run). Against Carlisle's stored
+  values (the run from the merged engine) the correlation rose from
+  0.9925 to 0.9929 and the share within 0.05 from 88.5% to 89.1%; alarm
+  concordance 98.5% either way (alarms 418 → 420, 11 in, 9 out). Draw
+  against plug-in: median |Δp| 0.009, 90th percentile 0.033, the shift
+  confined to trials of 30 or fewer per arm (median −0.004) and zero
+  above 300 per arm. One trial of 20 per arm moved by 0.34 (0.28 to
+  0.62; Carlisle 0.25), the largest mover in either direction.
+
+The worked example (77 vs 78, SD 30, n = 6) moved from 0.0475 to 0.0442 (0.04415):
+two arms of six carry ten degrees of freedom, and the uncertainty in
+their SD is real.
+
 ## Reading the results table
 
 | Column | Meaning |
