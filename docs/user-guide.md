@@ -104,9 +104,12 @@ a difference of exactly 0 between two random samples is impossible — the
 p value degenerates. In the real world it happens all the time, because
 published data are rounded.
 
-The way out is to abandon normal theory and instead **replicate the
-study by Monte Carlo simulation**, rounding the simulated data exactly
-as the published table was rounded. John Carlisle and Steve Shafer spent
+The way out is to leave the closed-form, unrounded normal-theory p
+behind and instead **replicate the study by Monte Carlo simulation**,
+rounding the simulated data exactly as the published table was rounded.
+(The simulation still draws normally distributed observations; what it
+stops doing is comparing rounded numbers with a formula written for
+unrounded ones.) John Carlisle and Steve Shafer spent
 several years developing this method and in 2015 published a re-analysis
 of the Fujii data [4]: same verdicts, and in simulation the Monte Carlo
 approach proved more robust than normal theory. In 2017, Carlisle
@@ -415,7 +418,7 @@ Four columns are required:
 
 | Column | Meaning |
 |---|---|
-| `ROW`  | what is measured — "Weight", "Age", "Duration of surgery" |
+| `ROW`  | what is measured — "Weight", "Age", "Duration of symptoms" |
 | `N`    | number of subjects in the group |
 | `MEAN` | the group mean, exactly as printed |
 | `SD`   | the group standard deviation, exactly as printed |
@@ -457,12 +460,15 @@ third (Q3). Enter these with two additional columns, `Q1` and `Q3`. On
 a row where both quartiles are filled in, **the MEAN column holds the
 median**, and the SD and SE cells must be empty.
 
-A study reporting duration of surgery as median [Q1, Q3] in two arms:
+A study reporting the duration of symptoms before enrolment as median
+[Q1, Q3] in two arms (a baseline variable: measured before allocation,
+so randomization is what makes the arms comparable — an outcome such as
+the duration of surgery is not one):
 
 | ROW | MEAN | N | Q1 | Q3 | ROUND MEAN |
 |---|---|---|---|---|---|
-| Duration of surgery | 127 | 50 | 98  | 160 | 0 |
-| Duration of surgery | 133 | 50 | 101 | 155 | 0 |
+| Duration of symptoms | 127 | 50 | 98  | 160 | 0 |
+| Duration of symptoms | 133 | 50 | 101 | 155 | 0 |
 
 `ROUND MEAN` is the printed precision of the median, exactly as for a
 mean. The median must lie between its quartiles; N, the median, and
@@ -644,9 +650,11 @@ collective evidence is added up correctly.
 **The "attainable floor" note.** The results table says this for you.
 Every row has a smallest p its printed precision allows — the p of the
 most homogeneous outcome the simulation can produce, which is both arms
-printing the same value. When a row sits at that floor, its Note column
-reads **attainable floor**: no honest replicate agreed better than the
-printed arms did. For integer age at 1,000 per arm the floor is about
+printing the same value. When a row sits at that floor — the printed
+arms agree exactly *and* no honest replicate agreed better — its Note
+column reads **attainable floor**. (A row whose arms differ, however
+slightly, never carries the note, even when no replicate happened to
+beat it; its interval says so instead.) For integer age at 1,000 per arm the floor is about
 0.27, and the note means the row cannot alarm and should not be read as
 reassurance either. For a row printed to two decimals the floor is
 small, and a row at it alarms; the note then means this is as far as
@@ -675,7 +683,7 @@ follow. — Steve Shafer*
    table — especially any cell the app colored green (derived or
    AI-read) or cyan (read by OCR). A flag built on a misread digit is
    not a finding.
-2. **A single flagged paper is not evidence of misconduct.** One paper
+2. **A single flagged paper is not sufficient evidence of misconduct.** One paper
    at P ≤ 0.05 is expected once in twenty honest papers. What made the
    Fujii and Boldt cases conclusive was the *pattern* across many
    papers by the same author.
@@ -728,7 +736,7 @@ Every trial starts with 1,000 replicates per row. A trial whose p, and
 every row's, is 0.1 or more stops there; one below 0.1 escalates to
 10,000, and one still below 0.01 to 100,000. This spends computation
 where it matters — unremarkable trials finish fast, borderline ones get
-a p resolved to about ±0.002 instead of ±0.007, alarming ones get the
+a p with a Monte Carlo standard error of about 0.002 instead of 0.007, alarming ones get the
 precision a small p needs.
 
 **Reproducing a result exactly.** An unseeded Monte Carlo is not meant
@@ -860,9 +868,13 @@ as rows, arms as columns, exactly as a journal prints Table 1.
 *Sheet 3, `Summary`* — one line per study: the trial name, its combined
 `P (one-sided toward homogeneity)`, and the `95% Monte Carlo interval`
 where one was reported. When the analysis holds **two or more trials**,
-a closing bold row gives the **overall P for the entire analysis** — the
-same Stouffer (sum-of-z) combination the app applies within each trial,
-now applied across the trial P values. This is the step Carlisle took to
+a closing bold row gives the **overall P for the entire analysis** — a
+closed-form Stouffer (sum-of-z) combination of the trial P values
+against the normal table. That is a different procedure from the
+within-trial combination, which is judged against its own simulated
+null: across trials the P values are treated as continuous and
+independent, and a trial reported as "<0.0001" enters as 0.0001, on the
+conservative side. This is the step Carlisle took to
 reach a single p for the whole body of Fujii's work
 ([PMID 22404311](https://pubmed.ncbi.nlm.nih.gov/22404311/)): each trial
 may look only mildly improbable, but improbability *accumulates*, and

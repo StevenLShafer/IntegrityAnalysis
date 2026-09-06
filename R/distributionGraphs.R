@@ -66,7 +66,7 @@ newGraphCollector <- function() {
   graphics::points(p, seq_len(n) / n, pch = 16, col = "#B2182B",
                    cex = 0.9)
   graphics::legend("bottomright", bty = "n",
-                   legend = c("Observed", "Expected under honest sampling"),
+                   legend = c("Observed", "Ideal reference: uniform (continuous, independent rows)"),
                    col = c("#B2182B", "grey55"), lwd = c(2.5, 2),
                    lty = c(1, 2))
   graphics::mtext(subtitle, side = 3, line = 0.3, cex = 1.0)
@@ -86,9 +86,12 @@ newGraphCollector <- function() {
                  col = "grey85", border = "grey60",
                  xlab = xlab, ylab = "Density", main = "")
   graphics::abline(v = rec$obs, col = "#B2182B", lwd = 3)
+  # the p as the results table displays it: a floor is "<", never a number
+  pTxt <- if (rec$p <= 1 / (length(d) + 1)) paste0("< ", signif(1 / length(d), 1))
+          else paste0("= ", format(signif(rec$p, 3), scientific = rec$p < 1e-4))
   graphics::mtext(sprintf(
-    "Expected distribution (%d simulations under honest sampling); observed in red.  p = %s",
-    length(d), format(signif(rec$p, 3), scientific = rec$p < 1e-4)),
+    "Simulated distribution under the null model (%d replicates); observed in red.  p %s",
+    length(d), pTxt),
     side = 3, line = 0.3, cex = 1.0)
 }
 

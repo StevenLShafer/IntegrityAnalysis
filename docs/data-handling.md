@@ -27,9 +27,10 @@ below can be checked against it.*
 
 IntegrityAnalysis processes an uploaded manuscript or table **in
 memory, for the length of one session or one API request, and retains
-nothing afterward**. The default analysis is deterministic and runs
-entirely on the server that receives it — no document content is sent
-anywhere else. A single, opt-in exception exists: if a user enters
+nothing afterward**. The extraction is deterministic and the analysis
+is a Monte Carlo simulation (reproducible with a seed); both run
+entirely on the server that receives the upload — no document content
+is sent anywhere else. A single, opt-in exception exists: if a user enters
 their own **Anthropic** API key, the pages a document's own text cannot
 be read from are sent to the Anthropic API under the user's account,
 for that session only. Anthropic is the only AI service this software

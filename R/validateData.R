@@ -33,7 +33,9 @@
   if (is.na(x) || !is.finite(x)) return(0L)
   txt <- format(x, scientific = FALSE, digits = 15, trim = TRUE)
   if (!grepl(".", txt, fixed = TRUE)) return(0L)
-  nchar(sub("0+$", "", sub("^[^.]*[.]", "", txt)))
+  # capped at 20, the rounding clamp's range (screen 2026-09-06-0703 I1: a
+  # mean of 1e-300 inferred 300 decimals, above the clamp the bump feeds)
+  min(20L, nchar(sub("0+$", "", sub("^[^.]*[.]", "", txt))))
 }
 
 is_category <- function(x, requireNA = TRUE) {
@@ -341,10 +343,16 @@ validateData <- function(DATA) {
       }
     }
   }
-  # After all of that, if it still doesn't exist, just put in 0
+  # After all of that, if it still doesn't exist, just put in 0 - and
+  # remember that every cell was INFERRED (outside audit, 2026-09-06: a
+  # supplied per-arm precision must never be overwritten by the
+  # variable's maximum below; only blank cells take it)
   if (is.null(DATA$ROUND_MEAN))
   {
     DATA$ROUND_MEAN <- 0
+    meanInferred <- rep(TRUE, nrow(DATA))
+  } else {
+    meanInferred <- is.na(suppressWarnings(as.numeric(DATA$ROUND_MEAN)))
   }
   ColumnNames <- names(DATA)
 
@@ -393,6 +401,7 @@ validateData <- function(DATA) {
   # a rejected observation precision is now a BLANK one: it is inferred
   # from the mean's like any other blank (review of #190)
   obsInferred <- obsInferred | is.na(DATA$ROUND_OBSERVATION)
+  meanInferred <- meanInferred | is.na(DATA$ROUND_MEAN)
   for (col in c("ROUND_MEAN", "ROUND_OBSERVATION"))
     DATA[[col]][is.na(DATA[[col]])] <- 0
 
@@ -619,7 +628,8 @@ validateData <- function(DATA) {
   # rather than the 0 it was copied from before the bump.
   if (nrow(DATA) > 0)
   {
-    DATA$ROUND_MEAN <- stats::ave(DATA$ROUND_MEAN, DATA$TRIAL, DATA$ROW, FUN = max)
+    grpMax <- stats::ave(DATA$ROUND_MEAN, DATA$TRIAL, DATA$ROW, FUN = max)
+    DATA$ROUND_MEAN[meanInferred] <- grpMax[meanInferred]   # inferred cells only
     DATA$ROUND_OBSERVATION[obsInferred] <- DATA$ROUND_MEAN[obsInferred]
   }
 

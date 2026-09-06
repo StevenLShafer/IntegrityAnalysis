@@ -1,5 +1,11 @@
 # IntegrityAnalysis API — specification (v0 draft)
 
+> **Historical design document.** This is the August 2026 proposal. The
+> service as built differs from it (`/parse` and `/analyze` rather than
+> `/v1/…`, the app's staged replicates rather than a caller-chosen
+> count, a Monte Carlo analysis rather than a deterministic verdict).
+> The as-built reference is [the API User's Guide](api-users-guide.md).
+
 Provenance: drafted by Claude Code (model Claude Fable 5), 2026-08-17, at
 Steve Shafer's request, implementing the contract decided in ISSUES.md
 issue 1. Status: **specification only** — reviewed by no one yet;
