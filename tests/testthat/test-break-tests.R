@@ -51,3 +51,39 @@ test_that("a reason never carries the server's working directory", {
   expect_false(grepl(tempdir(), r, fixed = TRUE)); expect_match(r, "bad.docx")
   expect_null(IntegrityAnalysis:::.apiScrubPath(NULL, work, "x"))
 })
+
+test_that("an overflowing count in a level column is refused, not passed to the engine (screen 0514 F1)", {
+  d <- data.frame(TRIAL = "T", ROW = c("Age", "Age", "Sex", "Sex", "Sex", "Sex"),
+                  LEVEL = c(NA, NA, "M", "M", "F", "F"),
+                  N = c(10, 10, 1e308, 1e308, 5, 5), MEAN = c(50, 51, NA, NA, NA, NA),
+                  SD = c(10, 10, NA, NA, NA, NA), stringsAsFactors = FALSE)
+  v <- NULL; expect_error(v <- vd(d), NA)
+  expect_true(isTRUE(v$FAIL))
+  expect_true(any(v$issues$code %in% c("too_large", "incongruent")))
+})
+
+test_that("a wide count beyond 2^31 - 1, or Inf, is refused rather than crashing is_category (screen 0514 F2)", {
+  expect_true(IntegrityAnalysis:::is_category(c(NA, 3e9, 1)))    # a whole number: the sweep and the ceiling judge its size
+  expect_false(IntegrityAnalysis:::is_category(c(NA, Inf, 1)))
+  d <- data.frame(TRIAL = "T", ROW = c("Age", "Age", "Sex", "Sex"), N = c(10, 10, NA, NA),
+                  MEAN = c(50, 51, NA, NA), SD = c(10, 10, NA, NA),
+                  MALE = c(NA, NA, 3e9, 5), FEMALE = c(NA, NA, 5, 5), stringsAsFactors = FALSE)
+  v <- NULL; expect_error(v <- vd(d), NA); expect_true(isTRUE(v$FAIL))
+})
+
+test_that("a rounding column that arrives as text is coerced before it is clamped (screen 0514 F3)", {
+  d <- cont(); d$ROUND_MEAN <- c("99", "1"); d$ROUND_DISPERSION <- c("x", "Inf")
+  v <- NULL; expect_error(v <- vd(d), NA)
+  expect_true(all(is.na(v$DATA$ROUND_MEAN) | abs(v$DATA$ROUND_MEAN) <= 20))
+  expect_true(is.numeric(v$DATA$ROUND_DISPERSION))
+})
+
+test_that("an engine error becomes a 422 naming the stage on the API, never a 500", {
+  # a DATA whose P_Calc call errors: force it by stubbing P_Calc
+  d <- cont()
+  old <- IntegrityAnalysis:::P_Calc
+  assignInNamespace("P_Calc", function(...) stop("boom"), "IntegrityAnalysis")
+  on.exit(assignInNamespace("P_Calc", old, "IntegrityAnalysis"), add = TRUE)
+  r <- IntegrityAnalysis:::.apiAnalyze(d)
+  expect_false(isTRUE(r$ok)); expect_identical(r$stage, "analysis"); expect_match(r$issues$note[1], "boom")
+})

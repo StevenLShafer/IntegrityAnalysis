@@ -43,8 +43,10 @@ is_category <- function(x, requireNA = TRUE) {
   if (length(x_clean) == 0)
     return(FALSE)
 
-  # Check if all values are equal to their integer representation
-  all(x_clean == as.integer(x_clean))
+  # Check if all values are whole numbers. (Not `== as.integer()`: beyond
+  # 2^31 - 1, or at Inf, as.integer is NA and the if() upstream crashed -
+  # screen 2026-09-06-0514 F2.)
+  all(is.finite(x_clean) & x_clean %% 1 == 0)
 }
 
 #' Validate an uploaded baseline-data table
@@ -273,10 +275,35 @@ validateData <- function(DATA) {
       if (length(huge)) FAIL <- TRUE
     }
   }
-  # the rounding columns too: "Inf" decimals is a number to as.numeric
+  # The same sweep over every OTHER numeric column - the category and
+  # level count columns (screen 2026-09-06-0514 F1: a count of 1e308 in
+  # a level column was never swept, summed to Inf, slipped past the arm
+  # ceiling's is.finite guard and reached the engine).
+  for (col in setdiff(names(DATA), c("TRIAL", "ROW", "N", "MEAN", "SD", "SE", "Q1", "Q3",
+                                     "ROUND_MEAN", "ROUND_OBSERVATION", "ROUND_DISPERSION")))
+  {
+    if (!is.numeric(DATA[[col]])) next
+    v <- DATA[[col]]
+    bad <- which(!is.na(v) & (!is.finite(v) | abs(v) >= .iaMaxMagnitude))
+    for (i in bad) {
+      addIssue(i, col, if (is.finite(v[i])) "incongruent" else "unreadable",
+               if (is.finite(v[i])) paste0(col, " is beyond ", format(.iaMaxMagnitude, scientific = TRUE),
+                                           ", which no count reaches") else NA_character_)
+      unreadable[[paste(i, col)]] <- TRUE
+    }
+    DATA[[col]][bad] <- NA_real_
+    if (length(bad)) FAIL <- TRUE
+  }
+  # the rounding columns too: "Inf" decimals is a number to as.numeric -
+  # coerced FIRST (a text cell makes the whole column character, and the
+  # clamp used to skip a character column: screen 2026-09-06-0514 F3)
   for (col in c("ROUND_MEAN", "ROUND_OBSERVATION", "ROUND_DISPERSION"))
-    if (!is.null(DATA[[col]]) && is.numeric(DATA[[col]]))
+    if (!is.null(DATA[[col]]))
+    {
+      if (!is.numeric(DATA[[col]]))
+        DATA[[col]] <- suppressWarnings(as.numeric(DATA[[col]]))
       DATA[[col]][!is.na(DATA[[col]]) & (!is.finite(DATA[[col]]) | abs(DATA[[col]]) > 20)] <- NA_real_
+    }
   isUnreadable <- function(row, col)
     isTRUE(unreadable[[paste(row, col)]])
   # the range rules (2026-09-05): a sample size is a whole number of at
@@ -459,7 +486,7 @@ validateData <- function(DATA) {
       # of category counts IS an arm, and r2dtable on a billion patients
       # asked for 134 million TB (break test, 2026-09-06, via the API)
       armTotal <- sum(unlist(DATA[i, CategoryNames]), na.rm = TRUE)
-      if (is.finite(armTotal) && armTotal > .iaMaxArmN)
+      if (!is.finite(armTotal) || armTotal > .iaMaxArmN)   # an overflowed total is over the ceiling (F1)
       {
         for (cn in CategoryNames)
           if (!is.na(DATA[[cn]][i]))

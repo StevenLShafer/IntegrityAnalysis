@@ -736,10 +736,17 @@ app_server <- function(input, output, session) {
       for (i in 1:LengthTrials)
       {
         TRIAL <- TRIALS[i]
-        OUTPUT <<- rbind(
-          OUTPUT,
-          P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData)
-        )
+        # Defense in depth (screen 2026-09-06-0514 F1): an engine error
+        # the validator did not foresee is a message and a stopped
+        # analysis, never a dead session.
+        one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData),
+                        error = function(e) {
+                          outputComments(paste0("Trial ", .escapeHtml(TRIAL), " could not be analyzed: ",
+                                                .escapeHtml(conditionMessage(e)), "."))
+                          NULL
+                        })
+        if (is.null(one)) next
+        OUTPUT <<- rbind(OUTPUT, one)
         progress$set(
           value = i / LengthTrials,
           detail = paste0(TRIAL, ", P = ",OUTPUT$P[nrow(OUTPUT)-1]))
@@ -763,7 +770,11 @@ app_server <- function(input, output, session) {
           )
         })
     outputComments(paste("Execution time", round(Sys.time() - start_time, 2)))
-    reactiveDone(TRUE)
+    # the run is complete only when at least one trial produced results;
+    # if every trial was skipped above there is nothing to download
+    if (is.null(OUTPUT))
+      outputComments("No trial could be analyzed, so there are no results to download.")
+    reactiveDone(!is.null(OUTPUT))
     }
   )
 
