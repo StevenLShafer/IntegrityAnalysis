@@ -49,6 +49,10 @@ test_that("a reason never carries the server's working directory", {
   work <- file.path(tempdir(), "apiXYZ")
   r <- IntegrityAnalysis:::.apiScrubPath(paste0("zip error: cannot open `", work, "/bad.docx`"), work, "bad.docx")
   expect_false(grepl(tempdir(), r, fixed = TRUE)); expect_match(r, "bad.docx")
+  # the parse child's tempdir (a sibling under the parent's) is scrubbed too (screen 1118 F3)
+  child <- file.path(tempdir(), "childABC")
+  r2 <- IntegrityAnalysis:::.apiScrubPath(paste0("could not read ", child, "/upload.pdf"), work, "upload.pdf")
+  expect_false(grepl(tempdir(), r2, fixed = TRUE)); expect_match(r2, "upload.pdf")
   expect_null(IntegrityAnalysis:::.apiScrubPath(NULL, work, "x"))
 })
 

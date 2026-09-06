@@ -47,8 +47,14 @@
 # docx reader's zip error quoted the full temp path back to the caller)
 .apiScrubPath <- function(reasons, work, name) {
   if (is.null(reasons) || !is.character(reasons)) return(reasons)
-  ws <- unique(c(work, normalizePath(work, winslash = "/", mustWork = FALSE),
-                 normalizePath(work, winslash = "\\", mustWork = FALSE)))
+  # the parse child's tempdir is a sibling of `work` under the parent's
+  # tempdir, so the parent's tempdir is scrubbed as well (screen
+  # 2026-09-06-1118 F3); longest strings first so a prefix never
+  # survives a shorter match
+  roots <- c(work, tempdir())
+  ws <- unique(c(roots, normalizePath(roots, winslash = "/", mustWork = FALSE),
+                 normalizePath(roots, winslash = "\\", mustWork = FALSE)))
+  ws <- ws[order(-nchar(ws))]
   for (w in ws) for (sep in c("/", "\\", ""))
     reasons <- gsub(paste0(w, sep), "", reasons, fixed = TRUE)
   reasons
