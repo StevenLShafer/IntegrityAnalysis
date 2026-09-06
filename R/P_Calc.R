@@ -566,8 +566,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     }
   } else {
     # FIX (carried): length(Pv[use]) == 1 vs the old length(x == 1) trap
+    # FIX (outside review, 2026-09-05): with one usable row the trial IS
+    # that row, so the Summary carries the row's display and interval.
+    # It used to print the row's numeric floor raw - a zero-hit row
+    # showing "<0.0001 (0 to 3.7e-05)" gave a Summary of
+    # 9.99990000099999e-06 with no interval, more precise-looking
+    # exactly where the simulation had reached its resolution limit.
     if (sum(use) == 1)
-      P <- Pv[use]
+    {
+      P <- x$P[use]
+      ciStr <- x$CI95[use]
+    }
     if (sum(use) == 0)
       P = "No values"
   }
