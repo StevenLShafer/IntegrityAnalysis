@@ -136,7 +136,21 @@ function(req, res, file) {
 #* @serializer unboxedJSON
 #* @post /analyze
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
-function(req, res, file) {
+#* @param seed:int Optional Monte Carlo seed, 1 to 2147483647: the same document, seed and build give the same numbers. Echoed in the reply.
+function(req, res, file, seed = NULL) {
+  # the seed is judged before the upload is read: a bad one is a 422
+  # that costs nothing
+  seedValue <- NULL
+  if (!is.null(seed) && nzchar(trimws(as.character(seed[1])))) {
+    seedValue <- IntegrityAnalysis:::.iaSeedValue(seed)
+    if (is.null(seedValue)) {
+      res$status <- 422
+      return(list(ok = FALSE, stage = "request", file = names(file)[1],
+                  reasons = "seed must be a whole number from 1 to 2147483647",
+                  templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
+                  deleted = TRUE))
+    }
+  }
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
   dir.create(work)
   on.exit(unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
@@ -153,7 +167,7 @@ function(req, res, file) {
                 templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
                 deleted = TRUE))
   }
-  a <- IntegrityAnalysis:::.apiAnalyze(r$data)
+  a <- IntegrityAnalysis:::.apiAnalyze(r$data, seed = seedValue)
   if (!isTRUE(a$ok)) {
     # the round-trip contract: the failure payload IS the next call's
     # input - fix the flagged cells in templateCsv and POST it back
@@ -165,7 +179,7 @@ function(req, res, file) {
                 templateCsv = a$templateCsv,
                 deleted = TRUE))
   }
-  list(ok = TRUE, file = name, trials = a$trials,
+  out <- list(ok = TRUE, file = name, trials = a$trials,
        overallP = a$overallP,
        # sanitized against spreadsheet formula injection (review M5)
        resultsCsv = IntegrityAnalysis:::.apiResultsCsv(a$results),
@@ -186,4 +200,7 @@ function(req, res, file) {
        journalTablesOmitted = a$journalTablesOmitted,
        templateCsv = a$templateCsv,
        deleted = TRUE)
+  # the seed the run used, when one was sent (2026-09-05)
+  if (!is.null(seedValue)) out$seed <- seedValue
+  out
 }

@@ -241,6 +241,12 @@ validateData <- function(DATA) {
   }
   isUnreadable <- function(row, col)
     isTRUE(unreadable[[paste(row, col)]])
+  # the range rules (2026-09-05): a sample size is a whole number of at
+  # least two (one patient has no SD); a dispersion is strictly positive;
+  # a count is a whole number of at least zero
+  isWholeN    <- function(x) is.finite(x) && x >= 2 && x %% 1 == 0
+  isPositive  <- function(x) is.finite(x) && x > 0
+  isCount     <- function(x) is.finite(x) && x >= 0 && x %% 1 == 0
 
   # Add rounding column for the mean
   MeanColumns <- grep("MEAN", ColumnNames)
@@ -383,6 +389,13 @@ validateData <- function(DATA) {
     if (any(!is.na(DATA[i, CategoryNames]))) # If there is any category entry, continuous columns are set to NA
     {
       DATA$ROUND_MEAN[i] <- DATA$ROUND_OBSERVATION[i] <- NA
+      # a count below zero (is_category() already requires whole numbers)
+      for (cn in CategoryNames)
+        if (!is.na(DATA[[cn]][i]) && !isCount(DATA[[cn]][i]))
+        {
+          addIssue(i, cn, "incongruent", "a count cannot be negative")
+          FAIL <- TRUE
+        }
       if (any(!is.na(DATA[i, intersect(c("N", "MEAN", "SD", "Q1", "Q3"),
                                        names(DATA))])))
       {
@@ -410,6 +423,10 @@ validateData <- function(DATA) {
         for (cn in c("N", "MEAN"))
           if (is.na(DATA[[cn]][i]) && !isUnreadable(i, cn))
             addIssue(i, cn, "missing")
+        FAIL <- TRUE
+      } else if (!isWholeN(DATA$N[i]))
+      {
+        addIssue(i, "N", "incongruent", "N must be a whole number of at least 2")
         FAIL <- TRUE
       } else if (!is.na(DATA$SD[i]) ||
                  ("SE" %in% names(DATA) && !is.na(DATA$SE[i])))
@@ -442,6 +459,21 @@ validateData <- function(DATA) {
         for (cn in c("N", "MEAN", "SD"))
           if (is.na(DATA[[cn]][i]) && !isUnreadable(i, cn))
             addIssue(i, cn, "missing")
+        FAIL <- TRUE
+      } else if (!isWholeN(DATA$N[i]) || !isPositive(DATA$SD[i]) ||
+                 ("SE" %in% names(DATA) && !is.na(DATA$SE[i]) && !isPositive(DATA$SE[i])))
+      {
+        # RANGE (2026-09-05, an outside review: "invalid values such as
+        # negative SDs and fractional sample sizes can pass validation").
+        # Presence and type were checked; range was not, and the Monte
+        # Carlo draws happily from a normal with a negative or zero
+        # spread. A blue cell with the rule it broke, and no analysis.
+        if (!isWholeN(DATA$N[i]))
+          addIssue(i, "N", "incongruent", "N must be a whole number of at least 2")
+        if (!isPositive(DATA$SD[i]))
+          addIssue(i, "SD", "incongruent", "SD must be greater than zero")
+        if ("SE" %in% names(DATA) && !is.na(DATA$SE[i]) && !isPositive(DATA$SE[i]))
+          addIssue(i, "SE", "incongruent", "SE must be greater than zero")
         FAIL <- TRUE
       } else {
         # Fix MEAN digits if Mean has any decimal digits

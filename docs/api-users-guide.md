@@ -96,11 +96,16 @@ Multipart form with exactly one file field, `file`.
 ### `POST /analyze`
 
 Extract (if needed), validate, and run the Monte Carlo. Same request as
-`/parse`: one file field, `file`, and nothing else. There is no knob for
-the number of replications: every row runs the same staged scheme as
-the app (1,000, then 10,000, then 100,000 replicates, escalating only
-while the row still alarms), and the `M` column of the results says
-what each row used. The precision of a result is never reduced to fit a
+`/parse`, one file field, `file`, plus one optional form field:
+
+| field | type | meaning |
+|---|---|---|
+| `seed` | integer, 1 to 2147483647 | a Monte Carlo seed. The same document, seed and service build (`commit` in `/health`) give the same numbers; the reply echoes it as `seed`. Without it the numbers differ from run to run within the reported Monte Carlo interval, as an unseeded simulation should. A seed that is not a whole number in range is refused with 422, stage `request`, before the document is read |
+
+There is no knob for the number of replications: every trial runs the
+same staged scheme as the app (1,000 replicates per row, then 10,000
+while the trial or a row is below p = 0.1, then 100,000 while one is
+below 0.01), and the `M` column of the results says what the rows used. The precision of a result is never reduced to fit a
 budget; a request too large to run at full precision is refused instead
 (section 7).
 
@@ -188,6 +193,7 @@ Captured (the example workbook, two trials):
 | `journalTables` | object of strings | one CSV per trial, keyed by trial name: the baseline table reconstructed from the extracted numbers in journal layout (variables as rows, arms as columns with "(n = …)" in the headers, "mean (SD)" cells). This is what an editor compares against the manuscript page |
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the analysed table in the template layout, as `/parse` returns it |
+| `seed` | integer | present only when the request sent one: the seed the run used |
 
 Values in the CSVs are sanitised against spreadsheet formula injection:
 a cell that would begin with `=`, `+`, `-` or `@` is prefixed with an
@@ -307,7 +313,7 @@ for (nm in names(b$journalTables))                 # the journal-style table
 
 The full client, with health, parse and analyze as commands:
 
-    Rscript tools/apiClient.R analyze https://<service> article.pdf
+    Rscript tools/apiClient.R analyze https://<service> article.pdf --seed 12345
 
 ### Python (standard library only)
 
@@ -340,7 +346,7 @@ open("article-results.csv", "w", newline="", encoding="utf-8").write(b.get("resu
 
 The full client:
 
-    python tools/apiClient.py analyze https://<service> article.pdf
+    python tools/apiClient.py analyze https://<service> article.pdf --seed 12345
 
 ### What a run looks like
 

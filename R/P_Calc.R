@@ -11,9 +11,15 @@
 # convergent with a Gemini analysis he commissioned).
 #
 # THE STAGED SCHEME, in brief (full user documentation: docs/statistics.md):
-#   - Each row simulates in stages: 1,000 -> 10,000 -> mMax (100,000)
-#     replicates, advancing only while the running mid-p is < 0.01. Clean
-#     rows stop at 1,000; only alarming rows pay for precision.
+#   - The trial simulates in stages: 1,000 -> 10,000 -> mMax (100,000)
+#     replicates. It advances from 1,000 to 10,000 while the trial's
+#     running mid-p, or any row's, is < 0.1, and from 10,000 to 100,000
+#     while one is < 0.01 (Steve, 2026-09-05: "I would escalate P < 0.1
+#     to additional simulations as well. The range 0.034 to 0.057 is a
+#     bit broader than I would like" - at 1,000 replicates a p near 0.05
+#     resolves to about +/- 0.007; at 10,000 to +/- 0.002). Clean trials
+#     stop at 1,000; borderline ones pay ten times; alarming ones a
+#     hundred.
 #   - Point estimate: mid-p (ties count half - the Carlisle-validated
 #     convention), floored at 1/(m+1) (Davison & Hinkley: the Monte Carlo
 #     test is exact-valid; a simulated p of literally 0 is never reported).
@@ -474,6 +480,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
   # innocuous trial still costs 1,000 replicates per row.
   usable <- which(vapply(rows, function(r) !is.null(r$sim), logical(1)))
   stages <- unique(pmin(c(1000, 10000, m), m))
+  # the mid-p below which the NEXT stage runs: < 0.1 to leave 1,000,
+  # < 0.01 to leave 10,000 (see the header)
+  advanceBelow <- c(0.1, 0.01)
   rowStat <- vector("list", length(rows))
   trialStat <- NULL
   for (s in stages) {
@@ -509,7 +518,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       trialStat <- list(kG = kG, kE = kE, m = s)
       trialMid <- (kG + kE / 2) / s
     } else trialMid <- 1
-    if (trialMid >= 0.01 && all(rowMid >= 0.01)) break
+    k <- match(s, stages)
+    if (k >= length(stages)) break
+    if (trialMid >= advanceBelow[k] && all(rowMid >= advanceBelow[k])) break
   }
 
   # The rows' report lines, from the final stage's counts.

@@ -40,13 +40,36 @@ agree as well as the printed data, the true p could still plausibly be
 evidence. IntegrityAnalysis is a screening tool whose verdicts may be
 challenged, so it reports only what the simulation actually supports.
 
+## Reproducibility, and the seed
+
+A Monte Carlo result is not meant to be identical from run to run. Two
+unseeded runs of the same table give p-values that differ within the
+reported Monte Carlo interval, and the interval is there so that the
+difference is never a surprise. When identical numbers are wanted — to
+reproduce a published screen, to compare two builds, to show a reviewer
+exactly what was run — set the seed: in the app, add `?seed=12345` to
+the page's address before pressing Analyze (or start a local copy with
+`run_app(seed = 12345)`); in the API, send `seed` with the request. The
+same table, the same seed and the same build then give the same numbers
+on any machine, the log and the results workbook record the seed, and
+the API echoes it. The build matters as much as the seed: any change to
+how the simulation draws (the direct draw of 2026-09-05, for instance)
+changes what a seed produces, so record the build commit — the health
+endpoint's `commit`, or the workbook's About sheet — beside the seed. A
+seed makes a number reproducible; it does not make it more precise. The
+precision is the replicate count, which the adaptive scheme below sets.
+
 ## The adaptive scheme
 
-1. **Staged replicates.** Every row starts with 1,000 replicates. If its
-   running p is ≥ 0.01, the simulation stops — extra precision on an
-   unremarkable p changes nothing. Otherwise it escalates to 10,000, and
-   if still < 0.01, to 100,000. Computation concentrates exactly on the
-   rows where precision matters.
+1. **Staged replicates.** Every trial starts with 1,000 replicates per
+   row. If the trial's running p and every row's are ≥ 0.1, the
+   simulation stops — extra precision on an unremarkable p changes
+   nothing. Otherwise it escalates to 10,000, and if the trial or a row
+   is still < 0.01, to 100,000. Computation concentrates where precision
+   matters: at 1,000 replicates a p near 0.05 is resolved only to about
+   ±0.007, which let the guide's worked example land on either side of
+   0.05 from run to run; at 10,000 it is resolved to about ±0.002. (The
+   threshold for the first escalation was 0.01 until 2026-09-05.)
 2. **No literal zeros.** A row where *no* replicate matched is floored at
    1/(replicates + 1) (Davison & Hinkley) — the smallest value the
    simulation can honestly claim.

@@ -18,6 +18,13 @@
 # p = 3e-04 (bound <=0.0013) to 1e-04 (bound <=0.00072): the same row,
 # the same 10,000 replicates, a different draw. The worked example
 # (stage 1 only, identical draws) is unchanged at 0.0495.
+#
+# Re-pinned again 2026-09-05 (the 0.1 escalation, Steve's ask after an
+# outside review): a trial or row with mid-p below 0.1 now advances to
+# 10,000 replicates, so every borderline pin below is a 10,000-replicate
+# value on a fresh stage-2 draw. Worked example 0.0495 -> 0.04805 (M
+# 10,000); identical categorical arms 0.089 -> 0.08245; median/IQR pair
+# 0.0555 -> 0.0464. Same rows, same seed, more replicates.
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast)
   library(dqrng)
@@ -34,8 +41,8 @@ test_that("the documentation's worked example: 77 vs 78, SD 30, n = 6", {
   x <- runP(data.frame(
     TRIAL = "T", ROW = "Weight", N = 6, MEAN = c(77, 78), SD = c(30, 30),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.0495)         # the guide's "about 4%"
-  expect_identical(x$M[1], "1000")          # unremarkable - stops at stage 1
+  expect_equal(summaryP(x), 0.04805)         # the guide's "about 4%"
+  expect_identical(x$M[1], "10000")         # borderline (p < 0.1) - escalates to stage 2
 })
 
 test_that("three identical arms escalate and alarm", {
@@ -55,7 +62,7 @@ test_that("identical categorical arms give the pinned lower-tail mid-p", {
     SD = NA_real_, ROUND_MEAN = NA_real_, ROUND_OBSERVATION = NA_real_,
     MALE = c(25, 25), FEMALE = c(25, 25), stringsAsFactors = FALSE),
     cats = c("MALE", "FEMALE"))
-  expect_equal(summaryP(x), 0.089)
+  expect_equal(summaryP(x), 0.08245)
 })
 
 test_that("a median/IQR pair gives the pinned metalog p", {
@@ -63,7 +70,7 @@ test_that("a median/IQR pair gives the pinned metalog p", {
     TRIAL = "T", ROW = "Dur", N = c(20, 20), MEAN = c(127, 128),
     SD = NA_real_, Q1 = c(98, 99), Q3 = c(160, 161),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.0555)
+  expect_equal(summaryP(x), 0.0464)
 })
 
 test_that("categorical direction: homogeneous alarms, heterogeneous does not", {
