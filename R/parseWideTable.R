@@ -58,12 +58,26 @@
 .iaSheetCapMessage <- function(what = "sheet")
   paste0(what, " has more than ", .iaSheetRowCap, " rows or ",
          .iaSheetColCap, " columns and was not read")
-# the CSV column count from its first line, without reading the file
+# the CSV column count: the MAXIMUM over every line (screen 2026-09-05-2117
+# F1: read.csv sizes a header = FALSE frame from its first five lines, so a
+# two-field first line followed by four lines of 50,000 commas built a
+# 10,001 x 50,001 frame past a first-line gate). count.fields is linear in
+# the file, which the upload cap bounds. An unbalanced quote makes it NA
+# (F5): NA refuses.
 .iaCsvColumns <- function(path) {
-  first <- readLines(path, n = 1L, warn = FALSE)
-  if (!length(first)) return(0L)
-  utils::count.fields(textConnection(first), sep = ",", quote = "\"")[1]
+  n <- suppressWarnings(utils::count.fields(path, sep = ",", quote = "\"", blank.lines.skip = TRUE))
+  if (!length(n)) return(0L)
+  if (anyNA(n)) return(NA_integer_)
+  max(n)
 }
+.iaCsvTooWide <- function(path) {
+  n <- .iaCsvColumns(path)
+  is.na(n) || n > .iaSheetColCap
+}
+# a workbook with more sheets than this is refused: each sheet read inflates
+# the archive again (screen 2026-09-05-2117 F2), so the cost is sheets x
+# declared size, and a baseline-table workbook has a handful
+.iaSheetCountCap <- 10L
 
 # Read every sheet of `path` as a matrix of raw cell TEXT, untyped and
 # headerless, named by sheet. Raw text matters twice: openxlsx's
@@ -89,13 +103,21 @@
     d
   }
   if (ext == "csv") {
-    if (.iaCsvColumns(path) > .iaSheetColCap) stop(.iaSheetCapMessage("the file"), call. = FALSE)
+    if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
     d <- utils::read.csv(path, header = FALSE, colClasses = "character",
                          check.names = FALSE, nrows = .iaSheetRowCap + 1L)
     return(list(toMat(capped(d, "the file"))))
   }
   if (ext == "xlsx") {
+    # the decompression preflight lives HERE, so every caller of the wide
+    # reader is behind it - the app used to call this before its own
+    # preflight (screen 2026-09-05-2117 F2)
+    if (!.apiZipInflationOK(path, ext))
+      stop("the workbook expands to more than ", round(.apiMaxUncompressed / 1024^2),
+           " MB when decompressed and was not read", call. = FALSE)
     sheets <- openxlsx::getSheetNames(path)
+    if (length(sheets) > .iaSheetCountCap)
+      stop("the workbook has more than ", .iaSheetCountCap, " sheets and was not read", call. = FALSE)
     out <- lapply(sheets, function(s)
       toMat(capped(tryCatch(openxlsx::read.xlsx(path, sheet = s, colNames = FALSE,
                                                 skipEmptyRows = FALSE,
@@ -106,18 +128,19 @@
     names(out) <- sheets
     return(out)
   }
-  # .xls via readxl: the column count first (n_max = 0 reads only the
-  # header row of the used range), then a row-bounded read
+  # .xls via readxl, ONE row-bounded read per sheet and the column cap
+  # judged on its result: libxls parses the whole sheet and allocates the
+  # declared grid before n_max applies (screen 2026-09-05-2117 F3), so a
+  # separate zero-row "preflight" read only doubled that cost
   sheets <- readxl::excel_sheets(path)
-  out <- lapply(sheets, function(s) {
-    if (ncol(readxl::read_excel(path, sheet = s, n_max = 0)) > .iaSheetColCap)
-      stop(.iaSheetCapMessage(paste("sheet", s)), call. = FALSE)
+  if (length(sheets) > .iaSheetCountCap)
+    stop("the workbook has more than ", .iaSheetCountCap, " sheets and was not read", call. = FALSE)
+  out <- lapply(sheets, function(s)
     toMat(capped(as.data.frame(readxl::read_excel(path, sheet = s,
                                                   col_names = FALSE,
                                                   col_types = "text",
                                                   n_max = .iaSheetRowCap + 1L)),
-                 paste("sheet", s)))
-  })
+                 paste("sheet", s))))
   names(out) <- sheets
   out
 }

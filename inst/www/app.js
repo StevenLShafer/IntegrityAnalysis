@@ -126,7 +126,11 @@ $(document).on('shiny:value', function(event) {
     var cd = e.clipboardData;
     if (!cd || !cd.types) return;
     var t = e.target;
-    var forGrid = t && ((t.classList && (t.classList.contains('HandsontableCopyPaste') ||
+    // Handsontable 6.2.2's clipboard element is id="HandsontableCopyPaste",
+    // class "copyPaste", appended to document.body (screen 2026-09-05-2117
+    // F4); the cell editor is textarea.handsontableInput inside the grid.
+    var forGrid = t && ((t.id === 'HandsontableCopyPaste') ||
+                        (t.classList && (t.classList.contains('copyPaste') ||
                                           t.classList.contains('handsontableInput'))) ||
                         (t.closest && t.closest('.handsontable')));
     if (!forGrid) return;
@@ -135,6 +139,20 @@ $(document).on('shiny:value', function(event) {
     var text = cd.getData('text/plain') || '';
     e.preventDefault();
     e.stopImmediatePropagation();
+    // An OPEN cell editor: Handsontable ignores the paste and the browser
+    // would have inserted the text itself; since the default is prevented,
+    // insert the plain text here (F4).
+    var el = document.getElementById('dataGrid');
+    var w = el && window.HTMLWidgets && HTMLWidgets.getInstance(el);
+    var hot = w && w.hot;
+    var ed = hot && hot.getActiveEditor && hot.getActiveEditor();
+    if (ed && ed.isOpened && ed.isOpened() && t.tagName === 'TEXTAREA') {
+      var s = t.selectionStart, en = t.selectionEnd;
+      t.value = t.value.slice(0, s) + text + t.value.slice(en);
+      t.selectionStart = t.selectionEnd = s + text.length;
+      t.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     var plain;
     try {
       plain = new DataTransfer();
