@@ -770,7 +770,11 @@ app_server <- function(input, output, session) {
           )
         })
     outputComments(paste("Execution time", round(Sys.time() - start_time, 2)))
-    reactiveDone(TRUE)
+    # the run is complete only when at least one trial produced results;
+    # if every trial was skipped above there is nothing to download
+    if (is.null(OUTPUT))
+      outputComments("No trial could be analyzed, so there are no results to download.")
+    reactiveDone(!is.null(OUTPUT))
     }
   )
 

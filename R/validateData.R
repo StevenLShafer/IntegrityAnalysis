@@ -288,7 +288,7 @@ validateData <- function(DATA) {
     for (i in bad) {
       addIssue(i, col, if (is.finite(v[i])) "incongruent" else "unreadable",
                if (is.finite(v[i])) paste0(col, " is beyond ", format(.iaMaxMagnitude, scientific = TRUE),
-                                           ", which no count reaches") else NULL)
+                                           ", which no count reaches") else NA_character_)
       unreadable[[paste(i, col)]] <- TRUE
     }
     DATA[[col]][bad] <- NA_real_
