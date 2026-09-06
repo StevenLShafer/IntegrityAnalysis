@@ -38,9 +38,10 @@ for how long).
   own reader - no ImageMagick), with an opt-in AI tier for scans.
 - **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
   rounding treatment, median/IQR rows via a metalog null, one-sided p
-  toward homogeneity, exact combination across rows; validated against
-  Carlisle's 2017 analysis of 5,080 trials (r = 0.993, 99.0% alarm
-  concordance).
+  toward homogeneity, exact combination across rows; measured against
+  Carlisle's 2017 analysis run by run (the current engine: r = 0.993 and
+  98.5% alarm concordance over 5,041 usable trials; every run in
+  [docs/validation-ledger.md](docs/validation-ledger.md)).
 - **The REST API** (`R/apiService.R`, `inst/api/`, `Dockerfile`) — the
   same analysis for editorial systems: bearer-token auth, round-trip
   failure payloads, per-request AI assist, nothing retained.

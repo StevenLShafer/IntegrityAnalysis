@@ -68,9 +68,11 @@ decile of trial p's was 43% under-filled, and a fabricated table with
 identical integer means on every row could not reach p = 0.01 however
 many rows agreed. The screen failed in the safe direction but was
 miscalibrated and blind to a fabrication it should have seen. The error
-was in the Monte Carlo's combination step, which Steve Shafer wrote; it
-is not part of Carlisle's method, and none of Carlisle's published
-values depend on it.
+was in the Monte Carlo's combination step, which Steve Shafer wrote.
+Carlisle's published values were computed by his own closed-form
+combination, not by this code, so this correction changed none of them;
+the miscalibration described here is a property of the closed form
+under coarse rounding, which his values therefore share.
 
 **What changed.** Nothing about the rows. The statistic is still
 Stouffer's sum of row z-scores; its null distribution is taken from the
@@ -87,9 +89,13 @@ below 0.05 in every integer cell, and the fabricated table was found.
 3 × 10⁻⁹ that the simulation never supported. Replicates are shared by
 the whole trial, so an alarming trial escalates every row.
 
-**Revalidated.** The 5,080 trials of Carlisle 2017 rerun: r 0.993
-before, 0.992 after; alarm concordance 99.0% before, 98.3% after (his
-values used the closed form this replaced). Against the previous
+**Revalidated.** The 5,080 trials of Carlisle 2017 rerun against his
+stored values (the comparator, computed with his closed-form
+combination): the August engine, with the same closed form, agreed at
+r 0.993 and 99.0% alarm concordance; the corrected engine at r 0.992
+and 98.3%. The small drop is the difference between the two
+combinations, not a loss of accuracy against the truth, which his
+values do not represent. Against the previous
 engine the typical trial moved by about one hundredth (median |change|
 0.013), trials below 0.05 rose from 348 to 392, and the largest shifts
 were in the largest trials, where rounded rows converge and carry the
