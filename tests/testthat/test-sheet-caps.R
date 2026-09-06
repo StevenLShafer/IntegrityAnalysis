@@ -71,3 +71,13 @@ test_that(".xls is refused by every reader (dropped 2026-09-06)", {
   expect_error(IntegrityAnalysis:::.wideRawCells(f, "xls"), "no longer accepted")
   expect_null(suppressWarnings(parseWideTable(f, "xls")))
 })
+
+test_that("a wide CSV line that opens with # is counted by the gate (screen 1118 F1)", {
+  wide <- paste0("#", paste(rep("", 3001), collapse = ","))
+  f1 <- tempfile(fileext = ".csv"); writeLines(c(wide, rep("x", 20)), f1)          # on line 1
+  f2 <- tempfile(fileext = ".csv"); writeLines(c("a,b", rep(wide, 4), rep("x", 20)), f2)   # on lines 2-5
+  for (f in c(f1, f2)) {
+    expect_true(IntegrityAnalysis:::.iaCsvTooWide(f))
+    expect_error(IntegrityAnalysis:::.wideRawCells(f, "csv"), "more than 10000 rows or 500 columns")
+  }
+})

@@ -65,7 +65,11 @@
 # the file, which the upload cap bounds. An unbalanced quote makes it NA
 # (F5): NA refuses.
 .iaCsvColumns <- function(path) {
-  n <- suppressWarnings(utils::count.fields(path, sep = ",", quote = "\"", blank.lines.skip = TRUE))
+  # comment.char = "": count.fields treats "#" as a comment by default and
+  # read.csv does not, so a wide line opening with "#" was invisible to
+  # the gate and built by the reader (screen 2026-09-06-1118 F1)
+  n <- suppressWarnings(utils::count.fields(path, sep = ",", quote = "\"", comment.char = "",
+                                            blank.lines.skip = TRUE))
   if (!length(n)) return(0L)
   if (anyNA(n)) return(NA_integer_)
   max(n)

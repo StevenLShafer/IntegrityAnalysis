@@ -427,10 +427,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                   round(round(rnorm(ch, meansim, sqrt((sig^2 + hObs[i]^2 / 12) / ROWS$N[i])) / g) * g,
                         ROWS$ROUND_MEAN[i])
                 } else round(
+                  # standard normals scaled by column recycling: a length-ch
+                  # vector recycles down each column of a ch-row matrix,
+                  # which is exactly what rep(x, N) with byrow = FALSE gave,
+                  # without two more N x ch vectors alive at the peak
+                  # (screen 2026-09-06-1118 F2: 2.4 GB -> 1.6 GB on the
+                  # worst 5,000-per-arm row). rnorm(n, m, s) is m + s * z,
+                  # so the numbers are bit-identical under the same seed.
                   rowmeans(round(
-                    matrix(rnorm(ROWS$N[i] * ch,
-                                 rep(meansim, ROWS$N[i]), rep(sig, ROWS$N[i])),
-                           nrow = ch, byrow = FALSE),
+                    matrix(rnorm(ROWS$N[i] * ch), nrow = ch) * sig + meansim,
                     ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
               Nmat <- matrix(ROWS$N, ch, COLS, byrow = TRUE)
