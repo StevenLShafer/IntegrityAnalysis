@@ -91,7 +91,7 @@ newGraphCollector <- function() {
   # histogram itself is the first stage's draws
   disp <- if (!is.null(rec$disp)) as.character(rec$disp) else format(signif(rec$p, 3))
   pTxt <- if (grepl("^<", disp)) sub("^<", "< ", disp) else paste0("= ", disp)
-  mFinal <- if (!is.null(rec$m)) rec$m else length(d)
+  mFinal <- as.integer(if (!is.null(rec$m)) rec$m else length(d))   # integer: format() of 1e5 reads "1e+05" (screen 0933)
   graphics::mtext(sprintf(
     "Simulated distribution under the null model (histogram: %d replicates; p from %s); observed in red.  p %s",
     length(d), format(mFinal, big.mark = ","), pTxt),

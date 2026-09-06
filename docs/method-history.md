@@ -209,9 +209,21 @@ before it.
   σ/√(mean N) — a choice inherited from the original simulation. The
   pooled mean's own sampling standard deviation is σ/√(ΣN), narrower by
   √k. The draw cancels from unrounded contrasts and matters only through
-  where the location sits relative to the rounding grid; a derivation of
-  the intended mixture, or a measurement of the two scales on the
-  honest null and the corpus, is owed.
+  where the location sits relative to the rounding grid. **Measured
+  2026-09-06:** the two scales were run side by side on the honest null
+  (two arms of 3 to 50, 2,000 trials per cell, identical data and seeds)
+  and on the Carlisle corpus (5,041 usable trials, 10,000 ceiling). The
+  null's rejection rates, mean p and distance from uniform are identical
+  to the displayed precision in every cell, and the paired row p's
+  differ by a median of 0.0015 at coarse printing (Monte Carlo noise)
+  and under 0.0005 at fine printing. On the corpus: r against Carlisle
+  0.9931 vs 0.9932, within 0.05 89.3% vs 89.9%, alarm concordance 98.5%
+  either way, 419 vs 420 alarms with 7 crossing each way, and a median
+  change of 0.0000 to 0.0007 by arm size with no direction. The scale
+  has no measurable effect; the inherited choice stands unless the
+  derivable one (σ/√ΣN) is preferred for its own sake, which would cost
+  only a re-pinning of the seeded known answers. Data:
+  `C:/dev/Corpus/synthetic/location-scale/`.
 - The median/IQR branch fits a three-term metalog to N-weighted arm
   quartiles and is validated only by a smoke test; broad calibration
   across skewed, bounded and heavy-tailed populations is open.
