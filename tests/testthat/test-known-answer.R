@@ -32,6 +32,14 @@
 # its SD is now corrected with 10 degrees of freedom, not 11, and every
 # row above N = 30 now receives the (sub-1%) correction it used to skip.
 # The categorical and median pins do not touch the pooled SD.
+#
+# Re-pinned 2026-09-06 (the sigma draw: each replicate draws its own SD
+# from the scaled inverse chi-square with N - k degrees of freedom, so
+# the simulated statistic is F-like rather than chi-square-like): the
+# worked example 0.04750 -> 0.04415 (two arms of six: ten degrees of
+# freedom, the uncertainty in the SD is real); three identical arms
+# 1e-04 -> 0.00025 (interval 0 to 0.0012) - a replicate that draws a
+# smaller sigma makes identical rounded means likelier under the null.
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast)
   library(dqrng)
@@ -48,7 +56,7 @@ test_that("the documentation's worked example: 77 vs 78, SD 30, n = 6", {
   x <- runP(data.frame(
     TRIAL = "T", ROW = "Weight", N = 6, MEAN = c(77, 78), SD = c(30, 30),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.04750)         # the guide's "about 4%"
+  expect_equal(summaryP(x), 0.04415)         # the guide's "about 4%"
   expect_identical(x$M[1], "10000")         # borderline (p < 0.1) - escalates to stage 2
 })
 
@@ -57,9 +65,9 @@ test_that("three identical arms escalate and alarm", {
                   ROUND_MEAN = 1, ROUND_OBSERVATION = 1,
                   stringsAsFactors = FALSE)[rep(1, 3), ]
   x <- runP(d)
-  expect_equal(summaryP(x), 1e-04)
+  expect_equal(summaryP(x), 0.00025)
   expect_identical(x$M[1], "10000")         # escalated past stage 1
-  expect_identical(x$CI95[1], "0 to 0.00072")  # the row's Monte Carlo interval
+  expect_identical(x$CI95[1], "0 to 0.0012")   # the row's Monte Carlo interval
   expect_identical(x$NOTE[1], "attainable floor")  # identical arms: nothing agrees better
 })
 

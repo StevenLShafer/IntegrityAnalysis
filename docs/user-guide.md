@@ -789,12 +789,16 @@ analyzed.
 
 ## Statistical details
 
-- The arms' reported SDs are pooled into one population SD, weighting
-  each arm's variance by its degrees of freedom (N − 1), and the square
-  root is corrected for small-sample bias with the standard Γ-function
-  factor [3] using the pooled degrees of freedom (N minus the number of
-  arms). The correction is applied at every N; it is 4% for two arms of
-  two and under 1% above about 30 patients in total.
+- The arms' reported SDs are pooled into one population variance,
+  weighting each arm's variance by its degrees of freedom (N − 1), with
+  N minus the number of arms degrees of freedom in all. The simulation
+  does not then treat that pooled SD as known: each simulated trial
+  draws its own population SD from the spread of values the pooled
+  variance and its degrees of freedom allow (the scaled inverse
+  chi-square), so a small trial's uncertainty about its own SD is part
+  of the null. This is the difference between a z test and a t test,
+  and it matters below about ten patients per arm; above that the
+  draws are so tight that nothing changes.
 - Simulated observations are rounded to `ROUND OBSERVATION` decimals and
   simulated means to `ROUND MEAN` decimals, so the simulation reproduces
   the granularity of the printed table — including printed means that
