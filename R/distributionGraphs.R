@@ -86,12 +86,15 @@ newGraphCollector <- function() {
                  col = "grey85", border = "grey60",
                  xlab = xlab, ylab = "Density", main = "")
   graphics::abline(v = rec$obs, col = "#B2182B", lwd = 3)
-  # the p as the results table displays it: a floor is "<", never a number
-  pTxt <- if (rec$p <= 1 / (length(d) + 1)) paste0("< ", signif(1 / length(d), 1))
-          else paste0("= ", format(signif(rec$p, 3), scientific = rec$p < 1e-4))
+  # the p exactly as the results table displays it (a floor is "<", never
+  # a number), with the replicate count of the row's FINAL stage; the
+  # histogram itself is the first stage's draws
+  disp <- if (!is.null(rec$disp)) as.character(rec$disp) else format(signif(rec$p, 3))
+  pTxt <- if (grepl("^<", disp)) sub("^<", "< ", disp) else paste0("= ", disp)
+  mFinal <- if (!is.null(rec$m)) rec$m else length(d)
   graphics::mtext(sprintf(
-    "Simulated distribution under the null model (%d replicates); observed in red.  p %s",
-    length(d), pTxt),
+    "Simulated distribution under the null model (histogram: %d replicates; p from %s); observed in red.  p %s",
+    length(d), format(mFinal, big.mark = ","), pTxt),
     side = 3, line = 0.3, cex = 1.0)
 }
 

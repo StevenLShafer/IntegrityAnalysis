@@ -8,7 +8,11 @@ against the random-sampling model the table claims — a reason to verify
 the table, the allocation and the data, not a verdict on how the table
 came to be.
 
-The engine's agreement with Carlisle's 2017 corpus, run by run, is in
+The method as it runs today is described in
+[docs/statistics.md](docs/statistics.md); what changed from the original
+Carlisle–Shafer method, and when, is in
+[docs/method-history.md](docs/method-history.md); the engine's agreement
+with Carlisle's 2017 corpus, run by run, is in
 [docs/validation-ledger.md](docs/validation-ledger.md).
 
 **Use it now:** <https://steveshafer.shinyapps.io/IntegrityAnalysis/> —

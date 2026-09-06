@@ -587,8 +587,12 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     rep <- .rowReport(rowStat[[j]])
     if (!is.null(graphs))
       graphs$rows[[length(graphs$rows) + 1]] <-
+        # the slide prints the row's DISPLAY string and final stage size,
+        # not a number judged against the first stage's 1,000 draws
+        # (screen 2026-09-06-0814, informational)
         list(trial = TRIAL, row = r$Row, kind = r$sim$kind,
-             obs = r$sim$obs, draws = rowStat[[j]]$draws, p = rep$p)
+             obs = r$sim$obs, draws = rowStat[[j]]$draws, p = rep$p,
+             disp = rep$disp, m = rep$m)
     data.frame(ROW = r$Row, P = rep$disp, CI95 = rep$ci, M = as.character(rep$m),
                NOTE = if (isTRUE(rowStat[[j]]$atFloor)) "attainable floor" else "",
                .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
