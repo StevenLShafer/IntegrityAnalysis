@@ -799,6 +799,22 @@ runApiService <- function(port = 8080, host = "0.0.0.0") {
   # to an arbitrary caller. Log internally, tell the caller nothing.
   pr <- plumber::pr_set_error(pr, function(req, res, err) {
     message("API error: ", conditionMessage(err))
+    # Two errors arise inside plumber's own request parsing, before any
+    # filter or handler can run (break test, 2026-09-06): a NUL byte in
+    # the query string ("?seed=%00") fails decodeURIComponent with
+    # "embedded nul", and a file part whose filename carries a quote and
+    # a line break is dropped by the multipart parser, after which the
+    # part list is indexed out of bounds. Both are the caller's malformed
+    # request, not our failure: say 400, still without echoing anything.
+    msg <- conditionMessage(err)
+    if (grepl("embedded nul", msg, fixed = TRUE) ||
+        grepl("subscript out of bounds", msg, fixed = TRUE)) {
+      res$status <- 400
+      return(list(ok = FALSE, error = paste(
+        "Malformed request: a NUL byte in the query string, or a file part",
+        "the multipart body could not carry (a quote or line break in the",
+        "file name).")))
+    }
     res$status <- 500
     list(ok = FALSE, error = "Internal error processing the request.")
   })
