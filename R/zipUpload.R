@@ -83,7 +83,9 @@
   nested <- ext %in% c("zip", "gz", "tgz", "tar", "7z", "rar")
   drop(which(nested & take), "nested archive (not expanded)")
 
-  unsupported <- !ext %in% c("csv", "xlsx", "xls", "pdf", "docx", "xml",
+  drop(which(ext == "xls" & take & !isDir & !isJunk & !hostile & !nested),
+       "the old Excel format (.xls) is no longer accepted - save as .xlsx")
+  unsupported <- !ext %in% c("csv", "xlsx", "pdf", "docx", "xml",
                              .ppImageExts)
   drop(which(unsupported & take & !isDir & !isJunk & !hostile & !nested),
        "not a supported file type")
@@ -128,7 +130,7 @@ expandZipUploads <- function(files, say = outputComments) {
 
     if (nrow(plan) == 0) {
       say(paste0(zipName,
-                 " contains no usable files (csv, xls, xlsx, pdf, docx, ",
+                 " contains no usable files (csv, xlsx, pdf, docx, ",
                  "xml, jpg, png, tif)."))
       next
     }

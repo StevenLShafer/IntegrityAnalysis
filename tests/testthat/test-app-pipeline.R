@@ -7,7 +7,7 @@
 # COPIES in per-file subdirectories of tempdir(), the way real clients
 # arrive (and the only thing the purge-on-exit handler may delete).
 suppressWarnings(suppressPackageStartupMessages({
-  library(shiny); library(openxlsx); library(readxl); library(Rfast)
+  library(shiny); library(openxlsx); library(Rfast)
   library(foreach); library(MBESS); library(dqrng)
   # app_ui() builds its page eagerly and calls these unqualified (they
   # are attached by run_app() in production)

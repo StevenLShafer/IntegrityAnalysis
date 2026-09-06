@@ -153,7 +153,7 @@ reaches the app depends on the browser; the picker and the drop always
 work.*
 
 **A template spreadsheet.** A spreadsheet in the app's own long format
-(Excel `.xlsx`/`.xls` or `.csv`) uploads directly. The column layout is
+(Excel `.xlsx` or `.csv`) uploads directly. The column layout is
 described in *Preparing your data* below — but few users should ever
 need to build one by hand: upload the article itself, or use the
 journal-style route next, and note that the app's own table downloads
@@ -164,9 +164,12 @@ downloads were retired in August 2026 for the same reason.)
 journals print Table 1 — variables as rows, arms as columns with their
 sizes in the headers ("Control (n = 50)"), cells like "45.3 (12.1)" —
 uploads directly; the app recognizes the layout and converts it into
-template rows itself. **Any spreadsheet format works here — Excel
-`.xlsx` and `.xls`, and plain `.csv`** — so a table pasted out of a
-manuscript into a CSV is as good an input as a workbook. The app's own **Editor's View** download is
+template rows itself. **Excel `.xlsx` and plain `.csv` both work here**
+— so a table pasted out of a manuscript into a CSV is as good an input
+as a workbook. The old Excel format, `.xls`, is no longer accepted: its
+reader builds a sheet's declared size in memory before any limit can
+apply, which is a security risk, so support was dropped on 2026-09-06.
+Save the workbook as `.xlsx`. The app's own **Editor's View** download is
 exactly this format, so a table downloaded from one session (or received
 from a colleague) is valid input to the next. What the cells may hold:
 "mean (SD)" and "mean ± SD"; "median [Q1, Q3]" **when the row label says
@@ -273,7 +276,8 @@ for reproducing a multi-trial investigation — the pattern of Carlisle's
 file per trial in the archive and every entry becomes its own trial in
 the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
-csv/xls/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note, an
+csv/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note (an `.xls`
+with the note that the format is no longer accepted), an
 archive inside the archive is not expanded, and a corrupt archive is
 reported rather than analyzed.
 

@@ -118,7 +118,7 @@ One file per request, named with its real extension, under 25 MiB:
 | article PDF | `.pdf` | the text layer, deterministically; a scanned page is read by local OCR, or by the AI assist if you sent a key |
 | Word manuscript | `.docx` | the document's real tables; captions from the paragraph above |
 | **JATS XML article** | `.xml` | the article as PubMed Central, Europe PMC and production systems emit it: real `<tr>/<td>` cells, the cleanest route, and the one intended for editorial systems, which hold the manuscript as XML before any PDF exists |
-| spreadsheet | `.csv`, `.xls`, `.xlsx` | either the app's template layout (section 6) or a journal-style baseline table (variables as rows, arms as columns with "(n = 50)" in the headers) |
+| spreadsheet | `.csv`, `.xlsx` (not `.xls`: the old Excel format was dropped on 2026-09-06 for security — its reader builds a sheet's declared size before any limit can apply — and is refused with 422, stage `parse`, naming the fix: save as `.xlsx`) | either the app's template layout (section 6) or a journal-style baseline table (variables as rows, arms as columns with "(n = 50)" in the headers) |
 | picture of a table | `.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff` | local OCR; every value should be verified |
 
 A zip archive is not accepted by the service (the interactive app

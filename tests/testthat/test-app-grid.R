@@ -5,7 +5,7 @@
 # consolidating the scratch harnesses gridtest / structtest / fmttest /
 # multitest into the permanent suite.
 suppressWarnings(suppressPackageStartupMessages({
-  library(shiny); library(openxlsx); library(readxl); library(Rfast)
+  library(shiny); library(openxlsx); library(Rfast)
   library(foreach); library(MBESS); library(dqrng)
 }))
 

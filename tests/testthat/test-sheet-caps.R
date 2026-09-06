@@ -65,3 +65,9 @@ test_that("a workbook with too many sheets is refused before its sheets are read
   f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
   expect_error(IntegrityAnalysis:::.wideRawCells(f, "xlsx"), "more than 10 sheets")
 })
+
+test_that(".xls is refused by every reader (dropped 2026-09-06)", {
+  f <- tempfile(fileext = ".xls"); writeBin(as.raw(rep(0, 64)), f)
+  expect_error(IntegrityAnalysis:::.wideRawCells(f, "xls"), "no longer accepted")
+  expect_null(suppressWarnings(parseWideTable(f, "xls")))
+})

@@ -4,7 +4,7 @@
 # renderer can paint them green - "OK to use, but best to check before it
 # runs" (Steve, 2026-08-21).
 suppressWarnings(suppressPackageStartupMessages({
-  library(shiny); library(openxlsx); library(readxl); library(Rfast)
+  library(shiny); library(openxlsx); library(Rfast)
   library(foreach); library(MBESS); library(dqrng)
 }))
 
