@@ -71,6 +71,17 @@ pkgload::load_all(root, quiet = TRUE)
 
 os <- read.xlsx(file.path(root, "One Sheet Carlisle Data.xlsx"))
 cat("One Sheet rows:", nrow(os), "\n")
+# Three rows of the One Sheet carry a NEGATIVE SD (a typo in the source
+# data). The engine used to square it silently; since #179 the validator
+# refuses a negative SD, and it refuses the whole sheet with it. Drop the
+# sign here, which is what the squaring did, and say so.
+sdNum <- suppressWarnings(as.numeric(os$SD))
+negSD <- which(!is.na(sdNum) & sdNum < 0)
+if (length(negSD)) {
+  cat("negative SD in", length(negSD), "row(s) of the One Sheet (rows",
+      paste(negSD, collapse = ", "), "): sign dropped, as the pre-#179 engine's squaring did\n")
+  os$SD[negSD] <- abs(sdNum[negSD])
+}
 
 wide <- read.xlsx(file.path(root, "Carlisle Data with PMIDs and DOIs.xlsx"),
                   sheet = "All Data")

@@ -242,10 +242,15 @@ validateData <- function(DATA) {
   isUnreadable <- function(row, col)
     isTRUE(unreadable[[paste(row, col)]])
   # the range rules (2026-09-05): a sample size is a whole number of at
-  # least two (one patient has no SD); a dispersion is strictly positive;
-  # a count is a whole number of at least zero
+  # least two (one patient has no SD); a dispersion cannot be negative
+  # (a printed ZERO is accepted: 13 rows of Carlisle's 2017 corpus print
+  # "SD 0" for a measure every patient shared - 6 patients, ASA 39 (0) -
+  # and the engine handles it: identical arms, nothing to compare, mid-p
+  # 0.5 at the attainable floor); a count is a whole number of at least
+  # zero. (2026-09-05: #179 had refused the zero, which refused the
+  # whole corpus sheet.)
   isWholeN    <- function(x) is.finite(x) && x >= 2 && x %% 1 == 0
-  isPositive  <- function(x) is.finite(x) && x > 0
+  isPositive  <- function(x) is.finite(x) && x >= 0
   isCount     <- function(x) is.finite(x) && x >= 0 && x %% 1 == 0
 
   # Add rounding column for the mean
@@ -471,9 +476,9 @@ validateData <- function(DATA) {
         if (!isWholeN(DATA$N[i]))
           addIssue(i, "N", "incongruent", "N must be a whole number of at least 2")
         if (!isPositive(DATA$SD[i]))
-          addIssue(i, "SD", "incongruent", "SD must be greater than zero")
+          addIssue(i, "SD", "incongruent", "SD cannot be negative")
         if ("SE" %in% names(DATA) && !is.na(DATA$SE[i]) && !isPositive(DATA$SE[i]))
-          addIssue(i, "SE", "incongruent", "SE must be greater than zero")
+          addIssue(i, "SE", "incongruent", "SE cannot be negative")
         FAIL <- TRUE
       } else {
         # Fix MEAN digits if Mean has any decimal digits

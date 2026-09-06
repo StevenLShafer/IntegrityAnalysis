@@ -11,12 +11,19 @@ cont <- function(N = c(15, 17), MEAN = c(45.3, 46.1), SD = c(12.1, 11.8), SE = N
   TRIAL = "T", ROW = "Age", N = N, MEAN = MEAN, SD = SD, SE = SE,
   ROUND_MEAN = 1, ROUND_OBSERVATION = 1, stringsAsFactors = FALSE)
 
-test_that("a negative or zero SD, a fractional or tiny N, a negative SE are refused with the rule named", {
+test_that("a negative SD, a fractional or tiny N, a negative SE are refused with the rule named; a printed zero SD is accepted", {
   v <- vd(cont(SD = c(-12.1, 11.8)))
   expect_true(isTRUE(v$FAIL)); expect_true("incongruent" %in% issueCodes(v, "SD"))
-  expect_match(v$issues$note[v$issues$col == "SD"][1], "greater than zero")
+  expect_match(v$issues$note[v$issues$col == "SD"][1], "cannot be negative")
+  # a printed zero (13 rows of Carlisle's 2017 corpus): accepted, and analyzable
   v <- vd(cont(SD = c(0, 11.8)))
-  expect_true(isTRUE(v$FAIL)); expect_true("incongruent" %in% issueCodes(v, "SD"))
+  expect_false(isTRUE(v$FAIL))
+  dqrng::dqset.seed(5); set.seed(5)
+  z <- vd(cont(N = c(6, 6), MEAN = c(39, 39), SD = c(0, 0)))
+  expect_false(isTRUE(z$FAIL))
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", z$DATA, z$CategoryNames, 10000)))
+  expect_equal(as.numeric(x$P[1]), 0.5)            # identical arms, nothing to compare
+  expect_identical(x$NOTE[1], "attainable floor")
   v <- vd(cont(N = c(15.5, 17)))
   expect_true(isTRUE(v$FAIL)); expect_true("incongruent" %in% issueCodes(v, "N"))
   expect_match(v$issues$note[v$issues$col == "N"][1], "whole number")
