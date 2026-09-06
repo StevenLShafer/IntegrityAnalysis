@@ -92,9 +92,11 @@ req <- request(paste0(base, "/", verb)) |>
   req_headers(Authorization = paste("Bearer", token)) |>
   req_timeout(if (verb == "analyze") 900 else 300) |>
   req_error(is_error = function(resp) FALSE)
-body <- list(file = form_file(file))
-if (!is.null(seed) && verb == "analyze") body$seed <- as.character(seed)
-req <- req_body_multipart(req, !!!body)
+# the seed goes on the URL, not in the multipart body: a text part without
+# a Content-Type is dropped by the service's multipart parser (found
+# 2026-09-05), and the query string always arrives
+if (!is.null(seed) && verb == "analyze") req <- req_url_query(req, seed = as.character(seed))
+req <- req_body_multipart(req, file = form_file(file))
 
 t0 <- Sys.time()
 r <- tryCatch(req_perform(req), error = function(e) e)

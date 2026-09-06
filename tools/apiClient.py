@@ -27,6 +27,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -101,10 +102,14 @@ def main(argv):
         print("no such file: %s" % path)
         sys.exit(2)
     fields = {}
+    url = base + "/" + verb
     if seed is not None and verb == "analyze":
-        fields["seed"] = str(seed)
+        # on the URL, not as a form part: a text part without a
+        # Content-Type is dropped by the service's multipart parser
+        # (found 2026-09-05), and the query string always arrives
+        url += "?seed=" + urllib.parse.quote(str(seed), safe="")
     body, ctype = multipart(fields, "file", path)
-    req = urllib.request.Request(base + "/" + verb, data=body, method="POST",
+    req = urllib.request.Request(url, data=body, method="POST",
                                  headers={"Authorization": "Bearer " + token,
                                           "Content-Type": ctype,
                                           "Content-Length": str(len(body))})
@@ -133,7 +138,8 @@ def main(argv):
                                     "  engine=%s" % b["engine"] if b.get("engine") else ""))
     for key in ("reasons", "flags"):
         if b.get(key):
-            print("  %s: %s" % (key, "; ".join(str(x) for x in b[key])))
+            v = b[key] if isinstance(b[key], list) else [b[key]]   # unboxed JSON: one reason is a string
+            print("  %s: %s" % (key, "; ".join(str(x) for x in v)))
     if b.get("rows") is not None:
         print("  rows: %s" % b["rows"])
     for s in b.get("skipped") or []:

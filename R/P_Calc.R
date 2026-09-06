@@ -476,8 +476,12 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
   # observed row, and the z's are summed across rows replicate by
   # replicate - legitimately, because the rows are simulated
   # independently. The observed sum is judged against those sums. The
-  # trial escalates while its own mid-p or any row's is < 0.01, so an
-  # innocuous trial still costs 1,000 replicates per row.
+  # trial escalates while its own mid-p or any row's is < 0.1 (to 10,000)
+  # and < 0.01 (to 100,000), so an innocuous trial costs 1,000 replicates
+  # per row - and, under an honest null, a trial of k rows advances to
+  # 10,000 with probability about 1 - 0.9^k (a 25-row trial: 93%), so the
+  # TYPICAL cost is nearer 10,000 per row than 1,000. The worst case
+  # (every row at the ceiling) is unchanged.
   usable <- which(vapply(rows, function(r) !is.null(r$sim), logical(1)))
   stages <- unique(pmin(c(1000, 10000, m), m))
   # the mid-p below which the NEXT stage runs: < 0.1 to leave 1,000,

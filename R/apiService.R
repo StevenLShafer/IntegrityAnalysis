@@ -243,10 +243,13 @@
 # NOT move is what the service does when it hits it.
 #
 # The gap is that this bounds the WORST case, where every row escalates
-# to the replicate ceiling, and the typical case is ~100x cheaper
-# because rows stop at the first stage:
+# to the replicate ceiling, and the typical case is cheaper because rows
+# stop before it. Since the 0.1 escalation (2026-09-05) a trial advances
+# to 10,000 replicates whenever any row's mid-p is below 0.1 - for a
+# 25-row honest trial, about 93% of the time - so the typical case is
+# ~10x cheaper than the worst, not ~100x as it was under the 0.01 rule:
 #
-#   25 variables, N = 10,000/arm   typical 5 sec   worst case 495 sec
+#   25 variables, N = 10,000/arm   typical ~50 sec   worst case 495 sec
 #
 # WHAT 1.2e10 ACTUALLY BUYS - corrected 2026-08-28 (screen F3). This
 # comment used to say "about two minutes", from a measured 1.01e8
@@ -271,8 +274,9 @@
 #
 # What makes 20 minutes tolerable is that the worst case assumes EVERY
 # row escalates to the replicate ceiling, and the staged scheme stops
-# non-alarming rows at 1,000. A real trial at this budget costs about
-# 12 seconds, not 20 minutes. The worst case is reached only by a table
+# unremarkable trials at 10,000 (1,000 when no row is below 0.1). A
+# real trial at this budget costs a minute or two, not 20 minutes (it
+# was about 12 seconds under the 0.01 rule). The worst case is reached only by a table
 # engineered so every row looks alarming - which is also, uncomfortably,
 # what a fabricated table looks like.
 #
