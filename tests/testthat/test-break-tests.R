@@ -166,3 +166,43 @@ test_that("'attainable floor' means the arms agree exactly, not merely that no r
   y <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
   expect_identical(y$NOTE[1], "attainable floor")
 })
+
+test_that("a Word table wider than the JATS caps, or with too many cells, is not materialised (repeat screen F2)", {
+  ns <- c(w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main")
+  cell <- function(txt, span = NULL) paste0("<w:tc>", if (!is.null(span)) sprintf("<w:tcPr><w:gridSpan w:val=\"%d\"/></w:tcPr>", span) else "",
+                                            "<w:p><w:r><w:t>", txt, "</w:t></w:r></w:p></w:tc>")
+  wide <- paste0("<w:tr>", paste(rep(cell("x", 50), 100), collapse = ""), "</w:tr>")
+  narrow <- paste(rep(paste0("<w:tr>", cell("a"), cell("b"), "</w:tr>"), 100), collapse = "")
+  doc <- xml2::read_xml(paste0("<w:tbl xmlns:w=\"", ns[["w"]], "\">", wide, narrow, "</w:tbl>"))
+  expect_null(IntegrityAnalysis:::.ppDocxTableMatrix(doc))       # 101 x 5,000 used to be allocated
+  small <- xml2::read_xml(paste0("<w:tbl xmlns:w=\"", ns[["w"]], "\">", narrow, "</w:tbl>"))
+  expect_identical(dim(IntegrityAnalysis:::.ppDocxTableMatrix(small)), c(100L, 2L))
+})
+
+test_that("a Word file whose archive declares too much is refused before extraction (repeat screen F2)", {
+  skip_if_not_installed("officer")
+  f <- tempfile(fileext = ".docx")
+  print(officer::read_docx(), target = f)
+  expect_true(IntegrityAnalysis:::.apiZipInflationOK(f, "xlsx"))
+  # pad the archive with an inert member that declares far more than the cap
+  pad <- tempfile(fileext = ".bin"); writeBin(as.raw(rep(0L, 2e6)), pad)
+  d <- tempfile(); dir.create(d); file.copy(f, file.path(d, "x.docx"))
+  # utils::zip appends; the padding is repeated declarations of the same 2 MB member under new names
+  for (i in 1:60) { file.copy(pad, file.path(d, sprintf("pad%02d.bin", i))); }
+  old <- setwd(d); on.exit(setwd(old), add = TRUE)
+  utils::zip("x.docx", list.files(d, pattern = "^pad"), flags = "-q")
+  setwd(old)
+  padded <- file.path(d, "x.docx")
+  expect_false(IntegrityAnalysis:::.apiZipInflationOK(padded, "xlsx"))
+  expect_error(IntegrityAnalysis:::.ppDocxData(padded), "not read")
+})
+
+test_that("an oversized PDF page is not rendered for the AI route either (repeat screen F3)", {
+  f <- tempfile(fileext = ".pdf")
+  grDevices::pdf(f, width = 200, height = 200); plot(1); grDevices::dev.off()
+  expect_identical(IntegrityAnalysis:::.ppRenderablePages(f, 1L, 150), integer(0))
+  expect_identical(IntegrityAnalysis:::.ppPageImagesB64(f, 1L), character(0))
+  g <- tempfile(fileext = ".pdf")
+  grDevices::pdf(g, width = 8.5, height = 11); plot(1); grDevices::dev.off()
+  expect_identical(IntegrityAnalysis:::.ppRenderablePages(g, 1L, 150), 1L)
+})

@@ -294,6 +294,11 @@ claudeAvailable <- function() {
 # near the API's ~1568-px auto-resize edge, so nothing is spent on pixels
 # the service would immediately throw away, while table digits stay crisp.
 .ppPageImagesB64 <- function(pdfFile, pages, dpi = 150) {
+  # the same page-geometry gate local OCR applies, BEFORE the rasteriser
+  # (repeat security screen 2026-09-06, F3); an oversized page is not
+  # rendered and not sent
+  pages <- .ppRenderablePages(pdfFile, pages, dpi)
+  if (length(pages) == 0) return(character(0))
   tmp <- file.path(tempdir(), paste0("aiimg", basename(tempfile(""))))
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE, force = TRUE), add = TRUE)

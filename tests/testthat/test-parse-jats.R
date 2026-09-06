@@ -134,10 +134,10 @@ test_that("XXE cannot read a local file into the parsed output", {
   writeLines("TOPSECRET-CANARY-VALUE", secret)
   f <- makeXxe(tmp(), secret)
   res <- tryCatch(IntegrityAnalysis:::.ppJatsRead(f), error = function(e) NULL)
-  if (!is.null(res)) {
-    # The canary must not appear anywhere in the document text.
-    expect_false(grepl("TOPSECRET-CANARY-VALUE", xml2::xml_text(res)))
-  }
+  # Either the read is refused, or the canary is absent from the text:
+  # asserted unconditionally (the repeat screen of 2026-09-06 found this
+  # block empty when both reads were refused).
+  expect_true(is.null(res) || !grepl("TOPSECRET-CANARY-VALUE", xml2::xml_text(res)))
   # And it must not reach a parsed table either.
   out <- tryCatch(parseBaselineTableJats(f, quiet = TRUE),
                   error = function(e) NULL)
