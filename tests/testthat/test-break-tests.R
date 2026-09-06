@@ -87,3 +87,45 @@ test_that("an engine error becomes a 422 naming the stage on the API, never a 50
   r <- IntegrityAnalysis:::.apiAnalyze(d)
   expect_false(isTRUE(r$ok)); expect_identical(r$stage, "analysis"); expect_match(r$issues$note[1], "boom")
 })
+
+test_that("the trial's Monte Carlo interval brackets its own mid-p at the attainable floor", {
+  # three integer rows of two arms of 20: every replicate that reaches the
+  # observed sum ties it, none exceeds it (outside review, 2026-09-06)
+  dqrng::dqset.seed(1); set.seed(1)
+  d <- do.call(rbind, lapply(1:3, function(j) data.frame(
+    TRIAL = "T", ROW = paste0("V", j), N = 20, MEAN = 60 + j, SD = 13,
+    ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)[rep(1, 2), ]))
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
+  s <- which(x$ROW == "Summary")
+  p <- as.numeric(sub("^<", "", x$P[s])); b <- as.numeric(strsplit(x$CI95[s], " to ")[[1]])
+  expect_lt(p, 0.001)
+  expect_identical(b[1], 0)                 # nothing exceeded the observed sum
+  expect_true(p >= b[1] && p <= b[2])
+})
+
+test_that("decimal places are read off a plain rendering, never scientific notation", {
+  f <- IntegrityAnalysis:::.iaDecimals
+  expect_identical(f(0.5), 1L); expect_identical(f(45.3), 1L); expect_identical(f(0.0012), 4L)
+  expect_identical(f(0.0001), 4L); expect_identical(f(0.000015), 6L); expect_identical(f(1e-10), 10L)
+  expect_identical(f(77), 0L); expect_identical(f(NA_real_), 0L); expect_identical(f(Inf), 0L)
+  d <- data.frame(TRIAL = "T", ROW = "X", N = 30, MEAN = c(0.0001, 0.0002), SD = 0.00005, stringsAsFactors = FALSE)
+  v <- vd(d); expect_identical(v$DATA$ROUND_MEAN, c(4, 4))
+})
+
+test_that("an alias-named rounding column is clamped too (screen 0617 F1)", {
+  for (nm in c("ROUND", "OBSERVATION", "MEAN DECIMALS")) {
+    d <- cont(); d$ROUND_MEAN <- NULL; d$ROUND_OBSERVATION <- NULL; d[[nm]] <- c(2e9, 2e9)
+    v <- vd(d)
+    expect_true(all(abs(v$DATA$ROUND_MEAN) <= 20), info = nm)
+    expect_true(all(abs(v$DATA$ROUND_OBSERVATION) <= 20), info = nm)
+  }
+  expect_identical(nchar(IntegrityAnalysis:::.fmtAt(1.5, 2e9)), 22L)   # "1." + 20 decimals, not 2e9
+})
+
+test_that("a rejected observation precision is inferred from the mean's, not left at zero (review of #190)", {
+  d <- data.frame(TRIAL = "T", ROW = "X", N = 30, MEAN = c(1.25, 1.30), SD = 0.1,
+                  ROUND_OBSERVATION = c(21, Inf), stringsAsFactors = FALSE)
+  v <- vd(d)
+  expect_identical(v$DATA$ROUND_MEAN, c(2, 2))
+  expect_identical(v$DATA$ROUND_OBSERVATION, c(2, 2))
+})

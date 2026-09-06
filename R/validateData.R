@@ -23,6 +23,19 @@
 #' @noRd
 .iaMaxMagnitude <- 1e12   # |value| at or beyond this is not a measurement (validateData)
 
+# The decimal places a number was typed with, read off a PLAIN decimal
+# rendering. as.character() switches to scientific notation below 1e-4
+# ("1e-04", "1.5e-05"), and counting characters after the dot then gave
+# 5 for 0.0001 (true 4), 5 for 0.000015 (true 6), 5 for 1e-10 (true
+# 10). Found by an outside review, reproduced, 2026-09-06. Capped at 15
+# significant digits, which is what a double can carry.
+.iaDecimals <- function(x) {
+  if (is.na(x) || !is.finite(x)) return(0L)
+  txt <- format(x, scientific = FALSE, digits = 15, trim = TRUE)
+  if (!grepl(".", txt, fixed = TRUE)) return(0L)
+  nchar(sub("0+$", "", sub("^[^.]*[.]", "", txt)))
+}
+
 is_category <- function(x, requireNA = TRUE) {
   # Remove NAs first for efficiency, then check if all values are integers
 
@@ -294,16 +307,6 @@ validateData <- function(DATA) {
     DATA[[col]][bad] <- NA_real_
     if (length(bad)) FAIL <- TRUE
   }
-  # the rounding columns too: "Inf" decimals is a number to as.numeric -
-  # coerced FIRST (a text cell makes the whole column character, and the
-  # clamp used to skip a character column: screen 2026-09-06-0514 F3)
-  for (col in c("ROUND_MEAN", "ROUND_OBSERVATION", "ROUND_DISPERSION"))
-    if (!is.null(DATA[[col]]))
-    {
-      if (!is.numeric(DATA[[col]]))
-        DATA[[col]] <- suppressWarnings(as.numeric(DATA[[col]]))
-      DATA[[col]][!is.na(DATA[[col]]) & (!is.finite(DATA[[col]]) | abs(DATA[[col]]) > 20)] <- NA_real_
-    }
   isUnreadable <- function(row, col)
     isTRUE(unreadable[[paste(row, col)]])
   # the range rules (2026-09-05): a sample size is a whole number of at
@@ -373,12 +376,25 @@ validateData <- function(DATA) {
   # from 0 - so fill NAs with 0 and let the bump raise them to the
   # typed precision. (Coerce first: a text cell in a hand-edited
   # rounding column must not crash either.)
+  # The clamp lives HERE, after the alias renames above have produced
+  # the canonical names (a column called ROUND, OBSERVATION or "MEAN
+  # DECIMALS" used to arrive after the clamp had run and carry 2e9 into
+  # the formatter - screen 2026-09-06-0617 F1): coerce every rounding
+  # column, drop a non-finite or out-of-range value ("Inf" is a number to
+  # as.numeric; 21 decimals is nothing a table prints), then fill the
+  # blanks with 0 so the bump can raise them to the typed precision.
+  for (col in c("ROUND_MEAN", "ROUND_OBSERVATION", "ROUND_DISPERSION"))
+    if (!is.null(DATA[[col]]))
+    {
+      if (!is.numeric(DATA[[col]]))
+        DATA[[col]] <- suppressWarnings(as.numeric(DATA[[col]]))
+      DATA[[col]][!is.na(DATA[[col]]) & (!is.finite(DATA[[col]]) | abs(DATA[[col]]) > 20)] <- NA_real_
+    }
+  # a rejected observation precision is now a BLANK one: it is inferred
+  # from the mean's like any other blank (review of #190)
+  obsInferred <- obsInferred | is.na(DATA$ROUND_OBSERVATION)
   for (col in c("ROUND_MEAN", "ROUND_OBSERVATION"))
-  {
-    if (!is.numeric(DATA[[col]]))
-      DATA[[col]] <- suppressWarnings(as.numeric(DATA[[col]]))
     DATA[[col]][is.na(DATA[[col]])] <- 0
-  }
 
   # Validate Categories
   #
@@ -541,7 +557,7 @@ validateData <- function(DATA) {
         # median printed with decimals bumps ROUND_MEAN, same as a mean
         if (DATA$MEAN[i] %% 1 != 0)
         {
-          digits <- nchar(sub("^.*\\.", "", as.character(DATA$MEAN[i])))
+          digits <- .iaDecimals(DATA$MEAN[i])
           if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
         }
       }
@@ -587,7 +603,7 @@ validateData <- function(DATA) {
         #     also crash the if().
         if (DATA$MEAN[i] %% 1 != 0)
         {
-          digits <- nchar(sub("^.*\\.", "", as.character(DATA$MEAN[i])))
+          digits <- .iaDecimals(DATA$MEAN[i])
           if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
         }
       }

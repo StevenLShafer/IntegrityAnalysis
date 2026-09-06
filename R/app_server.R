@@ -741,8 +741,8 @@ app_server <- function(input, output, session) {
         # analysis, never a dead session.
         one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData),
                         error = function(e) {
-                          outputComments(paste0("Trial ", .escapeHtml(TRIAL), " could not be analyzed: ",
-                                                .escapeHtml(conditionMessage(e)), "."))
+                          outputComments(paste0("Trial ", TRIAL, " could not be analyzed: ",
+                                                conditionMessage(e), "."))   # outputComments escapes
                           NULL
                         })
         if (is.null(one)) next
@@ -1332,7 +1332,7 @@ app_server <- function(input, output, session) {
       # session with the grey "reload" overlay.
       v <- tryCatch(validateData(DATA), error = function(e) {
         outputComments(paste0("The table could not be validated: ",
-                              .escapeHtml(conditionMessage(e)),
+                              conditionMessage(e),                    # outputComments escapes
                               ". Check the cells for values that are not numbers."))
         list(FAIL = TRUE)
       })

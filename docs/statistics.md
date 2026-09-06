@@ -107,9 +107,17 @@ precision is the replicate count, which the adaptive scheme below sets.
    like a row, displays "<0.0001" only when the 97.5% upper bound on the
    reaching count licenses it, and carries an exact Clopper–Pearson 95%
    interval whenever it is below 0.001, e.g. "p < 0.0001 (95% Monte
-   Carlo interval 0 to 3.7e-05)". The staging is per trial: every usable
-   row draws the same number of replicates at each stage, and the trial
-   escalates while its own p or any row's is below 0.01.
+   Carlo interval 0 to 3.7e-05)". That interval is built like a row's:
+   its lower end from the count of simulated sums strictly beyond the
+   observed one, its upper end from the count at or beyond it, so it
+   brackets the mid-p. (Until 2026-09-06 both ends came from the
+   at-or-beyond count; at the attainable floor, where every "beyond" is
+   a tie, the mid-p is half the tie count and printed below its own
+   interval — "0.00042, interval 0.00067 to 0.001". Found by an outside
+   review and reproduced.) The staging is per trial: every usable row
+   draws the same number of replicates at each stage, and the trial
+   escalates while its own p or any row's is below 0.1 (to 10,000) and
+   below 0.01 (to 100,000).
 
 ## The pooled SD, and its correction (2026-09-05)
 
