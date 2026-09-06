@@ -428,7 +428,13 @@ The two rounding columns tell the simulation how the published numbers
 were rounded — the heart of the method. `ROUND OBSERVATION` is the
 precision of the raw data (0 = integers); `ROUND MEAN` is the decimal
 places of the printed mean. If omitted, the app infers them from the
-decimal places of the values themselves. An optional `ROUND DISPERSION`
+decimal places of the values themselves: `ROUND MEAN` becomes the most
+decimal places any of the variable's means shows (a trailing zero is
+lost when a spreadsheet stores 1.20 as a number, so the variable's
+maximum is used), and `ROUND OBSERVATION` follows it. That second
+inference is a guess — a mean printed to one decimal is often computed
+from integer measurements — so when you know the raw precision, say so
+in the column. An optional `ROUND DISPERSION`
 column gives the printed precision of the SD when it differs from the
 mean's (a table may print "39 (4.06)").
 
@@ -550,8 +556,8 @@ For each variable, the app simulates the trial many times: for every
 arm, N subjects are drawn from a normal distribution with the pooled
 mean and (bias-corrected) SD; each simulated observation is rounded like
 the raw data; each simulated mean is rounded like the printed mean; and
-the weighted sum of squared deviations of arm means from the grand mean
-is computed. The **p value is the fraction of simulations at least as
+the sum of squared deviations of the arm means from their N-weighted
+grand mean is computed. The **p value is the fraction of simulations at least as
 homogeneous as the reported data** (a mid-p: ties count half). Small p
 means the printed means are closer together than random sampling can
 readily explain — the Fujii signature. This is deliberately one-sided:
@@ -564,8 +570,12 @@ variables, mislabeled SEMs, and transcription errors — Carlisle's 2017
 paper [6] discusses them at length. A trial flagged here deserves
 scrutiny of the original data, not summary judgment.
 
-**CAVEAT: Chance alone will produce P ≤ 0.05 in 1 in 20 papers, and
-P ≤ 0.01 in 1 in 100 papers. Research fraud should never be alleged by
+**CAVEAT: Chance alone will produce P ≤ 0.05 in about 1 in 20 honest
+papers, and P ≤ 0.01 in about 1 in 100** (about, because the
+combination treats the variables as independent, and a table that
+reports weight and BMI, or a measurement and its categorised version,
+repeats some of its evidence; see [statistics.md](statistics.md)).
+** Research fraud should never be alleged by
 a single manuscript flagged by IntegrityAnalysis. Confirmation such as
 multiple suspicious papers (e.g., Fujii, Boldt) should be sought.
 Authors or journal editors should be contacted before any public
@@ -800,9 +810,9 @@ the log as it completes. (The user interface is otherwise occupied
 during a long run — live progress display is a known limitation on the
 roadmap.)
 
-**Download Results** — one workbook, three worksheets. Together they
-answer three different questions: what happened line by line, what the
-app believed the data were, and what to report. Ticking **Graph
+**Download Results** — one workbook, four worksheets. Together they
+answer four different questions: what happened line by line, what the
+app believed the data were, what to report, and what ran. Ticking **Graph
 results** before downloading adds a PowerPoint of actual-vs-expected
 distribution graphs, and the download becomes a zip holding both files
 (described after the worksheets below).
@@ -850,6 +860,15 @@ visible. Trials whose P could not be computed (`No values`) are left
 out, and the row's label says how many combined. This is the sheet to
 keep when screening many manuscripts — the per-line detail stays in
 sheet 1 for the ones worth a second look.
+
+*Sheet 4, `Provenance`* — what ran: the date and time, the package
+version and the engine commit, the R version, a one-line statement of
+the method, and how to reproduce the analysis. Reproduction needs three
+things: the same engine commit (which pins the code and, through
+`renv.lock`, every package version), the same table, and the same seed
+— the Summary sheet records the seed when one was set (see "Reproducing
+a result exactly"). Without a seed the rerun draws afresh and lands
+within the Monte Carlo interval, not on the same number.
 
 **Graph results — the PowerPoint of distributions.** Tick the box next
 to Download Results (before or after the analysis — it only changes
