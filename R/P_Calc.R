@@ -592,7 +592,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     P <- if (upper < 1e-4) "<0.0001" else signif(Pnum, 4)
     if (Pnum < 0.001)
     {
-      lower <- if (kGE == 0) 0 else stats::qbeta(0.025, kGE, mT - kGE + 1)
+      # The lower end comes from the STRICTLY-beyond count and the upper
+      # end from the at-or-beyond count, exactly as the row interval is
+      # built, so the interval brackets the mid-p. It used to take both
+      # ends from the at-or-beyond count: at the attainable floor, where
+      # every "beyond" is a tie (three integer rows of two arms of 20
+      # tie the observed sum ~90 times in 100,000 and never exceed it),
+      # the mid-p is half the tie count and sat BELOW its own interval -
+      # "0.00042, interval 0.00067 to 0.001". Found by an outside review,
+      # reproduced, 2026-09-06.
+      kG <- trialStat$kG
+      lower <- if (kG == 0) 0 else stats::qbeta(0.025, kG, mT - kG + 1)
       ciStr <- paste0(signif(lower, 2), " to ", signif(upper, 2))
     }
   } else {

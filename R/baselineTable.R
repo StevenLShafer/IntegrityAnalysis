@@ -23,7 +23,11 @@
 #' @noRd
 .fmtAt <- function(x, digits) {
   if (is.na(x)) return("")
-  if (is.na(digits)) digits <- 0
+  if (is.na(digits) || !is.finite(digits)) digits <- 0
+  # bounded: sprintf formats the whole string before refusing anything
+  # over 8 KB, and 2e9 digits cost 50 s of the only thread (screen
+  # 2026-09-06-0617 F1); no table prints more than 20 decimals
+  digits <- max(0, min(digits, 20))
   sprintf("%.*f", as.integer(digits), x)
 }
 
