@@ -694,15 +694,26 @@ app_server <- function(input, output, session) {
       qs <- tryCatch(shiny::parseQueryString(session$clientData$url_search),
                      error = function(e) list())
       seedUsed <<- .iaSeedValue(qs$seed)
-      if (is.null(seedUsed)) seedUsed <<- .iaSeedValue(getOption("IntegrityAnalysis.seed"))
+      seedFrom <- "this page's address (?seed=)"
+      if (is.null(seedUsed)) {
+        seedUsed <<- .iaSeedValue(getOption("IntegrityAnalysis.seed"))
+        seedFrom <- "the server's start-up option"
+      }
       if (!is.null(seedUsed)) {
         .iaSetSeed(seedUsed)
+        # Security screen 2026-09-05 F1: a seed in a link is chosen by
+        # whoever wrote the link, and a sender who tried a few hundred
+        # seeds could pick the most favourable draw, so the log names
+        # the seed's source and says what a link-borne seed means.
         outputComments(paste0(
-          "Monte Carlo seed ", seedUsed, " set: this run's numbers are ",
-          "reproducible with the same seed on the same build",
+          "Monte Carlo seed ", seedUsed, " taken from ", seedFrom,
+          ": this run's numbers are reproducible with the same seed on ",
+          "the same build",
           if (!is.na(buildCommit())) paste0(" (", substr(buildCommit(), 1, 8), ")") else "",
-          ". Without a seed the draws differ from run to run within the ",
-          "reported Monte Carlo interval."))
+          ". A seed supplied by someone else lets them choose the random ",
+          "draw: to judge a table on a fresh draw, remove ?seed= from the ",
+          "address and analyze again. Without a seed the draws differ ",
+          "from run to run within the reported Monte Carlo interval."))
       }
       start_time <- Sys.time()
       # (Progress message wording below taken from the 2025-09-01 local copy

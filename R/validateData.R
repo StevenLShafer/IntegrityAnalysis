@@ -196,12 +196,16 @@ validateData <- function(DATA) {
     }
   }
 
-  if (is.null(DATA$MEAN))
+  # [[ ]] not $: `$` on a data frame partial-matches, so a sheet with a
+  # MEANX column and no MEAN passed this check and crashed further down
+  # (security screen 2026-09-05 F4, the same defect fixed for N on
+  # 2026-08-29)
+  if (is.null(DATA[["MEAN"]]))
   {
     outputComments("Missing column labeled MEAN")
     FAIL <- TRUE
   }
-  if (is.null(DATA$SD))
+  if (is.null(DATA[["SD"]]))
   {
     outputComments("Missing column labeled SD")
     FAIL <- TRUE

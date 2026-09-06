@@ -88,3 +88,18 @@ test_that("the escalation rule: p in [0.01, 0.1) runs 10,000; p >= 0.1 stops at 
   p <- as.numeric(x$P[1]); m <- as.numeric(x$M[1])
   expect_true((p < 0.1 && m >= 10000) || (p >= 0.1 && m == 1000))
 })
+
+test_that("a sheet with MEANX or SDX and no MEAN or SD is refused, not crashed (screen 2026-09-05 F4)", {
+  d <- data.frame(TRIAL = "T", ROW = "Age", N = c(15, 17), MEANX = c(45, 46), SDX = c(12, 11),
+                  stringsAsFactors = FALSE)
+  v <- vd(d)
+  expect_true(isTRUE(v$FAIL))
+  d2 <- data.frame(TRIAL = "T", ROW = "Age", N = c(15, 17), MEAN = c(45, 46), SDX = c(12, 11),
+                   stringsAsFactors = FALSE)
+  expect_true(isTRUE(vd(d2)$FAIL))
+})
+
+test_that("the plumber layer's empty-list seed (a form part without a Content-Type) is recognised", {
+  expect_null(IntegrityAnalysis:::.iaSeedValue(list()))
+  expect_true(is.list(list()) && !length(list()))
+})
