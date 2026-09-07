@@ -8,21 +8,26 @@
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast); library(dqrng)
 }))
-options(ECHO_OUTPUT_COMMENTS = NA)
+# NB: no global options() here. A file-level options(ECHO_OUTPUT_COMMENTS = NA)
+# silenced outputComments() for every test file that ran after this one in
+# the same process, and test-zip-upload.R then found an empty comments log
+# (the first run of this branch's checks failed exactly there). The
+# engine's chatter is captured per call instead.
 mk <- function(lab) data.frame(TRIAL = "T", ROW = lab, N = 6, MEAN = c(77, 78), SD = c(30, 30),
                                ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)
+quiet <- function(expr) { utils::capture.output(r <- suppressMessages(expr)); r }
 
 test_that("P_Calc returns KIND: variable lines, one summary, a blank spacer", {
   dqrng::dqset.seed(1); set.seed(1)
-  x <- suppressWarnings(shiny::isolate(P_Calc("T", mk("Summary"), NULL, 1000)))
+  x <- quiet(suppressWarnings(shiny::isolate(P_Calc("T", mk("Summary"), NULL, 1000))))
   expect_identical(names(x), c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND"))
   expect_identical(x$KIND, c("variable", "summary", NA))
   expect_identical(x$ROW[1:2], c("Summary", "Summary"))   # the label collides; the kind does not
 })
 
 test_that("renaming a variable to Summary changes no API result and no count of combined trials", {
-  a <- .apiAnalyze(mk("X"), seed = 42)
-  b <- .apiAnalyze(mk("Summary"), seed = 42)
+  a <- quiet(.apiAnalyze(mk("X"), seed = 42))
+  b <- quiet(.apiAnalyze(mk("Summary"), seed = 42))
   expect_true(a$ok && b$ok)
   expect_identical(a$overallP, b$overallP)        # was 0.0462 vs 0.008658 before the fix
   expect_identical(a$trials, b$trials)
@@ -36,7 +41,7 @@ test_that("the workbook's Summary sheet lists one study, whatever the variables 
   dqrng::dqset.seed(3); set.seed(3)
   d <- mk("Summary")
   v <- shiny::isolate(validateData(d))
-  out <- suppressWarnings(shiny::isolate(P_Calc("T", v$DATA, v$CategoryNames, 1000)))
+  out <- quiet(suppressWarnings(shiny::isolate(P_Calc("T", v$DATA, v$CategoryNames, 1000))))
   f <- tempfile(fileext = ".xlsx")
   writeResultsWorkbook(out, v$DATA, v$CategoryNames, f)
   s <- openxlsx::read.xlsx(f, sheet = "Summary")
