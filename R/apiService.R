@@ -283,10 +283,14 @@
 # So the budget is ~20 MINUTES of worst-case CPU, not two. The
 # median/IQR branch is dearer still (metalog: dqrunif, log, arithmetic,
 # rowMedians) and, since its scale draw of 2026-09-07 resamples every
-# arm before simulating it, runs at about half the continuous loop's
-# rate (6.8e6 draws per second, measured by screen 2026-09-07-1036);
-# .apiDrawWork therefore counts a median line at twice its N, so the
-# 20-minute worst case holds on that path as well.
+# arm (and row-sorts the resample) before simulating it, runs at 2.5 to
+# 2.8 times the continuous loop's cost per subject-draw (screen
+# 2026-09-07-1059, measured on fully escalating rows at 10, 50 and 5,000
+# per arm: 2.7e6 to 3.6e6 against 6.9e6 to 9.9e6; an earlier screen's
+# factor of two did not reproduce). .apiDrawWork therefore counts a
+# median line at THREE times its N - the ratio, not the absolute rate,
+# is what survives a change of host - so the 20-minute worst case holds
+# on that path as well.
 #
 # THE BUDGET IS NOT LOWERED TO MATCH THE OLD CLAIM, and the reason
 # belongs here rather than in a commit message. Two minutes of worst
@@ -398,13 +402,13 @@
   cont <- 0
   if ("N" %in% names(DATA)) {
     n <- suppressWarnings(as.numeric(DATA$N))
-    # a median/IQR line costs TWICE its N per replicate since the scale
-    # draw of 2026-09-07 resamples every arm before it simulates it
-    # (screen 2026-09-07-1036, F1: measured 6.8e6 draws per second
-    # against 1.3e7 for the continuous loop, on two arms of 5,000)
+    # a median/IQR line costs about 2.5 to 2.8 times its N per replicate
+    # since the scale draw of 2026-09-07 resamples and row-sorts every
+    # arm before it simulates it (screens 2026-09-07-1036 and -1059; the
+    # weight is the measured ratio rounded up, see the budget's note)
     w <- rep(1, length(n))
     for (q in intersect(c("Q1", "Q3"), names(DATA)))
-      w[is.finite(suppressWarnings(as.numeric(DATA[[q]])))] <- 2
+      w[is.finite(suppressWarnings(as.numeric(DATA[[q]])))] <- 3
     ok <- is.finite(n) & n > 0
     if (any(ok)) cont <- sum(n[ok] * w[ok])
   }
