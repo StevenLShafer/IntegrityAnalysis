@@ -278,8 +278,10 @@
 #'       Absent or blank: inferred from the printed decimals of `MEAN`,
 #'       raised to the variable's maximum across its arms (so 1.20 beside
 #'       1.25 is a two-decimal variable on both lines).}
-#'     \item{`ROUND_DISPERSION`}{decimals printed for SD/SE. Absent or
-#'       blank: inferred from the printed decimals of `SD`.}
+#'     \item{`ROUND_DISPERSION`}{decimals printed for the dispersion
+#'       measure: SD/SE on a mean line, the quartiles on a median line.
+#'       Absent or blank: inferred from the printed decimals of `SD`
+#'       (or, on a median line, of `Q1` and `Q3`).}
 #'     \item{`ROUND_OBSERVATION`}{decimals the UNDERLYING OBSERVATIONS
 #'       were recorded to, which is often finer than the printed mean -
 #'       ages recorded whole but a mean printed to one decimal. Absent or
@@ -477,6 +479,12 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # SD of a sample median is 1/(2 f(m) sqrt(n)); metalog density
           # at its median is 1/(4 a2), so SD_median = 2 a2 / sqrt(n).
           sdShift <- 2 * a2 / sqrt(mean(ROWS$N))
+          # the quartiles' printed precision, per arm: ROUND_DISPERSION (the
+          # dispersion measure of a median line IS its quartiles; the
+          # validator infers a blank one from their decimals), falling back
+          # to the median's for a direct caller without the column
+          qPrec <- if (!is.null(ROWS$ROUND_DISPERSION) && all(!is.na(ROWS$ROUND_DISPERSION)))
+            as.numeric(ROWS$ROUND_DISPERSION) else ROWS$ROUND_MEAN
           # a chunk of replicates from a metalog whose coefficients may be
           # one number or one per replicate (a length-ch vector recycles
           # down the columns of a ch-row matrix, one value per replicate);
@@ -510,10 +518,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                 S <- Rfast::rowSort(round(drawMetalog(ch, ROWS$N[i], a1, a2, a3),
                                           ROWS$ROUND_OBSERVATION[i]))
                 w <- ROWS$N[i] / N
-                bq1 <- bq1 + w * round(rowQ(S, 0.25), ROWS$ROUND_MEAN[i])
-                bq3 <- bq3 + w * round(rowQ(S, 0.75), ROWS$ROUND_MEAN[i])
+                # printed to the QUARTILES' precision (ROUND_DISPERSION, which
+                # the validator infers from the quartiles' decimals), not the
+                # median's (GPT-6 audit F4, 2026-09-07)
+                bq1 <- bq1 + w * round(rowQ(S, 0.25), qPrec[i])
+                bq3 <- bq3 + w * round(rowQ(S, 0.75), qPrec[i])
               }
-              a2boot <- pmax((bq3 - bq1) / (2 * log(3)), 10^(-max(ROWS$ROUND_MEAN)) / (2 * log(3)))
+              a2boot <- pmax((bq3 - bq1) / (2 * log(3)), 10^(-max(qPrec)) / (2 * log(3)))
               a2rep  <- a2^2 / a2boot
               a3rep  <- pmin(pmax(a3, -.iaMetalogSkewLimit * a2rep), .iaMetalogSkewLimit * a2rep)
               a1rep  <- a1 + dqrnorm(ch, mean = 0, sd = sdShift)
