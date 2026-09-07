@@ -490,7 +490,11 @@ mean. The median must lie between its quartiles; N, the median, and
 both quartiles are required. The simulation for such rows draws from a
 distribution fitted to the three quartile values (a metalog
 distribution — a flexible distribution specified directly by its
-quantiles), so no normality assumption is imposed.
+quantiles), so no normality assumption is imposed. Each replicate
+re-draws that distribution from the quartiles' own sampling
+uncertainty, so a small trial's noisy quartiles are not taken as
+exact. Quartiles more lopsided than a three-term metalog can represent
+are fitted at its limit, and the results table's Note column says so.
 
 Two printed forms that look similar cannot be used, and validation
 will say so rather than guess:
@@ -839,9 +843,11 @@ analyzed.
   the granularity of the printed table — including printed means that
   tie exactly.
 - Median/IQR rows are simulated from a three-term metalog distribution
-  fitted to (Q1, median, Q3): N observations per arm are drawn from it
-  and rounded to the observation precision, and each arm's sample
-  median is rounded like the printed median. The quartiles shape the
+  fitted to (Q1, median, Q3), whose scale is re-drawn for every
+  replicate from the quartiles' own sampling uncertainty (the
+  median/IQR analogue of the per-replicate SD draw): N observations
+  per arm are drawn from it and rounded to the observation precision,
+  and each arm's sample median is rounded like the printed median. The quartiles shape the
   distribution the observations come from; no simulated quartiles are
   computed. Median rows always draw their observations (no direct draw).
 - Very large trials are protected against memory exhaustion by chunking

@@ -248,6 +248,90 @@ median |Δp| 0.0077 with no direction in any arm-size band. The change
 is right in principle and nearly invisible in practice; it is kept
 because a printed SD *is* an interval and the engine should say so.
 
+## 2026-09-07 — the median/IQR branch: the parameter draw, and the skew limit clipped
+
+**What was wrong.** Two things, found by the 2026-09-06 audit (finding
+F2) and measured on honest two-arm trials whose arms were summarised as
+the median and type-7 quartiles of observations recorded to one decimal
+(1,000 trials per cell, `C:/dev/Corpus/tools/medianNull.R`). First, a
+fit beyond the three-term metalog's feasibility bound (|a₃|/a₂ >
+1.667) refused the row as "too skewed", and sample quartiles of ten
+observations are noisy enough that honest rows met that refusal often:
+9% of normal, 16% of lognormal, 11% of uniform and 12% of heavy-tailed
+(t₃) rows at ten per arm; 2 to 6% at thirty. Second, the pooled
+quartiles were taken as exact — the plug-in σ of the mean/SD branch
+before its sigma draw — and the body of the row p's distribution
+showed it: at ten per arm the mean p was 0.54 to 0.56 and the
+Kolmogorov–Smirnov distance from uniform 0.07 to 0.12; the 5% and 1%
+rates themselves were roughly nominal.
+
+| population | N/arm | < 0.05 | < 0.01 | mean p | KS | refused |
+|---|---|---|---|---|---|---|
+| normal | 10 | 0.042 | 0.010 | 0.545 | 0.074 | 9.0% |
+| normal | 30 | 0.048 | 0.014 | 0.518 | 0.040 | 1.5% |
+| normal | 100 | 0.051 | 0.006 | 0.520 | 0.052 | 0 |
+| lognormal | 10 | 0.045 | 0.012 | 0.562 | 0.115 | 16.1% |
+| lognormal | 30 | 0.040 | 0.011 | 0.521 | 0.041 | 5.9% |
+| lognormal | 100 | 0.043 | 0.006 | 0.513 | 0.034 | 0.3% |
+| uniform | 10 | 0.044 | 0.004 | 0.559 | 0.101 | 10.8% |
+| uniform | 30 | 0.030 | 0.000 | 0.553 | 0.093 | 1.7% |
+| uniform | 100 | 0.049 | 0.000 | 0.527 | 0.054 | 0 |
+| t₃ | 10 | 0.047 | 0.015 | 0.538 | 0.073 | 11.5% |
+| t₃ | 30 | 0.052 | 0.007 | 0.506 | 0.028 | 1.6% |
+| t₃ | 100 | 0.045 | 0.000 | 0.502 | 0.024 | 0 |
+
+**What changed.** A fit beyond the bound is clipped to it (|a₃| ≤
+1.66 a₂): the closest feasible metalog is used and the results table's
+Note column says "quartiles beyond the metalog's skew limit; fitted at
+the limit". Only quartiles that do not increase are refused. And each
+replicate draws its own scale, by the median/IQR analogue of the sigma
+draw. The obvious construction was tried first and rejected: a
+parametric bootstrap (every arm resampled from the fit, summarised,
+pooled and refitted; the replicate drawn from the refit) made the null
+*wider* — mean p 0.60, KS 0.16 to 0.19 at ten per arm — because it draws
+the sample's scale given the population, when the null needs the
+population's scale given the sample, and for a scale parameter the two
+are reciprocals (σ² = s²·df/χ²(df) is the reciprocal of the bootstrap's
+s²·χ²(df)/df). So every arm is resampled from the fitted metalog,
+recorded to the observation precision, its type-7 quartiles printed to
+the median's precision and pooled by N, giving a bootstrap scale a₂\*;
+the replicate's population has scale a₂²/a₂\*, the observed skew term
+re-clipped to that scale, and the pooled median plus the location draw
+the branch always made. Measured side by side on identical honest
+trials (600 per cell, `C:/dev/Corpus/synthetic/median-draw/variants.R`),
+mean p and KS at ten per arm: point fit 0.54–0.57 / 0.07–0.13;
+bootstrap 0.58–0.62 / 0.15–0.19; reciprocal 0.48–0.52 / 0.03–0.06, with
+the 5% and 1% rates nominal. Known answer re-pinned: the median/IQR
+pair 0.0464 → 0.04545.
+
+**Measured after** (the same 12,000 trials, identical data and seeds;
+data `C:/dev/Corpus/synthetic/median-draw/`). No honest row is refused;
+the "clipped" column is the share whose fit was clipped at the skew
+limit, the rows that used to be refused.
+
+| population | N/arm | < 0.05 | < 0.01 | mean p | KS | clipped |
+|---|---|---|---|---|---|---|
+| normal | 10 | 0.047 | 0.009 | 0.500 | 0.040 | 9.0% |
+| normal | 30 | 0.047 | 0.015 | 0.502 | 0.021 | 1.5% |
+| normal | 100 | 0.050 | 0.001 | 0.515 | 0.042 | 0 |
+| lognormal | 10 | 0.048 | 0.010 | 0.504 | 0.033 | 16.4% |
+| lognormal | 30 | 0.045 | 0.013 | 0.499 | 0.024 | 6.2% |
+| lognormal | 100 | 0.046 | 0.003 | 0.507 | 0.032 | 0.3% |
+| uniform | 10 | 0.049 | 0.007 | 0.511 | 0.033 | 10.9% |
+| uniform | 30 | 0.038 | 0.000 | 0.537 | 0.066 | 1.9% |
+| uniform | 100 | 0.049 | 0.000 | 0.520 | 0.049 | 0 |
+| t₃ | 10 | 0.054 | 0.011 | 0.484 | 0.044 | 11.7% |
+| t₃ | 30 | 0.056 | 0.008 | 0.489 | 0.027 | 1.6% |
+| t₃ | 100 | 0.051 | 0.000 | 0.497 | 0.022 | 0 |
+
+At ten per arm the mean p is 0.48 to 0.51 and the distance from uniform
+0.03 to 0.04 (was 0.54 to 0.56 and 0.07 to 0.12); the standard error of
+a 5% rate here is 0.007. The one cell still off (uniform, thirty per
+arm, mean p 0.54) is the bounded population's convergence at one-decimal
+printing, the attainable-floor effect, and it is unchanged by the
+draw. The Carlisle corpus has no median rows, so there is no corpus
+figure for this change.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
@@ -275,8 +359,9 @@ because a printed SD *is* an interval and the engine should say so.
   derivable one (σ/√ΣN) is preferred for its own sake, which would cost
   only a re-pinning of the seeded known answers. Data:
   `C:/dev/Corpus/synthetic/location-scale/`.
-- The median/IQR branch fits a three-term metalog to N-weighted arm
-  quartiles and is validated only by a smoke test; broad calibration
-  across skewed, bounded and heavy-tailed populations is open.
+- The median/IQR branch's calibration is now measured (above) on four
+  populations at 10 to 100 per arm; bounded measurements (a score with
+  a floor, a percentage) and quartiles printed at a coarser precision
+  than the median are not yet in that table.
 - Median rows still draw their N observations; the direct draw could be
   extended to them if a large-trial median row proves costly.

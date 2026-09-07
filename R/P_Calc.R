@@ -88,6 +88,10 @@
 # is untouched.
 .iaDirectDrawN          <- 100L
 .iaDirectDrawSdOverGrid <- 3
+# The three-term metalog is a valid distribution only while |a3|/a2 is
+# below 1.66711 (Keelin 2016); a fit beyond that is clipped to this
+# limit rather than refused (2026-09-07, see the median branch)
+.iaMetalogSkewLimit     <- 1.66
 
 #' The interval a printed SD stands for
 #'
@@ -318,42 +322,115 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # against its own derivation; exact quantile recovery is pinned
           # by a unit test):
           #   a1 = m,  a2 = IQR/(2 ln 3),  a3 = 2(Q1 + Q3 - 2m)/ln 3
-          # |a3/a2| > 1.667 (Keelin validity) refuses the row.
+          #
+          # THE SKEW LIMIT AND THE PARAMETER DRAW (2026-09-07; audit finding
+          # F2 of 2026-09-06, Steve: "yes to median IQR scale draw and
+          # refusal of honest small rows"). Two things were wrong with the
+          # branch as first built. (1) |a3|/a2 beyond Keelin's feasibility
+          # bound (1.66711) REFUSED the row - and sample quartiles of ten
+          # observations are so noisy that 8% (normal) to 18% (lognormal)
+          # of honest ten-per-arm rows were refused as "too skewed". The
+          # skew term is now clipped to the bound: the closest feasible
+          # metalog is fitted, and the results table says so in the Note
+          # column. (2) The pooled quartiles were taken as exact, the
+          # analogue of a plug-in sigma: at ten per arm the honest row p
+          # averaged 0.55 with a Kolmogorov-Smirnov distance of 0.07-0.12
+          # from uniform (docs/method-history.md). Each replicate now
+          # draws its own scale. HOW, and why not the obvious way: a
+          # parametric bootstrap (every arm resampled from the fit,
+          # summarised, pooled, refitted; the population = the refit) was
+          # tried first and made things WORSE (mean p 0.60, KS 0.16-0.19
+          # at ten per arm) - it draws the SAMPLE's scale given the
+          # population, when what is needed is the POPULATION's scale
+          # given the sample, and for a scale parameter the two are
+          # reciprocals. That is exactly the normal branch's sigma draw:
+          # sigma^2 = s^2 df / chisq(df) is the reciprocal of the
+          # bootstrap's s^2 chisq(df) / df. So: every arm is resampled
+          # from the fitted metalog, recorded to the observation
+          # precision, its type-7 quartiles printed to the median's
+          # precision and pooled by N, giving a bootstrap scale a2*; the
+          # replicate's population scale is a2^2 / a2* (its a3 is the
+          # observed one, re-clipped to that scale; its location is the
+          # pooled median plus the usual draw). Measured side by side on
+          # identical honest trials (C:/dev/Corpus/synthetic/median-draw/
+          # variants.R): mean p 0.48-0.52 and KS 0.03-0.06 at ten per arm
+          # for this construction, against 0.54-0.57 / 0.07-0.13 for the
+          # point fit and 0.58-0.62 / 0.15-0.19 for the bootstrap.
           if (any(is.na(ROWS$Q1)) || any(is.na(ROWS$Q3)))
           {
             Pdisp <- "Mixed SD and quartile lines"
           } else {
           COLS <- nrow(ROWS)
           N <- sum(ROWS$N)
+          # the fit, vectorised over replicates: scalars for the observed
+          # table, length-ch vectors for the bootstrap refits
+          fitMetalog <- function(med, q1, q3) {
+            a2  <- (q3 - q1) / (2 * log(3))
+            a3  <- 2 * (q1 + q3 - 2 * med) / log(3)
+            lim <- .iaMetalogSkewLimit * a2
+            list(a1 = med, a2 = a2, a3 = pmin(pmax(a3, -lim), lim), clipped = abs(a3) > lim)
+          }
           medPool <- sum(ROWS$N * ROWS$MEAN) / N
           q1Pool  <- sum(ROWS$N * ROWS$Q1) / N
           q3Pool  <- sum(ROWS$N * ROWS$Q3) / N
-          a1 <- medPool
-          a2 <- (q3Pool - q1Pool) / (2 * log(3))
-          a3 <- 2 * (q1Pool + q3Pool - 2 * medPool) / log(3)
-          if (a2 <= 0 || abs(a3) / a2 > 1.667)
+          fit <- fitMetalog(medPool, q1Pool, q3Pool)
+          if (fit$a2 <= 0)
           {
-            Pdisp <- "Quartiles too skewed to simulate"
+            Pdisp <- "Quartiles do not increase (Q3 must exceed Q1)"
           } else {
+          a1 <- fit$a1; a2 <- fit$a2; a3 <- fit$a3
+          skewNote <- if (fit$clipped)
+            "quartiles beyond the metalog's skew limit; fitted at the limit" else ""
           center     <- sum(ROWS$N * ROWS$MEAN) / N
           DiffSample <- sum((ROWS$MEAN - center)^2)
           # Per-replication uncertainty in the common location: asymptotic
           # SD of a sample median is 1/(2 f(m) sqrt(n)); metalog density
           # at its median is 1/(4 a2), so SD_median = 2 a2 / sqrt(n).
           sdShift <- 2 * a2 / sqrt(mean(ROWS$N))
+          # a chunk of replicates from a metalog whose coefficients may be
+          # one number or one per replicate (a length-ch vector recycles
+          # down the columns of a ch-row matrix, one value per replicate);
+          # U kept off 0 and 1, where the logit is infinite
+          drawMetalog <- function(ch, n, a1, a2, a3) {
+            U <- matrix(dqrunif(n * ch, 1e-12, 1 - 1e-12), nrow = ch)
+            L <- log(U / (1 - U))
+            a1 + a2 * L + a3 * (U - 0.5) * L
+          }
+          # type-7 quantile of every row of a row-sorted matrix (R's and
+          # SPSS's default, Excel's QUARTILE.INC)
+          rowQ <- function(S, p) {
+            n <- ncol(S); h <- (n - 1) * p + 1; lo <- floor(h); hi <- min(n, lo + 1)
+            S[, lo] + (h - lo) * (S[, hi] - S[, lo])
+          }
           simulate <- function(n) {
             out <- numeric(0); left <- n
             while (left > 0) {
-              # chunk so chunk*N stays bounded (memory guard, successor
-              # of the old fixed m1 <- 1e9/N cap)
-              ch <- min(left, max(1, floor(1e8 / max(1, N))))
-              shiftsim <- dqrnorm(ch, mean = 0, sd = sdShift)
+              # chunk so chunk*N stays bounded: three ch x N_i matrices are
+              # alive in a draw, twice per replicate here, so a quarter of
+              # the continuous branch's chunk keeps the peak comparable
+              ch <- min(left, max(1, floor(2.5e7 / max(1, N))))
+              # the scale draw: resample every arm from the fit, take its
+              # printed quartiles, pool - the bootstrap scale a2* - and
+              # invert the ratio: the replicate's population scale is
+              # a2^2 / a2* (a degenerate resample with a2* = 0 is floored
+              # at one printed unit, so the ratio stays finite)
+              bq1 <- numeric(ch); bq3 <- numeric(ch)
+              for (i in 1:COLS)
+              {
+                S <- Rfast::rowSort(round(drawMetalog(ch, ROWS$N[i], a1, a2, a3),
+                                          ROWS$ROUND_OBSERVATION[i]))
+                w <- ROWS$N[i] / N
+                bq1 <- bq1 + w * round(rowQ(S, 0.25), ROWS$ROUND_MEAN[i])
+                bq3 <- bq3 + w * round(rowQ(S, 0.75), ROWS$ROUND_MEAN[i])
+              }
+              a2boot <- pmax((bq3 - bq1) / (2 * log(3)), 10^(-max(ROWS$ROUND_MEAN)) / (2 * log(3)))
+              a2rep  <- a2^2 / a2boot
+              a3rep  <- pmin(pmax(a3, -.iaMetalogSkewLimit * a2rep), .iaMetalogSkewLimit * a2rep)
+              a1rep  <- a1 + dqrnorm(ch, mean = 0, sd = sdShift)
               MCMed <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
               {
-                U <- matrix(dqrunif(ROWS$N[i] * ch), nrow = ch)
-                L <- log(U / (1 - U))
-                X <- (a1 + shiftsim) + a2 * L + a3 * (U - 0.5) * L
+                X <- drawMetalog(ch, ROWS$N[i], a1rep, a2rep, a3rep)
                 MCMed[,i] <- round(
                   Rfast::rowMedians(round(X, ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
@@ -365,7 +442,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median")
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median", note = skewNote)
           }
           }
         }
@@ -654,7 +731,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
              obs = r$sim$obs, draws = rowStat[[j]]$draws, p = rep$p,
              disp = rep$disp, m = rep$m)
     data.frame(ROW = r$Row, P = rep$disp, CI95 = rep$ci, M = as.character(rep$m),
-               NOTE = if (isTRUE(rowStat[[j]]$atFloor)) "attainable floor" else "",
+               # the notes a row can carry, joined: the attainable floor
+               # and, for a median row, a clipped skew term
+               NOTE = paste(c(if (isTRUE(rowStat[[j]]$atFloor)) "attainable floor",
+                              if (!is.null(r$sim$note) && nzchar(r$sim$note)) r$sim$note),
+                            collapse = "; "),
                .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
   }))
   x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
