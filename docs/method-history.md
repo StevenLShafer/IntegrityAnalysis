@@ -372,7 +372,7 @@ row sums against base R's), so such rows never received the note and
 their floor ties were split by dust.
 
 **What changed.** Two statistics are one value when they agree to within
-one part in 10¹⁰ of the larger; a statistic within 10⁻²⁰ of the centre
+one part in 10¹⁰ of the larger; a statistic within 10⁻²⁶ of the centre
 squared of zero is zero. The rule is applied to the observed row's
 strictly-below and tied counts and to the replicate ranks alike. The
 tolerance is bounded and stated: floating-point error in these sums is
