@@ -235,7 +235,9 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   boldStyle <- openxlsx::createStyle(textDecoration = "bold")
 
   ## 1 -- Test Results: the sheet exactly as the download always was
-  out <- results
+  # KIND (the structural line type P_Calc returns since 2026-09-07) is not
+  # printed; the sheet keeps its six columns
+  out <- results[, setdiff(names(results), "KIND"), drop = FALSE]
   names(out) <- c("TRIAL", "ROW", "P (one-sided toward homogeneity)",
                   "95% Monte Carlo interval", "Replicates", "Note")
   openxlsx::addWorksheet(wb, "Test Results")
@@ -268,7 +270,9 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   rows <- list()
   for (i in seq_len(nrow(results))) {
     if (!is.na(results$TRIAL[i])) trial <- as.character(results$TRIAL[i])
-    if (!is.na(results$ROW[i]) && results$ROW[i] == "Summary")
+    # by KIND, never by the label (GPT-6 audit F2, 2026-09-07): a variable
+    # the paper called "Summary" is a variable
+    if (!is.na(results$KIND[i]) && results$KIND[i] == "summary")
       rows[[length(rows) + 1]] <- data.frame(
         TRIAL = trial, P = results$P[i], CI = results$CI95[i],
         stringsAsFactors = FALSE)
