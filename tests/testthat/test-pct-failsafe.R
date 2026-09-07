@@ -66,11 +66,13 @@ test_that("the fail-safe rule itself: arms above the pooled proportion take the 
   expect_equal(choose(c(NA, 245), c(NA, 255), c(20, NA), c(40, 1000)), c(20, 245))
 })
 
-test_that("the review flags name the rows and say fail-safe", {
-  x <- list(data = data.frame(SD = NA_real_), armNSource = NULL, derivedCounts = NULL,
-            approxCounts = c("Male"))
-  fl <- tryCatch(reviewFlags(x), error = function(e) NULL)
-  skip_if(is.null(fl), "reviewFlags signature differs")
-  expect_true(any(grepl("FAIL-SAFE", fl)))
-  expect_true(any(grepl("Male", fl)))
+test_that("the review flags name the row and say fail-safe", {
+  # a real parse, not a hand-built list: reviewFlags() dispatches on the
+  # ParsePDFTable class, so a bare list silently skipped this check
+  # (CodeRabbit on PR #213, 2026-09-07)
+  r <- parseBaselineTableHeuristics(pctPdf("50%", "50%", 1000, 1000),
+                                    pctApprox = TRUE, quiet = TRUE)
+  fl <- reviewFlags(r)
+  expect_true(any(grepl("FAIL-SAFE counts", fl)))
+  expect_true(any(grepl("Male sex", fl)))
 })
