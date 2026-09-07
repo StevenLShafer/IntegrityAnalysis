@@ -168,7 +168,10 @@ writeBaselineTablesXlsx <- function(tables, file) {
     # on a Windows native-encoding session
     cp <- utf8ToInt(enc2utf8(x)); cp[cp > 0xFFFF] <- 32L; x <- intToUtf8(cp)
     x <- substr(trimws(x), 1, maxLen)
-    x <- trimws(gsub("^'+|'+$", "", x))
+    # apostrophes and whitespace stripped from the ends TOGETHER, in one
+    # pass: stripping one and then the other let "abc' '" keep its inner
+    # apostrophe once the space went (screen 2026-09-07-1059, F1)
+    x <- gsub("^[' \t\r\n]+|[' \t\r\n]+$", "", x)
     if (x == "") "Trial" else x
   }
   for (trial in names(tables)) {
