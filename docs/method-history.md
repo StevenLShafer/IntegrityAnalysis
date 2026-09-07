@@ -384,6 +384,17 @@ unchanged: none of the pinned rows had a dust-split tie. The audit's
 row now reads 0.35 and its five-row trial 0.084, to Monte Carlo
 precision.
 
+## 2026-09-07 — the SD's printed interval when some precisions are blank
+
+The helper that turns a printed SD into its interval used a supplied
+`ROUND_DISPERSION` only when every arm had one and otherwise re-inferred
+every arm, so a supplied two-decimal "1.00" beside a blank became
+[0.5, 1.5] (the GPT-6 audit's finding F5, `docs/audits/`). A blank cell
+is now inferred on its own, taking the variable's maximum printed
+decimals across its arms — the validator's rule — so a direct call and a
+validated one agree. Only rows reaching `P_Calc` without the validator
+and with a partly blank column were affected.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a

@@ -41,10 +41,12 @@ test_that("the interval a printed SD stands for: half a unit either side, never 
   iv <- .iaSdInterval(c(1, 3, 0.2, 0, 12.5), c(0, 0, 0, 0, 1))
   expect_equal(iv$lo, c(0.5, 2.5, 0,   0, 12.45))
   expect_equal(iv$hi, c(1.5, 3.5, 0.7, 0, 12.55))
-  # no column, or a blank in it: inferred from each SD's printed decimals
+  # no column, or a blank in it: inferred as the validator infers - the
+  # variable's maximum printed decimals across its arms (2 here), so "10"
+  # beside "0.05" is a two-decimal variable (GPT-6 audit F5, 2026-09-07)
   iv <- .iaSdInterval(c(1.2, 0.05, 10))
-  expect_equal(iv$lo, c(1.15, 0.045, 9.5))
-  expect_equal(iv$hi, c(1.25, 0.055, 10.5))
+  expect_equal(iv$lo, c(1.195, 0.045, 9.995))
+  expect_equal(iv$hi, c(1.205, 0.055, 10.005))
   expect_equal(.iaSdInterval(c(1, 2), c(NA, 0)), .iaSdInterval(c(1, 2)))
 })
 
