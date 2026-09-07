@@ -9,6 +9,7 @@ and, for the documentation findings, in the pull request that fixed them.
 
 | Date | Auditor | File | Scope |
 |---|---|---|---|
+| 2026-09-07 | GPT-6 (Codex), independent | [2026-09-07-independent-statistical-audit-chatgpt.md](2026-09-07-independent-statistical-audit-chatgpt.md) | Statistical engine at ae81725; exact categorical enumeration, input/output defects, synthetic calibration and sensitivity; findings await adjudication |
 | 2026-09-06 | Claude Code (Claude Fable 5.1), in-session | [2026-09-06-statistical-and-documentation-audit-claude.md](2026-09-06-statistical-and-documentation-audit-claude.md) | `R/P_Calc.R` robustness and accuracy; every markdown, HTML and docx document |
 
 Reports from other reviewers (a Gemini statistical review and a ChatGPT
