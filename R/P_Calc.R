@@ -480,7 +480,16 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           skewNote <- if (fit$clipped)
             "quartiles beyond the metalog's skew limit; fitted at the limit" else ""
           center     <- sum(ROWS$N * ROWS$MEAN) / N
-          DiffSample <- sum((ROWS$MEAN - center)^2)
+          # TRANSLATED before the statistic (screen 2026-09-07-1459, F1): the
+          # statistic is translation-invariant, and measuring from the first
+          # arm's printed value makes identical medians EXACTLY zero in the
+          # observed row and in every replicate, whatever their magnitude -
+          # the N-weighted centre of untranslated values left floating-point
+          # dust that differed between base R's sum() and Rfast's row sums,
+          # and no fixed tolerance fits every shape (a thousand arms at 1e9
+          # with two decimals defeated 1e-26 of the centre squared).
+          dd         <- ROWS$MEAN - ROWS$MEAN[1]
+          DiffSample <- sum((dd - sum(ROWS$N * dd) / N)^2)
           # Per-replication uncertainty in the common location: asymptotic
           # SD of a sample median is 1/(2 f(m) sqrt(n)); metalog density
           # at its median is 1/(4 a2), so SD_median = 2 a2 / sqrt(n).
@@ -542,8 +551,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                   Rfast::rowMedians(round(X, ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
               }
-              Nmat <- matrix(ROWS$N, ch, COLS, byrow = TRUE)
-              MedC <- rowsums(MCMed * Nmat) / N
+              # translated by the first arm's printed median (see DiffSample);
+              # the N-weighted centre by matrix product, without a ch x arms
+              # weight matrix (screen 1459, F2)
+              MCMed <- MCMed - ROWS$MEAN[1]
+              MedC <- drop(MCMed %*% ROWS$N) / N
               out <- c(out, rowsums((MCMed - MedC)^2))
               left <- left - ch
             }
@@ -625,7 +637,16 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             v / df
           }
           sigmaDraw <- function(ch) sqrt(pooledVarDraw(ch) * df / stats::rchisq(ch, df))
-          DiffSample <- sum((ROWS$MEAN - Meanmean)^2) # Squared difference of column means
+          # Squared difference of column means, TRANSLATED by the first arm's
+          # printed mean first (screen 2026-09-07-1459, F1): the statistic is
+          # translation-invariant, and measuring from a printed value makes
+          # identical means exactly zero in the observed row and in every
+          # replicate at any magnitude, where the untranslated N-weighted
+          # centre left floating-point dust that differed between base R's
+          # sum() and Rfast's row sums (a thousand arms printing 1e9 + 0.25
+          # reported the stage floor instead of p = 0.5).
+          dd         <- ROWS$MEAN - ROWS$MEAN[1]
+          DiffSample <- sum((dd - sum(ROWS$N * dd) / N)^2)
           # Monte Carlo Simulation. The simulation body is unchanged from
           # the Carlisle-validated implementation (issue 3, r = 0.991);
           # the staging wrapper only decides HOW MANY replications run.
@@ -644,7 +665,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           simulate <- function(n) {
             out <- numeric(0); left <- n
             while (left > 0) {
-              ch <- min(left, max(1, floor(1e8 / max(1, Nfull))))
+              # the chunk is bounded by the fully simulated subjects AND by the
+              # arm count: a row of direct-draw arms has Nfull = 0, and its
+              # four ch x arms matrices were 100,000 x arms at the top stage -
+              # 2.3 GB at a thousand arms, 4.5 GB at two thousand, unbounded in
+              # the app (screen 2026-09-07-1459, F2). At 1e7 doubles each they
+              # stay near 80 MB, and with the translation, deviation and square
+              # copies alive at once the row's peak stays under half a
+              # gigabyte (measured 0.68 GB at 2.5e7); the chunk only shrinks
+              # below the stage size above 100 arms at 100,000 replicates, so
+              # no known answer moves.
+              ch <- min(left, max(1, floor(1e8 / max(1, Nfull))), max(1, floor(1e7 / COLS)))
               sig <- sigmaDraw(ch)                      # one sigma per replicate
               # (rnorm, not dqrnorm: dqrnorm takes a scalar sd)
               meansim <- rnorm(ch, Meanmean, sig / sqrt(mean(ROWS$N)))
@@ -684,8 +715,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                     matrix(rnorm(ROWS$N[i] * ch), nrow = ch) * sig + meansim,
                     ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
-              Nmat <- matrix(ROWS$N, ch, COLS, byrow = TRUE)
-              MS <- rowsums(MCMean * Nmat) / N
+              # translated by the first arm's printed mean (see DiffSample); the
+              # N-weighted centre by matrix product, without a ch x arms weight
+              # matrix (screen 1459, F2)
+              MCMean <- MCMean - ROWS$MEAN[1]
+              MS <- drop(MCMean %*% ROWS$N) / N
               out <- c(out, rowsums((MCMean - MS)^2))
               left <- left - ch
             }
@@ -786,18 +820,18 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     for (j in usable) {
       sims <- rows[[j]]$sim$simulate(s)
       obs  <- rows[[j]]$sim$obs
-      # A statistic that is zero up to floating-point dust IS zero: the
-      # N-weighted centre of identical means leaves about 1e-28 behind,
-      # and not the same 1e-28 in the replicate (Rfast's row sums) as in
-      # the observed row (base R's sum), so without this snap the floor's
-      # ties were split by dust and the note never appeared for unequal
-      # arms. zeroTol is 1e-26 of the centre squared: six orders above
-      # the dust it absorbs (about 1e-32 of the centre squared per arm)
-      # and below a grid step squared for every mean the validator admits
-      # at integer printing (its 1e12 ceiling gives 1e-2 against a step
-      # squared of 1). The first factor, 1e-20, outgrew the grid at means
-      # of about 1e10 and snapped genuine differences to zero there
-      # (screen 2026-09-07-1441, I1).
+      # A statistic that is zero up to floating-point dust IS zero. Since
+      # screen 2026-09-07-1459 the branches translate their means by the
+      # first arm's printed value before the statistic, so identical means
+      # give exactly zero in the observed row and in every replicate at
+      # any magnitude and arm count, and this snap is a guard rather than
+      # the mechanism. (History: identical means left about 1e-28 of dust
+      # in the N-weighted centre, differing between base R's sum() and
+      # Rfast's row sums, so the floor's ties were split; a tolerance of
+      # 1e-20 of the centre squared outgrew the printed grid at means near
+      # 1e10 - screen 1441, I1 - and 1e-26 was defeated by a thousand arms
+      # at 1e9 with two decimals - screen 1459, F1. No single factor fits
+      # every admissible shape; translation removes the dust instead.)
       zt <- rows[[j]]$sim$zeroTol
       sims[sims <= zt] <- 0; if (obs <= zt) obs <- 0
       kk <- .iaTieCounts(sims, obs)            # ties by the bounded criterion, see .iaTieTol
