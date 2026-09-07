@@ -197,6 +197,57 @@ only blank cells take it. An observation precision left blank follows
 the mean's after the decimal bump, not the zero it was copied from
 before it.
 
+## 2026-09-06 — the SD's printed rounding is drawn
+
+**What was wrong.** The printed SD was taken as exact. A statistical
+audit the same day (report in Steve Shafer's working files) measured how
+much the row p depends on where in its printed interval the true SD
+lies: seeded runs, two arms of 30 with means tied at one decimal, the
+true SD varied across the interval a printed "1" covers — p 0.128 at
+0.5, 0.100 at 0.75, 0.074 at 1, 0.060 at 1.25, 0.050 at 1.49: a factor
+of 2.5. A printed "3" (N 100, means tied): 0.058 to 0.041. With two
+significant figures ("1.0", "13") the spread is a few percent. The
+mean's rounding is handled by construction (the simulation rounds its
+own means the same way and the tie mass is the mechanism); the SD's was
+not, because the SD enters the null as a parameter, so its rounding is
+unmodelled parameter uncertainty — the same class the sigma draw
+models. The audit's first framing read that spread as the size of the
+correction; it is not (see "Measured").
+
+**What changed.** Each replicate first draws every arm's sample SD
+uniformly within its printed interval, half a printed unit either side
+(`ROUND_DISPERSION`; `validateData()` now infers a blank value from the
+SD's printed decimals, raised to the variable's maximum across its arms
+as the mean's precision is; a direct caller of `P_Calc` without the
+column gets the same inference), never below zero, pools those by
+degrees of freedom, and only then applies the chi-square draw. A printed
+SD of exactly zero is kept at zero: it declares that the variable did
+not vary (PR #182), and drawing a spread there would manufacture one.
+Known answers re-pinned: the worked example 0.0442 → 0.0462, three
+identical arms 0.00025 → 0.00015 — mostly the RNG stream (one extra
+uniform per arm per replicate), since a printed "30" or "9.2" is a
+narrow interval.
+
+**Measured** (data `C:/dev/Corpus/synthetic/sd-round/`). *The integrated
+effect, computed directly* (2,000,000 replicates, no staging): the
+mid-p at a tie moves from 0.0760 to 0.0776 for a printed "1" at two arms
+of 30 (+2%), 0.0384 → 0.0387 for "2", 0.0256 → 0.0257 for "3", and not
+at all at two significant figures — far below the naive E[1/σ] guide
+(+10% for "1"), because pooling the drawn SDs by their squares raises the
+pooled variance by the rounding's h²/12 and nearly cancels the convexity
+gain from smaller draws. *Honest null* with coarsely printed SDs (X ~
+N(5, 1.3), SD printed to 0 or 1 decimals, two arms of 5 to 100, 2,000
+trials per cell, identical data and seeds): rejection rates, mean p and
+Kolmogorov–Smirnov distance identical to the displayed precision in
+every cell; paired |Δp| median 0.007–0.010, the Monte Carlo noise of
+two draws — as it must be, since an honest table's rounding error is
+symmetric. *Carlisle corpus* (5,041 usable, 10,000 ceiling, against the
+sigma-draw run): r 0.9929 → 0.9932, within 0.05 89.1% → 89.2%, alarm
+concordance 98.5% either way, alarms 420 → 418 (5 crossing down, 7 up),
+median |Δp| 0.0077 with no direction in any arm-size band. The change
+is right in principle and nearly invisible in practice; it is kept
+because a printed SD *is* an interval and the engine should say so.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
