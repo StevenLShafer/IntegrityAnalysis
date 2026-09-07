@@ -96,7 +96,12 @@ test_that("a median/IQR pair gives the pinned metalog p", {
     TRIAL = "T", ROW = "Dur", N = c(20, 20), MEAN = c(127, 128),
     SD = NA_real_, Q1 = c(98, 99), Q3 = c(160, 161),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.0464)
+  # re-pinned 2026-09-07 (the median branch's scale draw: each replicate
+  # resamples the arms from the fitted metalog, pools their printed
+  # quartiles and takes the RECIPROCAL of the resampled scale's ratio
+  # to the fit - the metalog analogue of the sigma draw - so the pooled
+  # quartiles are no longer taken as exact): 0.0464 -> 0.04545
+  expect_equal(summaryP(x), 0.04545)
 })
 
 test_that("categorical direction: homogeneous alarms, heterogeneous does not", {

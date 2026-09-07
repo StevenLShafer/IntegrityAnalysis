@@ -82,11 +82,24 @@ test_that("median rows point the right way: identical arms alarm, different arms
   expect_gt(pOf(diff), 0.90)
 })
 
-test_that("a too-skewed row is refused, not mis-simulated", {
-  # |a3/a2| > 1.667: Q3 - m much smaller than m - Q1, extreme
+test_that("a row beyond the metalog's skew limit is fitted at the limit and says so, not refused (2026-09-07)", {
+  # |a3/a2| > 1.667: Q3 - m much smaller than m - Q1, extreme. It used to
+  # be refused ("Quartiles too skewed to simulate"); sample quartiles of
+  # ten observations are noisy enough that 8-18% of honest ten-per-arm
+  # rows met that refusal, so the fit is clipped and the Note says so.
   d <- rbind(mkrow(12, 2, 12.4), mkrow(12, 2, 12.4))
   x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
-  expect_true(any(grepl("skewed", x$P)))
+  p <- suppressWarnings(as.numeric(sub("^<", "", x$P[1])))
+  expect_true(is.finite(p) && p > 0 && p <= 1)
+  expect_match(x$NOTE[1], "skew limit")
+  # a symmetric row carries no such note
+  d <- rbind(mkrow(12, 8, 16), mkrow(12.5, 8.5, 16.5))
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
+  expect_false(grepl("skew", x$NOTE[1]))
+  # quartiles that do not increase are still refused, with a clearer message
+  d <- rbind(mkrow(12, 12, 12), mkrow(12, 12, 12))
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
+  expect_match(x$P[1], "do not increase")
 })
 
 test_that("calibration: honest median/IQR data give roughly uniform p", {

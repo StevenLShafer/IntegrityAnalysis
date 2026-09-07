@@ -40,7 +40,7 @@ assumptions stated below.
 |---|---|---|
 | Mean/SD variable | Common mean (N-weighted); each replicate draws every arm's SD within its printed interval, pools the variances with weights N<sub>i</sub> − 1 (df = ΣN − k), draws σ² = s²·df/χ²(df), then N observations per arm around a common location, rounds each to the observation precision, averages, rounds the mean as printed; statistic = sum of squared deviations of the arm means from their N-weighted centre | Independent normal observations from one population; the printed SDs and Ns are the sample's; the rounding columns are right |
 | Large arms (N ≥ 100 and SD ≥ 3 observation-grid steps) | The arm mean is drawn directly with variance (σ² + h²/12)/N, snapped to the h/N grid the observations force on a mean, then rounded as printed | The central limit theorem at that N; Sheppard's correction for the grid |
-| Median/IQR variable | A three-term metalog fitted to the N-weighted arm medians and quartiles; N observations per arm drawn from it, rounded; the sample median rounded as printed; the same statistic on the medians | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support |
+| Median/IQR variable | A three-term metalog fitted to the N-weighted arm medians and quartiles (a skew beyond the metalog's limit is clipped to it, and the Note says so); each replicate first draws that population's scale from the quartiles' own sampling uncertainty (every arm resampled from the fit, its printed quartiles pooled, and the resampled scale's ratio to the fit inverted, as the sigma draw inverts the chi-square), then draws N observations per arm from it, rounded; the sample median rounded as printed; the same statistic on the medians | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support |
 | Categorical variable | Random 2 × c tables with the observed arm and category totals fixed (`r2dtable`); the lower tail of Pearson's chi-square | Mutually exclusive, exhaustive levels; the counts are the arms' |
 | Row p | The share of replicates at least as homogeneous as the printed row, ties counted by halves (mid-p), floored at 1/(replicates + 1) | — |
 | Trial p | Stouffer's sum of the rows' z-scores, judged against the same sum computed for every replicate (rows simulated independently), ties by halves | The variables are independent |
@@ -294,9 +294,9 @@ makes a number reproducible; it does not make it more precise.
 
 | Column | Meaning |
 |---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles too skewed to simulate", ...) are refusals: the row could not be analyzed, with the reason. |
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)", ...) are refusals: the row could not be analyzed, with the reason. |
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
-| Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better. See "Rounding, convergence, and the attainable floor". Blank otherwise. |
+| Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used. Blank otherwise. |
 | Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
 
 ## What this method assumes, and what it does not measure
@@ -310,8 +310,10 @@ makes a number reproducible; it does not make it more precise.
 - **Independence of variables** within a trial, and of trials across a
   file, as above.
 - **The row models**: normal observations for mean/SD rows; a metalog
-  for median/IQR rows, whose calibration across skewed, bounded and
-  heavy-tailed populations is not yet established; fixed margins for
+  for median/IQR rows, re-drawn per replicate from the printed
+  quartiles' own sampling uncertainty (measured on honest normal,
+  lognormal, uniform and heavy-tailed populations at 10 to 100 per arm
+  in [method-history.md](method-history.md)); fixed margins for
   categorical rows.
 - **The printed values and the rounding columns are right.** A misread
   digit, a standard error entered as a standard deviation, or an
