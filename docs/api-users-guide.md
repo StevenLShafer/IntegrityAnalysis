@@ -10,8 +10,8 @@
   reply shown here was captured from a real service run on 2026-09-03
   (tools/apiClient.R and tools/apiClient.py against a local service),
   abridged only where marked. The field lists are exhaustive for the
-  service as built; docs/api-spec.md is the design document this
-  describes the implementation of.
+  service as built. (docs/api-spec.md is the retired August 2026 design
+  note, kept so that links to it resolve.)
 
   TO REGENERATE THE WORD VERSION for distribution:
     "C:\Program Files\Quarto\bin\tools\pandoc.exe" docs/api-users-guide.md
@@ -65,8 +65,8 @@ Without that header no document content ever leaves the server. With
 it, the pages the deterministic reader could not parse are sent to
 Anthropic under your account, for that request only; the key is never
 stored or logged. Anthropic's commercial terms apply (no training on the
-content; deletion within about 30 days). See the data-handling
-statement.
+content; deletion within about 30 days). See [the data-handling
+statement](data-handling.md).
 
 ## 3. Endpoints
 
@@ -100,25 +100,35 @@ Extract (if needed), validate, and run the Monte Carlo. Same request as
 
 | field | type | meaning |
 |---|---|---|
-| `seed` | integer, 1 to 2147483647, **on the URL**: `POST /analyze?seed=12345` | a Monte Carlo seed. The same document, seed and service build (`commit` in `/health`) give the same numbers; the reply echoes it as `seed`. Send it as a query parameter, not as a form part: a multipart text part without a `Content-Type` header (what most HTTP libraries send) is dropped by the service's multipart parser and refused with 422 saying so; a part sent with `Content-Type: text/plain` is also accepted. Without it the numbers differ from run to run within the reported Monte Carlo interval, as an unseeded simulation should. A seed that is not a whole number in range is refused with 422, stage `request`, before the document is read |
+| `seed` | integer, 1 to 2147483647, **on the URL**: `POST /analyze?seed=12345` | a Monte Carlo seed. The same document, seed and service build (`commit` in `/health`) give the same numbers, and the reply echoes it as `seed`. Without it the numbers differ from run to run within the reported Monte Carlo interval, as an unseeded simulation should |
+
+Send the seed as a query parameter, not as a form part. A multipart
+text part without a `Content-Type` header (what most HTTP libraries
+send) is dropped by the service's multipart parser, and the request is
+refused with 422, stage `request`, saying so; a part sent with
+`Content-Type: text/plain` does arrive and is accepted. A seed that is
+not a whole number in range is refused with 422, stage `request`,
+before the document is read.
 
 There is no knob for the number of replications: every trial runs the
 same staged scheme as the app (1,000 replicates per row, then 10,000
-while the trial or a row is below p = 0.1, then 100,000 while one is
-below 0.01), and the `M` column of the results says what the rows used. The precision of a result is never reduced to fit a
-budget; a request too large to run at full precision is refused instead
-(section 7).
+while the trial's or any row's mid-p is below 0.1, then 100,000 while
+the trial's or any row's mid-p is below 0.01), and the `M` column of
+the results says what the rows used. The precision of a result is never
+reduced to fit a budget; a request too large to run at full precision
+is refused instead (section 7).
 
 ## 4. What you can send
 
-One file per request, named with its real extension, under 25 MiB:
+One file per request, named with its real extension, under the 25 MB
+request cap (26,214,400 bytes; section 7):
 
 | kind | extensions | how it is read |
 |---|---|---|
 | article PDF | `.pdf` | the text layer, deterministically; a scanned page is read by local OCR, or by the AI assist if you sent a key |
 | Word manuscript | `.docx` | the document's real tables; captions from the paragraph above |
 | **JATS XML article** | `.xml` | the article as PubMed Central, Europe PMC and production systems emit it: real `<tr>/<td>` cells, the cleanest route, and the one intended for editorial systems, which hold the manuscript as XML before any PDF exists |
-| spreadsheet | `.csv`, `.xlsx` (not `.xls`: the old Excel format was dropped on 2026-09-06 for security — its reader builds a sheet's declared size before any limit can apply — and is refused with 422, stage `parse`, naming the fix: save as `.xlsx`) | either the app's template layout (section 6) or a journal-style baseline table (variables as rows, arms as columns with "(n = 50)" in the headers) |
+| spreadsheet | `.csv`, `.xlsx` (`.xls` is refused with 422, stage `parse`: save the workbook as `.xlsx`) | either the app's template layout (section 6) or a journal-style baseline table (variables as rows, arms as columns with "(n = 50)" in the headers) |
 | picture of a table | `.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff` | local OCR; every value should be verified |
 
 A zip archive is not accepted by the service (the interactive app
@@ -128,10 +138,14 @@ says is refused with a reason (section 5).
 
 ## 5. What you get back
 
-Every reply is a JSON object with `ok`, `file` (the name you sent) and
-`deleted` (always `true`: the upload and everything derived from it were
-removed when the reply was written). Everything else depends on the
-outcome.
+A 200 or 422 reply from `/parse` or `/analyze` is a JSON object with
+`ok`, `file` (the name you sent; empty when no file part could be read)
+and `deleted` (always `true`: the upload and everything derived from it
+were removed when the reply was written). Everything else depends on the
+outcome. The refusals under "Other status codes" below (400, 401, 411,
+413, 500) carry `ok` and `error` only. Where a reply quotes a reader's
+own error message, the server's temporary path has been removed from
+it.
 
 ### `/parse`, HTTP 200
 
@@ -148,7 +162,7 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 
 | field | type | meaning |
 |---|---|---|
-| `engine` | string | which reader produced the table: `heuristic` (PDF text layer), `heuristic-docx`, `heuristic-jats`, `heuristic-ocr` (a scanned page or a picture, read by OCR — verify every value), `heuristic-tatr` / `heuristic-tatr-ocr` (table geometry from the Table Transformer, where the operator runs it), `ai` (the opt-in assist), `template` or `wide` (a spreadsheet) |
+| `engine` | string | which reader produced the table: `heuristic` (PDF text layer), `heuristic-docx`, `heuristic-jats`, `heuristic-ocr` (a scanned page or a picture, read by OCR — verify every value), `ai` (the opt-in assist), `template` or `wide` (a spreadsheet). Two further values, `heuristic-tatr` and `heuristic-tatr-ocr` (page geometry from the Table Transformer), appear only where the operator has configured that model; the deployed container carries no Python, so the deployed service does not produce them |
 | `flags` | array of strings | review notes about the table as a whole: what the reader had to assume (SD versus SE), what it recovered from the Methods text, whether OCR was involved. Read them; they are the same notes the app shows an editor |
 | `rows` | integer | rows in `templateCsv` (one per variable per arm) |
 | `skipped` | array of `{label, reason}` | table lines the reader could not use, each with the reason in the app's own words ("median with a min–max range - needs quartiles", "n (%) with unknown arm N", …). These rows are absent from the table; an editor would type them in |
@@ -169,7 +183,15 @@ Captured (a PDF with no table in it):
 `templateCsv` is the empty template — the header row — so the next call
 has a valid shape to fill. A refused file (wrong bytes for its name, an
 oversized image, a gzip stream named `.xml`, a declared XML entity, a
-file over its route's ceiling) arrives here too, with the refusal named.
+file over its route's ceiling) arrives here too, with the refusal
+named. A sheet over 10,000 rows or 500 columns is not read at all, and
+arrives as "could not read … as a template or journal-style table".
+
+A `/parse` refusal carries no `stage` field, with one exception: an
+empty file part (a zero-byte file, or a part the multipart parser
+dropped) is refused by both endpoints as `{"ok": false, "stage":
+"request", "file": "", "reasons": "the uploaded file is empty or its
+file part could not be read", …}`, with the empty template.
 
 ### `/analyze`, HTTP 200
 
@@ -177,7 +199,7 @@ Captured (the example workbook, two trials):
 
 ```json
 {"ok": true, "file": "Example.xlsx", "trials": 2, "overallP": 0.9016,
- "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\"\n\"Submission 2025-08-01\",\"BUN\",\"0.9215\",\"\",\"1000\"\n… (19 lines)",
+ "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\"\n\"Submission 2025-08-01\",\"BUN\",\"0.9215\",\"\",\"1000\",\"\"\n… (19 lines)",
  "journalTables": {"Submission 2025-08-01": "\"Variable\",\"Arm 1 (n = 15)\",\"Arm 2 (n = 17)\"\n\"BUN, mean (SD)\",\"31 (5)\",\"35 (7)\"\n…",
                    "Submission 2025-08-02": "…"},
  "journalTablesOmitted": {},
@@ -188,16 +210,29 @@ Captured (the example workbook, two trials):
 | field | type | meaning |
 |---|---|---|
 | `trials` | integer | trials analysed (a document is one trial; a spreadsheet may hold several, distinguished by its TRIAL column) |
-| `overallP` | number or string | **the result**: the one-sided p-value toward excessive homogeneity, combined across every row of every trial. Small means the baseline data are more alike across arms than random sampling explains. For one trial it is that trial's exact-combination p; for several it is the closed-form Stouffer combination of the trial p's. It arrives as the string `"<0.0001"` when the Monte Carlo licenses that claim |
-| `resultsCsv` | string | CSV with columns `TRIAL`, `ROW`, `P`, `CI95`, `M`, `NOTE`: one line per variable with its row p-value, then a `Summary` line per trial with the trial's combined p. `NOTE` is `attainable floor` when the row sits at the smallest p its printed precision allows (the arms printed exactly the same value and no honest replicate agreed better), else blank. A script should not read such a row as reassurance; whether it is informative depends on how rare exact agreement is at that N and precision, which is what its `P` says (0.27 for integer age at 1,000 per arm is nothing; 0.001 for a two-decimal row is a finding). `P` is the Monte Carlo mid-p, printed as `<0.0001` only when the bound in the next column licenses it. `CI95` is the exact Clopper–Pearson 95 % interval of that p from the Monte Carlo's own sampling uncertainty, on every row, as `lower to upper` (about the simulation, not the data). `M` is the replicates the row actually used (1,000, 10,000 or 100,000; section 3). `TRIAL` is printed on a trial's first line only, and the `Summary` line carries the trial's combined p (the exact combination: the rows' Stouffer sum judged against its own simulated null, floored at one over the replicate count) and, below 0.001, its exact 95 % Monte Carlo interval |
+| `overallP` | number or string | **the result**: the one-sided p-value toward excessive homogeneity, combined across every row of every trial. Small means the baseline data are more alike across arms than random sampling explains. For one trial it is that trial's exact-combination p, and it arrives as the string `"<0.0001"` when the Monte Carlo licenses that bound. For several trials it is always a number: the closed-form Stouffer combination of the trial p's, a trial's `<0.0001` entering as 0.0001 |
+| `resultsCsv` | string | CSV, one line per variable with its row p-value, then a `Summary` line per trial with the trial's combined p. Its six columns are listed in the next table |
 | `journalTables` | object of strings | one CSV per trial, keyed by trial name: the baseline table reconstructed from the extracted numbers in journal layout (variables as rows, arms as columns with "(n = …)" in the headers, "mean (SD)" cells). This is what an editor compares against the manuscript page |
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the analysed table in the template layout, as `/parse` returns it |
 | `seed` | integer | present only when the request sent one: the seed the run used |
 
+The columns of `resultsCsv`, with the names the app's results workbook
+gives them:
+
+| column | in the workbook | meaning |
+|---|---|---|
+| `TRIAL` | TRIAL | the trial; printed on a trial's first line only |
+| `ROW` | ROW | the variable, as printed in the manuscript; `Summary` on the trial's last line |
+| `P` | P (one-sided toward homogeneity) | the row's Monte Carlo mid-p, printed as `<0.0001` only when the bound in the next column licenses it. On the `Summary` line, the trial's combined p: the exact combination (the rows' Stouffer sum judged against its own simulated null), floored at 1/(replicates + 1) |
+| `CI95` | 95% Monte Carlo interval | the exact Clopper–Pearson 95 % interval of that p from the Monte Carlo's own sampling uncertainty, as `lower to upper` (about the simulation, not the data); on every variable line, and on the `Summary` line when the trial p is below 0.001 |
+| `M` | Replicates | the replicates the row actually used (1,000, 10,000 or 100,000; section 3); blank on the `Summary` line |
+| `NOTE` | Note | `attainable floor` when the row sits at the smallest p its printed precision allows (the arms printed exactly the same value and no honest replicate agreed better), else blank. A script should not read such a row as reassurance; whether it is informative depends on how rare exact agreement is at that N and precision, which is what its `P` says (0.27 for integer age at 1,000 per arm is nothing; 0.001 for a two-decimal row is a finding) |
+
 Values in the CSVs are sanitised against spreadsheet formula injection:
-a cell that would begin with `=`, `+`, `-` or `@` is prefixed with an
-apostrophe, in `resultsCsv` and the journal tables. `templateCsv` is
+a cell that would begin with `=`, `+`, `-`, `@`, a tab or a carriage
+return is prefixed with an apostrophe, in `resultsCsv` and the journal
+tables. `templateCsv` is
 verbatim, because it must round-trip.
 
 ### `/analyze`, HTTP 422 — read, but not analysable
@@ -206,27 +241,57 @@ The round-trip contract: the failure payload is the next call's input.
 
 ```json
 {"ok": false, "stage": "validation", "file": "…",
- "issues": [{"row": 3, "col": "N", "code": "…", "note": "no arm N printed for 'Weight'"}, …],
+ "issues": [{"row": 3, "col": "N", "code": "missing", "note": null}, …],
  "templateCsv": "… the table as read, with the flagged cells to fix …",
  "deleted": true}
 ```
 
 | field | meaning |
 |---|---|
-| `stage` | `"parse"` (the document yielded nothing usable; `reasons` is set as for `/parse`), `"validation"` (the table was read but a row cannot be analysed as it stands), or `"too_large"` (the table exceeds the service's size or compute limits, section 7) |
-| `issues` | array; each has `row` (1-based line of `templateCsv`, or null for a whole-table issue), `col` (the column concerned, or null), `code` (a short machine code) and `note` (or `detail`, for the size limits) explaining it in the app's words. The commonest is a continuous row with no arm N: the service refuses to guess |
+| `stage` | where the request stopped: `"parse"`, `"validation"`, `"too_large"` or `"analysis"` (`"request"` when the request itself was wrong); the full list is in "Stages and codes" below |
+| `issues` | array; each has `row` (the row's index in the table, so line `row + 1` of `templateCsv`, whose line 1 is the header; null for a whole-table issue), `col` (the column concerned, or null), `code` (one of the codes listed below) and `note` (or `detail`, for the size limits) explaining it in the app's words, or null when the code and the cell say it all. The commonest is a continuous row with no arm N — `code` `missing` on the `N` cell, as in the example: the service refuses to guess |
 | `templateCsv` | the table as read. Fix the flagged cells and POST the CSV back to `/analyze` |
+
+### Stages and codes
+
+`stage` takes one of five values:
+
+| stage | when | body |
+|---|---|---|
+| `request` | the request itself was wrong: a bad or dropped `seed`, or an empty file part | `reasons`; both endpoints |
+| `parse` | the document yielded nothing usable, or was refused (wrong bytes for its name, `.xls`, a sheet over 10,000 rows or 500 columns, an oversized image, …) | `reasons`, as `/parse` gives it — `/analyze` only; a `/parse` refusal carries no `stage` |
+| `validation` | the table was read but cannot be analysed as it stands | `issues` |
+| `too_large` | the table exceeds a size or compute limit (section 7) | `issues`, one entry with `detail` |
+| `analysis` | the Monte Carlo itself failed on a trial | `issues`, one entry, code `error` |
+
+`code` in an `issues` entry takes one of six values:
+
+| code | meaning |
+|---|---|
+| `missing` | a required cell is blank: an arm N, a mean or an SD; a quartile of a median row; the `ROW` cell of a categorical line with no matching line in another arm |
+| `unreadable` | the cell holds something that is not a number |
+| `incongruent` | the cell is a number that cannot be right where it sits: a negative count, SD or SE; an N that is not a whole number of at least 2; a median outside its quartiles; a count with a fraction; a continuous value on a categorical line, or a dispersion where the table gives none; a magnitude no measurement reaches |
+| `too_large` | an N or a count over the arm ceiling (section 7); as the only entry, with `detail`, when the whole table exceeds a limit |
+| `too_much_compute` | the table is within every size limit but the simulation it asks for is not; `detail` carries the arithmetic and the advice |
+| `error` | the validator (stage `validation`) or the analysis (stage `analysis`) failed in a way the service did not foresee; `note` names the trial and the failure, never the document's content |
+
+A structural failure — a required column (`ROW`, `N`, `MEAN`, `SD`)
+absent, or two columns that normalise to the same name (`Number` and
+`N`, say; the service refuses to guess which is meant) — arrives as
+stage `validation` with an empty `issues` array and the table as read in
+`templateCsv`.
 
 ### Other status codes
 
 | status | body | meaning |
 |---|---|---|
+| 400 | `{"ok": false, "error": "…"}` | a malformed request: a NUL byte (`%00`) in the query string, or a file part the multipart body could not carry (a quote or line break in the file name) |
 | 401 | `{"ok": [false], "error": ["…"]}` | missing or invalid bearer token |
-| 411 | `{"ok": [false], "error": ["…"]}` | no `Content-Length` header (a chunked upload). Since 2026-09-06 the service's native request cap answers this itself, as **413**, before the request reaches authentication or the size filter; the filter's 411 remains behind it. Chunked uploads are not accepted either way |
-| 413 | `{"ok": [false], "error": ["…"]}` | the request exceeds 25 MiB. Refused from the `Content-Length` header before any of the body is read, and before authentication — so an oversized request gets 413 rather than 401 even without a token |
-| 500 | `{"ok": false, "error": "internal", "id": "…"}` | an unexpected failure; the body carries a request id for support and nothing of the document |
+| 411 | `{"ok": [false], "error": ["…"]}` | no `Content-Length` header (a chunked upload). Chunked uploads are not accepted: the request is refused as 411 or as 413 (the service's native request cap may answer first), either way before any of the body is read |
+| 413 | `{"ok": [false], "error": ["…"]}` | the request exceeds the 25 MB limit. Refused from the `Content-Length` header before any of the body is read, and before authentication — so an oversized request gets 413 rather than 401 even without a token |
+| 500 | `{"ok": false, "error": "Internal error processing the request."}` | an unexpected failure. The body is this fixed text and carries nothing of the document; the service logs the error on its own side |
 
-The three refusals above are produced by the request filters, whose JSON is boxed: each value arrives as a one-element array, as shown, where the endpoint replies use bare values. A client that reads `ok` should accept both forms.
+The 401, 411 and 413 refusals are produced by the request filters, whose JSON is not unboxed: each value is a one-element array, as shown, where the endpoint replies use bare values. A client that reads `ok` or `error` should accept both forms.
 
 ## 6. The template layout
 
@@ -235,7 +300,7 @@ arm:
 
 | column | meaning |
 |---|---|
-| `TRIAL` | the trial the line belongs to (the file name, unless the document carries trial identifiers) |
+| `TRIAL` | the trial the line belongs to: the file name without its extension, unless a spreadsheet carries its own `TRIAL` column or trial identifiers |
 | `ROW` | the variable, as printed |
 | `N` | that arm's size for the variable |
 | `MEAN`, `SD`, `SE` | the printed mean and its dispersion (SD, or SE when the table says so) |
@@ -259,11 +324,12 @@ whichever it sent.
 
 | what | limit | on breach |
 |---|---|---|
-| request size | 25 MiB, `Content-Length` required | 413 (411 from the size filter only if the native cap were unset) |
+| request size | 25 MB (26,214,400 bytes), `Content-Length` required | 413; a request with no `Content-Length` gets 411 or 413 |
 | JATS XML | 8 MiB on disk; UTF-8 text beginning with `<` (no NUL bytes, so no UTF-16); not a gzip stream; no `<!ENTITY` declaration (no real JATS article needs one); a table over 20,000 cells is skipped, and at most 100,000 cells and 20,000 body paragraphs are read per document | 422 with the reason |
 | picture of a table | 20 megapixels; up to 10 TIFF pages; JPEG, PNG or TIFF by its bytes, not its name | 422 with the reason |
 | spreadsheet archives (`.xlsx`) | 100 MiB uncompressed, 512 entries, compression ratio 200 | 422 |
-| parse time | 60 s per document (300 s with the AI assist) | 422, `stage: "parse"` |
+| spreadsheet sheet | 10,000 rows, 500 columns, judged before the table limits below | 422 (`stage: "parse"` from `/analyze`) |
+| parse time | 60 s per document (300 s with the AI assist) | 422 (`stage: "parse"` from `/analyze`) |
 | table | 5,000 rows, 200 columns, 200 trials, arm N up to 5,000 | 422, `stage: "too_large"` |
 | compute | 12 billion simulated values per request (the worst case of every row escalating to 100,000 replicates, times the subjects each row draws); precision is never reduced to fit | 422, `stage: "too_large"`, code `too_much_compute`, with the arithmetic and the advice (one trial per request; or the web app, which has no request timeout) in `detail` |
 | journal tables | 200,000 cells across the reply | omitted, with `journalTablesOmitted` set |
@@ -277,7 +343,8 @@ The document is written to a directory created for the request and
 removed when the reply is written, on success and on failure alike;
 nothing is logged of its content; there is no store of submissions.
 Every reply carries `"deleted": true` to say so. The full statement is
-the data-handling document published beside the user guide.
+[the data-handling document](data-handling.md), published beside the
+user guide.
 
 ## 9. Examples
 
@@ -295,8 +362,8 @@ token <- Sys.getenv("INTEGRITY_API_TOKEN")
 # health, open
 request(paste0(base, "/health")) |> req_perform() |> resp_body_json()
 
-# analyze one document
-r <- request(paste0(base, "/analyze")) |>
+# analyze one document, seeded so a rerun reproduces the numbers
+r <- request(paste0(base, "/analyze?seed=12345")) |>
   req_headers(Authorization = paste("Bearer", token)) |>
   req_body_multipart(file = curl::form_file("article.pdf")) |>
   req_timeout(900) |>

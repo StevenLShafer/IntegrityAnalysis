@@ -70,11 +70,13 @@ p</a></li>
 </ul></li>
 <li><a href="#results-and-downloads" id="toc-results-and-downloads">Results and downloads</a></li>
 <li><a href="#validation" id="toc-validation">Validation</a></li>
+<li><a href="#trials-too-large-to-analyze" id="toc-trials-too-large-to-analyze">Trials too large to
+analyze</a></li>
 <li><a href="#the-api-for-editorial-systems-and-publishers" id="toc-the-api-for-editorial-systems-and-publishers">The API (for
 editorial systems and publishers)</a>
 <ul>
-<li><a href="#trials-too-large-to-analyze" id="toc-trials-too-large-to-analyze">Trials too large to
-analyze</a></li>
+<li><a href="#size-limits-and-why-they-are-where-they-are" id="toc-size-limits-and-why-they-are-where-they-are">Size limits, and
+why they are where they are</a></li>
 </ul></li>
 <li><a href="#notes-and-roadmap" id="toc-notes-and-roadmap">Notes and
 roadmap</a></li>
@@ -116,16 +118,19 @@ into the table, and the analysis results are all purged when the session
 closes. No record of the analysis is kept here. Manuscripts under review
 are confidential, and the app is built around that: uploaded files are
 deleted from disk when the session ends, downloads are generated
-straight into your browser, and nothing is logged. The deployed analysis
-is fully deterministic and offline — no document content is ever sent to
-any third-party service — with one opt-in exception under your sole
-control: the <strong>AI assist</strong> (see below) engages only when
-you enter your own Anthropic API key, and entering it is your explicit
-consent to send your uploaded documents’ content to that service for the
-session. Even then confidentiality holds: Anthropic’s commercial terms
-bar it from training models on API submissions, and API data is deleted
-within about 30 days (see the AI-assist section for the specifics).
-Without a key, nothing you upload ever leaves this server.</p>
+straight into your browser, and nothing is logged. Extraction is
+deterministic — the same document always yields the same table (the
+Monte Carlo itself draws afresh each run unless you set a seed; see
+<em>Reproducing a result exactly</em>) — and the whole analysis runs
+offline: no document content is ever sent to any third-party service,
+with one opt-in exception under your sole control: the <strong>AI
+assist</strong> (see below) engages only when you enter your own
+Anthropic API key, and entering it is your explicit consent to send your
+uploaded documents’ content to that service for the session. Even then
+confidentiality holds: Anthropic’s commercial terms bar it from training
+models on API submissions, and API data is deleted within about 30 days
+(see the AI-assist section for the specifics). Without a key, nothing
+you upload ever leaves this server.</p>
 <p><strong>Usage counting:</strong> I tabulate the number of times
 IntegrityAnalysis is opened and the number of analyses run — simple
 counts, and nothing else. Not even your IP address reaches the counter,
@@ -170,13 +175,16 @@ at last count, the retraction of 172 papers [2].</p>
 <p>There were two technical problems. First, the conventional standard
 deviation — the square root of the unbiased variance — is itself a
 biased estimate of the population standard deviation. The bias is modest
-[3] and did not affect Carlisle’s conclusions; this app corrects for it
-(see <em>Statistical details</em> below). The more significant problem
-is <strong>rounding</strong>. Suppose both groups report a mean weight
-of 77. The difference between the groups is 0, and under normal
-statistical theory a difference of exactly 0 between two random samples
-is impossible — the p value degenerates. In the real world it happens
-all the time, because published data are rounded.</p>
+[3] and did not affect Carlisle’s conclusions. This app does not treat
+the reported SD as the known population value at all: each simulated
+trial draws its own population SD from the uncertainty the reported SDs
+carry (see <a href="statistics.md">statistics.md</a>, “The population
+SD”). The more significant problem is <strong>rounding</strong>. Suppose
+both groups report a mean weight of 77. The difference between the
+groups is 0, and under normal statistical theory a difference of exactly
+0 between two random samples is impossible — the p value degenerates. In
+the real world it happens all the time, because published data are
+rounded.</p>
 <p>The way out is to leave the closed-form, unrounded normal-theory p
 behind and instead <strong>replicate the study by Monte Carlo
 simulation</strong>, rounding the simulated data exactly as the
@@ -233,9 +241,7 @@ own long format (Excel <code>.xlsx</code> or <code>.csv</code>) uploads
 directly. The column layout is described in <em>Preparing your data</em>
 below — but few users should ever need to build one by hand: upload the
 article itself, or use the journal-style route next, and note that the
-app’s own table downloads are all valid input files. (The sidebar’s
-Template and Example downloads were retired in August 2026 for the same
-reason.)</p>
+app’s own table downloads are all valid input files.</p>
 <p><strong>A journal-style baseline table.</strong> A spreadsheet laid
 out the way journals print Table 1 — variables as rows, arms as columns
 with their sizes in the headers (“Control (n = 50)”), cells like “45.3
@@ -243,10 +249,8 @@ with their sizes in the headers (“Control (n = 50)”), cells like “45.3
 it into template rows itself. <strong>Excel <code>.xlsx</code> and plain
 <code>.csv</code> both work here</strong> — so a table pasted out of a
 manuscript into a CSV is as good an input as a workbook. The old Excel
-format, <code>.xls</code>, is no longer accepted: its reader builds a
-sheet’s declared size in memory before any limit can apply, which is a
-security risk, so support was dropped on 2026-09-06. Save the workbook
-as <code>.xlsx</code>. The app’s own <strong>Editor’s View</strong>
+format, <code>.xls</code>, is not accepted; save the workbook as
+<code>.xlsx</code>. The app’s own <strong>Editor’s View</strong>
 download is exactly this format, so a table downloaded from one session
 (or received from a colleague) is valid input to the next. What the
 cells may hold: “mean (SD)” and “mean ± SD”; “median [Q1, Q3]”
@@ -348,8 +352,8 @@ one file per trial in the archive and every entry becomes its own trial
 in the combined table, named after its file. Folders inside the archive
 are fine (only the file names are used); files that are not
 csv/xlsx/pdf/docx/xml/jpg/png/tif are skipped with a note (an
-<code>.xls</code> with the note that the format is no longer accepted),
-an archive inside the archive is not expanded, and a corrupt archive is
+<code>.xls</code> with the note that the format is not accepted), an
+archive inside the archive is not expanded, and a corrupt archive is
 reported rather than analyzed.</p>
 <p>The limits, and what they mean in practice:</p>
 <ul>
@@ -374,8 +378,11 @@ a named column with <strong>Add Column</strong>.</p>
 <h2 id="the-ai-assist-optional-bring-your-own-key">The AI assist
 (optional — bring your own key)</h2>
 <p>The deterministic reader is deliberate about refusing what it cannot
-verify, and fed a single article PDF it yields a fully analyzable trial
-roughly a third of the time. For the rest, an optional <strong>AI
+verify. Fed a single article PDF, it yields a fully analyzable table
+about 85% of the time on curated journal PDFs (measured on the Carlisle
+corpus), less often on raw submissions; and roughly half of those tables
+reproduce Carlisle’s hand-entered values in every cell, the rest needing
+a correction or two in the grid. For the rest, an optional <strong>AI
 assist</strong> exists: enter your own Anthropic API key in the field
 above the upload box, and pages the deterministic reader cannot fully
 parse are sent to the Anthropic API — under <em>your</em> account, at
@@ -420,9 +427,9 @@ deleted from Anthropic’s systems within a month.</li>
 session.</strong> It goes in a masked field, not a URL.</li>
 <li><strong>The deterministic reader always runs first and its numbers
 always win.</strong> The assist only fills gaps, and every AI-read line
-paints <strong>green</strong> in the grid with a note to verify it
-against the manuscript. The results workbook’s audit trail records which
-engine read each line.</li>
+paints its ROW cell <strong>green</strong> in the grid with a note to
+verify it against the manuscript; the message log names the variables
+the assist read.</li>
 <li><strong>A per-session cap</strong> (25 documents) bounds spending
 even on your own key.</li>
 <li><strong>Publishers running their own instance</strong> can enable
@@ -447,12 +454,17 @@ of the analysis (they do not block it).</li>
 <li><strong>Red — unreadable.</strong> Text where a number belongs — for
 example “n/a” in an SD cell of an uploaded spreadsheet — or a table line
 the PDF reader saw but could not use. For a PDF line, hover over the red
-cell to see the reader’s reason (for example, “median [range] —
-integrity analysis needs mean and SD”).</li>
+cell to see the reader’s reason (for example, “median [range] - the
+analysis needs quartiles (Q1/Q3), not the range”).</li>
 <li><strong>Blue — incongruent.</strong> The value conflicts with the
 type of its row: an SD on a median/IQR row, continuous entries on a
 category row, a median outside its own quartiles, an SE standing in for
 a missing SD.</li>
+<li><strong>Green — derived or AI-read.</strong> The parser computed the
+value (a percentage converted to a count, or an arm N recovered from the
+document), or the AI assist read the line off the page (its ROW cell is
+green). Usable as it stands, but check it against the manuscript before
+it runs; hover the cell to see how it was derived.</li>
 <li><strong>Pale cyan — read by OCR.</strong> The whole table came from
 a scanned page, or an uploaded picture of a table, read by optical
 character recognition. OCR can misread digits (3 vs 8, 1 vs 7), and in a
@@ -460,10 +472,15 @@ fraud screen a single silently wrong digit matters — verify every value
 against the manuscript, or enter an Anthropic API key and re-upload for
 the higher-accuracy AI read.</li>
 </ul>
-<p>A table with no colors and no legend validated cleanly, and the
-<strong>Analyze</strong> button appears.</p>
+<p>A table with no colors and no legend validated cleanly. The
+<strong>Analyze</strong> button appears whenever validation did not fail
+— so a table can still carry colors when it is ready to run: green and
+pale cyan are cautions, never failures, and yellow on a row with a label
+but no data is a soft warning (the row is simply left out). Red, blue,
+and yellow on a required cell of a row with data mean the table did not
+validate; fix them and revalidate.</p>
 <h1 id="preparing-your-data">Preparing your data</h1>
-<p>You rarely need this section any more: the app parses PDFs, Word
+<p>Most users never need this section: the app parses PDFs, Word
 manuscripts, and journal-style tables into this format itself. It
 matters when you type data into an empty table, hand-build a template
 spreadsheet, or want to understand exactly what the simulation consumes
@@ -605,7 +622,8 @@ the duration of surgery is not one):</p>
 exactly as for a mean. The median must lie between its quartiles; N, the
 median, and both quartiles are required. The simulation for such rows
 draws from a distribution fitted to the three quartile values (a metalog
-distribution), so no normality assumption is imposed.</p>
+distribution — a flexible distribution specified directly by its
+quantiles), so no normality assumption is imposed.</p>
 <p>Two printed forms that look similar cannot be used, and validation
 will say so rather than guess:</p>
 <ul>
@@ -845,19 +863,23 @@ along untouched and ignored by the analysis.</p>
 <h1 id="the-analysis">The analysis</h1>
 <h2 id="the-p-value-one-sided-toward-homogeneity">The p value:
 one-sided, toward homogeneity</h2>
-<p>For each variable, the app simulates the trial many times: for every
-arm, N subjects are drawn from a normal distribution with the pooled
-mean and a population SD drawn, for each simulated trial, from the
-spread the pooled variance and its degrees of freedom allow; each
+<p>For each variable, the app simulates the trial many times. Each
+simulated trial draws its own population SD, from the spread the pooled
+variance and its degrees of freedom allow, and its own common location,
+a normal draw about the pooled mean; then for every arm, N subjects are
+drawn from a normal distribution with that location and SD; each
 simulated observation is rounded like the raw data; each simulated mean
 is rounded like the printed mean; and the sum of squared deviations of
-the arm means from their N-weighted grand mean is computed. The
-<strong>p value is the fraction of simulations at least as homogeneous
-as the reported data</strong> (a mid-p: ties count half). Small p means
-the printed means are closer together than random sampling can readily
-explain — the Fujii signature. This is deliberately one-sided: the
-earlier practice of doubling the proximity p was, in retrospect, a
-mistake, and this implementation reports the one-sided value only.</p>
+the arm means from their N-weighted grand mean is computed. (For a large
+arm — at least 100 patients, with an SD of at least three steps of the
+observation grid — the arm mean is drawn directly rather than
+observation by observation; the result is the same to Monte Carlo
+precision, and much faster. See <a href="statistics.md">statistics.md</a>, “The direct draw for large
+arms”.) The <strong>p value is the fraction of simulations at least as
+homogeneous as the reported data</strong> (a mid-p: ties count half).
+Small p means the printed means are closer together than random sampling
+can readily explain — the Fujii signature. The p is deliberately
+one-sided: the app reports the proximity p and never doubles it.</p>
 <p>A small p value is a <strong>screening signal, not a
 verdict</strong>. Innocent explanations include stratified or blocked
 allocation, correlated variables, mislabeled SEMs, and transcription
@@ -868,15 +890,15 @@ judgment.</p>
 honest papers, and P ≤ 0.01 in about 1 in 100</strong> (about, because
 the combination treats the variables as independent, and a table that
 reports weight and BMI, or a measurement and its categorised version,
-repeats some of its evidence; see <a href="statistics.md">statistics.md</a>). ** Research fraud should never
-be alleged by a single manuscript flagged by IntegrityAnalysis.
+repeats some of its evidence; see <a href="statistics.md">statistics.md</a>). <strong>Research fraud should
+never be alleged by a single manuscript flagged by IntegrityAnalysis.
 Confirmation such as multiple suspicious papers (e.g., Fujii, Boldt)
 should be sought. Authors or journal editors should be contacted before
 any public allegations of research fraud. Journals do not have the
 authority, resources, or responsibility for investigating fraud. Journal
 editors should refer allegations of fraud to the institution under whose
 authority the research was conducted. Institutions are responsible for
-ethical conduct of research.**</p>
+ethical conduct of research.</strong></p>
 <h2 id="rounding-large-trials-and-rows-that-cannot-alarm">Rounding,
 large trials, and rows that cannot alarm</h2>
 <p>A row’s p can be unremarkable for a reason that has nothing to do
@@ -939,15 +961,10 @@ the row cannot alarm and should not be read as reassurance either. For a
 row printed to two decimals the floor is small, and a row at it alarms;
 the note then means this is as far as the row can go. The floor depends
 on the printing and the sample size, never on the data.</p>
-<p>This is the same trap, met twice. Carlisle’s original method used
-normal theory, under which two random samples never agree exactly, so
-rows with identical printed means had p = 0 and Fujii’s rounded tables
-looked impossible; the Monte Carlo simulation in this app replaced that
-normal theory so that identical rounded means get the probability they
-actually have. The combination step (next section) removes the same
-assumption one level up: the summed evidence of a trial’s rows is judged
-against its own simulated distribution, not a formula that assumes each
-row’s p is continuous.</p>
+<p>The combination step (next section) removes the same assumption one
+level up: the summed evidence of a trial’s rows is judged against its
+own simulated distribution, not a formula that assumes each row’s p is
+continuous.</p>
 <h2 id="what-to-do-with-a-flag-steves-recommendations">What to do with a
 flag — Steve’s recommendations</h2>
 <p><em>These are my recommendations, based on fifteen years of handling
@@ -1002,7 +1019,7 @@ fabricated table passes.</p>
 <p>That is an honest limitation, not a reason to keep the method secret.
 Screening raises the cost and the risk of fabrication; it does not make
 fabrication impossible. It is one instrument among several — structural
-checks such as GRIM/GRIMMER, statistical review, and above all the
+checks such as GRIM/GRIMMER [7], statistical review, and above all the
 primary data — and it should be used as a reason to look more closely,
 never as a verdict on its own.</p>
 <h2 id="how-many-simulations-adaptive-replicates">How many simulations?
@@ -1021,33 +1038,41 @@ get identical numbers, set a seed by adding <code>?seed=12345</code>
 pressing Analyze; the log confirms it and the results workbook’s Summary
 sheet records it. The same table, the same seed and the same build then
 give the same numbers anywhere. Record the build with the seed (the
-About sheet carries it), because a change to the simulation changes what
-a seed produces. A local copy can be started with a seed for every
+Provenance sheet carries it), because a change to the simulation changes
+what a seed produces. A local copy can be started with a seed for every
 analysis: <code>IntegrityAnalysis::run_app(seed = 12345)</code>.</p>
 <p>With a finite number of replicates, the smallest honestly reportable
-p is bounded. A row’s p is displayed as <strong>“&lt;0.0001”</strong>
-only when the upper 95% confidence bound on the p value itself clears 1
-in 10,000 — otherwise the display shows the estimate with its bound.
-Every row carries its exact 95% Monte Carlo interval in the results
-(“0.27 to 0.33” for an unremarkable row at 1,000 replicates), so you
-always know how much simulation noise is in a p. The interval is about
-the simulation, not the data: it says how precisely the replicates
-pinned that row’s p.</p>
+p is bounded. No p is ever reported as zero: a row where no replicate
+matched is floored at 1 divided by (replicates + 1). A p is displayed as
+<strong>“&lt;0.0001”</strong> only when the one-sided 97.5%
+Clopper–Pearson upper bound (the exact binomial confidence bound) on the
+count of replicates at or below the observed statistic clears 1 in
+10,000; otherwise the estimate itself is shown. The P column carries the
+estimate alone; every row’s exact 95% Monte Carlo interval sits in its
+own column (“0.27 to 0.33” for an unremarkable row at 1,000 replicates),
+so you always know how much simulation noise is in a p. The interval is
+about the simulation, not the data: it says how precisely the replicates
+pinned that row’s p. The same floor and the same “&lt;0.0001” rule apply
+to the trial p (next section).</p>
 <h2 id="combining-rows-into-a-trial-p">Combining rows into a trial
 p</h2>
 <p>The row p values of a trial are combined by the <strong>exact
 combination</strong>: the rows’ evidence is summed as Stouffer’s
-z-scores [5], as in the 2015 and 2017 papers, but the sum is judged
-against its own simulated distribution rather than the normal table.
-Every simulated replicate of every row is scored the way the observed
-row is, the scores are summed across rows replicate by replicate, and
-the trial p is the share of those simulated honest trials that agree at
-least as well as the printed one. Ten rows each at p = 0.02 still
-combine to a far smaller number. The trial p is floored at one over the
-replicate count, so a trial beyond every simulated honest trial reports
-“&lt;0.0001” with an exact <strong>95% Monte Carlo interval</strong> (“0
-to 3.7e-05” at 100,000 replicates) rather than a number the simulation
-could not resolve.</p>
+z-scores [5] (each row’s p converted to a standard normal deviate and
+the deviates added), as in the 2015 and 2017 papers, but the sum is
+judged against its own simulated distribution rather than the normal
+table. Every simulated replicate of every row is scored the way the
+observed row is, the scores are summed across rows replicate by
+replicate, and the trial p is the share of those simulated honest trials
+that agree at least as well as the printed one. Ten rows each at p =
+0.02 — none alarming on its own — combine to about 4 × 10⁻¹¹ by the
+closed form (eight rows at p = 0.05 to about 1.6 × 10⁻⁶). The trial p is
+floored and displayed by the same rules as a row’s (see <em>How many
+simulations?</em> above): floored at 1 divided by (replicates + 1),
+shown as “&lt;0.0001” only when its upper bound licenses it, and — when
+it falls below 0.001 — carrying an exact <strong>95% Monte Carlo
+interval</strong> (“0 to 3.7e-05” at 100,000 replicates) rather than a
+number the simulation could not resolve.</p>
 <p>The rows are treated as independent: two variables that carry the
 same information (weight and BMI, a measurement and its categorised
 version) repeat their evidence and make the trial p smaller than it
@@ -1081,17 +1106,19 @@ decimals and simulated means to <code>ROUND MEAN</code> decimals, so the
 simulation reproduces the granularity of the printed table — including
 printed means that tie exactly.</li>
 <li>Median/IQR rows are simulated from a three-term metalog distribution
-fitted to (Q1, median, Q3); the simulated sample’s quartiles are rounded
-like the printed ones.</li>
+fitted to (Q1, median, Q3): N observations per arm are drawn from it and
+rounded to the observation precision, and each arm’s sample median is
+rounded like the printed median. The quartiles shape the distribution
+the observations come from; no simulated quartiles are computed. Median
+rows always draw their observations (no direct draw).</li>
 <li>Very large trials are protected against memory exhaustion by
 chunking the simulation matrices; results are identical, only the batch
 size changes.</li>
 </ul>
 <h1 id="results-and-downloads">Results and downloads</h1>
 <p>While the analysis runs, each trial’s name and p value are written to
-the log as it completes. (The user interface is otherwise occupied
-during a long run — live progress display is a known limitation on the
-roadmap.)</p>
+the log as it completes, and the progress bar advances trial by trial,
+naming the trial just finished and its p.</p>
 <p><strong>Download Results</strong> — one workbook, four worksheets.
 Together they answer four different questions: what happened line by
 line, what the app believed the data were, what to report, and what ran.
@@ -1117,7 +1144,8 @@ trials.</p>
 <tbody>
 <tr>
 <td><code>TRIAL</code></td>
-<td>the trial identifier, as it appeared in the grid. Blank on the
+<td>the trial identifier, as it appeared in the grid. Printed on a
+trial’s first line only and blank on every line after it, including the
 Summary row, which prints beneath its own trial’s rows</td>
 </tr>
 <tr>
@@ -1134,7 +1162,10 @@ p</td>
 <td><code>95% Monte Carlo interval</code></td>
 <td>how precisely the simulation pinned that number: the exact
 Clopper–Pearson 95% interval of the row p on every row, and on the
-Summary row the interval for the trial p when it fell below 0.001</td>
+Summary row the interval for the trial p when it fell below 0.001.
+Because the adaptive scheme decides when to stop by looking at the p
+itself, coverage is about 93.5% rather than 95% for a true p near an
+escalation threshold, and nominal away from them (see <a href="statistics.md">statistics.md</a>)</td>
 </tr>
 <tr>
 <td><code>Replicates</code></td>
@@ -1226,30 +1257,52 @@ presentation or a report figure.</p>
 This is a valid input file: for a partially extracted PDF it is the
 round trip (fill the gaps in Excel, re-upload), and for hand-typed data
 it is the checkpoint, since nothing is retained between sessions.</p>
-<p><strong>Download Baseline Table (journal view)</strong> — a
-reconstruction of the baseline table as a journal would print it:
-variables as rows, arms as columns, cells as “mean (SD)”, “median [Q1,
-Q3]”, or category counts, one worksheet per trial. Every value is
-formatted at the printed precision the analysis assumed, and column
-headers carry each arm’s N. This is the artifact to lay beside the
-manuscript’s Table 1: it shows exactly what IntegrityAnalysis believed
-the baseline data were. If the reconstruction disagrees with the page,
-so did the analysis — fix the grid and rerun.</p>
+<p><strong>Download Baseline Table (journal view)</strong> — the
+reconstruction of the baseline table as a journal would print it, one
+worksheet per trial: the same content as the results workbook’s
+<code>Baseline Tables</code> sheet (described above), as a file of its
+own. This is the artifact to lay beside the manuscript’s Table 1: it
+shows exactly what IntegrityAnalysis believed the baseline data were. If
+the reconstruction disagrees with the page, so did the analysis — fix
+the grid and rerun.</p>
 <h1 id="validation">Validation</h1>
 <p>The engine has been validated at two levels.</p>
 <p><strong>Against Carlisle 2017.</strong> John Carlisle generously
 provided the spreadsheet of continuous baseline variables behind his
-5,087-trial analysis [6]. Run through this engine, the stored and
-recomputed trial p values agree with r = 0.991 across 5,080 trials
-(mid-p convention, one-sided). The engine is the 2017 method, faster and
+5,087-trial analysis [6]. Run through the current engine (the most
+recent row of <a href="validation-ledger.md">the validation ledger</a>,
+which records every such measurement), the stored and recomputed trial p
+values agree with r = 0.993 across 5,041 usable trials (mid-p
+convention, one-sided), and the two agree on whether a trial alarms at p
+&lt; 0.05 for 98.5% of trials. The engine is the 2017 method, faster and
 with the refinements described above.</p>
-<p><strong>End to end, from PDF to verdict.</strong> Sixty-one published
-articles whose baseline tables parse fully and whose extracted values
-match Carlisle’s hand-entered data were run through the complete
-pipeline — PDF upload, extraction, validation, analysis — and compared
-with Carlisle’s stored trial p values on the log scale: r = 0.94, median
-disagreement a factor of 1.05, and 97% agreement on which trials alarm
-at p &lt; 0.05.</p>
+<p><strong>End to end, from PDF to verdict.</strong> The complete
+pipeline — PDF upload, extraction, validation, analysis — is exercised
+against the Carlisle corpus of published articles: the deterministic
+reader yields an analyzable table from about 85% of curated journal
+PDFs, and the recomputed trial p values are compared with Carlisle’s
+stored ones (see <em>The AI assist</em> above for what the reader
+recovers and where it needs help).</p>
+<h1 id="trials-too-large-to-analyze">Trials too large to analyze</h1>
+<p>IntegrityAnalysis won’t analyze trials with N &gt; 5,000 in any arm —
+on a categorical line, the arm’s category counts added together — for
+two reasons.</p>
+<p>The Monte Carlo simulation for a trial with more than 5,000 subjects
+in an arm is computationally expensive. Every replicate draws N values
+per arm, so the work grows with the trial.</p>
+<p>Also, trials with more than 5,000 subjects in an arm are almost
+certainly funded by large companies or government entities, which
+typically institute detailed auditing and review of manuscripts before
+submission. An independent fraud screen adds little to a manuscript that
+has already had that scrutiny.</p>
+<p>Investigators interested in evaluating such trials — and who have
+adequate computing horsepower — can directly implement
+<code>P_Calc.R</code> to perform the Monte Carlo analysis: <a href="https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R" class="uri">https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R</a></p>
+<p>The limit applies wherever IntegrityAnalysis runs: the web app flags
+the offending arm (the N cell, or the category counts whose total
+exceeds the ceiling) and declines to analyze, and the REST service
+refuses the submission. Both read one number, so neither can drift from
+this page.</p>
 <h1 id="the-api-for-editorial-systems-and-publishers">The API (for
 editorial systems and publishers)</h1>
 <p>Everything the app does interactively is also callable as a REST
@@ -1290,44 +1343,26 @@ request only, under the caller’s own key — the same consent-and-billing
 model as the app’s key field, with the same guarantees (the key is never
 stored or logged, and Anthropic’s commercial terms bar training on API
 submissions).</p>
-<h2 id="trials-too-large-to-analyze">Trials too large to analyze</h2>
-<p>IntegrityAnalysis won’t analyze trials with N &gt; 5,000 in any arm,
-for two reasons.</p>
-<p>The Monte Carlo simulation for a trial with more than 5,000 subjects
-in an arm is computationally expensive. Every replicate draws N values
-per arm, so the work grows with the trial.</p>
-<p>Also, trials with more than 5,000 subjects in an arm are almost
-certainly funded by large companies or government entities, which
-typically institute detailed auditing and review of manuscripts before
-submission. An independent fraud screen adds little to a manuscript that
-has already had that scrutiny.</p>
-<p>Investigators interested in evaluating such trials — and who have
-adequate computing horsepower — can directly implement
-<code>P_Calc.R</code> to perform the Monte Carlo analysis: <a href="https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R" class="uri">https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R</a></p>
-<p>The limit applies wherever IntegrityAnalysis runs: the web app flags
-the offending arm and declines to analyze, and the REST service refuses
-the submission. Both read one number, so neither can drift from this
-page.</p>
-<p><strong>Size limits, and why they are where they are.</strong> The
-service refuses a submission rather than analyzing it slowly or
+<h2 id="size-limits-and-why-they-are-where-they-are">Size limits, and
+why they are where they are</h2>
+<p>The service refuses a submission rather than analyzing it slowly or
 coarsely. Two ceilings matter in practice:</p>
 <ul>
-<li><p><strong>5,000 subjects per arm</strong> — the same ceiling the
-web app applies, described under “Trials too large to analyze” above. It
-is a property of IntegrityAnalysis, not of this service.</p></li>
-<li><p><strong>A simulation budget.</strong> Ordinary baseline tables
-are nowhere near it — a 30-variable trial with 1,000 subjects per arm
-passes comfortably, and costs a few seconds — but a table engineered so
-that every row demands the maximum 100,000 replicates is refused before
-any simulation starts.</p>
-<p>Stated precisely, because an earlier version of this page understated
-it tenfold: the budget admits up to about <strong>twenty
-minutes</strong> of worst-case computation, not two. A typical trial
-that fits inside it finishes in seconds; the worst case arises only when
+<li><strong>5,000 subjects per arm</strong> (counting a categorical
+line’s counts together) — the same ceiling the web app applies,
+described under “Trials too large to analyze” above. It is a property of
+IntegrityAnalysis, not of this service.</li>
+<li><strong>A simulation budget.</strong> Ordinary baseline tables are
+nowhere near it — a 30-variable trial with 1,000 subjects per arm passes
+comfortably, and costs a few seconds — but a table engineered so that
+every row demands the maximum 100,000 replicates is refused before any
+simulation starts. The budget admits up to about <strong>twenty
+minutes</strong> of worst-case computation. A typical trial that fits
+inside it finishes in seconds; the worst case arises only when
 <em>every</em> row looks homogeneous enough to demand full precision.
 That is an uncomfortable property — the more suspicious the data, the
 longer the analysis takes — and it is why the service is better suited
-to submit-and-poll than to a single blocking request.</p></li>
+to submit-and-poll than to a single blocking request.</li>
 </ul>
 <p>If a refused submission holds several trials, send them one per
 request. If it is a single very large trial, splitting it would change
@@ -1342,26 +1377,19 @@ supplies a token:</p>
 <pre><code>curl -X POST https://&lt;service-host&gt;/analyze \
   -H &quot;Authorization: Bearer &lt;token&gt;&quot; \
   -F &quot;file=@manuscript.pdf&quot;</code></pre>
-<p>Public hosting is being stood up; publishers interested in running
-the service inside their own infrastructure can do so from the open
-source — <code>IntegrityAnalysis::runApiService()</code> starts it, and
-the endpoint definitions are <code>inst/api/plumber.R</code> in the
-repository.</p>
+<p>Publishers can run the service inside their own infrastructure from
+the open source — <code>IntegrityAnalysis::runApiService()</code> starts
+it, and the endpoint definitions are <code>inst/api/plumber.R</code> in
+the repository.</p>
 <h1 id="notes-and-roadmap">Notes and roadmap</h1>
 <ul>
 <li><strong>Screening, then scrutiny.</strong> The method flags
 improbable homogeneity. Editors should treat a flag as reason to look —
 at correlated variables, stratification, SE/SD confusion, and the
 original data — not as proof of misconduct.</li>
-<li><strong>Tests that were tried and dropped.</strong> Earlier versions
-computed Benford’s-law and repeated-digit statistics; validated against
-the 5,087-trial data set, neither carried useful signal at
-baseline-table scale, and they were removed.</li>
 <li><strong>Planned.</strong> Granularity checks (GRIM/SPRITE-style
 flags for impossible means of integer data) and a benchmark of Bayesian
-alternatives are on the issues list, as is live progress feedback during
-long runs, and a REST API so manuscript-handling systems (Editorial
-Manager, ScholarOne) can submit tables directly.</li>
+alternatives are on the issues list.</li>
 <li>Questions, feedback, and bug reports to Steve Shafer at <a href="mailto:steven.shafer@stanford.edu" class="email">steven.shafer@stanford.edu</a>.</li>
 </ul>
 <h1 id="about-the-software">About the software</h1>

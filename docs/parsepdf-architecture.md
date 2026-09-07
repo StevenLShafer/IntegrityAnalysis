@@ -1,14 +1,24 @@
 # The parse engine — Architecture
 
-(Header refreshed 2026-08-26 by the repo audit: this document was
-written when the parser was the separate ParsePDF package, folded into
-IntegrityAnalysis 2026-08-17. The engine description below remains the
-canonical map of the parsing internals; the packaging facts are now
-these.)
+**This is the August 2026 design record of the parser, kept as history.**
+It was written when the parser was the separate ParsePDF package (folded
+into IntegrityAnalysis 2026-08-17; header refreshed 2026-08-26 and
+2026-09-06). The engine description — pipeline, invariant, tokens,
+output contract — still maps the internals, but the as-built parser
+differs from the design in several places, and where the text below
+said something that is no longer true it has been corrected in place
+and marked *(as built)*: the deployed app and the REST API do run the AI
+fallback, under the user's own key; a JATS XML route exists; the file
+list has grown; `DESCRIPTION` has a `Collate:` field. What the software
+does today is documented in `docs/user-guide.md`, `docs/api-spec.md` and
+`docs/data-handling.md`; what changed in the statistics, and when, is in
+`docs/method-history.md`.
 
 The parse engine turns the baseline characteristics table ("Table 1")
 of a randomized controlled trial PDF — and, since 2026-08-21, Word
-manuscripts and journal-style spreadsheets — into one row per baseline
+manuscripts and journal-style spreadsheets; since 2026-08-30 JATS XML
+articles (`R/parseJats.R`); since 2026-09-02 pictures of tables — into
+one row per baseline
 variable per treatment arm, in the input layout of the
 [IntegrityAnalysis](https://github.com/StevenLShafer/IntegrityAnalysis)
 Shiny app, which runs the Carlisle–Shafer Monte Carlo analysis of
@@ -17,7 +27,7 @@ baseline data.
 | | |
 |---|---|
 | Language | R — developed on 4.5.3 (min declared ≥ 4.1) |
-| Structure | part of the IntegrityAnalysis package (25 files in `R/`, explicit `Collate:`) |
+| Structure | part of the IntegrityAnalysis package (29 files in `R/`, explicit `Collate:`) |
 | PDF layer | `pdftools` (poppler) word coordinates |
 | AI layer | Anthropic Messages API over `httr2`, `claude-opus-5` |
 | Output | `openxlsx` → Integrity-Analysis template |
@@ -26,10 +36,17 @@ baseline data.
 ## Who each engine is for
 
 **The deterministic engine is the product; the AI fallback is a corpus-preparation
-tool.** The deployed app will run with `ai = "never"`, because it may serve hundreds of users
-and every fallback call is billed to the maintainer's Anthropic account — an unbounded cost he
+tool.** The design ran the deployed app with `ai = "never"`, because it may serve hundreds of users
+and every fallback call would be billed to the maintainer's Anthropic account — an unbounded cost he
 cannot control. The AI paths exist so that a reference corpus can be built locally, and so that
 the deterministic engine has something to be measured against.
+
+*(As built, ISSUES.md issue 8.)* The cost objection was answered by **bring your own key**: the
+deployed app runs `ai = "never"` until the user enters their own Anthropic key, and then
+`ai = "fallback"` for that session (`R/app_server.R`, capped at 25 documents per session), and the
+REST API does the same per request when the caller sends an `X-Anthropic-Key` header
+(`R/apiService.R`). The maintainer's account is never billed; the deterministic-first invariant
+below is unchanged.
 
 That ordering should decide where effort goes: a fix to the deterministic engine reaches every
 user, a better prompt reaches one person preparing data.
@@ -179,7 +196,9 @@ candidate); footnotes are the paragraphs after the table, appended as synthetic 
 `stopPattern`/footnote machinery runs unchanged; arm-N recovery reads the paragraphs
 (armNRecovery.R is pure text); no glyph repair is needed (officer returns real Unicode);
 `pages` in the result is the table's ordinal, `layout` is `"docx"`, `engine` is
-`"heuristic-docx"`. The AI fallback is refused for docx input (it renders PDF pages).
+`"heuristic-docx"`. The AI fallback is refused for docx input (it renders PDF pages) — and, as
+built, for JATS `.xml` input for the same reason (`parseBaselineTable()` drops to `ai = "never"`
+for both extensions with a note).
 
 Officer quirks measured and handled: `doc_index` is unique per **cell**, and `row_id` runs on
 across tables — tables are reassembled by `doc_index` continuity and rebased per table.
@@ -297,9 +316,14 @@ inert without the model.
 Reached only when `reviewFlags()` is non-empty and `ai != "never"`. Two sources:
 
 - `source = "table"` sends the text of **one page** — chosen by `.ppBestCaptionPage()`, the same
-  caption machinery the deterministic engine uses.
-- `source = "prose"` sends the **article text**, capped at `maxChars`, for trials that never
-  tabulate their baseline data and state it in a sentence in the Methods.
+  caption machinery the deterministic engine uses. *(As built, issue 22:)* pages with no text
+  layer travel as rendered images instead — in a mixed document the first four image-only pages;
+  in a fully scanned document the table page is first located by a local OCR pass and then sent
+  as an image; an uploaded picture of a table (jpg/png) is sent as itself.
+- `source = "prose"` sends the **article text**, capped at `maxChars` (60,000 characters), for
+  trials that never tabulate their baseline data and state it in a sentence in the Methods. It
+  is tried when the table route returns nothing (`prose = TRUE`, the default the app and the API
+  both use), never for a picture.
 
 Replies are constrained by a JSON schema (`.ppTableSchemaJson()`), so there is no free-text
 parsing. Merging keeps every deterministic row and adds only variables the deterministic pass
@@ -314,19 +338,26 @@ never produced.
 | `R/tokenize.R` | one line of text → numeric cells |
 | `R/utils.R` | decimals, numeric coercion, label cleaning, rbind-fill, the template column list; PDF/OCR word ingest, and the image header parser (`.ppImageDims`) that runs before any decoder |
 | `R/parseBaselineTable.R` | hybrid entry point, `reviewFlags()`, `print.ParsePDFTable()` |
-| `R/aiFallback.R` | **the only file that touches the network**; schema, prompts, request, response |
+| `R/aiFallback.R` | **the only parser file that touches the network**; schema, prompts, request, response (as built, `R/usageCount.R` — the app's anonymous usage counter — is the package's other network caller, and it sends an event name only) |
 | `R/parseBaselineTableFiles.R` | batch runner, one subprocess per file |
+| `R/parseDocx.R` | *(as built)* the Word route (05a): `officer` cells → the fabricated `lines` structure → `.ppParseBlock()` |
+| `R/parseJats.R` | *(as built)* the JATS XML route: `<table-wrap>` cells through the same `.ppDocxLines()` adapter, with the bounds the security screens set (rows, columns after spans, cells, tables) |
+| `R/parseWideTable.R` | *(as built)* journal-style wide spreadsheets (issue 17): one row per variable, arms across, inverted into the template layout; carries the decompression preflight every spreadsheet read passes through |
+| `R/armNRecovery.R` | *(as built)* arm-N recovery from the running text when the table header prints none; pure text, shared by the PDF, Word, JATS and Table Transformer routes |
 | `R/parseTatr.R` | the Table Transformer seam: XML reader, OCR-word-to-cell assignment, candidate parse through `.ppDocxLines()`, and the model runner |
 | `python/tatr/tatrTables.py` | the model itself (pegged; see its README); `--write-empty` keeps the text-less geometry a scanned page needs |
 | `R/writeIntegrityTemplate.R` | `.xlsx` writer |
 | `inst/scripts/parseOne.R` | the subprocess worker the batch runner launches |
 
-Files are flat in `R/` and load alphabetically. There is deliberately **no `Collate:` field** —
-nothing evaluated at load time crosses files. Internal functions are prefixed `.pp`.
+Files are flat in `R/`. The design had **no `Collate:` field** — nothing evaluated at load time
+crosses files; as built, `DESCRIPTION` carries an explicit `Collate:` (the app's files first, then
+the parser's, `apiService.R` last), so the load order is stated rather than alphabetical. Internal
+functions are prefixed `.pp`.
 
 ## The output contract
 
-`res$data` must stay in the layout Integrity-Analysis `server.R` expects:
+`res$data` must stay in the layout the Integrity-Analysis app (`R/app_server.R`, the design's
+`server.R`) expects:
 
 ```
 TRIAL | ROW | N | MEAN | SD | SE | ROUND_MEAN | ROUND_DISPERSION | ROUND_OBSERVATION | <one column per category...>
@@ -345,7 +376,9 @@ the analysis. Three reasons this matters:
 2. **The bias correction belongs in one place.** The sample SD is a biased
    estimator of sigma by Jensen's inequality — about 1.8% low at n = 15, 5% at
    n = 6 — and a standard error inherits that bias. Integrity-Analysis already
-   corrects it once, with `MBESS::s.u()` in `server.R`. If the parser also
+   corrects it once (as built: the c₄ correction with N − k degrees of freedom
+   in `R/P_Calc.R`; the design's `MBESS::s.u()` in `server.R` is gone, and so
+   is `server.R`). If the parser also
    converted, whether the result is right would depend on what the parser
    silently did.
 3. **It is a large error, not a rounding one.** At n = 15 a standard error is
@@ -399,7 +432,7 @@ That end state settles several questions about this package:
 | The app needs | This package offers |
 |---|---|
 | a folder of PDFs | `parseBaselineTableFiles()` — **use it, not a loop** |
-| one PDF | `parseBaselineTable(ai = "never")` |
+| one PDF | `parseBaselineTable(ai = "never")` — as built, every upload goes through `parseBaselineTableFiles()`, with `ai = "fallback"` when the user has entered a key |
 | a spreadsheet | nothing needed; imported directly |
 | a picture of a table | `parseBaselineTable()` on the image file — the OCR road, shaded cyan (05c) |
 | nothing | an empty frame with these columns |
@@ -414,9 +447,11 @@ Four things worth building around rather than discovering later:
    poppler forever, and R cannot interrupt it. In a multi-user Shiny app an
    in-process hang takes the worker down for everyone.
    `parseBaselineTableFiles()` already forks per file with a timeout.
-3. **Deployment runs `ai = "never"`** (see the section above), so expect ~72%
-   of PDFs to yield a table and the user to correct the rest by hand. Design
-   the grid for correction, not for display.
+3. **Deployment runs deterministically unless the user brings a key** (see the
+   section above, as built), so expect the deterministic yield — 72% of PDFs
+   when this was written, 84.9% of the 1,865-trial Carlisle corpus at the
+   2026-08-25 recertification (ISSUES.md) — and the user to correct the rest
+   by hand. Design the grid for correction, not for display.
 4. **Show one trial at a time.** Since the analysis has no cross-talk between
    trials, the grid never needs every trial at once — which sidesteps the
    category-column explosion (3,791 distinct category names across the corpus)
@@ -429,7 +464,9 @@ them.
 
 ### The API, and why nothing may persist
 
-The app will also expose an **API** for editorial systems (Editorial Manager
+The app also exposes an **API** (as built 2026-08-26: `R/apiService.R`,
+`inst/api/plumber.R`, `docs/api-spec.md`, `docs/api-users-guide.md`) for
+editorial systems (Editorial Manager
 and the like) to call automatically and silently during peer review: the caller
 sends a PDF or a spreadsheet, the service checks the resulting frame's
 integrity, returns an error if it fails, and otherwise runs the Monte Carlo and
@@ -451,7 +488,10 @@ Three consequences bear directly on this package:
    *unpublished*: sending one to a third-party API is a confidentiality problem
    as well as an expense. The deterministic engine also gives the API something
    an AI path cannot — the same submission always yields the same verdict,
-   which matters when the output may influence an editorial decision.
+   which matters when the output may influence an editorial decision. *(As
+   built: the API takes no AI step unless the caller sends its own key in
+   `X-Anthropic-Key`, so the confidentiality decision is the caller's, per
+   request; `docs/data-handling.md` states what is sent.)*
 3. **A silent caller cannot correct anything**, so the API must refuse rather
    than guess. `reviewFlags()` is the natural gate, and a missing arm N is a
    hard failure by decision: without a hard-coded N the service returns a fail
@@ -528,7 +568,8 @@ Discrepancies that survive investigation need Steve to adjudicate against the pa
 the parser to maximise agreement with it.
 
 **The whole corpus has now been run**, deterministically, twice — once before the font repairs
-and once after.
+and once after. (These are the August figures; the recertified yield is 84.9% of 1,865 as of
+2026-08-25 — see ISSUES.md and `corpus/README.md`.)
 
 | Measure | Before repairs | After repairs |
 |---|---|---|
@@ -560,7 +601,8 @@ so they are what the fallback rescues, not a rerun of what already worked.
 
 ## Keeping this map current
 
-Update **both** this file and `architecture.html` when any of the following changes: the engine
-table or its invariant, the pipeline stages, the file list, the output contract, or anything in
-[Where money is spent](#where-money-is-spent). The cost table is the part most likely to go
-stale and the most consequential when it does.
+This file is the record; there is no rendered `architecture.html` (the design named one; none
+was ever built). When the engine table or its invariant, the pipeline stages, the file list, the
+output contract, or anything in [Where money is spent](#where-money-is-spent) changes, add an
+*(as built)* note here rather than rewriting the design. The cost table is the part most likely
+to go stale and the most consequential when it does.

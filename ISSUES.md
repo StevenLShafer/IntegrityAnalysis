@@ -10,78 +10,119 @@ and therefore gappy.
 
 ---
 
-## Where things stand — 2026-09-03 (midday)
+## Where things stand — 2026-09-06 (evening; main at 166dc5b, PR #195)
 
-**Merged and in production today, eleven PRs (#145–#155).** The app
-now takes **a picture of a table** (jpg/png/tif, #145: read by
-tesseract's own reader, header-checked by our own parser before any
-decoder, decoded only in the parse subprocess, screened three times —
-feature, fixes, and the fixes' fixes — with every finding adjudicated in
-`docs/security-screens/log.md`) and **a file dropped anywhere on the
-page** (#155: the drop is handed to the one upload input, so no new
-path; hand-tested by Steve). The parser finds **Springer's side
-captions** (#146) and carries the **Table Transformer + tesseract seam**
-(#147, issue 33). The **live app reports its build commit** at last
-(#149, #151: the shinyapps builder records no install provenance, so
-the deploy now writes the commit it deployed and the shim hands it
-over; `checkDeployedBuild.ps1` passes for the first time since it was
-written). The screen script no longer records an API error as a
-finished screen (#148). Two AGENTS rules from the day's lessons: a new
-input format is screened twice (#152), and how to launch and watch a
-long run so a failure shows in minutes (#154). The synthetic tautology
-sweep gained a second row and cell shares for running across machines
-(#150, #153).
+**Forty PRs since 2026-09-03 (#156–#195), and the statistics changed
+more in these four days than in the month before.** Each change is on
+the record in `docs/method-history.md` (what was wrong, what changed,
+what it cost, what it measured); the method as it runs today is
+`docs/statistics.md` and nothing else (the split is #192). In the order
+they landed: **the exact combination** (#170) — the trial p is still
+Stouffer's sum of row z-scores, but judged against its own simulated
+null rather than the normal table, which under coarse rounding
+under-filled the low tail (1.4 % of honest integer-mean trials below
+0.05 instead of 5 %) and could not see a table of identical integer
+means however many rows agreed; **the attainable floor** marked on a
+row that has said everything its rounding allows (#172; since #191 only
+when the arms print identically); **the direct draw** for arms of 100 or
+more with the SD at least three grid steps — the arm mean drawn, not
+the N observations, thirty times faster on large trials (#176; #191
+snapped it to the mean's own h/N grid after an outside audit); **the
+0.1 escalation** — a trial or row below 0.1 advances to 10,000
+replicates, below 0.01 to 100,000 — and **a user-settable seed**
+(`?seed=` in the app, `seed` on the API's URL; #179, #181); **the
+pooled SD**, variances weighted by degrees of freedom and c₄ with N − k
+at every N (#183); **the per-replicate sigma draw** from the scaled
+inverse chi-square, the t-test where a z-test was (#185; at three per
+arm the row p's Kolmogorov–Smirnov distance from uniform fell from 0.07
+to 0.016); **the trial interval's lower end** from the strictly-beyond
+count, so a trial at its floor no longer prints below its own interval
+(#190); **precision inference** from a plain rendering, never from
+scientific notation, with an explicit per-arm precision kept rather
+than overwritten (#190, #191). Also in: the **long categorical layout**
+(one line per level, the count in N; #177), **a printed SD of zero**
+accepted (#182), and **`.xls` dropped** — refused everywhere, readxl
+out of the package (#187, from screen 2117's F3).
 
-**Measured today, whole Carlisle corpus** (issue 33): the text engine
-parses 1,654 of 1,865; with the seam 1,768 — 114 recovered, none lost.
-Judged by Carlisle's hand-entered numbers, `tatr = "always"` raises
-recall from 0.61 to 0.65 and precision from 0.48 to 0.50, and 58 % of
-the values the model adds are his. One failure the parse score cannot
-see, in 38 articles: a larger non-baseline table outscoring a correct
-smaller one — the caption rule to add before `"always"` is used in
-earnest; the default `"auto"` is untouched.
+**The ways in** grew too: a pasted screenshot opens as a table (#157),
+read full width from its first line (#159) and enlarged before OCR so a
+screen-resolution picture reads whole (#168); JATS XML through the API
+(#162, screened five times); zero-width characters stripped from row
+labels (#164); the caption rule for `tatr = "always"` (#166); tesseract
+moved to Imports so the deployed app's OCR actually runs (#158); the
+build commit baked into the API image so `/health` names it (#165); an
+API User's Guide that defines every field, with two by-hand clients
+(#163); the nine routes named in the user guide (#160).
 
-**Barnett comparison** (`corpus/syntheticAgeWeightCheck.R`): with
-integer-reported means his trial-level test flags honest two-row trials
-as under-dispersed 0.9 / 3.3 / 14.0 / 29.2 % at 20 / 100 / 500 / 1,000
-per arm; at one or two decimals 0.1–0.4 %. A three-row run (adding sex)
-finished the same day. Ours fails safe. His test stays a measured,
-cited comparison, not part of the reported screen.
+**Security.** An outside review (#180: four defects confirmed and fixed,
+plus the documentation lines it caught) and six screens since
+2026-09-05, every finding adjudicated in `docs/security-screens/log.md`:
+the grid's column headers are escaped and clipboard HTML kept out of a
+paste (#184, the grid XSS); every spreadsheet read is bounded — a
+decompression preflight in front of every reader, a sheet-count cap,
+one read per sheet (#184, #186); the CSV column gate counts what the
+reader reads — every line, `#`-lines included (#186, #195); nothing
+typed or posted ends a session or 500s the API — the engine is wrapped,
+count columns swept for magnitude, the rounding clamp runs after the
+alias renames (#188, #189, #190); plumber's native request cap set, so
+an oversized Content-Length is refused 413 before buffering (#194); the
+Word route bounded like JATS (#194); one page-geometry gate,
+`.ppRenderablePages()`, in front of both rasterisers (#194, closing the
+render half of issue 32); the sigma draw's memory peak put back to 1.6
+GB and the parse child's tempdir scrubbed from API reasons (#195). The
+screen now watches the engine (`R/P_Calc.R` is on
+`tools/securityScreen.ps1`'s list) as well as the doors.
 
-**Nodes:** `surface`, `oldryzen`, `i5` each carry a full library and a
-snapshot of this main, test suite 45 files / 1,453 passing on all
-three. Arm 1 of the OCR measurement (issue 22) is finishing on
-`oldryzen` (12 shards, ~6,200 works).
+**Tests:** 50 files, 1,901 passing (45 / 1,453 on 2026-09-03), all from
+synthetic data; the seeded known-answer values were re-pinned with each
+engine change.
 
-**Citable numbers**: parse rate 84.9 % over the 1,865-trial Carlisle
-corpus (text engine; 94.8 % with the seam where the model runs); r =
-0.9930 against Carlisle 2017 across 5,080 trials, 99.0 % alarm
-concordance; AI-assist rescue 91 % / 81 %.
+**Citable numbers** (`docs/validation-ledger.md`, the 2026-09-06 sigma-draw
+row): r = 0.9929 against Carlisle 2017 over 5,041 usable trials, median
+|Δp| 0.014, 89.1 % within 0.05, 98.5 % alarm concordance, replicate
+ceiling 10,000. Parse rate 84.9 % over the 1,865-trial Carlisle corpus
+(text engine; 94.8 % with the seam where the model runs); AI-assist
+rescue 91 % / 81 %. The August figures (r 0.9930, 99.0 %, 5,080 trials)
+belong to the closed-form combination and are history.
+
+**Barnett comparison** (`corpus/syntheticAgeWeightCheck.R`, unchanged):
+his trial-level test flags honest integer-mean two-row trials as
+under-dispersed 0.9 / 3.3 / 14.0 / 29.2 % at 20 / 100 / 500 / 1,000 per
+arm; ours fails safe. His test stays a measured, cited comparison, not
+part of the reported screen.
 
 **Open decisions (Steve's):** where the Table Transformer runs in
-deployment (issue 33); the child memory ceiling (issue 32).
+deployment (issue 33); the parse child's memory ceiling and a total work
+budget for the public app (issue 32); the location draw's scale
+(σ/√mean N as shipped vs the derivable σ/√ΣN — measured equivalent
+2026-09-06, method-history "Ideas noted for later"); a confirmatory
+batch for the trial interval (coverage 93.4–93.7 % near an escalation
+threshold); the median/IQR branch's calibration.
 
-**Still standing from 2026-08-26**: the AWS Identity Center session
-duration (8 h by default — raise it, then `aws sso login --profile
-steve`, or unattended harvests fail; confirm this was done);
-PubTables-1M full-split report and v2 scoring (issue 20); the issue-23
-layout repairs; nightly parsing of freshly harvested PDFs with a
-snapshot library (approved 2026-08-25, pending); the 121 Carlisle-2017
-outliers (issue 3); the TATR ctgov-docs scoping decision
-(`tatr/HANDOFF-TATR.md`). Overnight jobs unchanged: 2 AM S3 harvest,
-3 AM OneDrive backup.
+**Still standing**: the AWS Identity Center session duration (8 h by
+default — raise it, then `aws sso login --profile steve`, or unattended
+harvests fail; confirm this was done); PubTables-1M full-split report
+and v2 scoring (issue 20); the issue-23 layout repairs; nightly parsing
+of freshly harvested PDFs with a snapshot library (approved 2026-08-25,
+pending); the 121 Carlisle-2017 outliers (issue 3 — against an engine
+since revised, so the list should be regenerated from the 2026-09-06
+run before adjudication); the TATR ctgov-docs scoping decision
+(`tatr/HANDOFF-TATR.md`); the OCR measurement's arm 1 result (issue 22,
+last seen finishing on `oldryzen` 2026-09-03). Overnight jobs as last
+recorded: 2 AM S3 harvest, 3 AM OneDrive backup.
 
 **Working alongside other sessions**: see AGENTS.md. Worktrees in use
-today: `C:/Temp/ia-main` (main snapshot) and `C:/Temp/ia-springer`
-(#146); snapshot libraries `C:/Temp/ia-lib-main` and
-`C:/Temp/ia-lib-springer`.
+today: `C:/Temp/ia-wt-docs` (this documentation audit),
+`C:/Temp/ia-wt-s1523` (screen 1523), `C:/Temp/ia-wt-sdround`
+(feature/sd-rounding-draw), `C:/Temp/ia-wt-ties` (corpus/ties-experiment).
 
 ---
 
-## 32. A memory ceiling for the parse child, and a render cap for scanned pages
+## 32. A memory ceiling for the parse child (the render cap for scanned pages is closed)
 
 **Status: open, filed 2026-09-02** from the security screen of the image
-upload feature (`docs/security-screens/log.md`, F1 and its note).
+upload feature (`docs/security-screens/log.md`, F1 and its note); the
+render-cap half closed 2026-09-06 (#194).
 
 Every hostile document is decoded in a child process under a wall-clock
 timeout (`parseBaselineTableFiles()`), and the image route now refuses
@@ -101,15 +142,23 @@ neither verifiable from the Windows development machine:
   Whichever is chosen, verify on a Linux node that a deliberately huge
   allocation in the child is killed and reported as a failed parse, not
   as a dead worker.
-- **A page-size cap on the scanned-PDF OCR render.** `.ppOcrPages()`
-  renders image-only pages at 300 dpi with no bound on the page's
-  MediaBox; a PDF declaring 200 x 200 inches would render at
-  60000 x 60000. Read the page size from `pdftools::pdf_pagesize()`
-  first and refuse, or render at a dpi that keeps the raster under the
-  same 20 MP the image route allows.
+- ~~**A page-size cap on the scanned-PDF OCR render.**~~ **CLOSED
+  2026-09-06** (#194, repeat screen F3): one gate, `.ppRenderablePages()`
+  in `R/utils.R`, reads `pdftools::pdf_pagesize()` first and drops any
+  page over 30 inches on a side or over 20 MP at the requested dpi; it
+  fails closed (a document whose page sizes cannot be read renders
+  nothing) and both rasterisers — the OCR rescue and the AI route's page
+  renderer — go through it. `tools/securityCheck.R` pins that they do,
+  and the deliberate-break test uses a 200 x 200 inch page.
 
-Done looks like: both limits in place, each with the deliberate-break
-test that shows it working, and the screen's F1 note closed.
+Done looks like: the memory limit in place with the deliberate-break
+test that shows it working, and the screen's F1 note closed. The repeat
+screen's F4 (no total work budget for the public app — 100 median rows at
+5,000 per arm pass validation) is recorded against this issue too:
+accepted for now under Steve's standing decision not to reduce Monte
+Carlo precision silently; a queue with cancellation or a preflight
+refusal is the remedy when a shared-worker incident makes it worth its
+cost.
 
 ---
 
@@ -453,7 +502,7 @@ repo**, and each case records its licence and citation.
 
 **Two tiers, mirroring the existing local/public split:**
 
-- **Tier 1, committed, runs in CI.** CC BY / CC0 JATS table fragments,
+- **Tier 1, committed, runs in the automated checks.** CC BY / CC0 JATS table fragments,
   plus the synthesised PDF/.docx/.xlsx fixtures already in use. Public,
   legally clean, fast.
 - **Tier 2, local only.** Real PDFs from the Carlisle, A&A and medRxiv
@@ -992,7 +1041,7 @@ two-users-at-once on shinyapps.io, where workers are billed compute.
 
 ---
 
-## 8. AI parsing in deployment — BYOK (app side IMPLEMENTED; service side open)
+## 8. AI parsing in deployment — BYOK (app side and service side IMPLEMENTED; landing-page copy open)
 
 The app side shipped 2026-08-25/26 (PRs #67, #70, #73, #77, #79 — the
 masked key field with live validation, deterministic-first merge, green
@@ -1004,8 +1053,14 @@ guide carries consent language, the no-training/confidentiality
 guarantees (Anthropic's Commercial Terms; ~30-day deletion), and the
 measured rescue rates (91%/81%).
 
-**REMAINING**: the API-service side — per-request BYOK when issue 1 is
-built — and landing-page copy at integrityanalysis.io describing the
+The service side shipped with issue 1 (2026-08-26): an `X-Anthropic-Key`
+header on `POST /parse` or `POST /analyze` turns the assist on for that
+request under the caller's key, live-verified end to end with an AI
+rescue of a scanned table through the deployed service; the API User's
+Guide (#163) documents it, and `docs/data-handling.md` states exactly
+what is sent.
+
+**REMAINING**: landing-page copy at integrityanalysis.io describing the
 assist. The governing rationale (kept): the point is publication, not
 concealment — the prompts and JSON schema ARE the algorithm, written
 to be read; the gate is on the spending, never the method.
@@ -1205,13 +1260,16 @@ registry repository). Decisions and their reasoning:
 **OPEN follow-ups, in priority order** (from the 2026-08-26 security
 review and its independent re-review):
 
-1. **A real body cap in front of the service.** The in-app `sizelimit`
-   filter cannot prevent the memory spike it targets: httpuv buffers
-   the whole request and plumber parses it before any filter runs. The
-   filter still refuses the parse/compute (and now refuses a POST with
-   no Content-Length, which previously bypassed it entirely), but the
-   actual cap needs a proxy/WAF ahead of App Runner. Until that exists,
-   H1 is mitigated, not closed.
+1. **A real body cap in front of the service.** LARGELY SUPERSEDED
+   2026-09-06 (#194, repeat screen F1): `runApiService()` now sets
+   `options(plumber.maxRequestSize)` to the filter's 25 MiB before the
+   router is built, so httpuv refuses an oversized declared
+   Content-Length with a 413 before any of the body is buffered —
+   verified on a local service. What remains open is the request with
+   no Content-Length: a chunked body is still buffered by httpuv before
+   the `sizelimit` filter refuses it, so the proxy/WAF cap ahead of App
+   Runner is still wanted as the belt for the braces. H1 is closed for
+   Content-Length requests and mitigated for chunked ones.
 2. **Per-token quotas.** Request size and compute are bounded per
    request; nothing yet bounds how MANY requests one token may make.
    Worth having before the token list grows beyond people Steve knows
@@ -1231,7 +1289,7 @@ and silently for fraud screening during peer review.
 
 | | |
 |---|---|
-| Input | a single PDF **or** a spreadsheet (xls/xlsx/csv) |
+| Input | a single PDF, a Word manuscript (docx), a JATS XML article (xml), a picture of a table (jpg/jpeg/png/tif) **or** a spreadsheet (xlsx/csv — `.xls` is refused everywhere since #187, 2026-09-06) |
 | On pass | run the Monte Carlo; return a CSV of the analysis, plus confirmation the PDF was deleted |
 | On fail | return **the partial table**, carrying as much extracted data as possible, plus what is wrong with it |
 | Retention | none — the PDF is deleted and the caller is told so |
