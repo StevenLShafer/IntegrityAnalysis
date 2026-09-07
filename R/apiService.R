@@ -282,7 +282,11 @@
 #
 # So the budget is ~20 MINUTES of worst-case CPU, not two. The
 # median/IQR branch is dearer still (metalog: dqrunif, log, arithmetic,
-# rowMedians), so treat 20 minutes as a floor on that path.
+# rowMedians) and, since its scale draw of 2026-09-07 resamples every
+# arm before simulating it, runs at about half the continuous loop's
+# rate (6.8e6 draws per second, measured by screen 2026-09-07-1036);
+# .apiDrawWork therefore counts a median line at twice its N, so the
+# 20-minute worst case holds on that path as well.
 #
 # THE BUDGET IS NOT LOWERED TO MATCH THE OLD CLAIM, and the reason
 # belongs here rather than in a commit message. Two minutes of worst
@@ -394,8 +398,15 @@
   cont <- 0
   if ("N" %in% names(DATA)) {
     n <- suppressWarnings(as.numeric(DATA$N))
-    n <- n[is.finite(n) & n > 0]
-    if (length(n)) cont <- sum(n)
+    # a median/IQR line costs TWICE its N per replicate since the scale
+    # draw of 2026-09-07 resamples every arm before it simulates it
+    # (screen 2026-09-07-1036, F1: measured 6.8e6 draws per second
+    # against 1.3e7 for the continuous loop, on two arms of 5,000)
+    w <- rep(1, length(n))
+    for (q in intersect(c("Q1", "Q3"), names(DATA)))
+      w[is.finite(suppressWarnings(as.numeric(DATA[[q]])))] <- 2
+    ok <- is.finite(n) & n > 0
+    if (any(ok)) cont <- sum(n[ok] * w[ok])
   }
 
   # CATEGORICAL work, missing entirely until the 2026-08-28 screen (F1)
