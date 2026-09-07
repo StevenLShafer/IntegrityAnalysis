@@ -76,16 +76,26 @@
 # n = 40 pins 19; "47%" of n = 702 spans 327..333 and is refused, because a
 # fraud screen must not analyze approximated counts as if they were printed.
 .ppCountFromPct <- function(pct, dec, N) {
+  b <- .ppCountBracket(pct, dec, N)
+  if (anyNA(b) || b[1] != b[2]) return(NA_integer_)
+  b[1]
+}
+
+# The bracket itself: the smallest and largest integer counts whose
+# proportion of N rounds to `pct` at `dec` decimals (2026-09-07, for the
+# fail-safe fill - see parseBaselineTableHeuristics.R). NA, NA when the
+# inputs cannot be bracketed.
+.ppCountBracket <- function(pct, dec, N) {
   if (is.na(pct) || is.na(N) || N <= 0 || pct < 0 || pct > 100)
-    return(NA_integer_)
+    return(c(NA_integer_, NA_integer_))
   if (is.na(dec)) dec <- 0L
   half <- 0.5 * 10^(-dec)
   cLo <- as.integer(ceiling(N * (pct - half) / 100 - 1e-9))
   cHi <- as.integer(floor(N * (pct + half) / 100 + 1e-9))
   cLo <- max(cLo, 0L)
   cHi <- min(cHi, as.integer(N))
-  if (cHi != cLo) return(NA_integer_)
-  cLo
+  if (cHi < cLo) return(c(NA_integer_, NA_integer_))
+  c(cLo, cHi)
 }
 
 # --------------------------------------------------------------------------

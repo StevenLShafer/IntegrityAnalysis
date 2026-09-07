@@ -237,15 +237,17 @@ app_ui <- function(testNote = NULL)
                     accept = c(".csv", ".xlsx", ".pdf", ".docx", ".xml",
                                ".jpg", ".jpeg", ".png", ".tif", ".tiff",
                                ".zip")),
-          # Opt-in approximation (Steve, 2026-08-21): percent-only cells
-          # whose printed rounding cannot pin a unique count fall back to
-          # round(arm N x percent). Everything the parser derives - exact
-          # or approximate - paints GREEN in the grid: OK to use, but
-          # best to check before the analysis runs.
+          # The fail-safe fill (Steve, 2026-09-07; first an opt-in
+          # approximation, 2026-08-21): a percent-only cell whose printed
+          # rounding fits several counts takes the count farthest from the
+          # other arms, so the row can look less alike than the truth but
+          # never more. Such cells paint ORANGE in the grid with the
+          # bracket in their hover note; exact conversions still paint
+          # green.
           checkboxInput("pctApprox", paste(
-            "Convert percent-only cells to approximate counts when the",
-            "exact count cannot be determined (derived values show green",
-            "in the table below)"), value = TRUE, width = "100%"),
+            "Fill percent-only cells whose percentage fits several counts",
+            "with the count farthest from the other arms (fail-safe; such",
+            "cells show orange in the table below)"), value = TRUE, width = "100%"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never
           # goes in a URL, is never stored or logged, and dies with the

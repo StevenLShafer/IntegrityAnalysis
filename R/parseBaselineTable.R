@@ -62,14 +62,17 @@ reviewFlags <- function(x) {
                              "converted from printed percentages via the ",
                              "arm N (unique-count bracket): ",
                              paste(x$derivedCounts, collapse = ", ")))
-  # APPROXIMATE conversions (pctApprox = TRUE) are a step further from the
-  # page than the unique bracket: round(N x pct / 100) can be off by up to
-  # half a printed unit of N/100. Usable, but check before analyzing.
+  # FAIL-SAFE conversions (pctApprox = TRUE; Steve, 2026-09-07): the printed
+  # percentage fit several counts for the arm size, and the one farthest
+  # from the other arms was taken, so the row can look less alike than the
+  # truth but never more. A design decision for incomplete data, not a
+  # datum: the printed counts would settle it.
   if (!is.null(x$approxCounts) && length(x$approxCounts) > 0)
     flags <- c(flags, paste0(length(x$approxCounts), " category row(s) use ",
-                             "APPROXIMATE counts - round(arm N x percent) ",
-                             "where the printed rounding could not pin a ",
-                             "unique integer: ",
+                             "FAIL-SAFE counts - the printed percentage fit ",
+                             "several counts for the arm size and the one ",
+                             "farthest from the other arms was taken, so the ",
+                             "row cannot look more alike than the page allows: ",
                              paste(x$approxCounts, collapse = ", "),
                              ". Check these against the paper before ",
                              "analyzing."))

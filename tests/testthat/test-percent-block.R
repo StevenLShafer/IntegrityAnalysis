@@ -85,17 +85,22 @@ test_that("pctApprox = TRUE converts what the bracket cannot pin", {
     rowCells(190, "Male sex, %",  c("47",      "44"),      vx))
   makeTablePdf(f, cells)
 
-  # off by default: refused (pinned by the earlier test); on: approximated
+  # off by default: refused (pinned by the earlier test); on: filled with the
+  # FAIL-SAFE count (Steve's decision, 2026-09-07, the GPT-6 audit's F3) - the
+  # end of each bracket FARTHEST from the other arms, so the row can look less
+  # alike than the truth but never more. 47% of 702 spans 327..333 and 44% of
+  # 695 spans 303..309; their midpoints pool to 636/1397 = 0.455, so the first
+  # arm (0.470, above) takes the top and the second (0.440, below) the bottom.
   res <- parseBaselineTableHeuristics(f, trial = "T", quiet = TRUE,
                                       pctApprox = TRUE)
   male <- res$data[grepl("^Male", res$data$ROW), ]
-  expect_equal(male[["Male sex"]], c(round(702 * .47), round(695 * .44)))
-  expect_equal(male[["Not Male sex"]], c(702 - 330, 695 - 306))
+  expect_equal(male[["Male sex"]], c(333, 303))
+  expect_equal(male[["Not Male sex"]], c(702 - 333, 695 - 303))
   expect_true("Male sex" %in% res$approxCounts)
-  expect_true(any(res$derivedCells$KIND == "approximate"))
-  expect_true(any(grepl("APPROXIMATE", res$derivedCells$NOTE)))
+  expect_true(any(res$derivedCells$KIND == "failsafe"))
+  expect_true(any(grepl("FAIL-SAFE", res$derivedCells$NOTE)))
   flags <- reviewFlags(res)
-  expect_true(any(grepl("APPROXIMATE counts", flags)))
+  expect_true(any(grepl("FAIL-SAFE counts", flags)))
 
   # exact conversions must never silently become approximations
   res2 <- parseBaselineTableHeuristics(percentBlockPdf(), trial = "T",

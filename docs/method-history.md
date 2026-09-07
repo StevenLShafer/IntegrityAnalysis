@@ -436,6 +436,33 @@ interval per replicate, as the SD is drawn since 2026-09-06) — a table
 whose quartiles print coarsely relative to their interquartile range is
 otherwise fitted to a spuriously skewed metalog and clipped.
 
+## 2026-09-07 — counts rebuilt from percentages: the fail-safe fill
+
+**What was wrong.** The opt-in approximation of 2026-08-21 rebuilt a
+count from a printed percentage as round(N × percentage/100) when the
+percentage fit several counts, which it does for arms above 100 at
+integer percentages (1,000 at one decimal). The categorical engine then
+treated the count as exact. Two honest arms whose percentages happened
+to round the same — a third of pairs at 5,000 per arm, where the
+honest difference has a standard deviation near one percentage point —
+were rebuilt with identical proportions, an agreement the real counts
+never had. The GPT-6 audit's exact enumeration (finding F3,
+`docs/audits/`) put 38% of honest 5,000-per-arm pairs below p = 0.01.
+Arms of 100 or fewer were never affected: there every count has its own
+percentage and the conversion is exact.
+
+**What changed** (Steve Shafer's decision, 2026-09-07). An ambiguous
+cell takes the count in its bracket farthest from the other arms — the
+arm above the pooled proportion takes the top of its bracket, the arm
+below takes the bottom, arms exactly on it alternate — so the row can
+look less alike than the truth but never more, and its p is
+conservative. The app paints such cells orange (a colour of their own,
+apart from the green of exact conversions) with the bracket in the
+hover note; the API applies the same rule and names the rows in its
+response flags; the user guide, the API guide and statistics.md state
+it as a design decision for incomplete data. Exact conversions are
+untouched.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
