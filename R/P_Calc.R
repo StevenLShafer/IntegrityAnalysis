@@ -218,11 +218,16 @@
 #'     \item{`Q1`, `Q3`}{the quartiles, for a median row.}
 #'     \item{`ROUND_MEAN`}{decimal places the MEAN was PRINTED to. This
 #'       is not cosmetic - the whole method rests on rounding simulated
-#'       values exactly as the paper rounded its own. 0 means integers.}
-#'     \item{`ROUND_DISPERSION`}{decimals printed for SD/SE.}
+#'       values exactly as the paper rounded its own. 0 means integers.
+#'       Absent or blank: inferred from the printed decimals of `MEAN`,
+#'       raised to the variable's maximum across its arms (so 1.20 beside
+#'       1.25 is a two-decimal variable on both lines).}
+#'     \item{`ROUND_DISPERSION`}{decimals printed for SD/SE. Absent or
+#'       blank: inferred from the printed decimals of `SD`.}
 #'     \item{`ROUND_OBSERVATION`}{decimals the UNDERLYING OBSERVATIONS
 #'       were recorded to, which is often finer than the printed mean -
-#'       ages recorded whole but a mean printed to one decimal.}
+#'       ages recorded whole but a mean printed to one decimal. Absent or
+#'       blank: taken equal to `ROUND_MEAN`.}
 #'     \item{category columns}{one column per category level, holding
 #'       COUNTS, named in `CategoryNames`. See below.}
 #'   }
@@ -289,6 +294,30 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
   # statistic and the expected distribution's draws for the PowerPoint
   # graphs; the returned results are bit-identical either way.
   data <- DATA[DATA$TRIAL == TRIAL,]
+  # DIRECT CALLERS (2026-09-07; audit finding F4, Steve: "the default
+  # columns in P_Calc"). validateData() supplies the rounding columns and
+  # this function documents itself as callable without it - yet without
+  # ROUND_OBSERVATION it died in 10^(-NULL) ("invalid argument to unary
+  # operator"), with a blank one in rnorm ("invalid arguments"), and with
+  # one patient per arm in a missing-value `if`. A missing or blank
+  # rounding column is now inferred exactly as the validator infers it:
+  # the mean's precision from its printed decimals, raised to the
+  # variable's maximum across its arms; the observation precision equal
+  # to the mean's. (ROUND_DISPERSION is inferred where it is used, in
+  # .iaSdInterval.) An arm of fewer than two patients is refused by name
+  # below, as the validator refuses it.
+  for (col in c("ROUND_MEAN", "ROUND_OBSERVATION"))
+    if (is.null(data[[col]])) data[[col]] <- NA_real_
+  data$ROUND_MEAN <- suppressWarnings(as.numeric(data$ROUND_MEAN))
+  data$ROUND_OBSERVATION <- suppressWarnings(as.numeric(data$ROUND_OBSERVATION))
+  if (nrow(data) > 0 && any(is.na(data$ROUND_MEAN))) {
+    dec <- vapply(data$MEAN, .iaDecimals, integer(1))
+    grpMax <- stats::ave(dec, data$ROW, FUN = max)
+    blank <- is.na(data$ROUND_MEAN)
+    data$ROUND_MEAN[blank] <- grpMax[blank]
+  }
+  blankObs <- is.na(data$ROUND_OBSERVATION)
+  data$ROUND_OBSERVATION[blankObs] <- data$ROUND_MEAN[blankObs]
   RowIDs <- unique(data$ROW)
 
   # Pass 1: per row, either a refusal (Pdisp) or the simulation closure
@@ -308,7 +337,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       {
         isQuartile <- "Q1" %in% names(ROWS) &&
                       (any(!is.na(ROWS$Q1)) || any(!is.na(ROWS$Q3)))
-        if (isQuartile && all(!is.na(ROWS$N)))
+        if (all(!is.na(ROWS$N)) && any(ROWS$N < 2))
+        {
+          # the validator refuses this before the app or API gets here; a
+          # direct caller gets the refusal by name rather than a crash
+          Pdisp <- "An arm with fewer than 2 patients cannot be simulated"
+        }
+        else if (isQuartile && all(!is.na(ROWS$N)))
         {
           # Median/IQR row (issue 12): the common population is a 3-term
           # METALOG matched to the pooled median and quartiles (Keelin
