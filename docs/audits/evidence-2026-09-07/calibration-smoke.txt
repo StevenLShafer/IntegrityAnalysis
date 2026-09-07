@@ -1,0 +1,20 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+i Loading IntegrityAnalysis
+There were 41 warnings (use warnings() to see them)
+Trial T: p = 0.3375 (95% Monte Carlo interval 0.29 to 0.39)
+ 
+Trial T: p = 0.907 (95% Monte Carlo interval 0.89 to 0.92)
+ 
+                             case trials computed refused rate05 rate01  meanP
+bounded_beta         bounded_beta      1        1       0      0      0 0.3375
+coarse_quartiles coarse_quartiles      1        0       1    NaN    NaN    NaN
+six_arm_normal     six_arm_normal      1        1       0      0      0 0.9070
+                 lo05  hi05 seconds
+bounded_beta        0 0.975    0.05
+coarse_quartiles   NA    NA    0.23
+six_arm_normal      0 0.975    0.25

@@ -1,0 +1,111 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+i Loading IntegrityAnalysis
+There were 41 warnings (use warnings() to see them)
+ORDER AFTER UNEQUAL PRINTING
+[[1]]
+ 25%  50%  75% 
+4.80 4.99 5.60 
+
+[[2]]
+ 25%  50%  75% 
+4.70 5.01 5.50 
+
+  TRIAL ROW N MEAN SD Q1 Q3 ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 5 4.99 NA  5  6          2                 2                0
+2     T   X 5 5.01 NA  5  6          2                 2                0
+[1] TRUE
+  row  col        code note
+1   1 MEAN incongruent <NA>
+2   1   Q1 incongruent <NA>
+3   1   Q3 incongruent <NA>
+UNIQUE PERCENT BRACKET
+[1] NA
+NORMALIZED LOCKFILE VERSION CHECK
+NULL
+NUMERICAL EDGES
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+mu 0 sd 1e-06 digits 0 FAIL FALSE result 0.5 
+Trial T: p = 0.4975 (95% Monte Carlo interval 0 to 1)
+ 
+mu 0 sd 1e-06 digits 6 FAIL FALSE result 0.4975 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1e-06 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.499 (95% Monte Carlo interval 0 to 1)
+ 
+mu 0 sd 1 digits 0 FAIL FALSE result 0.499 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1e+06 digits 0 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1e+06 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 0 sd 1e+06 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+06 sd 1e-06 digits 0 FAIL FALSE result 0.5 
+Trial T: p = 0.4965 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+06 sd 1e-06 digits 6 FAIL FALSE result 0.4965 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1e-06 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.499 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+06 sd 1 digits 0 FAIL FALSE result 0.499 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1e+06 digits 0 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1e+06 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+06 sd 1e+06 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+11 sd 1e-06 digits 0 FAIL FALSE result 0.5 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+11 sd 1e-06 digits 6 FAIL FALSE result 0.5 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+11 sd 1e-06 digits 20 FAIL FALSE result 0.5 
+Trial T: p = 0.499 (95% Monte Carlo interval 0 to 1)
+ 
+mu 1e+11 sd 1 digits 0 FAIL FALSE result 0.499 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+11 sd 1 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+11 sd 1 digits 20 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+11 sd 1e+06 digits 0 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+11 sd 1e+06 digits 6 FAIL FALSE result 0.000999 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+mu 1e+11 sd 1e+06 digits 20 FAIL FALSE result 0.000999 
