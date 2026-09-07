@@ -148,13 +148,22 @@
 #' Carlisle's corpus; PR #182 accepted them, and identical arms with SD 0
 #' report p = 0.5 at the attainable floor). Drawing from [0, h/2) there
 #' would manufacture a spread the paper denies, so zero stays zero.
+#' A blank cell is inferred on its own, cell by cell (2026-09-07; the GPT-6
+#' audit's finding F5): the first version used the supplied precisions
+#' only when EVERY arm had one and otherwise re-inferred every arm, so a
+#' supplied two-decimal "1.00" beside a blank became [0.5, 1.5]. A blank
+#' cell now takes the variable's maximum printed decimals across its arms,
+#' which is the validator's inference, so a direct call and a validated
+#' one agree.
 #' @param sd numeric, the arms' printed SDs
 #' @param roundDisp the printed decimals of each, or NULL/NA to infer
 #' @return list(lo, hi), numeric vectors the length of `sd`
 #' @noRd
 .iaSdInterval <- function(sd, roundDisp = NULL) {
-  dec <- if (!is.null(roundDisp) && length(roundDisp) == length(sd) && all(!is.na(roundDisp)))
-    as.numeric(roundDisp) else vapply(sd, .iaDecimals, integer(1))
+  dec <- if (is.null(roundDisp) || length(roundDisp) != length(sd)) rep(NA_real_, length(sd))
+         else suppressWarnings(as.numeric(roundDisp))
+  blank <- is.na(dec)
+  if (any(blank)) dec[blank] <- max(vapply(sd, .iaDecimals, integer(1)))
   h <- 10^(-dec)
   list(lo = ifelse(sd == 0, 0, pmax(0, sd - h / 2)),
        hi = ifelse(sd == 0, 0, sd + h / 2))
@@ -328,7 +337,10 @@
 #'   unless it, or one of its rows, looks alarming, so this is a
 #'   ceiling, not a cost. Lower it to trade precision for speed on a
 #'   large trial; the reported `M` column says what the rows used.
-#' @return a data.frame with columns TRIAL, ROW, P, CI95, M, NOTE: one
+#' @return a data.frame with columns TRIAL, ROW, P, CI95, M, NOTE, KIND
+#'   (KIND is "variable" on a variable's line, "summary" on the trial's
+#'   summary line, NA on the spacer - consumers identify the summary by
+#'   KIND, never by the text in ROW, which a variable may also carry): one
 #'   row per data ROW (M = replicates used; CI95 = the exact
 #'   Clopper-Pearson 95% Monte Carlo interval of the row p, on every row;
 #'   NOTE = "attainable floor" when the row sits at the smallest p its
@@ -828,7 +840,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     r <- rows[[j]]
     if (is.null(r$sim))
       return(data.frame(ROW = r$Row, P = r$Pdisp, CI95 = "", M = NA_character_,
-                        NOTE = "", .PNUM = NA_real_, .KLE = NA_real_,
+                        NOTE = "", KIND = "variable", .PNUM = NA_real_, .KLE = NA_real_,
                         stringsAsFactors = FALSE))
     rep <- .rowReport(rowStat[[j]])
     if (!is.null(graphs))
@@ -845,7 +857,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                NOTE = paste(c(if (isTRUE(rowStat[[j]]$atFloor)) "attainable floor",
                               if (!is.null(r$sim$note) && nzchar(r$sim$note)) r$sim$note),
                             collapse = "; "),
-               .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
+               KIND = "variable", .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
   }))
   x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
 
@@ -899,6 +911,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       P = "No values"
   }
 
+  # THE KIND COLUMN (2026-09-07; the GPT-6 audit's finding F2, docs/audits/).
+  # The trial's summary line used to be recognisable only by the text
+  # "Summary" in ROW, and the API, the results workbook and the graphs
+  # all found it that way - so a VARIABLE the paper happened to call
+  # "Summary" was taken for a second trial summary, entered the
+  # across-trial combination as another trial, and moved the overall p
+  # (0.046 -> 0.0087 on the worked example, reproduced). Every line now
+  # says what it is: "variable", "summary", or NA on the spacer. Consumers
+  # read KIND, never the label.
   lastline <- data.frame(
     TRIAL = c(NA, NA),
     ROW = c("Summary", NA),
@@ -906,13 +927,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     CI95 = c(ciStr, NA),
     M = c(NA, NA),
     NOTE = c("", NA),
+    KIND = c("summary", NA),
     .PNUM = c(NA, NA),
     .KLE = c(NA, NA)
   )
 
   x <- rbind(x, lastline)
   # internal bookkeeping columns stay out of the results
-  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M", "NOTE")]
+  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND")]
   outputComments(
     paste0("Trial ", TRIAL,": p = ", P,
            if (nzchar(ciStr)) paste0(" (95% Monte Carlo interval ",
