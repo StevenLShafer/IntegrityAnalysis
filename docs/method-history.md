@@ -332,6 +332,25 @@ printing, the attainable-floor effect, and it is unchanged by the
 draw. The Carlisle corpus has no median rows, so there is no corpus
 figure for this change.
 
+## 2026-09-07 — the rounding convention: banker's rounding kept
+
+The 2026-09-06 audit (finding F3) noticed that the simulation rounds
+with R's `round()`, half to even, while the software behind most printed
+tables rounds a half away from zero, and measured the difference (pure
+R, 400,000 replicates per cell, the same seed both ways): where a mean
+of N grid observations can land exactly on a printed half, banker's
+rounding inflates the tie mass and the mid-p at a tie — by 8.8% for
+N = 20 integer observations printed to one decimal (0.00692 against
+0.00631), 3.0% for the worked example (6 per arm, integers), 2.4% at
+N = 40, 1.4% at N = 100 with one-decimal observations printed to two,
+1.0% at N = 10 printed to integers, and 0% where no exact half is
+reachable. The direction is conservative. Steve Shafer decided
+(2026-09-07) to keep banker's rounding: the convention a paper's own
+software used cannot be read from its table, the effect is bounded and
+one-directional, and a change would move every seeded known answer for
+no gain in validity. The convention is now stated in statistics.md.
+Data: `C:/dev/Corpus/reviews/audit-2026-09-06/roundconv.R`.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
