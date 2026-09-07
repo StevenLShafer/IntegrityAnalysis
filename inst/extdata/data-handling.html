@@ -59,10 +59,13 @@ not</a></li>
   PROVENANCE: drafted 2026-08-26 by Claude (Claude Code; model Claude
   Fable 5) at Steve Shafer's request, from the app and service as built.
   It describes CURRENT behavior; if a data path changes, this file
-  changes in the same commit. Published to
-  https://integrityanalysis.io/data-handling.html by the pages workflow.
+  changes in the same commit. This Markdown, in the public repository,
+  is the published copy. The pages workflow (.github/workflows/pages.yaml)
+  serves only site/ and the user guide at integrityanalysis.io; the
+  rendered inst/extdata/data-handling.html ships inside the package and
+  is not (yet) served at any URL.
 
-  TO REGENERATE THE SERVED HTML after editing:
+  TO REGENERATE THE HTML after editing:
     "C:\Program Files\Quarto\bin\tools\pandoc.exe" docs/data-handling.md
       -s --embed-resources --toc --metadata title="IntegrityAnalysis - Data Handling"
       -c docs/user-guide.css -o inst/extdata/data-handling.html
@@ -77,15 +80,19 @@ every claim below can be checked against it.</em></p>
 <h2 id="in-one-paragraph">In one paragraph</h2>
 <p>IntegrityAnalysis processes an uploaded manuscript or table
 <strong>in memory, for the length of one session or one API request, and
-retains nothing afterward</strong>. The default analysis is
-deterministic and runs entirely on the server that receives it — no
-document content is sent anywhere else. A single, opt-in exception
-exists: if a user enters their own <strong>Anthropic</strong> API key,
-the pages a document’s own text cannot be read from are sent to the
-Anthropic API under the user’s account, for that session only. Anthropic
-is the only AI service this software can call. Under Anthropic’s
-commercial terms, nothing submitted that way is used to train a model,
-and it is deleted within about 30 days.</p>
+retains nothing afterward</strong>. The extraction is deterministic and
+the analysis is a Monte Carlo simulation (reproducible with a seed);
+both run entirely on the server that receives the upload — no document
+content is sent anywhere else. A single, opt-in exception exists: if a
+user enters their own <strong>Anthropic</strong> API key, then for a
+document the deterministic reader could not fully read, the page its
+baseline table sits on — as text, or as a rendered image when the page
+is a scan — is sent to the Anthropic API under the user’s account, and
+if no table can be read there, the article’s text (up to 60,000
+characters) follows; this applies for that session or request only.
+Anthropic is the only AI service this software can call. Under
+Anthropic’s commercial terms, nothing submitted that way is used to
+train a model, and it is deleted within about 30 days.</p>
 <h2 id="what-is-processed-and-what-is-not">What is processed, and what
 is not</h2>
 <p><strong>Processed (transiently):</strong> the uploaded file (PDF,
@@ -111,19 +118,48 @@ directory created for that one request and deletes the directory when
 the request finishes — on success and on failure alike. Each response
 includes a <code>&quot;deleted&quot;: true</code> field confirming it.</li>
 <li>There is no database of submissions, no backup of uploaded content,
-and no log that records document content.</li>
+and no log that records document content by design. One qualification:
+when an API request fails, the service’s internal error log records the
+R error message (the caller receives a fixed, contentless response).
+Such a message can quote a fragment of the failing input — a column
+name, a malformed cell. That log is the hosting platform’s process log,
+not a store IntegrityAnalysis keeps, and it never contains a
+document.</li>
 </ul>
 <h2 id="no-training-on-your-content">No training on your content</h2>
 <p>The deterministic engine — the default, and the whole of what runs
 unless a user deliberately turns on the AI assist — makes no external
 network call at all. Nothing to train on ever leaves the server.</p>
 <p>When a user opts into the AI assist by entering their own
-<strong>Anthropic</strong> API key, the text (or, for a scanned page,
-the image) of the pages the deterministic reader could not parse is sent
-to the Anthropic API under the <strong>user’s own account</strong>.
-Anthropic is the only AI service this software is built to call: the key
-field validates against Anthropic’s API and the client speaks only that
-API, so a key from another provider would simply be rejected.</p>
+<strong>Anthropic</strong> API key, and only for a document the
+deterministic reader could not fully read, this is what is sent to the
+Anthropic API under the <strong>user’s own account</strong>:</p>
+<ul>
+<li><strong>The page the baseline table sits on</strong>, located by its
+caption the same way the deterministic reader locates it. The page’s
+text is sent when it has a text layer — even though that text was
+readable, it is the table on it that could not be extracted. When the
+document has scanned or image-only pages, up to four of those pages are
+sent as rendered images instead; a fully scanned document is first
+searched locally to find the table page, and that page is sent as an
+image. A picture of a table uploaded as a file is sent as that picture
+(jpg or png; a tif is read locally only).</li>
+<li><strong>The article’s text, up to 60,000 characters</strong>, if no
+table could be read from that page — some trials state their baseline
+data in a sentence of the Methods rather than a table, and this second
+request asks for those. (A Word manuscript or a JATS XML article never
+takes either route; those formats are read deterministically only.)</li>
+</ul>
+<p>Where the deterministic reader has read part of the table, the model
+is also told which arms and variables were already read, so that it
+fills gaps rather than re-reading the page; its lines are marked as
+AI-read in the grid, and a value found deterministically is never
+overwritten. In the interactive app the assist stops after 25 documents
+in one session (the default of <code>INTEGRITY_AI_SESSION_CAP</code>)
+and the rest of the upload is read deterministically. Anthropic is the
+only AI service this software is built to call: the key field validates
+against Anthropic’s API and the client speaks only that API, so a key
+from another provider would simply be rejected.</p>
 <p>Anthropic’s Commercial Terms of Service state that Anthropic may not
 train its models on customer content submitted through the API, and API
 inputs and outputs are <a href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data">deleted
@@ -151,9 +187,10 @@ process and is purged as described above.</li>
 a hosting sub-processor on the same terms.</li>
 <li><strong>Anthropic</strong> — the only AI service this software can
 call — receives content <strong>only</strong> when a user has entered
-their own Anthropic API key, and <strong>only</strong> the specific
-pages the deterministic reader could not handle. Absent a key, no third
-party receives any content.</li>
+their own Anthropic API key, and <strong>only</strong> for a document
+the deterministic reader could not fully read: the table’s page, and if
+that fails, up to 60,000 characters of the article’s text, as described
+above. Absent a key, no third party receives any content.</li>
 </ul>
 <p>All traffic to the app and the API is over HTTPS.</p>
 <h2 id="transport-and-access">Transport and access</h2>
@@ -162,13 +199,20 @@ is read only by the analysis process, in its own isolated working
 directory; document-parsing of untrusted files runs in short-lived
 subprocesses with enforced time and size limits, so a malformed or
 hostile file cannot persist or reach other requests. The API requires a
-bearer token issued by the operator; the operator’s registry stores only
-irreversible hashes of those tokens, never the tokens themselves.</p>
+bearer token issued by the operator. In the deployed configuration the
+operator’s registry and the service’s environment carry only
+irreversible SHA-256 hashes of those tokens, never the tokens themselves
+(the software also accepts a plain-text token in its environment, a
+convenience for local testing that the deployment does not use).</p>
 <h2 id="usage-measurement">Usage measurement</h2>
 <p>The interactive app counts two numbers only: how many times it is
-opened and how many analyses are run. These are simple counts. No IP
-address, no document content, and no per-submission identifier reaches
-the counter — the count is sent by the server, not by the browser.</p>
+opened and how many analyses are run. These are simple counts, sent to a
+GoatCounter site operated by Steve Shafer (<code>R/usageCount.R</code>;
+the payload is one event name, “session” or “analyze”). No IP address,
+no document content, and no per-submission identifier reaches the
+counter — the count is sent by the server process, not by the browser,
+so the counter sees only the hosting service’s address. Counting is on
+only in the production deployment; the API does not count.</p>
 <h2 id="what-integrityanalysis-is-not">What IntegrityAnalysis is
 not</h2>
 <p>It is not a repository, a manuscript-tracking system, or a data

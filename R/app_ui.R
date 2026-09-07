@@ -221,7 +221,7 @@ app_ui <- function(testNote = NULL)
             # the old wording attached "(csv, xls, xlsx)" to the first
             # only, so a reader with a journal-style CSV could not tell
             # it was supported (Steve, 2026-08-27).
-            "<br>Select one or more spreadsheets - csv, xls or xlsx - ",
+            "<br>Select one or more spreadsheets - csv or xlsx - ",
             "in either the data entry layout or a journal-style ",
             "baseline table (variables as rows, arms as columns, ",
             "including this app's own Editor's View download); ",

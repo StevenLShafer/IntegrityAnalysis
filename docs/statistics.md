@@ -59,7 +59,7 @@ summaries exactly as the paper rounded its own, and counts how often
 the simulated arms agree at least as well as the printed ones. Ties
 count half — the mid-p convention, a deliberate choice. A mid-p is
 centred on the right value on average, and it reproduces Carlisle's
-published 2017 values (r = 0.991 over 5,080 trials), but it is not
+published 2017 values (r = 0.993 over 5,041 usable trials in the current engine, [ledger](validation-ledger.md)), but it is not
 exactly uniform for every fixed margin of a discrete table: where the
 tie mass is large, the share of honest tables below 0.05 can sit above
 or below 5%. (An inclusive-tail p, counting every tie, would be
@@ -76,7 +76,7 @@ be challenged, so it reports only what the simulation supports:
 - **"<0.0001" is a confidence statement.** A row displays "<0.0001" only
   when the one-sided 97.5% upper Clopper–Pearson bound on its simulated
   count (ties counted fully — conservative) clears 0.0001. At zero hits
-  this needs roughly 30,000 replicates; at 100,000 the bound is
+  this needs about 37,000 replicates (at 30,000 the bound is still 1.2 × 10⁻⁴); at 100,000 the bound is
   3.7 × 10⁻⁵.
 - **Every row carries a 95% Monte Carlo interval**, exact
   Clopper–Pearson, its lower end from the strictly-below count and its
