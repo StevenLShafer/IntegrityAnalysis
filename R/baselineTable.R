@@ -159,7 +159,10 @@ writeBaselineTablesXlsx <- function(tables, file) {
     nm <- substr(trimws(nm), 1, 31)
     if (nm == "") nm <- "Trial"
     base <- substr(nm, 1, 28); k <- 1
-    while (nm %in% used) { k <- k + 1; nm <- paste0(base, " ", k) }
+    # openxlsx refuses sheet names that differ only by case ("Trial A" and
+    # "trial a" -> "already exists ... unique case-insensitive"), so the
+    # duplicate check is case-insensitive too (screen 2026-09-06-1749, F3)
+    while (tolower(nm) %in% tolower(used)) { k <- k + 1; nm <- paste0(base, " ", k) }
     used <- c(used, nm)
     openxlsx::addWorksheet(wb, nm)
     openxlsx::writeData(wb, nm, tables[[trial]], headerStyle = headStyle)

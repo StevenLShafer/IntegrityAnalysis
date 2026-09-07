@@ -146,6 +146,7 @@ m <- 100000
 # name that collides with a base column ("N", "MEAN") is prefixed with
 # the variable's. Lines without a LEVEL pass through untouched; a file
 # without a LEVEL column is returned as it came.
+.iaMaxLevelColumns <- 200L   # the wide table the long layout may build: .apiMaxCols
 .iaLongToWide <- function(DATA) {
   if (is.null(DATA) || !("LEVEL" %in% names(DATA)) || !("ROW" %in% names(DATA)))
     return(DATA)
@@ -169,41 +170,58 @@ m <- 100000
     if (nm %in% base || grepl(tokens, nm)) nm <- tolower(paste(row, level))
     nm
   }
-  newCols <- character(0)
-  wide <- list()          # per level key: the wide rows (one per arm)
-  for (k in levelKeys) {
-    rows <- which(key == k & isLevel)
-    levels <- unique(lv[rows])
-    nArms <- max(vapply(levels, function(l) sum(lv[rows] == l), integer(1)))
-    proto <- DATA[rows[1], , drop = FALSE]
-    out <- proto[rep(1, nArms), , drop = FALSE]
-    out$N <- NA_real_; out$LEVEL <- NA
-    for (cc in intersect(c("MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(out)))
-      out[[cc]] <- NA
-    for (l in levels) {
-      cn <- colOf(DATA$ROW[rows[1]], l)
-      newCols <- union(newCols, cn)
-      lrows <- rows[lv[rows] == l]
-      counts <- suppressWarnings(as.numeric(DATA$N[lrows]))
-      if (!(cn %in% names(out))) out[[cn]] <- NA_real_
-      out[[cn]][seq_along(lrows)] <- counts
-    }
-    wide[[k]] <- out
-  }
+  # THE GATE COMES FIRST (security screen 2026-09-06-1749, F1). The
+  # previous build assigned one data.frame cell at a time - keys x new
+  # columns `[[<-` calls, an n x n frame, thousands of one-row rbinds -
+  # and was cubic in time and quadratic in memory: a 100 KB CSV of 1,000
+  # all-distinct (ROW, LEVEL) lines took 91 s and 219 MB, and 5,000 lines
+  # (the API's row limit) extrapolated to three hours on the single
+  # plumber thread, before any downstream gate had seen the frame. The
+  # wide table's width is known from the raw lines alone, so it is
+  # counted and refused BEFORE anything is built: a real categorical
+  # variable has a handful of levels, and a file whose long lines would
+  # need more count columns than the API admits (.iaMaxLevelColumns, the
+  # same 200 as .apiMaxCols) is not a baseline table. The build itself is
+  # then one indexed matrix and one rbind, linear in the lines.
+  li <- which(isLevel)
+  cn <- vapply(li, function(i) colOf(DATA$ROW[i], lv[i]), character(1))
+  newCols <- unique(cn)
+  if (length(newCols) > .iaMaxLevelColumns)
+    stop(sprintf(paste("the long layout would need %d count columns (one per",
+                       "distinct level); the limit is %d - a baseline table's",
+                       "categorical variables have a handful of levels each"),
+                 length(newCols), .iaMaxLevelColumns))
+  # the arm of each level line: its position among the lines of the same
+  # (variable, level), in file order - the same rule as before
+  arm <- stats::ave(seq_along(li), paste(key[li], lv[li], sep = "\r"), FUN = seq_along)
+  # one wide row per (variable, arm), carrying the variable's first line
+  # (its TRIAL, ROW, any extra columns) with the measurement columns blank
+  keyFirst <- tapply(li, key[li], min)
+  nArms    <- tapply(arm, key[li], max)
+  keys     <- names(keyFirst)[order(keyFirst)]
+  keyFirst <- keyFirst[keys]; nArms <- nArms[keys]
+  W <- DATA[rep(keyFirst, nArms), , drop = FALSE]
+  wideKey <- rep(keys, nArms)
+  wideArm <- unlist(lapply(nArms, seq_len), use.names = FALSE)
+  W$N <- NA_real_; W$LEVEL <- NA
+  for (cc in intersect(c("MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(W)))
+    W[[cc]] <- NA
+  # the counts, placed by (wide row, count column) in one indexed
+  # assignment; a later line for the same cell wins, as the loop did
+  M <- matrix(NA_real_, nrow(W), length(newCols), dimnames = list(NULL, newCols))
+  ri <- match(paste(key[li], arm, sep = "\r"), paste(wideKey, wideArm, sep = "\r"))
+  M[cbind(ri, match(cn, newCols))] <- suppressWarnings(as.numeric(DATA$N[li]))
   # every count column exists on every row, NA where a variable does not use it
-  for (cn in newCols) if (!(cn %in% names(DATA))) DATA[[cn]] <- NA_real_
-  for (k in names(wide)) for (cn in newCols) if (!(cn %in% names(wide[[k]]))) wide[[k]][[cn]] <- NA_real_
-  # rebuild in file order: continuous lines as they are, each level
-  # group's wide rows where its first line stood
-  pieces <- list(); placed <- character(0)
-  for (i in seq_len(nrow(DATA))) {
-    if (!isLevel[i]) { pieces[[length(pieces) + 1]] <- DATA[i, , drop = FALSE]; next }
-    k <- key[i]
-    if (k %in% placed) next
-    placed <- c(placed, k)
-    pieces[[length(pieces) + 1]] <- wide[[k]][, names(DATA), drop = FALSE]
+  for (j in seq_along(newCols)) {
+    if (!(newCols[j] %in% names(DATA))) DATA[[newCols[j]]] <- NA_real_
+    W[[newCols[j]]] <- M[, j]
   }
-  out <- do.call(rbind, pieces)
+  # rebuild in file order: continuous lines as they are, each variable's
+  # wide rows where its first line stood, arms in order
+  cont <- DATA[!isLevel, , drop = FALSE]
+  pos  <- c(which(!isLevel), keyFirst[wideKey] + wideArm / (max(wideArm) + 1))
+  out  <- rbind(cont, W[, names(DATA), drop = FALSE])
+  out  <- out[order(pos), , drop = FALSE]
   rownames(out) <- NULL
   out$LEVEL <- NULL
   # the columns this layout created are categories by construction; the
