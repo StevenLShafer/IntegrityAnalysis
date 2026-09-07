@@ -89,6 +89,30 @@
 .iaDirectDrawN          <- 100L
 .iaDirectDrawSdOverGrid <- 3
 
+#' The interval a printed SD stands for
+#'
+#' The SD rounding draw (2026-09-06; see the continuous branch of P_Calc)
+#' draws each arm's sample SD uniformly within the interval its printed
+#' value covers: half a printed unit either side, never below zero. A
+#' blank or missing `ROUND_DISPERSION` is inferred from the SD's own
+#' printed decimals (a direct caller without the column gets what
+#' `validateData()` would have inferred). A printed ZERO is not an
+#' interval: it declares that the variable did not vary (13 rows of
+#' Carlisle's corpus; PR #182 accepted them, and identical arms with SD 0
+#' report p = 0.5 at the attainable floor). Drawing from [0, h/2) there
+#' would manufacture a spread the paper denies, so zero stays zero.
+#' @param sd numeric, the arms' printed SDs
+#' @param roundDisp the printed decimals of each, or NULL/NA to infer
+#' @return list(lo, hi), numeric vectors the length of `sd`
+#' @noRd
+.iaSdInterval <- function(sd, roundDisp = NULL) {
+  dec <- if (!is.null(roundDisp) && length(roundDisp) == length(sd) && all(!is.na(roundDisp)))
+    as.numeric(roundDisp) else vapply(sd, .iaDecimals, integer(1))
+  h <- 10^(-dec)
+  list(lo = ifelse(sd == 0, 0, pmax(0, sd - h / 2)),
+       hi = ifelse(sd == 0, 0, sd + h / 2))
+}
+
 # A trial p as a number, for the closed-form combination ACROSS trials
 # (results workbook, graphs, API): the exact combination reports
 # "<0.0001" when its bound licenses it, and that enters the combination
@@ -384,7 +408,38 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # agreement with his values rose (r 0.9925 -> 0.9931), the shift
           # confined to trials of 30 or fewer per arm. No c4 correction is
           # applied to the draw: no point estimate is plugged in.
-          sigmaDraw <- function(ch) sqrt(Meanvar * df / stats::rchisq(ch, df))
+          # THE SD'S PRINTED ROUNDING (audit 2026-09-06, finding F1; Steve:
+          # "do the SD rounding draw first"). A printed SD is an interval,
+          # not a number: "1" at integer precision means a true sample SD
+          # anywhere in [0.5, 1.5), and the row p at a tie varied by a
+          # factor of 2.5 across that interval when the printed value was
+          # taken as exact (0.128 at 0.5 to 0.050 at 1.49 for two arms of
+          # 30, means tied at one decimal; a factor of 1.4 for a printed
+          # "3", negligible at two significant figures - the audit report,
+          # C:/dev/Corpus/reviews/AUDIT-2026-09-06-statistics-and-docs.md).
+          # The mean's rounding needs no such treatment because the
+          # simulation rounds its own means the same way and the tie mass
+          # IS the mechanism; the SD is different because it enters the
+          # null as a PARAMETER, so its rounding is unmodelled parameter
+          # uncertainty - the same class of thing the sigma draw above
+          # models. Each replicate therefore draws every arm's sample SD
+          # uniformly within its printed interval (half a printed unit
+          # either side, never below zero), pools those by degrees of
+          # freedom exactly as Meanvar pools the printed values, and only
+          # then applies the chi-square draw. hDisp is 10^-ROUND_DISPERSION;
+          # validateData() infers a blank ROUND_DISPERSION from the SD's
+          # printed decimals, and a direct caller without the column gets
+          # the same inference here. (Meanvar itself survives for the
+          # direct-draw threshold, through Meansd.)
+          sdIv <- .iaSdInterval(ROWS$SD, ROWS$ROUND_DISPERSION)
+          sdLo <- sdIv$lo; sdHi <- sdIv$hi
+          pooledVarDraw <- function(ch) {
+            v <- numeric(ch)
+            for (i in 1:COLS)
+              v <- v + (ROWS$N[i] - 1) * (sdLo[i] + (sdHi[i] - sdLo[i]) * stats::runif(ch))^2
+            v / df
+          }
+          sigmaDraw <- function(ch) sqrt(pooledVarDraw(ch) * df / stats::rchisq(ch, df))
           DiffSample <- sum((ROWS$MEAN - Meanmean)^2) # Squared difference of column means
           # Monte Carlo Simulation. The simulation body is unchanged from
           # the Carlisle-validated implementation (issue 3, r = 0.991);

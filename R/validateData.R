@@ -631,6 +631,26 @@ validateData <- function(DATA) {
     grpMax <- stats::ave(DATA$ROUND_MEAN, DATA$TRIAL, DATA$ROW, FUN = max)
     DATA$ROUND_MEAN[meanInferred] <- grpMax[meanInferred]   # inferred cells only
     DATA$ROUND_OBSERVATION[obsInferred] <- DATA$ROUND_MEAN[obsInferred]
+    # The SD's printed precision (2026-09-06, the SD rounding draw in
+    # P_Calc: each replicate draws the sample SD within its printed
+    # interval, so the engine needs to know how coarsely the SD was
+    # printed). A supplied ROUND_DISPERSION is kept; a blank one is
+    # inferred from the SD's decimals, raised to the variable's maximum
+    # across its arms as ROUND_MEAN is (10.0 beside 9.8 is a one-decimal
+    # variable on both lines). Lines without an SD (median and category
+    # lines) keep NA; P_Calc never reads it there.
+    if (is.null(DATA$ROUND_DISPERSION))
+      DATA$ROUND_DISPERSION <- NA_real_
+    hasSD <- !is.na(DATA$SD)
+    dispInferred <- is.na(DATA$ROUND_DISPERSION) & hasSD
+    if (any(dispInferred))
+    {
+      sdDec <- rep(NA_real_, nrow(DATA))
+      sdDec[hasSD] <- vapply(DATA$SD[hasSD], .iaDecimals, integer(1))
+      grpMaxSD <- stats::ave(sdDec, DATA$TRIAL, DATA$ROW,
+                             FUN = function(x) if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE))
+      DATA$ROUND_DISPERSION[dispInferred] <- grpMaxSD[dispInferred]
+    }
   }
 
   # A SINGLE-LINE categorical variable is unanalyzable: the method

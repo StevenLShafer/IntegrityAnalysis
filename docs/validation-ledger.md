@@ -17,6 +17,7 @@ those live in `docs/statistics.md` and beside the corpus tooling.
 | 2026-09-05 | main + zero-SD fix (e9b710f + #182) | 5,011 usable | 10,000 | 0.9922 | 0.0160 | 88.0% | 98.6% | baseline for the SD decision; the 0.1 escalation rule |
 | 2026-09-05 | pooled SD, N − k (#183) | 5,011 usable | 10,000 | 0.9925 | 0.0150 | 88.5% | 98.5% | median \|Δp\| vs baseline 0.007 |
 | 2026-09-06 | sigma draw (#185, from merged main) | 5,041 usable | 10,000 | 0.9929 | 0.0142 | 89.1% | 98.5% | median \|Δp\| vs pooled 0.009, confined to ≤ 30 per arm |
+| 2026-09-06 | SD rounding draw (feature/sd-rounding-draw, from 166dc5b) | 5,041 usable | 10,000 | 0.9932 | 0.0138 | 89.2% | 98.5% | vs the sigma-draw run: median \|Δp\| 0.0077, r 0.9982, alarms 420 → 418 (5 down, 7 up), no direction by arm size; data `C:/dev/Corpus/synthetic/sd-round/` |
 
 "Usable" excludes the trials where Carlisle's stored p is exactly 1 (a
 z = +∞ artifact of his closed-form combination, 39 trials) and any
