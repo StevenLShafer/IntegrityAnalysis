@@ -383,6 +383,24 @@ least 1/(n·r·c)), so distinct values are not merged. Known answers were
 unchanged: none of the pinned rows had a dust-split tie. The audit's
 row now reads 0.35 and its five-row trial 0.084, to Monte Carlo
 precision.
+## 2026-09-07 — the summary line is identified by kind, not by its label
+
+**What was wrong.** The engine's per-trial summary line carried the
+label "Summary" in the ROW column and nothing else marked it, and the
+API's across-trial combination, the results workbook's Summary sheet
+and the graphs all found it by that text. The validator accepts a
+variable called "Summary", so such a variable's row was taken for a
+second trial summary and entered the closed-form combination across
+trials as another trial: on the worked example the overall p moved from
+0.046 to 0.0087 by renaming the row (the GPT-6 audit's finding F2,
+`docs/audits/`; reproduced).
+
+**What changed.** Every line of the engine's output now says what it is
+in a `KIND` column — "variable", "summary", or blank on the spacer — and
+every consumer reads that, never the label. The API's `resultsCsv`
+carries the column so that a client can do the same; the workbook's
+Test Results sheet keeps its six printed columns. No number changes for
+any table without a variable named "Summary".
 
 ## 2026-09-07 — the SD's printed interval when some precisions are blank
 

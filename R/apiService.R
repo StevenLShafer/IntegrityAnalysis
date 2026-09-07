@@ -747,7 +747,9 @@
   }
   # per-trial summary p's, plus the overall Stouffer combination across
   # trials (the same closure the results workbook reports)
-  sm <- OUTPUT[!is.na(OUTPUT$ROW) & OUTPUT$ROW == "Summary", , drop = FALSE]
+  # by KIND, never by the label: a variable named "Summary" is a variable
+  # (GPT-6 audit F2, 2026-09-07)
+  sm <- OUTPUT[!is.na(OUTPUT$KIND) & OUTPUT$KIND == "summary", , drop = FALSE]
   # "<0.0001" (the exact combination's licensed bound) combines as 1e-4
   # and passes through unchanged when it is the only trial
   trialP <- .trialPNumeric(sm$P)

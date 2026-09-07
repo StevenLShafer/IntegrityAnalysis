@@ -199,7 +199,7 @@ Captured (the example workbook, two trials):
 
 ```json
 {"ok": true, "file": "Example.xlsx", "trials": 2, "overallP": 0.9016,
- "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\"\n\"Submission 2025-08-01\",\"BUN\",\"0.9215\",\"\",\"1000\",\"\"\n… (19 lines)",
+ "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Submission 2025-08-01\",\"BUN\",\"0.9215\",\"\",\"1000\",\"\",\"variable\"\n… (19 lines)",
  "journalTables": {"Submission 2025-08-01": "\"Variable\",\"Arm 1 (n = 15)\",\"Arm 2 (n = 17)\"\n\"BUN, mean (SD)\",\"31 (5)\",\"35 (7)\"\n…",
                    "Submission 2025-08-02": "…"},
  "journalTablesOmitted": {},
@@ -211,7 +211,7 @@ Captured (the example workbook, two trials):
 |---|---|---|
 | `trials` | integer | trials analysed (a document is one trial; a spreadsheet may hold several, distinguished by its TRIAL column) |
 | `overallP` | number or string | **the result**: the one-sided p-value toward excessive homogeneity, combined across every row of every trial. Small means the baseline data are more alike across arms than random sampling explains. For one trial it is that trial's exact-combination p, and it arrives as the string `"<0.0001"` when the Monte Carlo licenses that bound. For several trials it is always a number: the closed-form Stouffer combination of the trial p's, a trial's `<0.0001` entering as 0.0001 |
-| `resultsCsv` | string | CSV, one line per variable with its row p-value, then a `Summary` line per trial with the trial's combined p. Its six columns are listed in the next table |
+| `resultsCsv` | string | CSV, one line per variable with its row p-value, then a summary line per trial with the trial's combined p. Its seven columns are listed in the next table; a script tells the summary line by its `KIND` column, never by the text in `ROW` |
 | `journalTables` | object of strings | one CSV per trial, keyed by trial name: the baseline table reconstructed from the extracted numbers in journal layout (variables as rows, arms as columns with "(n = …)" in the headers, "mean (SD)" cells). This is what an editor compares against the manuscript page |
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the analysed table in the template layout, as `/parse` returns it |
@@ -223,11 +223,12 @@ gives them:
 | column | in the workbook | meaning |
 |---|---|---|
 | `TRIAL` | TRIAL | the trial; printed on a trial's first line only |
-| `ROW` | ROW | the variable, as printed in the manuscript; `Summary` on the trial's last line |
+| `ROW` | ROW | the variable, as printed in the manuscript; the label `Summary` on the trial's last line. A manuscript may itself have a variable called "Summary", so do not identify the trial's line by this text: use `KIND` |
 | `P` | P (one-sided toward homogeneity) | the row's Monte Carlo mid-p, printed as `<0.0001` only when the bound in the next column licenses it. On the `Summary` line, the trial's combined p: the exact combination (the rows' Stouffer sum judged against its own simulated null), floored at 1/(replicates + 1) |
 | `CI95` | 95% Monte Carlo interval | the exact Clopper–Pearson 95 % interval of that p from the Monte Carlo's own sampling uncertainty, as `lower to upper` (about the simulation, not the data); on every variable line, and on the `Summary` line when the trial p is below 0.001 |
 | `M` | Replicates | the replicates the row actually used (1,000, 10,000 or 100,000; section 3); blank on the `Summary` line |
 | `NOTE` | Note | `attainable floor` when the row sits at the smallest p its printed precision allows (the arms printed exactly the same value and no honest replicate agreed better); for a median row, `quartiles beyond the metalog's skew limit; fitted at the limit` when the printed quartiles were more skewed than the model can carry (two notes are joined with `; `); else blank. A script should not read such a row as reassurance; whether it is informative depends on how rare exact agreement is at that N and precision, which is what its `P` says (0.27 for integer age at 1,000 per arm is nothing; 0.001 for a two-decimal row is a finding) |
+| `KIND` | (not printed) | what the line is: `variable` for a variable's line, `summary` for the trial's combined p, empty on the blank spacer between trials. Added 2026-09-07 after an audit showed a variable named "Summary" being read as a second trial summary |
 
 Values in the CSVs are sanitised against spreadsheet formula injection:
 a cell that would begin with `=`, `+`, `-`, `@`, a tab or a carriage
