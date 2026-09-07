@@ -233,6 +233,17 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
                       full.names = TRUE)) {
   if (any(grepl("pull_request_target", srcOf(wf))))
     note(paste0(wf, ": pull_request_target exposes deploy secrets to forks"))
+  # A workflow_run job inherits the secrets and fires on the triggering
+  # run's HEAD branch, so a `branches: [main]` filter alone also matches a
+  # fork's pull request from a branch named main; the deploy job must
+  # require a push from this repository (screen 2026-09-06-1749, F2)
+  src <- srcOf(wf)
+  if (any(grepl("^\\s*workflow_run:", src)) &&
+      !any(grepl("workflow_run\\.event\\s*==\\s*'push'", src) &
+           grepl("head_repository\\.full_name\\s*==\\s*github\\.repository", src)))
+    note(paste0(wf, ": a workflow_run job does not require event == 'push' from",
+                " this repository - a fork PR from a branch named main could",
+                " trigger the privileged deploy"))
 }
 
 ## 4 - committed credentials ----------------------------------------------
@@ -538,6 +549,18 @@ if (file.exists("R/utils.R")) {
           paste("R/utils.R: .ppImageUpscaled() decodes the picture before",
                 "judging the factor from its header (.ppImageDims) - an",
                 "over-cap picture is decoded for nothing (screen of PR #168, F1)"))
+  # the long-layout converter counts the wide table's columns and refuses
+  # BEFORE it builds anything - the build was cubic in time and quadratic
+  # in memory, reached before every downstream gate (screen
+  # 2026-09-06-1749, F1)
+  if (!any(grepl("\\.iaMaxLevelColumns", bodyOf(codeOf("R/app_globals.R"), ".iaLongToWide"))))
+    note(paste("R/app_globals.R: .iaLongToWide() no longer gates the wide",
+               "table's width on .iaMaxLevelColumns (screen 1749, F1)"))
+  orderIn("R/app_globals.R", ".iaLongToWide",
+          "\\.iaMaxLevelColumns", "matrix\\s*\\(",
+          paste("R/app_globals.R: .iaLongToWide() builds the wide table before",
+                "gating its width on .iaMaxLevelColumns - a long file of",
+                "all-distinct levels pins the worker for hours (screen 1749, F1)"))
   orderIn("R/parseBaselineTableHeuristics.R", "parseBaselineTableHeuristics",
           "\\.ppImageOK\\s*\\(", "\\.ppImageData\\s*\\(",
           paste("R/parseBaselineTableHeuristics.R decodes an image",

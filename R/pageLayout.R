@@ -63,7 +63,11 @@
   if (length(lines) < 8) return(single(pageWords))
 
   # Coverage: for each x bin, the fraction of lines that have a word over it.
-  nBin  <- max(10L, as.integer(ceiling(W)))
+  # the bins span the words' x range in points; a hostile PDF that places
+  # a word far off the page would make that gigabytes (screen
+  # 2026-09-06-1749, N2), so the span is clamped to a generous page
+  # width - binOf() already pins out-of-range positions to the last bin
+  nBin  <- max(10L, min(20000L, as.integer(ceiling(W))))
   cover <- numeric(nBin)
   binOf <- function(x) pmin(nBin, pmax(1L, as.integer(floor(x - left)) + 1L))
   for (L in lines) {

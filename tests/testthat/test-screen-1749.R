@@ -1,0 +1,86 @@
+# Regression tests for the full-surface security screen of 2026-09-06
+# (screen-2026-09-06-1749): F1 the long-layout converter's cost and its
+# gate, F3 case-variant trial names in the journal-view workbook, N2 the
+# page-band bins.
+#
+# PROVENANCE: written by Claude Code (model Claude Fable 5.1), 2026-09-06.
+suppressWarnings(suppressPackageStartupMessages({
+  library(shiny); library(foreach); library(MBESS); library(Rfast); library(dqrng)
+}))
+
+longFrame <- function(n, levelsPerVar = 1L) {
+  # n lines, each variable with `levelsPerVar` distinct levels, one arm
+  data.frame(TRIAL = "T", ROW = paste0("V", ceiling(seq_len(n) / levelsPerVar)),
+             LEVEL = paste0("L", seq_len(n)), N = seq_len(n), stringsAsFactors = FALSE)
+}
+
+test_that("F1: a long file whose levels would need more than .iaMaxLevelColumns count columns is refused before anything is built, in well under a second", {
+  d <- longFrame(3000)
+  t0 <- Sys.time()
+  expect_error(.iaLongToWide(d), "count columns")
+  expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 1)
+  # exactly at the limit it converts; one over, it refuses
+  expect_equal(ncol(.iaLongToWide(longFrame(.iaMaxLevelColumns))) - 3L, .iaMaxLevelColumns)
+  expect_error(.iaLongToWide(longFrame(.iaMaxLevelColumns + 1L)), "count columns")
+})
+
+test_that("F1: the linear build converts a large legitimate long file quickly", {
+  # 5,000 lines: 100 variables x 5 levels x 10 arms - well inside the column limit
+  d <- data.frame(TRIAL = "T",
+                  ROW = rep(paste0("V", 1:100), each = 50),
+                  LEVEL = rep(rep(paste0("L", 1:5), each = 10), 100),
+                  N = seq_len(5000), stringsAsFactors = FALSE)
+  t0 <- Sys.time()
+  w <- .iaLongToWide(d)
+  expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 5)
+  expect_equal(nrow(w), 1000)          # 100 variables x 10 arms
+  expect_equal(ncol(w), 3 + 5)         # TRIAL, ROW, N + five level columns
+  # the counts land in the right cells: variable 1, level L2, arm 3 is line 13
+  expect_equal(w$L2[w$ROW == "V1"][3], 13)
+})
+
+test_that("F1: the rebuilt converter reproduces the old semantics on a mixed file (arm order, later duplicate wins, continuous lines in place)", {
+  d <- data.frame(TRIAL = "T",
+                  ROW   = c("Age", "Sex", "Sex", "Age", "Sex", "Sex", "Wt", "Sex"),
+                  LEVEL = c(NA,   "M",   "F",   NA,    "M",   "F",   NA,   "M"),
+                  N     = c(20,   10,    10,    22,    11,    11,    20,   99),
+                  MEAN  = c(60,   NA,    NA,    61,    NA,    NA,    70,   NA),
+                  SD    = c(10,   NA,    NA,    11,    NA,    NA,    12,   NA),
+                  stringsAsFactors = FALSE)
+  w <- .iaLongToWide(d)
+  expect_identical(w$ROW, c("Age", "Sex", "Sex", "Sex", "Age", "Wt"))   # the wide rows sit where the first Sex line stood
+  expect_equal(w$M[w$ROW == "Sex"], c(10, 11, 99))                      # three arms of M, in file order
+  expect_equal(w$F[w$ROW == "Sex"], c(10, 11, NA))                      # F has two arms
+  expect_true(all(is.na(w$N[w$ROW == "Sex"])))
+  expect_equal(w$MEAN[w$ROW == "Age"], c(60, 61))
+  expect_identical(attr(w, "iaLevelColumns"), c("M", "F"))
+  expect_false("LEVEL" %in% names(w))
+})
+
+test_that("F1: the API returns a 422 at the validation stage, not a 500, for a long file over the column limit", {
+  d <- longFrame(.iaMaxLevelColumns + 1L)
+  r <- .apiAnalyze(d)
+  expect_false(r$ok)
+  expect_identical(r$stage, "validation")
+  expect_identical(r$issues$code, "error")
+  expect_match(r$issues$note, "count columns")
+})
+
+test_that("F3: two trials whose names differ only by case get two sheets", {
+  tabs <- list("Trial A" = data.frame(Variable = "Age", Arm1 = "60 (10)"),
+               "trial a" = data.frame(Variable = "Age", Arm1 = "61 (11)"))
+  f <- tempfile(fileext = ".xlsx")
+  expect_error(writeBaselineTablesXlsx(tabs, f), NA)
+  expect_length(openxlsx::getSheetNames(f), 2)
+})
+
+test_that("N2: a word placed far off the page does not make the band bins proportional to its position", {
+  set.seed(1)
+  w <- data.frame(x = runif(200, 50, 550), y = rep(seq(50, 750, length.out = 40), each = 5),
+                  width = 30, height = 10, text = "w", stringsAsFactors = FALSE)
+  w$x[1] <- 1e9
+  t0 <- Sys.time()
+  b <- .ppPageBands(w)
+  expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 5)
+  expect_true(is.data.frame(b) && all(c("x0", "x1") %in% names(b)))
+})

@@ -276,7 +276,10 @@ The standing conclusions of the 2026-08-20 full-repository review:
   were not.
 - **Deploy secrets stay out of reach.** Workflows trigger on
   `pull_request`, never `pull_request_target`; forked PRs get no
-  secrets. The API key lives only in the environment, never in code.
+  secrets - and the chained `workflow_run` deploy runs only for a push
+  to this repository's `main` (its `branches` filter alone would also
+  match a fork's pull request from a branch named `main`; screen
+  2026-09-06-1749). The API key lives only in the environment, never in code.
 - **Archives are extracted defensively.** Any zip/tgz handling must
   refuse absolute paths and `..` components, extract by basename into a
   fresh directory, cap entry count and total uncompressed size, and

@@ -638,7 +638,17 @@
 # The /analyze pipeline after reading: validate, then Monte Carlo.
 .apiAnalyze <- function(DATA, seed = NULL) {
   # Gate a frame whose names mean what they say - see .apiNormalizeNames.
-  DATA <- .apiNormalizeNames(DATA)
+  # The long-layout converter inside it refuses a file whose levels would
+  # need more count columns than the API admits (screen 2026-09-06-1749,
+  # F1); that refusal is a 422 naming the stage, never a 500.
+  DATA <- tryCatch(.apiNormalizeNames(DATA), error = function(e) e)
+  if (inherits(DATA, "error"))
+    return(list(ok = FALSE, stage = "validation",
+                issues = data.frame(row = NA_integer_, col = NA_character_, code = "error",
+                                    note = paste0("the table could not be read as a template: ",
+                                                  conditionMessage(DATA)),
+                                    stringsAsFactors = FALSE),
+                templateCsv = .apiTemplateCsv(NULL)))
   # Size gate BEFORE any simulation (H2): a crafted oversized table
   # would otherwise run the escalating Monte Carlo on the single
   # service thread past App Runner's request timeout, orphaning work.

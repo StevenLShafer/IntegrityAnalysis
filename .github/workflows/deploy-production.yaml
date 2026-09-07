@@ -38,7 +38,13 @@ jobs:
   deploy:
     # workflow_run fires on failure too; deploy only on success (a
     # manual dispatch carries no workflow_run payload and always runs)
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # ...and only for a PUSH to this repository's main: the workflow_run
+    # trigger's branches filter matches the triggering run's HEAD branch, so
+    # a pull request from a fork whose branch is named main would otherwise
+    # fire this privileged job on the fork's commit - checking it out,
+    # running ITS tools/securityCheck.R on the runner, and deploying it
+    # (security screen 2026-09-06-1749, F2; latent, never exercised)
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
