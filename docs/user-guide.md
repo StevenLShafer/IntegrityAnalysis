@@ -486,8 +486,12 @@ the duration of surgery is not one):
 | Duration of symptoms | 133 | 50 | 101 | 155 | 0 |
 
 `ROUND MEAN` is the printed precision of the median, exactly as for a
-mean. The median must lie between its quartiles; N, the median, and
-both quartiles are required. The simulation for such rows draws from a
+mean; `ROUND DISPERSION` is the quartiles' printed precision, inferred
+from their decimals when left blank (a table often prints the quartiles
+coarser than the median). The median must lie between its quartiles at
+their printed precisions: integer quartiles of 5 and 6 beside a median
+of 4.99 are accepted, since 5 stands for anything from 4.5 to 5.5. N,
+the median, and both quartiles are required. The simulation for such rows draws from a
 distribution fitted to the three quartile values (a metalog
 distribution — a flexible distribution specified directly by its
 quantiles), so no normality assumption is imposed. Each replicate

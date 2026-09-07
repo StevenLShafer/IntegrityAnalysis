@@ -558,7 +558,23 @@ validateData <- function(DATA) {
         for (cn in intersect(c("SD", "SE"), names(DATA)))
           if (!is.na(DATA[[cn]][i])) addIssue(i, cn, "incongruent")
         FAIL <- TRUE
-      } else if (DATA$Q1[i] > DATA$MEAN[i] || DATA$MEAN[i] > DATA$Q3[i])
+      } else if ({
+        # THE ORDER CHECK ALLOWS FOR PRINTING (2026-09-07; the GPT-6 audit's
+        # finding F4). Quartiles printed as integers beside a two-decimal
+        # median - "5, 4.99, 6" for observations 4.50, 4.80, 4.99, 5.60,
+        # 6.00 - are accurate summaries, yet Q1 > median on the printed
+        # numbers, and the check refused 391 of 400 honest tables printed
+        # that way. Each printed value stands for an interval half a unit
+        # wide either side; the row is incongruent only when no ordered
+        # quantiles can exist inside those intervals. The quartiles'
+        # precision is ROUND_DISPERSION when supplied, else their own
+        # printed decimals; the median's is ROUND_MEAN after its bump.
+        hq <- 10^(-(if ("ROUND_DISPERSION" %in% names(DATA) && !is.na(DATA$ROUND_DISPERSION[i]))
+                      DATA$ROUND_DISPERSION[i]
+                    else max(.iaDecimals(DATA$Q1[i]), .iaDecimals(DATA$Q3[i]))))
+        hm <- 10^(-max(DATA$ROUND_MEAN[i], .iaDecimals(DATA$MEAN[i])))
+        DATA$Q1[i] - hq / 2 > DATA$MEAN[i] + hm / 2 || DATA$MEAN[i] - hm / 2 > DATA$Q3[i] + hq / 2
+      })
       {
         for (cn in c("MEAN", "Q1", "Q3")) addIssue(i, cn, "incongruent")
         FAIL <- TRUE
@@ -642,11 +658,17 @@ validateData <- function(DATA) {
     if (is.null(DATA$ROUND_DISPERSION))
       DATA$ROUND_DISPERSION <- NA_real_
     hasSD <- !is.na(DATA$SD)
-    dispInferred <- is.na(DATA$ROUND_DISPERSION) & hasSD
+    # a median line's dispersion is its quartiles: their printed decimals
+    # are the line's dispersion precision (2026-09-07, GPT-6 audit F4),
+    # which the median branch prints its bootstrap quartiles to
+    hasQ <- if (all(c("Q1", "Q3") %in% names(DATA))) !is.na(DATA$Q1) & !is.na(DATA$Q3) else rep(FALSE, nrow(DATA))
+    dispInferred <- is.na(DATA$ROUND_DISPERSION) & (hasSD | hasQ)
     if (any(dispInferred))
     {
       sdDec <- rep(NA_real_, nrow(DATA))
       sdDec[hasSD] <- vapply(DATA$SD[hasSD], .iaDecimals, integer(1))
+      sdDec[hasQ]  <- pmax(vapply(DATA$Q1[hasQ], .iaDecimals, integer(1)),
+                           vapply(DATA$Q3[hasQ], .iaDecimals, integer(1)))
       grpMaxSD <- stats::ave(sdDec, DATA$TRIAL, DATA$ROW,
                              FUN = function(x) if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE))
       DATA$ROUND_DISPERSION[dispInferred] <- grpMaxSD[dispInferred]

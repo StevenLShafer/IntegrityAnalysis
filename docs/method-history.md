@@ -384,6 +384,29 @@ unchanged: none of the pinned rows had a dust-split tie. The audit's
 row now reads 0.35 and its five-row trial 0.084, to Monte Carlo
 precision.
 
+## 2026-09-07 — the quartiles' printed precision
+
+**What was wrong.** The validator's order check for a median row
+compared the printed numbers without regard to their precision, so
+quartiles printed as integers beside a two-decimal median — "5, 4.99, 6"
+for the observations 4.50, 4.80, 4.99, 5.60, 6.00, whose type-7
+quartiles 4.80 and 5.60 print as 5 and 6 — were refused as incongruent:
+391 of 400 honest thirty-per-arm tables printed that way (the GPT-6
+audit's finding F4, `docs/audits/`; reproduced). And the median branch
+printed its bootstrap quartiles to the median's precision whatever the
+quartiles' own.
+
+**What changed.** A median line's `ROUND_DISPERSION` is the quartiles'
+precision, inferred from their decimals when blank, exactly as an SD's
+is. The order check allows each printed value half a printed unit either
+side and refuses only when no ordered quantiles can exist inside those
+intervals. The bootstrap prints its quartiles to that precision. Not yet
+done, and a decision for Steve Shafer: integrating the quartiles'
+printed rounding into the fit itself (drawing each quartile within its
+interval per replicate, as the SD is drawn since 2026-09-06) — a table
+whose quartiles print coarsely relative to their interquartile range is
+otherwise fitted to a spuriously skewed metalog and clipped.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
