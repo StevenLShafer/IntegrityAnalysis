@@ -578,10 +578,14 @@
                     engine = NA_character_))
     }
     aiOn <- !is.null(apiKey) && nzchar(apiKey)
+    # pctApprox = TRUE: a percent-only cell whose percentage fits several
+    # counts is filled with the count farthest from the other arms - the
+    # fail-safe choice the app makes too (Steve, 2026-09-07) - and the
+    # reply's flags name the rows (see the API guide, "Incomplete data")
     res <- parseBaselineTableFiles(
       path, ai = if (aiOn) "fallback" else "never",
       timeout = if (aiOn) 300 else 60,
-      quiet = TRUE, apiKey = if (aiOn) apiKey else NULL)
+      quiet = TRUE, pctApprox = TRUE, apiKey = if (aiOn) apiKey else NULL)
     r <- res$result[[1]]
     if (is.null(r) || nrow(r$data) == 0) {
       msg <- res$error[1]

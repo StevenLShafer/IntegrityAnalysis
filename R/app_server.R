@@ -283,9 +283,10 @@ app_server <- function(input, output, session) {
   output$issueLegend <- renderUI({
     dv <- parseDerived()
     hasOcr <- !is.null(dv) && !is.null(dv$KIND) && any(dv$KIND == "ocr")
+    hasFailsafe <- !is.null(dv) && !is.null(dv$KIND) && any(dv$KIND == "failsafe")
     hasDerived <- !is.null(dv) && nrow(dv) > 0 &&
-      (is.null(dv$KIND) || any(dv$KIND != "ocr"))
-    if (is.null(rIssues()) && !hasDerived && !hasOcr) return(NULL)
+      (is.null(dv$KIND) || any(!dv$KIND %in% c("ocr", "failsafe")))
+    if (is.null(rIssues()) && !hasDerived && !hasOcr && !hasFailsafe) return(NULL)
     entry <- function(color, label, text) div(
       style = "margin: 2px 0;",
       span(style = paste0("display:inline-block; width:14px; height:14px;",
@@ -298,6 +299,13 @@ app_server <- function(input, output, session) {
           "count, or an arm N recovered from the document. OK to use,",
           "but best to check before it runs; hover the cell to see how",
           "it was derived.")),
+        if (hasFailsafe) entry("#ffd8a8", "fail-safe count", paste(
+          "the page printed a percentage that fits several counts for",
+          "this arm size; the count farthest from the other arms was",
+          "taken, so the row can look less alike than the truth but never",
+          "more. A design decision for incomplete data: the analysis is",
+          "conservative here, and the printed counts would settle it.",
+          "Hover the cell for the bracket.")),
         if (hasOcr) entry("#d2ecef", "OCR", paste(
           "this table came from a scanned page, read by optical",
           "character recognition. OCR can misread digits (3 vs 8, 1 vs",
@@ -341,8 +349,9 @@ app_server <- function(input, output, session) {
                else match(dv$COL[g], names(d))
         cis <- cis[!is.na(cis)]
         if (length(cis) == 0) next
-        code <- if (!is.null(dv$KIND) && identical(dv$KIND[g], "ocr"))
-          "ocr" else "derived"
+        code <- if (!is.null(dv$KIND) && identical(dv$KIND[g], "ocr")) "ocr"
+                else if (!is.null(dv$KIND) && identical(dv$KIND[g], "failsafe")) "failsafe"
+                else "derived"
         hits <- if (dv$ROW[g] == "*")
           which(as.character(d$TRIAL) == dv$TRIAL[g])
         else
@@ -512,6 +521,12 @@ app_server <- function(input, output, session) {
       "               converted to a count, or a recovered arm N). ",
       "               OK to use, but best to check it before the ",
       "               analysis runs.',",
+      "      failsafe: 'The page printed a percentage that fits several ",
+      "                counts for this arm size; the count farthest from ",
+      "                the other arms was taken (fail-safe: the row can ",
+      "                look less alike than the truth, never more). ",
+      "                Hover shows the bracket; the printed counts would ",
+      "                settle it.',",
       "      ocr: 'This table was read by optical character recognition ",
       "           from a scanned page. OCR can misread digits - verify ",
       "           every value against the manuscript, or enter an API ",
@@ -521,6 +536,7 @@ app_server <- function(input, output, session) {
       "    else if (code === 'incongruent') td.style.background = '#b8d0f0';",
       "    else if (code === 'derived') td.style.background = '#d7f0d7';",
       "    else if (code === 'ocr') td.style.background = '#d2ecef';",
+      "    else if (code === 'failsafe') td.style.background = '#ffd8a8';",
       "    if (code) {",
       "      var notes = instance.params.cellNotes;",
       "      td.title = (notes && notes[key]) ? notes[key] : help[code];",
@@ -1286,8 +1302,8 @@ app_server <- function(input, output, session) {
                    ROW = f$derived$ROW, COL = f$derived$COL,
                    KIND = f$derived$KIND,
                    note = paste0(
-                     ifelse(f$derived$KIND == "approximate",
-                            "APPROXIMATE - ",
+                     ifelse(f$derived$KIND == "failsafe",
+                            "FAIL-SAFE - ",
                      ifelse(f$derived$KIND == "ai",
                             "AI ASSIST - ",
                      ifelse(f$derived$KIND == "ocr",

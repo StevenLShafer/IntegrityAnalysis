@@ -348,6 +348,23 @@ makes a number reproducible; it does not make it more precise.
   observation precision guessed wrongly changes the answer; the app
   infers a missing precision from the printed decimals and says so, and
   that inference should be checked.
+- **Counts rebuilt from percentages are a design decision for
+  incomplete data, and it errs toward the null.** A table that prints
+  only a percentage for a categorical level gives the count exactly
+  when the arm has 100 or fewer patients (at one printed decimal, 1,000
+  or fewer), because then every count has its own percentage. Above
+  that, several counts share a printed percentage, and any single
+  choice is a guess about data the page does not hold. Taking the
+  middle of the bracket would be the worst guess for this screen: two
+  honest arms whose percentages happen to round the same would be
+  rebuilt with identical proportions, an agreement the real counts never
+  had (by exact enumeration, 38% of honest 5,000-per-arm pairs would
+  fall below p = 0.01). So an ambiguous cell takes the count in its
+  bracket **farthest from the other arms**: the row can look less alike
+  than the truth, never more, and its p is conservative. The app paints
+  such cells orange and states the bracket; the API's response flags
+  name the rows. The printed counts, if the author supplies them,
+  replace the guess.
 - **The Monte Carlo interval** describes the simulation's precision
   under the model. It does not include extraction error, an unsuitable
   randomization model, dependence, or the probability of fraud, and

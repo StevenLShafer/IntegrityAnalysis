@@ -400,6 +400,16 @@ specific cell:
   document), or the AI assist read the line off the page (its ROW cell
   is green). Usable as it stands, but check it against the manuscript
   before it runs; hover the cell to see how it was derived.
+- **Orange — fail-safe count.** The page printed only a percentage, and
+  for this arm size several counts fit it (above 100 patients at integer
+  percentages, above 1,000 at one decimal). The count farthest from the
+  other arms was taken, so the row can look less alike than the truth
+  but never more: the analysis is conservative for that row. Hover the
+  cell for the bracket of counts the percentage allows. This is a
+  design decision for incomplete data, not a reading of the page; the
+  printed counts, if you can get them from the author, settle it. The
+  checkbox above the upload turns the fill off, in which case such rows
+  are left out of the analysis.
 - **Pale cyan — read by OCR.** The whole table came from a scanned page,
   or an uploaded picture of a table, read by optical character
   recognition. OCR can misread digits (3 vs

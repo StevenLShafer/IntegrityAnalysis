@@ -163,10 +163,23 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 | field | type | meaning |
 |---|---|---|
 | `engine` | string | which reader produced the table: `heuristic` (PDF text layer), `heuristic-docx`, `heuristic-jats`, `heuristic-ocr` (a scanned page or a picture, read by OCR — verify every value), `ai` (the opt-in assist), `template` or `wide` (a spreadsheet). Two further values, `heuristic-tatr` and `heuristic-tatr-ocr` (page geometry from the Table Transformer), appear only where the operator has configured that model; the deployed container carries no Python, so the deployed service does not produce them |
-| `flags` | array of strings | review notes about the table as a whole: what the reader had to assume (SD versus SE), what it recovered from the Methods text, whether OCR was involved. Read them; they are the same notes the app shows an editor |
+| `flags` | array of strings | review notes about the table as a whole: what the reader had to assume (SD versus SE), what it recovered from the Methods text, whether OCR was involved, and which category rows carry **fail-safe counts** (below). Read them; they are the same notes the app shows an editor |
 | `rows` | integer | rows in `templateCsv` (one per variable per arm) |
 | `skipped` | array of `{label, reason}` | table lines the reader could not use, each with the reason in the app's own words ("median with a min–max range - needs quartiles", "n (%) with unknown arm N", …). These rows are absent from the table; an editor would type them in |
 | `templateCsv` | string | the extracted table as CSV in the template layout (section 6). This is valid input to `/analyze` as a `.csv` |
+
+**Incomplete data: fail-safe counts.** A table that prints only a
+percentage for a categorical level gives the count exactly when the arm
+has 100 or fewer patients (1,000 at one printed decimal); above that,
+several counts fit the printed percentage. The service fills such a cell
+with the count in that bracket **farthest from the other arms**, so the
+row can look less alike than the truth but never more, and the trial p is
+conservative for that row. Every such row is named in `flags` ("…
+category row(s) use FAIL-SAFE counts …"), and the same rule and colour
+apply in the app. This is a design decision for incomplete data, not a
+reading of the page: if the author supplies the printed counts, resubmit
+with them. Cells whose percentage fits exactly one count are converted
+exactly and flagged as such.
 
 ### `/parse`, HTTP 422 — nothing usable
 

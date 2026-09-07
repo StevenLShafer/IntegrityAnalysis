@@ -684,27 +684,52 @@
       cnts   <- rep(NA_integer_, nArms)
       approx <- rep(FALSE, nArms)
       notes  <- rep(NA_character_, nArms)
+      # THE FAIL-SAFE FILL (Steve's decision, 2026-09-07, after the GPT-6
+      # audit's finding F3). For an arm above 100 (or above 1,000 at one
+      # printed decimal) several counts share a printed percentage, and the
+      # earlier approximation took the middle one - so two honest arms whose
+      # percentages happened to round the same were rebuilt with IDENTICAL
+      # proportions, an agreement the real counts never had: by exact
+      # enumeration 38% of honest 5,000-per-arm pairs fell below p = 0.01.
+      # An ambiguous cell now takes the count in its bracket FARTHEST from
+      # the other arms - the row can never look more homogeneous than the
+      # page allows, only less - and is painted its own colour with the
+      # note below, so the editor sees a design decision about incomplete
+      # data, not a datum. The same choice is made for the API, whose
+      # response flags name the rows. Exact brackets (one integer) are
+      # untouched.
+      lo <- rep(NA_integer_, nArms); hi <- rep(NA_integer_, nArms)
       for (j in which(present)) {
         t <- armTok[[j]]
         if (!t$type %in% c("pctOnly", "plain")) next
         N <- armN[arms[j]]
-        cnts[j] <- .ppCountFromPct(t$num1, t$dec1, N)
-        if (!is.na(cnts[j])) {
+        b <- .ppCountBracket(t$num1, t$dec1, N)
+        if (anyNA(b)) next
+        if (b[1] == b[2]) {
+          cnts[j]  <- b[1]
           notes[j] <- sprintf("%s%% of N=%d -> %d (uniquely pinned)",
                               format(t$num1), N, cnts[j])
-        } else if (isTRUE(pctApprox) && !is.na(N) &&
-                   !is.na(t$num1) && t$num1 >= 0 && t$num1 <= 100) {
-          # Opt-in APPROXIMATION (2026-08-21, Steve's request): the
-          # bracket did not pin a unique count, so round(N x pct / 100)
-          # is used - within half a printed unit of N/100 of the truth.
-          # Recorded as approximate, painted green in the app grid, and
-          # reported by reviewFlags(); never on by default.
-          cnts[j]   <- max(0L, min(as.integer(N),
-                                   as.integer(round(N * t$num1 / 100))))
-          approx[j] <- TRUE
-          notes[j]  <- sprintf(
-            "APPROXIMATE: %s%% of N=%d -> round() = %d (not uniquely pinned)",
-            format(t$num1), N, cnts[j])
+        } else if (isTRUE(pctApprox)) {
+          lo[j] <- b[1]; hi[j] <- b[2]; approx[j] <- TRUE
+        }
+      }
+      if (any(approx)) {
+        # the pooled proportion the ambiguous arms are pushed AWAY from:
+        # pinned counts as they are, ambiguous ones at their bracket middle
+        Ns  <- armN[arms]
+        mid <- ifelse(approx, (lo + hi) / 2, cnts)
+        use <- present & !is.na(mid) & !is.na(Ns)
+        pooled <- sum(mid[use]) / sum(Ns[use])
+        side <- sign(mid / Ns - pooled)
+        # arms sitting exactly on the pooled proportion alternate, so that
+        # two arms printing the same percentage are pushed apart
+        tied <- which(approx & side == 0)
+        if (length(tied)) side[tied] <- rep(c(-1, 1), length.out = length(tied))
+        for (j in which(approx)) {
+          cnts[j]  <- if (side[j] > 0) hi[j] else lo[j]
+          notes[j] <- sprintf(
+            "FAIL-SAFE: %s%% of N=%d fits %d..%d; %d taken - the count farthest from the other arms",
+            format(armTok[[j]]$num1), as.integer(Ns[j]), lo[j], hi[j], cnts[j])
         }
       }
       if (any(present) && !any(is.na(cnts[present]))) {
@@ -724,7 +749,7 @@
         # Remembered until the branch below knows the column names it
         # created; consumed there into $derivedCells for the app grid.
         pendingDerive <- list(
-          kind = if (any(approx[present])) "approximate" else "unique",
+          kind = if (any(approx[present])) "failsafe" else "unique",
           note = paste(notes[present][!is.na(notes[present])],
                        collapse = "; "))
         # Children of a category header accumulate into its row as counts;
