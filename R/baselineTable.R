@@ -152,12 +152,27 @@ writeBaselineTablesXlsx <- function(tables, file) {
   headStyle <- openxlsx::createStyle(textDecoration = "bold",
                                      border = "bottom")
   used <- character(0)
-  for (trial in names(tables)) {
+  # A sheet name as EXCEL accepts it, not merely as openxlsx does (screen
+  # 2026-09-07-1036, F2, verified against Excel itself): no forbidden
+  # punctuation; no character outside the Basic Multilingual Plane
+  # (Excel counts its 31-character limit in UTF-16 units, so 16 emoji
+  # exceed it while R counts 16 - they become spaces); no leading or
+  # trailing apostrophe, re-checked after every truncation because a cut
+  # can manufacture one; never empty. With non-BMP characters gone, R's
+  # character count IS the UTF-16 count.
+  sheetName <- function(x, maxLen = 31) {
     # class lists ] first and [ last so "[:" never appears (TRE would
     # read it as a POSIX class opener)
-    nm <- gsub("[]:*?/\\\\[]", " ", trial)
-    nm <- substr(trimws(nm), 1, 31)
-    if (nm == "") nm <- "Trial"
+    x <- gsub("[]:*?/\\\\[]", " ", x)
+    # by code point, not by regex: PCRE's \x{10000} class fails to compile
+    # on a Windows native-encoding session
+    cp <- utf8ToInt(enc2utf8(x)); cp[cp > 0xFFFF] <- 32L; x <- intToUtf8(cp)
+    x <- substr(trimws(x), 1, maxLen)
+    x <- trimws(gsub("^'+|'+$", "", x))
+    if (x == "") "Trial" else x
+  }
+  for (trial in names(tables)) {
+    nm <- sheetName(trial)
     # openxlsx refuses sheet names that differ only by case ("Trial A" and
     # "trial a" -> "already exists ... unique case-insensitive"), so the
     # duplicate check is case-insensitive too (screen 2026-09-06-1749, F3);
@@ -168,7 +183,7 @@ writeBaselineTablesXlsx <- function(tables, file) {
     k <- 1; cand <- nm
     while (tolower(cand) %in% tolower(used)) {
       k <- k + 1; suf <- paste0(" ", k)
-      cand <- paste0(substr(nm, 1, 31 - nchar(suf)), suf)
+      cand <- paste0(sheetName(nm, 31 - nchar(suf)), suf)
     }
     nm <- cand
     used <- c(used, nm)

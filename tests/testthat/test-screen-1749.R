@@ -95,3 +95,31 @@ test_that("F1 (screen 0702): 101 trials identical in their first 31 characters g
   expect_true(all(nchar(sheets) <= 31))
   expect_length(openxlsx::getSheetNames(f), 101)
 })
+
+test_that("F1 (screen 1036): the draw budget prices a median/IQR line at twice its N", {
+  d <- data.frame(TRIAL = "T", ROW = c("Age", "Age", "Dur", "Dur"), N = c(100, 100, 100, 100),
+                  MEAN = c(60, 61, 120, 121), SD = c(10, 10, NA, NA),
+                  Q1 = c(NA, NA, 100, 100), Q3 = c(NA, NA, 150, 150), stringsAsFactors = FALSE)
+  expect_equal(.apiDrawWork(d, character(0)), (200 + 2 * 200) * .apiReplicateCeiling)
+  d$Q1 <- NA_real_; d$Q3 <- NA_real_
+  expect_equal(.apiDrawWork(d, character(0)), 400 * .apiReplicateCeiling)
+})
+
+test_that("F2 (screen 1036): sheet names are Excel-safe - no apostrophe at either end, no character outside the basic plane, and a truncation cannot manufacture one", {
+  nms <- c("'Smith 2024", "Jones 2023'", "Brüggemann Étude 2021",
+           paste(rep(intToUtf8(0x1F600), 31), collapse = ""),   # 31 emoji: 62 UTF-16 units
+           paste0(strrep("A", 30), "'B"))                        # the cut at 31 would end in an apostrophe
+  tabs <- setNames(lapply(60:64, function(v) data.frame(Variable = "Age", Arm1 = paste0(v, " (10)"))), nms)
+  f <- tempfile(fileext = ".xlsx")
+  sheets <- writeBaselineTablesXlsx(tabs, f)
+  expect_length(sheets, 5)
+  expect_false(any(grepl("^'|'$", sheets)))
+  expect_true(all(vapply(sheets, function(s) all(utf8ToInt(s) <= 0xFFFF), logical(1))))
+  expect_true(all(nchar(sheets) <= 31))
+  expect_identical(sheets[1], "Smith 2024")
+  expect_identical(sheets[2], "Jones 2023")
+  expect_identical(sheets[3], "Brüggemann Étude 2021")
+  expect_identical(sheets[4], "Trial")
+  expect_identical(sheets[5], strrep("A", 30))
+  expect_length(openxlsx::getSheetNames(f), 5)
+})
