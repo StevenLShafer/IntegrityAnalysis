@@ -493,8 +493,20 @@ test_that("/analyze names the FAIL-SAFE rows in its own reply (screen 1609, F2)"
   expect_true(b$ok)
   expect_false(is.null(b$flags))
   expect_match(paste(unlist(b$flags), collapse = " "), "FAIL-SAFE")
-  # and the counts really were split apart, not both rebuilt as 500
-  expect_true(grepl("495", b$templateCsv) || grepl("505", b$templateCsv))
+  # and the counts really were split apart, not both rebuilt as 500 or
+  # both as 495: read the Male column of the returned template, since the
+  # complement column carries the other end of the bracket either way
+  # (CodeRabbit on PR #215)
+  tmpl <- utils::read.csv(text = b$templateCsv, check.names = FALSE,
+                          stringsAsFactors = FALSE)
+  # the category columns are whatever the reader named them; the standard
+  # template columns are fixed, so take the first column outside them
+  catCols <- setdiff(names(tmpl), c("TRIAL", "ROW", "N", "MEAN", "SD", "SE",
+                                    "ROUND_MEAN", "ROUND_DISPERSION",
+                                    "ROUND_OBSERVATION"))
+  expect_gte(length(catCols), 1)
+  v <- suppressWarnings(as.numeric(tmpl[[catCols[1]]]))
+  expect_setequal(v[!is.na(v)], c(495, 505))
 })
 
 test_that("/analyze returns the journal-style table per trial", {

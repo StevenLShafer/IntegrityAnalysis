@@ -242,9 +242,11 @@ app_ui <- function(testNote = NULL)
           # rounding fits several counts takes the end of its bracket that
           # leaves the arms least alike - the ambiguous cells of a row are
           # split against EACH OTHER (corrected after security screen
-          # 2026-09-07-1609), so two arms printing the same percentage are
-          # never rebuilt with the same count - and the row can look less
-          # alike than the truth but never more. Such cells paint ORANGE in
+          # 2026-09-07-1609), so arms printing the same percentage are
+          # spread across both ends of their bracket instead of all taking
+          # one end (with three or more such arms two must share an end;
+          # there are only two) - and the row can look less alike than the
+          # truth but never more. Such cells paint ORANGE in
           # the grid with the bracket in their hover note; exact
           # conversions still paint green.
           checkboxInput("pctApprox", paste(

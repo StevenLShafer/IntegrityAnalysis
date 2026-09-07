@@ -363,8 +363,8 @@ makes a number reproducible; it does not make it more precise.
   split against **each other**: ordered by the proportion their brackets
   imply, the lower half take the bottom of their bracket and the upper
   half the top, and cells whose percentages imply the same proportion
-  alternate, so two arms printing the same percentage are never rebuilt
-  with the same count. The row can look less alike than the truth, never
+  alternate, so arms printing the same percentage are spread across both
+  ends of their bracket rather than all taking one end. The row can look less alike than the truth, never
   more, and its p is conservative. How conservative is worth stating: a
   two-arm row of 5,000 per arm printed as counts 2,500 and 2,500 reads
   p = 0.008, and the same row printed as "50%" and "50%" reads p = 0.68.

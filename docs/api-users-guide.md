@@ -174,8 +174,9 @@ has 100 or fewer patients (1,000 at one printed decimal); above that,
 several counts fit the printed percentage. The service splits such cells against
 **each other**: ordered by the proportion their brackets imply, the lower
 half take the bottom of their bracket and the upper half the top, and
-cells whose percentages imply the same proportion alternate, so two arms
-printing the same percentage are never rebuilt with the same count. The
+cells whose percentages imply the same proportion alternate, so arms
+printing the same percentage are spread across both ends of their bracket
+rather than all taking one end. The
 row can look less alike than the truth but never more, and the trial p is
 conservative for that row — markedly so: a two-arm row of 5,000 per arm
 printed as counts 2,500 and 2,500 reads p = 0.008, and the same row

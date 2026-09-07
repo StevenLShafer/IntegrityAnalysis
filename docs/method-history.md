@@ -463,8 +463,9 @@ p = 0.0094 — security screen 2026-09-07-1609, finding F1). The rule now
 splits the ambiguous cells against **each other**: ordered by the
 proportion their brackets imply, the lower half take the bottom of their
 bracket and the upper half the top, and cells whose percentages imply the
-same proportion alternate, so two arms printing alike are never rebuilt
-alike. A single ambiguous cell, which has no other ambiguous arm to be
+same proportion alternate, so arms printing alike are spread across both
+ends of their bracket rather than all taking one end (with three or more
+of them two must share an end, since a bracket has only two). A single ambiguous cell, which has no other ambiguous arm to be
 split from, still moves away from the pooled proportion of the rest.
 
 How conservative the rule is, measured (lower-tail mid-p of the Pearson
