@@ -216,6 +216,24 @@ computed from tied integer means treats the tie as exact and reports
 under-dispersion, so honest large trials alarm. That is why this method
 models the rounding rather than the printed number.
 
+**Which way a half rounds.** The simulation rounds with R's `round()`,
+which sends an exact half to the even neighbour (2.5 → 2, 3.5 → 4:
+banker's rounding). The software that produced most printed tables
+(Excel, SPSS, SAS, GraphPad) rounds a half away from zero. The two
+differ only when a simulated mean lands exactly on a printed half, which
+happens with positive probability when the observations sit on a grid
+(N = 20 integer observations printed to one decimal put every other grid
+point on a half). Because banker's rounding alternates wide and narrow
+printed bins, it makes exact ties slightly likelier: measured
+(2026-09-06), the mid-p at a tie is higher than under half-away-from-zero
+by 9% in that N = 20 case, 3% for the guide's worked example, 1 to 2% at
+N = 40 and 100, and not at all where no exact half is reachable (N = 50
+integer observations printed to one decimal). The difference is in the
+conservative direction, and the convention a given paper's software used
+cannot be read from its table, so banker's rounding is kept as the
+standing convention (Steve Shafer's decision, 2026-09-07) and recorded
+here so that the discrepancy is not rediscovered as a defect.
+
 ## Combining rows into a trial p
 
 The rows' evidence is summed as Stouffer's z-scores, and that sum is
