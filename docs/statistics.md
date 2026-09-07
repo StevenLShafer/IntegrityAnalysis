@@ -359,12 +359,19 @@ makes a number reproducible; it does not make it more precise.
   honest arms whose percentages happen to round the same would be
   rebuilt with identical proportions, an agreement the real counts never
   had (by exact enumeration, 38% of honest 5,000-per-arm pairs would
-  fall below p = 0.01). So an ambiguous cell takes the count in its
-  bracket **farthest from the other arms**: the row can look less alike
-  than the truth, never more, and its p is conservative. The app paints
-  such cells orange and states the bracket; the API's response flags
-  name the rows. The printed counts, if the author supplies them,
-  replace the guess.
+  fall below p = 0.01). So the ambiguous cells of a row are
+  split against **each other**: ordered by the proportion their brackets
+  imply, the lower half take the bottom of their bracket and the upper
+  half the top, and cells whose percentages imply the same proportion
+  alternate, so arms printing the same percentage are spread across both
+  ends of their bracket rather than all taking one end. The row can look less alike than the truth, never
+  more, and its p is conservative. How conservative is worth stating: a
+  two-arm row of 5,000 per arm printed as counts 2,500 and 2,500 reads
+  p = 0.008, and the same row printed as "50%" and "50%" reads p = 0.68.
+  A row that would alarm on printed counts usually will not alarm on
+  printed percentages. The app paints such cells orange and states the
+  bracket; both API routes name the rows in their response flags. The
+  printed counts, if the author supplies them, replace the guess.
 - **The Monte Carlo interval** describes the simulation's precision
   under the model. It does not include extraction error, an unsuitable
   randomization model, dependence, or the probability of fraud, and

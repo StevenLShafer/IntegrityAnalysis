@@ -239,15 +239,20 @@ app_ui <- function(testNote = NULL)
                                ".zip")),
           # The fail-safe fill (Steve, 2026-09-07; first an opt-in
           # approximation, 2026-08-21): a percent-only cell whose printed
-          # rounding fits several counts takes the count farthest from the
-          # other arms, so the row can look less alike than the truth but
-          # never more. Such cells paint ORANGE in the grid with the
-          # bracket in their hover note; exact conversions still paint
-          # green.
+          # rounding fits several counts takes the end of its bracket that
+          # leaves the arms least alike - the ambiguous cells of a row are
+          # split against EACH OTHER (corrected after security screen
+          # 2026-09-07-1609), so arms printing the same percentage are
+          # spread across both ends of their bracket instead of all taking
+          # one end (with three or more such arms two must share an end;
+          # there are only two) - and the row can look less alike than the
+          # truth but never more. Such cells paint ORANGE in
+          # the grid with the bracket in their hover note; exact
+          # conversions still paint green.
           checkboxInput("pctApprox", paste(
             "Fill percent-only cells whose percentage fits several counts",
-            "with the count farthest from the other arms (fail-safe; such",
-            "cells show orange in the table below)"), value = TRUE, width = "100%"),
+            "with the count that leaves the arms least alike (fail-safe;",
+            "such cells show orange in the table below)"), value = TRUE, width = "100%"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never
           # goes in a URL, is never stored or logged, and dies with the
