@@ -237,7 +237,10 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
   # run's HEAD branch, so a `branches: [main]` filter alone also matches a
   # fork's pull request from a branch named main; the deploy job must
   # require a push from this repository (screen 2026-09-06-1749, F2)
-  src <- srcOf(wf)
+  # comments stripped first: a commented-out copy of the condition must
+  # not satisfy the check (screen 2026-09-07-0702, I2 - the failure mode
+  # AGENTS.md records for an earlier pin)
+  src <- sub("#.*$", "", srcOf(wf))
   if (any(grepl("^\\s*workflow_run:", src)) &&
       !any(grepl("workflow_run\\.event\\s*==\\s*'push'", src) &
            grepl("head_repository\\.full_name\\s*==\\s*github\\.repository", src)))

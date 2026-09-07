@@ -488,7 +488,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                   # without two more N x ch vectors alive at the peak
                   # (screen 2026-09-06-1118 F2: 2.4 GB -> 1.6 GB on the
                   # worst 5,000-per-arm row). rnorm(n, m, s) is m + s * z,
-                  # so the numbers are bit-identical under the same seed.
+                  # so the numbers are bit-identical under the same seed -
+                  # with one edge (nightly screen 2026-09-06-2100): rnorm()
+                  # consumes no draw when its sd is exactly 0, and this form
+                  # always does, so a row whose arms all print SD 0 shifts
+                  # the seeded stream for everything after it. The values
+                  # are unchanged; only cross-build reproducibility of such
+                  # a file is, and the seed is documented as build-specific.
                   rowmeans(round(
                     matrix(rnorm(ROWS$N[i] * ch), nrow = ch) * sig + meansim,
                     ROWS$ROUND_OBSERVATION[i])),
