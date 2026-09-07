@@ -490,18 +490,29 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # draw below then resamples from the replicate's fit and inverts
           # its ratio as before. Quartiles that print the same value are
           # therefore admissible; only quartiles that print in the wrong
-          # order are refused.
-          if (q3Pool < q1Pool - 1e-9 * (1 + abs(q1Pool)))
+          # order are refused - and per ARM (CodeRabbit on PR #214), since
+          # drawQuartiles() orders each drawn pair, so one arm's reversed
+          # quartiles would otherwise be silently repaired whenever the
+          # other arms kept the pooled pair in order.
+          if (any(ROWS$Q3 < ROWS$Q1 - 1e-9 * (1 + abs(ROWS$Q1))))
           {
             Pdisp <- "Quartiles do not increase (Q3 must exceed Q1)"
           } else {
           a1 <- fit$a1; a2 <- fit$a2; a3 <- fit$a3
           # the quartiles' printed precision, per arm: ROUND_DISPERSION (the
-          # dispersion measure of a median line IS its quartiles; the
-          # validator infers a blank one from their decimals), falling back
-          # to the median's for a direct caller without the column
-          qPrec <- if (!is.null(ROWS$ROUND_DISPERSION) && all(!is.na(ROWS$ROUND_DISPERSION)))
-            as.numeric(ROWS$ROUND_DISPERSION) else ROWS$ROUND_MEAN
+          # dispersion measure of a median line IS its quartiles). A blank
+          # cell is inferred on its own from the printed quartiles' decimals,
+          # taking the variable's maximum across its arms - the validator's
+          # rule, and the rule .iaSdInterval() applies to a printed SD - so a
+          # direct caller who supplies the precision for some arms only keeps
+          # what it supplied (CodeRabbit on PR #214; the same shape as the
+          # GPT-6 audit's finding F5).
+          qPrec <- if (!is.null(ROWS$ROUND_DISPERSION))
+            suppressWarnings(as.numeric(ROWS$ROUND_DISPERSION))
+          else rep(NA_real_, COLS)
+          qBlank <- is.na(qPrec)
+          if (any(qBlank))
+            qPrec[qBlank] <- max(vapply(c(ROWS$Q1, ROWS$Q3), .iaDecimals, integer(1)))
           hQ <- 10^(-qPrec)
           # the note reports the PRINTED quartiles' fit; the replicates' own
           # fits are clipped individually below without a note. A pooled fit
@@ -593,8 +604,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
               a3rep  <- pmin(pmax(a3q, -.iaMetalogSkewLimit * a2rep), .iaMetalogSkewLimit * a2rep)
               # the common location: the pooled median plus its sampling draw,
               # SD 2 a2 / sqrt(n) (the metalog density at its median is
-              # 1/(4 a2)), with the replicate's own scale
-              a1rep  <- a1 + dqrnorm(ch, 0, 1) * (2 * a2q / sqrt(mean(ROWS$N)))
+              # 1/(4 a2)) - computed from a2rep, the scale of the population
+              # the observations are actually drawn from on the next line,
+              # not from the pre-bootstrap a2q (CodeRabbit on PR #214)
+              a1rep  <- a1 + dqrnorm(ch, 0, 1) * (2 * a2rep / sqrt(mean(ROWS$N)))
               MCMed <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
               {

@@ -44,6 +44,33 @@ test_that("the note counts only the arms whose quartiles do not separate", {
   expect_equal(row2$NOTE, "")
 })
 
+test_that("a reversed pair in ONE arm is refused even when the pooled pair is in order", {
+  # each drawn pair is ordered, so an arm printed Q3 < Q1 would otherwise
+  # be silently repaired whenever the other arms kept the pooled pair in
+  # order (CodeRabbit on PR #214)
+  row <- runRow(medRow(c(30, 30), c(12.0, 12.4), c(10, 15), c(15, 11)))
+  expect_equal(row$P, "Quartiles do not increase (Q3 must exceed Q1)")
+})
+
+test_that("a supplied quartile precision survives a blank in another arm", {
+  # A blank cell is inferred on its own from the printed quartiles'
+  # decimals - the rule .iaSdInterval() applies to a printed SD - and must
+  # not overwrite what the caller supplied for the other arm (CodeRabbit on
+  # PR #214; before this, one blank sent every arm to the median's
+  # precision). These quartiles all carry one decimal, so inferring both
+  # cells gives 1 for both.
+  D <- medRow(c(30, 30), c(12.4, 12.9), c(10.2, 11.4), c(15.3, 15.1), qDec = 1)
+  D$ROUND_DISPERSION <- c(1, NA)
+  bothOne <- runRow(D)
+  expect_false(is.na(suppressWarnings(as.numeric(sub("^<", "", bothOne$P)))))
+  D2 <- D; D2$ROUND_DISPERSION <- c(NA, NA)
+  expect_equal(runRow(D2)$P, bothOne$P)
+  # ...and a supplied coarser precision for the FIRST arm is kept, so the
+  # row is not the same as inferring both
+  D3 <- D; D3$ROUND_DISPERSION <- c(0, NA)
+  expect_false(identical(runRow(D3)$P, bothOne$P))
+})
+
 test_that("the same seed gives the same p", {
   D <- medRow(c(20, 25), c(12.4, 12.9), c(10, 11), c(15, 15))
   expect_equal(runRow(D)$P, runRow(D)$P)

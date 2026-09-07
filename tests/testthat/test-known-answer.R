@@ -106,8 +106,9 @@ test_that("a median/IQR pair gives the pinned metalog p", {
   # of the printed value and fits THAT metalog). These quartiles print as
   # integers across an interquartile range near 62, so the draw itself is
   # negligible here and the move is mostly the changed random stream:
-  # 0.04545 -> 0.042
-  expect_equal(summaryP(x), 0.042)
+  # 0.04545 -> 0.042, then -> 0.0427 when the location draw took the
+  # replicate's final scale (CodeRabbit on PR #214)
+  expect_equal(summaryP(x), 0.0427)
 })
 
 test_that("categorical direction: homogeneous alarms, heterogeneous does not", {

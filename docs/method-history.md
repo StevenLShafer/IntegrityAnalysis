@@ -454,10 +454,18 @@ finding F4). Every replicate now draws each arm's Q1 and Q3 uniformly
 within their printed intervals, orders the pair, pools them by N, and
 fits *that* replicate's metalog; the scale draw then resamples from the
 replicate's own fit and inverts the ratio as before, and the location
-draw uses the replicate's own scale. Quartiles that print the same value
-are admissible, and the row's Note says so ("printed quartiles do not
-separate in k arm(s); the fit uses their printed intervals"). Only
-quartiles printed in the wrong order are still refused.
+draw uses the replicate's own scale, and the location's standard
+deviation is computed from that scale rather than from the pre-bootstrap
+fit. Quartiles that print the same value are admissible, and the row's
+Note says so ("printed quartiles do not separate in k arm(s); the fit
+uses their printed intervals"). Only quartiles printed in the wrong order
+are still refused, and that test is applied per ARM: because each drawn
+pair is ordered, one arm's reversed quartiles would otherwise be silently
+repaired whenever the other arms kept the pooled pair in order. A blank
+`ROUND_DISPERSION` cell is inferred on its own from the printed
+quartiles' decimals, the rule a printed SD has followed since the audit's
+finding F5, so a direct caller who supplies the precision for some arms
+only keeps what it supplied.
 
 **What it measured** (the same honest null, 1,000 tables per cell, two
 equal arms, m = 1,000, five populations at 10, 30 and 100 per arm):
@@ -467,7 +475,7 @@ equal arms, m = 1,000, five populations at 10, 30 and 100 per arm):
 | Refused, narrow population, integer quartiles | 45%, 67%, 85% | 0%, 0%, 0% |
 | p ≤ 0.05, all other populations | 0.027–0.078 | 0.027–0.078 |
 | Kolmogorov–Smirnov distance from uniform, all other populations | ≤ 0.075 | ≤ 0.075 |
-| Median/IQR pin (`test-known-answer.R`) | 0.04545 | 0.042 |
+| Median/IQR pin (`test-known-answer.R`) | 0.04545 | 0.0427 |
 
 Nothing outside the coarse case moved by more than Monte Carlo noise:
 the draw's width is one printed unit, negligible beside an
@@ -475,7 +483,7 @@ interquartile range printed to two or three significant digits.
 
 **What it did not fix, and the direction of the error.** The coarse
 case is still conservative: for the narrow population with integer
-quartiles the honest p averages 0.68–0.73 and never falls below 0.05.
+quartiles the honest p averages 0.66–0.72 and never falls below 0.05.
 Two printed quartiles that agree say only that the population's width is
 under one printed unit; drawing them uniformly inside their intervals
 implies a width of a third of a unit on average, narrower than the truth
