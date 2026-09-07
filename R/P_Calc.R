@@ -59,6 +59,49 @@
 # both on the same footing).
 .floorP <- function(p, m) pmin(pmax(p, 1 / (m + 1)), 0.9999)
 
+# TIES BY AN EXPLICITLY BOUNDED NUMERICAL CRITERION (2026-09-07; the GPT-6
+# audit's finding F1, docs/audits/). A tie - a replicate exactly as
+# homogeneous as the printed table - is the heart of the mid-p, and it
+# was decided with `==` on doubles. Two categorical tables with the same
+# Pearson statistic (80/63 for margins (2, 2, 6) x (3, 7)) compute to
+# 1.2698412698412698 and 1.2698412698412700, and the strict comparison
+# split that tie group: the row's mid-p read 0.10 where the exact value
+# is 0.35, and five such rows combined to 0.00018 where the exact trial
+# p is 0.084. The same hazard reaches the continuous branch when three or
+# more arms permute a pattern (a + b + c is not c + b + a in floating
+# point) and the attainable-floor test, where identical printed means
+# with unequal arm sizes give an observed statistic of about 1e-28
+# rather than zero. So: two statistics are one value when they agree to
+# within .iaTieTol of the larger in magnitude. The criterion is bounded
+# and stated: floating-point error in these sums is below 1e-13
+# relative, so mathematically equal values are never split; distinct
+# attainable values of these statistics differ by far more than 1e-10
+# relative (a rounded-mean sum of squares changes by at least a grid
+# step squared; a fixed-margin Pearson statistic by at least
+# 1/(n r c), which is 1e-11 only for tables no baseline table
+# resembles), so distinct values are not merged. It is applied to the
+# observed-versus-replicate counts and to the replicate ranks alike, so
+# the observed row and every replicate are judged by one rule.
+.iaTieTol <- 1e-10
+
+#' Average ranks with ties decided by .iaTieTol
+#' @noRd
+.iaTieRank <- function(x) {
+  o <- order(x); s <- x[o]; n <- length(s)
+  if (n < 2L) return(rep(1, n))
+  newGroup <- c(TRUE, diff(s) > .iaTieTol * pmax(abs(s[-1L]), abs(s[-n])))
+  first <- which(newGroup); last <- c(first[-1L] - 1L, n)
+  r <- numeric(n); r[o] <- ((first + last) / 2)[cumsum(newGroup)]
+  r
+}
+
+#' The strictly-below and tied counts of `sims` against `obs`, ties by .iaTieTol
+#' @noRd
+.iaTieCounts <- function(sims, obs) {
+  eq <- abs(sims - obs) <= .iaTieTol * pmax(abs(sims), abs(obs))
+  c(kLess = sum(sims < obs & !eq), kEq = sum(eq))
+}
+
 # THE DIRECT DRAW (Steve, 2026-09-05: "Build the direct draw into P_Calc").
 # A continuous row's replicate draws N observations per arm, rounds each
 # to the observation precision, averages, and rounds the mean to the
@@ -480,7 +523,8 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median", note = skewNote)
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median", note = skewNote,
+                         zeroTol = 1e-20 * (1 + center^2))
           }
           }
         }
@@ -621,7 +665,8 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous")
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
+                         zeroTol = 1e-20 * (1 + Meanmean^2))
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the
@@ -679,7 +724,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = statObs, kind = "category")
+          simRow <- list(simulate = simulate, obs = statObs, kind = "category", zeroTol = 0)
           }
           }
         }
@@ -715,7 +760,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
     for (j in usable) {
       sims <- rows[[j]]$sim$simulate(s)
       obs  <- rows[[j]]$sim$obs
-      kLess <- sum(sims < obs); kEq <- sum(sims == obs)
+      # A statistic that is zero up to floating-point dust IS zero: the
+      # N-weighted centre of identical means leaves about 1e-28 behind,
+      # and not the same 1e-28 in the replicate (Rfast's row sums) as in
+      # the observed row (base R's sum), so without this snap the floor's
+      # ties were split by dust and the note never appeared for unequal
+      # arms. zeroTol is 1e-20 of the centre squared, far below the
+      # smallest genuine difference a printed grid can make.
+      zt <- rows[[j]]$sim$zeroTol
+      sims[sims <= zt] <- 0; if (obs <= zt) obs <- 0
+      kk <- .iaTieCounts(sims, obs)            # ties by the bounded criterion, see .iaTieTol
+      kLess <- kk[["kLess"]]; kEq <- kk[["kEq"]]
       # Distribution graphs (issue 16): keep the FIRST stage's simulated
       # statistics - they ARE the expected distribution under honest
       # sampling, generated anyway and normally discarded.
@@ -737,8 +792,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                            # (zero: the arms agree exactly) AND no replicate
                            # beat it. Two means of 77 and 77.000001 used to
                            # carry the note (outside audit, 2026-09-06).
+                           # (obs was snapped to exactly zero above when it
+                           # was zero up to floating-point dust)
                            atFloor = kLess == 0 && isTRUE(obs == 0))
-      pRep <- .floorP((rank(sims, ties.method = "average") - 0.5) / s, s)
+      pRep <- .floorP((.iaTieRank(sims) - 0.5) / s, s)
       sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
       zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
     }

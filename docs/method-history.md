@@ -351,6 +351,38 @@ one-directional, and a change would move every seeded known answer for
 no gain in validity. The convention is now stated in statistics.md.
 Data: `C:/dev/Corpus/reviews/audit-2026-09-06/roundconv.R`.
 
+## 2026-09-07 — ties decided by a bounded numerical criterion
+
+**What was wrong.** A tie — a replicate exactly as homogeneous as the
+printed table — was decided with exact equality of floating-point
+numbers, and the replicate ranks that feed the exact combination by
+ordinary ranking. The independent GPT-6 audit of the same day
+(`docs/audits/`, finding F1) enumerated a categorical row with margins
+(2, 2, 6) × (3, 7) whose three minimum tables have the same Pearson
+statistic, 80/63, computed as 1.2698412698412698 for one and
+1.2698412698412700 for the other two: the strict comparison split the
+tie group, the row's mid-p read 0.10 where the exact value is 0.35, and
+five such rows combined to 0.00018 where the exact trial p is 0.084.
+Reproduced here. The same hazard reached the continuous branch when
+three or more arms permute a pattern (a + b + c is not c + b + a in
+floating point), and the attainable-floor test: identical printed means
+with unequal arm sizes give an observed statistic of about 10⁻²⁸ rather
+than zero, and the replicates' statistics carry different dust (Rfast's
+row sums against base R's), so such rows never received the note and
+their floor ties were split by dust.
+
+**What changed.** Two statistics are one value when they agree to within
+one part in 10¹⁰ of the larger; a statistic within 10⁻²⁰ of the centre
+squared of zero is zero. The rule is applied to the observed row's
+strictly-below and tied counts and to the replicate ranks alike. The
+tolerance is bounded and stated: floating-point error in these sums is
+below 10⁻¹³ relative, so equal values are never split; distinct
+attainable values differ by far more (a rounded-mean sum of squares by
+at least a grid step squared; a fixed-margin Pearson statistic by at
+least 1/(n·r·c)), so distinct values are not merged. Known answers were
+unchanged: none of the pinned rows had a dust-split tie. The audit's
+row now reads 0.35 and its five-row trial 0.084, to Monte Carlo
+precision.
 ## 2026-09-07 — the summary line is identified by kind, not by its label
 
 **What was wrong.** The engine's per-trial summary line carried the
