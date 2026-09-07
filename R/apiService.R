@@ -579,9 +579,11 @@
     }
     aiOn <- !is.null(apiKey) && nzchar(apiKey)
     # pctApprox = TRUE: a percent-only cell whose percentage fits several
-    # counts is filled with the count farthest from the other arms - the
-    # fail-safe choice the app makes too (Steve, 2026-09-07) - and the
-    # reply's flags name the rows (see the API guide, "Incomplete data")
+    # counts is filled with the end of its bracket that leaves the arms
+    # least alike - the fail-safe choice the app makes too (Steve,
+    # 2026-09-07) - and the flags name the rows on BOTH routes (see the
+    # API guide, "Incomplete data"; /analyze carried the p without them
+    # until security screen 2026-09-07-1609, finding F2)
     res <- parseBaselineTableFiles(
       path, ai = if (aiOn) "fallback" else "never",
       timeout = if (aiOn) 300 else 60,

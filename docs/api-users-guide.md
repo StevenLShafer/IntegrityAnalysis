@@ -171,12 +171,17 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 **Incomplete data: fail-safe counts.** A table that prints only a
 percentage for a categorical level gives the count exactly when the arm
 has 100 or fewer patients (1,000 at one printed decimal); above that,
-several counts fit the printed percentage. The service fills such a cell
-with the count in that bracket **farthest from the other arms**, so the
+several counts fit the printed percentage. The service splits such cells against
+**each other**: ordered by the proportion their brackets imply, the lower
+half take the bottom of their bracket and the upper half the top, and
+cells whose percentages imply the same proportion alternate, so two arms
+printing the same percentage are never rebuilt with the same count. The
 row can look less alike than the truth but never more, and the trial p is
-conservative for that row. Every such row is named in `flags` ("…
-category row(s) use FAIL-SAFE counts …"), and the same rule and colour
-apply in the app. This is a design decision for incomplete data, not a
+conservative for that row — markedly so: a two-arm row of 5,000 per arm
+printed as counts 2,500 and 2,500 reads p = 0.008, and the same row
+printed as "50%" and "50%" reads p = 0.68. Every such row is named in
+`flags` ("… category row(s) use FAIL-SAFE counts …") on **both** routes,
+`/parse` and `/analyze`, and the same rule and colour apply in the app. This is a design decision for incomplete data, not a
 reading of the page: if the author supplies the printed counts, resubmit
 with them. Cells whose percentage fits exactly one count are converted
 exactly and flagged as such.
@@ -228,6 +233,7 @@ Captured (the example workbook, two trials):
 | `journalTables` | object of strings | one CSV per trial, keyed by trial name: the baseline table reconstructed from the extracted numbers in journal layout (variables as rows, arms as columns with "(n = …)" in the headers, "mean (SD)" cells). This is what an editor compares against the manuscript page |
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the analysed table in the template layout, as `/parse` returns it |
+| `flags` | array of strings | present only when the reader had to decide something for itself: the same warnings `/parse` returns, including the FAIL-SAFE counts note above and recovered arm sizes. Read them before quoting `overallP`; a p computed from fail-safe counts is conservative for those rows |
 | `seed` | integer | present only when the request sent one: the seed the run used |
 
 The columns of `resultsCsv`, with the names the app's results workbook

@@ -471,6 +471,32 @@ test_that("a custom error handler is registered, so 500s leak nothing", {
   expect_match(src, "ok = FALSE", fixed = TRUE)
 })
 
+test_that("/analyze names the FAIL-SAFE rows in its own reply (screen 1609, F2)", {
+  # The one-call route used to return an overallP computed from counts
+  # rebuilt out of printed percentages - counts not on the manuscript
+  # page - with nothing in the reply saying so; /parse had always said it.
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  xml <- makeJatsArticle(file.path(tempdir(), "failsafe.xml"), list(list(
+    caption = "Table 1. Baseline characteristics of the patients",
+    rows = list(c("",            "Control (n = 1000)", "Treatment (n = 1000)"),
+                c("Age (yr)",    "61.2 (10.4)",        "60.7 (11.1)"),
+                c("Male, %",     "50%",                "50%")),
+    spans = list(NULL, NULL, NULL))))
+  r <- apiReq(api$base, "/analyze") |>
+    httr2::req_body_multipart(file = curl::form_file(xml)) |>
+    httr2::req_timeout(600) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  expect_true(b$ok)
+  expect_false(is.null(b$flags))
+  expect_match(paste(unlist(b$flags), collapse = " "), "FAIL-SAFE")
+  # and the counts really were split apart, not both rebuilt as 500
+  expect_true(grepl("495", b$templateCsv) || grepl("505", b$templateCsv))
+})
+
 test_that("/analyze returns the journal-style table per trial", {
   # issue 15's artifact travels with the response (api-spec decision,
   # 2026-08-26): the editor compares it against the manuscript page

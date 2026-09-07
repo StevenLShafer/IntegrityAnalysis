@@ -452,16 +452,34 @@ Arms of 100 or fewer were never affected: there every count has its own
 percentage and the conversion is exact.
 
 **What changed** (Steve Shafer's decision, 2026-09-07). An ambiguous
-cell takes the count in its bracket farthest from the other arms — the
-arm above the pooled proportion takes the top of its bracket, the arm
-below takes the bottom, arms exactly on it alternate — so the row can
-look less alike than the truth but never more, and its p is
-conservative. The app paints such cells orange (a colour of their own,
+cell takes the end of its bracket that leaves the arms least alike, so
+the row can look less alike than the truth but never more, and its p is
+conservative. The first version of the rule compared every ambiguous arm
+with one pooled proportion; that gave every ambiguous arm on the same
+side of it the SAME endpoint, which reproduced the defect the rule
+exists to prevent (three arms printing 50% of 2,000 beside a small arm
+printing 52% all became 990, and an honest row of that shape read
+p = 0.0094 — security screen 2026-09-07-1609, finding F1). The rule now
+splits the ambiguous cells against **each other**: ordered by the
+proportion their brackets imply, the lower half take the bottom of their
+bracket and the upper half the top, and cells whose percentages imply the
+same proportion alternate, so two arms printing alike are never rebuilt
+alike. A single ambiguous cell, which has no other ambiguous arm to be
+split from, still moves away from the pooled proportion of the rest.
+
+How conservative the rule is, measured (lower-tail mid-p of the Pearson
+statistic under `r2dtable`, 200,000 draws): a two-arm row of 5,000 per
+arm printed as the counts 2,500 and 2,500 reads p = 0.008; printed as
+"50%" and "50%" the same row is filled to 2,475 and 2,525 and reads
+p = 0.68. A row that would alarm on printed counts usually will not alarm
+on printed percentages. The guides and the app legend say so, since under
+this screen's threat model the author chooses the notation. The app paints such cells orange (a colour of their own,
 apart from the green of exact conversions) with the bracket in the
 hover note; the API applies the same rule and names the rows in its
-response flags; the user guide, the API guide and statistics.md state
-it as a design decision for incomplete data. Exact conversions are
-untouched.
+response flags — on both routes, since `/analyze` returned the p without
+them until the same screen's finding F2 — and the user guide, the API
+guide and statistics.md state it as a design decision for incomplete
+data. Exact conversions are untouched.
 
 ## Ideas noted for later
 

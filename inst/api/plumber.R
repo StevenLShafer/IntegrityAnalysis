@@ -264,6 +264,13 @@ function(req, res, file, seed = NULL) {
        journalTablesOmitted = a$journalTablesOmitted,
        templateCsv = a$templateCsv,
        deleted = TRUE)
+  # ...and what the reader had to decide for itself. /parse has always
+  # returned these; /analyze dropped them, so the one-call route handed
+  # back an overallP computed from FAIL-SAFE counts - counts not printed
+  # on the manuscript page - with nothing in the reply saying so
+  # (security screen 2026-09-07-1609, finding F2). Omitted entirely when
+  # there is nothing to say, so the ordinary response is unchanged.
+  if (length(r$flags)) out$flags <- as.list(r$flags)
   # the seed the run used, when one was sent (2026-09-05)
   if (!is.null(seedValue)) out$seed <- seedValue
   out
