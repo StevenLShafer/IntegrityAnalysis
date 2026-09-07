@@ -101,7 +101,13 @@ test_that("a median/IQR pair gives the pinned metalog p", {
   # quartiles and takes the RECIPROCAL of the resampled scale's ratio
   # to the fit - the metalog analogue of the sigma draw - so the pooled
   # quartiles are no longer taken as exact): 0.0464 -> 0.04545
-  expect_equal(summaryP(x), 0.04545)
+  # re-pinned again 2026-09-07 (the quartiles' printed intervals: every
+  # replicate now draws each arm's Q1 and Q3 within half a printed unit
+  # of the printed value and fits THAT metalog). These quartiles print as
+  # integers across an interquartile range near 62, so the draw itself is
+  # negligible here and the move is mostly the changed random stream:
+  # 0.04545 -> 0.042
+  expect_equal(summaryP(x), 0.042)
 })
 
 test_that("categorical direction: homogeneous alarms, heterogeneous does not", {

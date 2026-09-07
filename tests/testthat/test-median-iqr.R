@@ -96,8 +96,15 @@ test_that("a row beyond the metalog's skew limit is fitted at the limit and says
   d <- rbind(mkrow(12, 8, 16), mkrow(12.5, 8.5, 16.5))
   x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
   expect_false(grepl("skew", x$NOTE[1]))
-  # quartiles that do not increase are still refused, with a clearer message
+  # quartiles printed the same are ANALYZED since 2026-09-07 (the printed
+  # interval draw): the printed pair says only that the width is under one
+  # printed unit, which the replicates' own draws can represent
   d <- rbind(mkrow(12, 12, 12), mkrow(12, 12, 12))
+  x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
+  expect_false(grepl("do not increase", x$P[1]))
+  expect_match(x$NOTE[1], "printed quartiles do not separate", fixed = TRUE)
+  # quartiles printed in the wrong order are still refused
+  d <- rbind(mkrow(12, 14, 10), mkrow(12, 14, 10))
   x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 1000)))
   expect_match(x$P[1], "do not increase")
 })

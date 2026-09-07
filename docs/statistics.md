@@ -40,7 +40,7 @@ assumptions stated below.
 |---|---|---|
 | Mean/SD variable | Common mean (N-weighted); each replicate draws every arm's SD within its printed interval, pools the variances with weights N<sub>i</sub> − 1 (df = ΣN − k), draws σ² = s²·df/χ²(df), then N observations per arm around a common location, rounds each to the observation precision, averages, rounds the mean as printed; statistic = sum of squared deviations of the arm means from their N-weighted centre | Independent normal observations from one population; the printed SDs and Ns are the sample's; the rounding columns are right |
 | Large arms (N ≥ 100 and SD ≥ 3 observation-grid steps) | The arm mean is drawn directly with variance (σ² + h²/12)/N, snapped to the h/N grid the observations force on a mean, then rounded as printed | The central limit theorem at that N; Sheppard's correction for the grid |
-| Median/IQR variable | A three-term metalog fitted to the N-weighted arm medians and quartiles (a skew beyond the metalog's limit is clipped to it, and the Note says so); each replicate first draws that population's scale from the quartiles' own sampling uncertainty (every arm resampled from the fit, its quartiles printed to the quartiles' own precision and pooled, and the resampled scale's ratio to the fit inverted, as the sigma draw inverts the chi-square), then draws N observations per arm from it, rounded; the sample median rounded as printed; the same statistic on the medians | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support |
+| Median/IQR variable | A three-term metalog refitted in every replicate: each arm's printed Q1 and Q3 are first drawn within half a printed unit of their printed values (the pair ordered) and pooled by N, so the printed quartiles are read as intervals, not as exact numbers; that replicate's population then has its scale drawn from the quartiles' own sampling uncertainty (every arm resampled from the fit, its quartiles printed to the quartiles' own precision and pooled, and the resampled scale's ratio to the fit inverted, as the sigma draw inverts the chi-square), and N observations per arm are drawn from it, rounded; the sample median rounded as printed; the same statistic on the medians. A skew beyond the metalog's limit is clipped to it | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support; the printed quartiles are read as intervals with no preference inside them, which is conservative when they print too coarsely to show the variable's width |
 | Categorical variable | Random 2 × c tables with the observed arm and category totals fixed (`r2dtable`); the lower tail of Pearson's chi-square | Mutually exclusive, exhaustive levels; the counts are the arms' |
 | Row p | The share of replicates at least as homogeneous as the printed row, ties counted by halves (mid-p), floored at 1/(replicates + 1) | — |
 | Trial p | Stouffer's sum of the rows' z-scores, judged against the same sum computed for every replicate (rows simulated independently), ties by halves | The variables are independent |
@@ -322,9 +322,9 @@ makes a number reproducible; it does not make it more precise.
 
 | Column | Meaning |
 |---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)", ...) are refusals: the row could not be analyzed, with the reason. |
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, ...) are refusals: the row could not be analyzed, with the reason. |
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
-| Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used. Blank otherwise. |
+| Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used, and "printed quartiles do not separate in k arm(s); the fit uses their printed intervals" when an arm prints Q1 and Q3 as the same value, so its width is known only to be smaller than one printed unit. Notes are joined with "; ". Blank otherwise. |
 | Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
 
 ## What this method assumes, and what it does not measure
@@ -338,7 +338,8 @@ makes a number reproducible; it does not make it more precise.
 - **Independence of variables** within a trial, and of trials across a
   file, as above.
 - **The row models**: normal observations for mean/SD rows; a metalog
-  for median/IQR rows, re-drawn per replicate from the printed
+  for median/IQR rows, refitted per replicate from quartiles drawn
+  within their printed intervals and then given a scale drawn from the
   quartiles' own sampling uncertainty (measured on honest normal,
   lognormal, uniform and heavy-tailed populations at 10 to 100 per arm
   in [method-history.md](method-history.md)); fixed margins for

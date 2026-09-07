@@ -508,10 +508,18 @@ the median, and both quartiles are required. The simulation for such rows draws 
 distribution fitted to the three quartile values (a metalog
 distribution — a flexible distribution specified directly by its
 quantiles), so no normality assumption is imposed. Each replicate
-re-draws that distribution from the quartiles' own sampling
-uncertainty, so a small trial's noisy quartiles are not taken as
-exact. Quartiles more lopsided than a three-term metalog can represent
-are fitted at its limit, and the results table's Note column says so.
+re-draws that distribution twice over, so a small trial's noisy
+quartiles are not taken as exact: first the printed quartiles
+themselves are drawn within half a printed unit of what the table
+shows, then the resulting population's scale is drawn from the
+quartiles' own sampling uncertainty. Because the printed quartiles are
+read as intervals, a variable whose quartiles print as the same number
+— an integer-printed measurement whose interquartile range is under
+one unit — is analyzed rather than refused, and the Note column says
+which arms printed that way. Only quartiles printed in the wrong order
+(Q3 below Q1) are refused. Quartiles more lopsided than a three-term
+metalog can represent are fitted at its limit, and the Note column says
+so too.
 
 Two printed forms that look similar cannot be used, and validation
 will say so rather than guess:
@@ -860,11 +868,12 @@ analyzed.
   the granularity of the printed table — including printed means that
   tie exactly.
 - Median/IQR rows are simulated from a three-term metalog distribution
-  fitted to (Q1, median, Q3), whose scale is re-drawn for every
-  replicate from the quartiles' own sampling uncertainty (the
-  median/IQR analogue of the per-replicate SD draw): N observations
-  per arm are drawn from it and rounded to the observation precision,
-  and each arm's sample median is rounded like the printed median. The quartiles shape the
+  fitted to (Q1, median, Q3), refitted for every replicate from
+  quartiles drawn within their printed intervals and then given a scale
+  drawn from the quartiles' own sampling uncertainty (the median/IQR
+  analogue of the per-replicate SD draw): N observations per arm are
+  drawn from it and rounded to the observation precision, and each
+  arm's sample median is rounded like the printed median. The quartiles shape the
   distribution the observations come from; no simulated quartiles are
   computed. Median rows always draw their observations (no direct draw).
 - Very large trials are protected against memory exhaustion by chunking
