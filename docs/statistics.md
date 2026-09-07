@@ -63,7 +63,17 @@ published 2017 values (r = 0.993 over 5,041 usable trials in the current engine,
 exactly uniform for every fixed margin of a discrete table: where the
 tie mass is large, the share of honest tables below 0.05 can sit above
 or below 5%. (An inclusive-tail p, counting every tie, would be
-conservative instead.)
+conservative instead.) A tie is decided by a stated numerical
+criterion, not by exact equality of floating-point numbers: two
+statistics within one part in 10¹⁰ of each other are one value, for the
+observed row against its replicates and for the replicates among
+themselves alike, and a statistic that is zero up to floating-point
+dust is zero. Floating-point error in these sums is far below that
+tolerance and the gap between distinct attainable values far above it,
+so mathematically equal statistics are never split and distinct ones
+never merged (an independent audit found the strict comparison
+splitting a categorical tie group into 0.10 where the exact mid-p was
+0.35; see [method-history.md](method-history.md)).
 
 A simulated p-value is itself an estimate. If 0 of 1,000 replicates
 agree as well as the printed data, the true p could still plausibly be
