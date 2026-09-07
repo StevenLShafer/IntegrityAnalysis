@@ -31,3 +31,16 @@
 [2026-08-27T09:43:28]      rotate the rsconnect token, redeploy from main, and check the
 [2026-08-27T09:43:28]      shinyapps account's activity log.
 [2026-08-27T09:43:28] 1 problem(s) above - read the direction of the difference before acting
+[2026-09-06T21:30:01] ===== deployed-build check =====
+[2026-09-06T21:30:03] origin/main is 166dc5b1
+[2026-09-06T21:30:04] app  https://steveshafer.shinyapps.io/IntegrityAnalysis/ : reports NO build commit
+[2026-09-06T21:30:04]   -> a build older than issue 28, or something that is not our app.
+[2026-09-06T21:30:04]      Deploy current main and re-run before treating this as benign.
+[2026-09-06T21:30:04] 1 problem(s) above - read the direction of the difference before acting
+[2026-09-07T07:12:36] ===== deployed-build check =====
+[2026-09-07T07:12:37] origin/main is 7e12b134
+[2026-09-07T07:12:39] app  https://steveshafer.shinyapps.io/IntegrityAnalysis/ : 085a23ba - DIFFERS from origin/main
+[2026-09-07T07:12:39]   -> it IS a commit in this repository, 2 commit(s) behind main.
+[2026-09-07T07:12:39]      Ordinary cause: main moved and no deploy has run. Check whether
+[2026-09-07T07:12:39]      a deploy is expected; this is not by itself evidence of tampering.
+[2026-09-07T07:12:39] 1 problem(s) above - read the direction of the difference before acting

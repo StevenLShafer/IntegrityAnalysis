@@ -84,3 +84,14 @@ test_that("N2: a word placed far off the page does not make the band bins propor
   expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 5)
   expect_true(is.data.frame(b) && all(c("x0", "x1") %in% names(b)))
 })
+
+test_that("F1 (screen 0702): 101 trials identical in their first 31 characters get 101 sheets, none longer than 31", {
+  pre <- strrep("T", 31)
+  tabs <- setNames(lapply(1:101, function(k) data.frame(Variable = "Age", Arm1 = "60 (10)")),
+                   paste0(pre, 1:101))
+  f <- tempfile(fileext = ".xlsx")
+  expect_error(sheets <- writeBaselineTablesXlsx(tabs, f), NA)   # failed on the previous code: "... 100" was 32 characters
+  expect_length(unique(tolower(sheets)), 101)
+  expect_true(all(nchar(sheets) <= 31))
+  expect_length(openxlsx::getSheetNames(f), 101)
+})
