@@ -158,11 +158,19 @@ writeBaselineTablesXlsx <- function(tables, file) {
     nm <- gsub("[]:*?/\\\\[]", " ", trial)
     nm <- substr(trimws(nm), 1, 31)
     if (nm == "") nm <- "Trial"
-    base <- substr(nm, 1, 28); k <- 1
     # openxlsx refuses sheet names that differ only by case ("Trial A" and
     # "trial a" -> "already exists ... unique case-insensitive"), so the
-    # duplicate check is case-insensitive too (screen 2026-09-06-1749, F3)
-    while (tolower(nm) %in% tolower(used)) { k <- k + 1; nm <- paste0(base, " ", k) }
+    # duplicate check is case-insensitive too (screen 2026-09-06-1749, F3);
+    # and the suffix is built first with the base trimmed to fit, so the
+    # result never exceeds 31 characters - a fixed 28-character base plus
+    # " 100" was 32, and the hundredth of 101 trials identical in their
+    # first 31 characters failed the download (screen 2026-09-07-0702, F1)
+    k <- 1; cand <- nm
+    while (tolower(cand) %in% tolower(used)) {
+      k <- k + 1; suf <- paste0(" ", k)
+      cand <- paste0(substr(nm, 1, 31 - nchar(suf)), suf)
+    }
+    nm <- cand
     used <- c(used, nm)
     openxlsx::addWorksheet(wb, nm)
     openxlsx::writeData(wb, nm, tables[[trial]], headerStyle = headStyle)
