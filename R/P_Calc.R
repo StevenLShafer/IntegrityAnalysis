@@ -148,13 +148,22 @@
 #' Carlisle's corpus; PR #182 accepted them, and identical arms with SD 0
 #' report p = 0.5 at the attainable floor). Drawing from [0, h/2) there
 #' would manufacture a spread the paper denies, so zero stays zero.
+#' A blank cell is inferred on its own, cell by cell (2026-09-07; the GPT-6
+#' audit's finding F5): the first version used the supplied precisions
+#' only when EVERY arm had one and otherwise re-inferred every arm, so a
+#' supplied two-decimal "1.00" beside a blank became [0.5, 1.5]. A blank
+#' cell now takes the variable's maximum printed decimals across its arms,
+#' which is the validator's inference, so a direct call and a validated
+#' one agree.
 #' @param sd numeric, the arms' printed SDs
 #' @param roundDisp the printed decimals of each, or NULL/NA to infer
 #' @return list(lo, hi), numeric vectors the length of `sd`
 #' @noRd
 .iaSdInterval <- function(sd, roundDisp = NULL) {
-  dec <- if (!is.null(roundDisp) && length(roundDisp) == length(sd) && all(!is.na(roundDisp)))
-    as.numeric(roundDisp) else vapply(sd, .iaDecimals, integer(1))
+  dec <- if (is.null(roundDisp) || length(roundDisp) != length(sd)) rep(NA_real_, length(sd))
+         else suppressWarnings(as.numeric(roundDisp))
+  blank <- is.na(dec)
+  if (any(blank)) dec[blank] <- max(vapply(sd, .iaDecimals, integer(1)))
   h <- 10^(-dec)
   list(lo = ifelse(sd == 0, 0, pmax(0, sd - h / 2)),
        hi = ifelse(sd == 0, 0, sd + h / 2))
