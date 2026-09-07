@@ -89,7 +89,11 @@
 .iaTieRank <- function(x) {
   o <- order(x); s <- x[o]; n <- length(s)
   if (n < 2L) return(rep(1, n))
-  newGroup <- c(TRUE, diff(s) > .iaTieTol * pmax(abs(s[-1L]), abs(s[-n])))
+  gap <- diff(s)
+  # a non-finite gap (an infinite or missing statistic, unreachable from
+  # validated input) starts its own group rather than joining the largest
+  # finite one (screen 2026-09-07-1441, I2)
+  newGroup <- c(TRUE, gap > .iaTieTol * pmax(abs(s[-1L]), abs(s[-n])) | !is.finite(gap))
   first <- which(newGroup); last <- c(first[-1L] - 1L, n)
   r <- numeric(n); r[o] <- ((first + last) / 2)[cumsum(newGroup)]
   r
@@ -98,8 +102,10 @@
 #' The strictly-below and tied counts of `sims` against `obs`, ties by .iaTieTol
 #' @noRd
 .iaTieCounts <- function(sims, obs) {
-  eq <- abs(sims - obs) <= .iaTieTol * pmax(abs(sims), abs(obs))
-  c(kLess = sum(sims < obs & !eq), kEq = sum(eq))
+  # a non-finite statistic is never a tie (Inf <= Inf would say otherwise)
+  eq <- is.finite(sims) & abs(sims - obs) <= .iaTieTol * pmax(abs(sims), abs(obs))
+  eq[is.na(eq)] <- FALSE
+  c(kLess = sum(sims < obs & !eq, na.rm = TRUE), kEq = sum(eq))
 }
 
 # THE DIRECT DRAW (Steve, 2026-09-05: "Build the direct draw into P_Calc").
@@ -544,7 +550,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median", note = skewNote,
-                         zeroTol = 1e-20 * (1 + center^2))
+                         zeroTol = 1e-26 * (1 + center^2))
           }
           }
         }
@@ -686,7 +692,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
-                         zeroTol = 1e-20 * (1 + Meanmean^2))
+                         zeroTol = 1e-26 * (1 + Meanmean^2))
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the
@@ -785,8 +791,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       # and not the same 1e-28 in the replicate (Rfast's row sums) as in
       # the observed row (base R's sum), so without this snap the floor's
       # ties were split by dust and the note never appeared for unequal
-      # arms. zeroTol is 1e-20 of the centre squared, far below the
-      # smallest genuine difference a printed grid can make.
+      # arms. zeroTol is 1e-26 of the centre squared: six orders above
+      # the dust it absorbs (about 1e-32 of the centre squared per arm)
+      # and below a grid step squared for every mean the validator admits
+      # at integer printing (its 1e12 ceiling gives 1e-2 against a step
+      # squared of 1). The first factor, 1e-20, outgrew the grid at means
+      # of about 1e10 and snapped genuine differences to zero there
+      # (screen 2026-09-07-1441, I1).
       zt <- rows[[j]]$sim$zeroTol
       sims[sims <= zt] <- 0; if (obs <= zt) obs <- 0
       kk <- .iaTieCounts(sims, obs)            # ties by the bounded criterion, see .iaTieTol
