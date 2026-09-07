@@ -38,7 +38,7 @@ assumptions stated below.
 
 | Component | What runs | What it assumes |
 |---|---|---|
-| Mean/SD variable | Common mean (N-weighted); variances pooled with weights N<sub>i</sub> − 1 (df = ΣN − k); each replicate draws σ² = s²·df/χ²(df), then N observations per arm around a common location, rounds each to the observation precision, averages, rounds the mean as printed; statistic = sum of squared deviations of the arm means from their N-weighted centre | Independent normal observations from one population; the printed SDs and Ns are the sample's; the rounding columns are right |
+| Mean/SD variable | Common mean (N-weighted); each replicate draws every arm's SD within its printed interval, pools the variances with weights N<sub>i</sub> − 1 (df = ΣN − k), draws σ² = s²·df/χ²(df), then N observations per arm around a common location, rounds each to the observation precision, averages, rounds the mean as printed; statistic = sum of squared deviations of the arm means from their N-weighted centre | Independent normal observations from one population; the printed SDs and Ns are the sample's; the rounding columns are right |
 | Large arms (N ≥ 100 and SD ≥ 3 observation-grid steps) | The arm mean is drawn directly with variance (σ² + h²/12)/N, snapped to the h/N grid the observations force on a mean, then rounded as printed | The central limit theorem at that N; Sheppard's correction for the grid |
 | Median/IQR variable | A three-term metalog fitted to the N-weighted arm medians and quartiles; N observations per arm drawn from it, rounded; the sample median rounded as printed; the same statistic on the medians | The metalog represents the population well enough near its median; the unbounded form may put mass outside a measurement's support |
 | Categorical variable | Random 2 × c tables with the observed arm and category totals fixed (`r2dtable`); the lower tail of Pearson's chi-square | Mutually exclusive, exhaustive levels; the counts are the arms' |
@@ -113,13 +113,35 @@ therefore judged against replicates whose σ varies as the data's own
 uncertainty says it should — the simulated statistic behaves like the F
 it should rather than the chi-square a fixed σ gives. This matters
 below about ten patients per arm; above that the draws are so tight
-that nothing changes. What is still taken as given: the pooled variance
-and the common location (both estimated from the printed table), the
-printed rounding, and the arm sizes. The SD's own printed rounding
-(`ROUND_DISPERSION`) is not integrated over. (A point estimate of σ,
-corrected for the square root's small-sample bias with c₄ at N − k
-degrees of freedom, survives only to decide whether an arm qualifies
-for the direct draw.)
+that nothing changes.
+
+**The SD's printed rounding.** A printed SD is an interval, not a
+number: "1" at integer precision means a sample SD anywhere from 0.5 to
+1.5. The mean's rounding needs no special treatment, because the
+simulation rounds its own means the same way and the tie mass is the
+mechanism; the SD is different because it enters the null as a
+parameter. So each replicate first draws every arm's sample SD uniformly
+within its printed interval — half a printed unit either side
+(`ROUND_DISPERSION`, inferred from the printed decimals when the column is
+blank), never below zero — pools those by degrees of freedom, and only
+then applies the chi-square draw above. A printed SD of exactly zero is
+not an interval: it declares that the variable did not vary, and is kept
+at zero. The row p is sensitive to where in its interval the true SD
+lies (two arms of 30, means tied at one decimal: 0.128 if the SD printed
+"1" were really 0.5, 0.050 if it were 1.49), but that is uncertainty the
+table cannot resolve, not bias; averaged over the interval the p moves
+little — about 2% upward for a printed "1", under 1% for "2" or "3",
+nothing at two significant figures — because pooling the drawn SDs by
+their squares raises the pooled variance by the rounding's own h²/12 and
+nearly cancels the gain from smaller draws. The draw makes the p the
+right average over what the printed SD can mean; it does not make a
+one-digit SD say more than it does.
+
+What is still taken as given: the common location (estimated from the
+printed table), the printed rounding of the means, and the arm sizes. (A
+point estimate of σ from the printed SDs, corrected for the square root's
+small-sample bias with c₄ at N − k degrees of freedom, survives only to
+decide whether an arm qualifies for the direct draw.)
 
 **The common location.** Each replicate draws one true mean for all
 arms, Normal about the N-weighted pooled mean with standard deviation

@@ -40,6 +40,17 @@
 # freedom, the uncertainty in the SD is real); three identical arms
 # 1e-04 -> 0.00025 (interval 0 to 0.0012) - a replicate that draws a
 # smaller sigma makes identical rounded means likelier under the null.
+#
+# Re-pinned 2026-09-06 (the SD rounding draw, audit finding F1: each
+# replicate draws every arm's sample SD uniformly within its PRINTED
+# interval before the pooled chi-square draw, so a printed "30" is
+# [29.5, 30.5) and a printed "9.2" is [9.15, 9.25)): the worked example
+# 0.04415 -> 0.0462 and three identical arms 0.00025 -> 0.00015 (interval
+# 0 to 0.00088). Both intervals are narrow (1.7% and 0.5% of the SD), so
+# these moves are mostly the RNG stream - one extra uniform per arm per
+# replicate - not the SD's rounding; the rows the draw was built for are
+# those whose SD is printed to one significant figure (a printed "1" is
+# [0.5, 1.5)). The categorical and median pins do not touch the SD.
 suppressWarnings(suppressPackageStartupMessages({
   library(shiny); library(foreach); library(MBESS); library(Rfast)
   library(dqrng)
@@ -56,7 +67,7 @@ test_that("the documentation's worked example: 77 vs 78, SD 30, n = 6", {
   x <- runP(data.frame(
     TRIAL = "T", ROW = "Weight", N = 6, MEAN = c(77, 78), SD = c(30, 30),
     ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE))
-  expect_equal(summaryP(x), 0.04415)         # the guide's "about 4%"
+  expect_equal(summaryP(x), 0.0462)          # the guide's "about 4%"
   expect_identical(x$M[1], "10000")         # borderline (p < 0.1) - escalates to stage 2
 })
 
@@ -65,9 +76,9 @@ test_that("three identical arms escalate and alarm", {
                   ROUND_MEAN = 1, ROUND_OBSERVATION = 1,
                   stringsAsFactors = FALSE)[rep(1, 3), ]
   x <- runP(d)
-  expect_equal(summaryP(x), 0.00025)
+  expect_equal(summaryP(x), 0.00015)
   expect_identical(x$M[1], "10000")         # escalated past stage 1
-  expect_identical(x$CI95[1], "0 to 0.0012")   # the row's Monte Carlo interval
+  expect_identical(x$CI95[1], "0 to 0.00088")  # the row's Monte Carlo interval
   expect_identical(x$NOTE[1], "attainable floor")  # identical arms: nothing agrees better
 })
 
