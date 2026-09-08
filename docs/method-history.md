@@ -634,7 +634,19 @@ own precision column names, checked per column: means against
 `ROUND_MEAN`, standard deviations and quartiles against
 `ROUND_DISPERSION`, with a tolerance proportional to the value and never
 to the grid (a grid of 10²⁰ would otherwise swallow every number ever
-printed). The test is consistency, not coarseness, which matters because
+printed). The next day's screen found the gate had left two ways in, both
+now closed (2026-09-07-1907). The **third precision column** was not
+tested at all: `ROUND_OBSERVATION` sets the grid every simulated
+observation is rounded to, and a coarse one moved five honest arms of 40
+from p = 0.433 to 0.0125. A statistic built from N observations on a grid
+of h lies on a grid no coarser than h/N, so the interval the printed value
+stands for must contain a multiple of h/N — vacuous for every ordinary
+table, and refusing both of the screen's rows. And **zero sits on every
+grid**, so a row printing nothing but zeros — "0 (0–0)", a shape many
+analgesia trials carry — passed at any stated precision and went from its
+honest p = 0.5 to below 0.0001 at `ROUND_DISPERSION = -20`; such a row
+states no scale of its own, so what is checked instead is that its
+precision columns agree with each other. The test is consistency, not coarseness, which matters because
 two honest shapes look coarse: quartiles of 40 and 60 reported to the
 nearest ten are consistent and analyzed, and a variable whose
 interquartile range is smaller than one printed unit — the case the

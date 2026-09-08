@@ -135,6 +135,25 @@ m <- 100000
 # any real baseline table, and the count of the rest is shown.
 .iaMaxSkippedRows <- 200L
 
+# ...and the capping itself, a function rather than a block inside the
+# upload observer so that a test can call what the app calls (screen
+# 2026-09-07-1907, A1). The marker row is built FROM the frame: the
+# parser's skipped frame carries three columns (label, reason, text), and
+# a two-column literal raised "undefined columns selected" on exactly the
+# documents the cap exists for (screen 1907, F3).
+.iaCapSkipped <- function(skipped, cap = .iaMaxSkippedRows) {
+  if (is.null(skipped) || !nrow(skipped) || nrow(skipped) <= cap) return(skipped)
+  n <- nrow(skipped)
+  out <- skipped[seq_len(cap), , drop = FALSE]
+  mk <- skipped[1, , drop = FALSE]
+  mk[] <- NA_character_
+  mk$label  <- sprintf("... %d further unusable line(s) not shown", n - cap)
+  mk$reason <- "the list of unusable lines is capped"
+  out <- rbind(out, mk)
+  rownames(out) <- NULL
+  out
+}
+
 # THE LONG CATEGORICAL LAYOUT (Steve, 2026-09-05: "would it be more
 # logical on the input spreadsheet to use the column N for categorical
 # variables ... As it is, the spreadsheet becomes quite wide when there

@@ -249,6 +249,23 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
                 " trigger the privileged deploy"))
 }
 
+# The precision columns are read as INTERVALS, and an interval is a direct
+# multiplier on the null's spread: a grid the printed value cannot sit on
+# turns an honest row into an accusation (screens 2026-09-07-1758 F1 and
+# -1907 F1/F2, both rated high). P_Calc's gate must test all three columns
+# and the degenerate all-zero row; comments are stripped first, so a
+# commented-out call does not satisfy the check.
+pc <- sub("#.*$", "", srcOf("R/P_Calc.R"))
+for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
+             "\\.iaZeroRowGridOK\\s*\\("))
+  # the pattern matches CALLS only ("name(" ), never the definition
+  # ("name <- function"), so one match is the gate still calling it
+  if (!any(grepl(fn, pc)))
+    note(paste("R/P_Calc.R: the printed-precision gate no longer calls",
+               gsub("\\\\s\\*\\\\\\(|\\\\", "", fn),
+               "- a stated grid the values do not sit on would widen the",
+               "null without saying so"))
+
 ## 4 - committed credentials ----------------------------------------------
 # Tracked text files only; the corpus xlsx and PDFs are gitignored.
 tracked <- system2("git", c("ls-files"), stdout = TRUE)

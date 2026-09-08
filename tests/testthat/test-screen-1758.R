@@ -134,6 +134,7 @@ test_that("F4: a flag that is not valid UTF-8 is replaced, not raised on", {
   expect_equal(out2[2], "an ordinary flag")
 })
 
-test_that("the app's grid rows from unusable lines are capped", {
-  expect_true(is.numeric(.iaMaxSkippedRows) && .iaMaxSkippedRows >= 50)
-})
+# the app half of F3 is pinned by test-screen-1907.R, which calls the
+# capping function on a real three-column skipped frame. What stood here
+# asserted only that the constant existed, and the code it claimed to pin
+# raised on its first real input (screen 2026-09-07-1907, A1).
