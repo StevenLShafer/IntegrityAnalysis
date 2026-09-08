@@ -55,6 +55,23 @@ test_that("F1: the rule itself is vacuous for every ordinary table", {
   expect_true(.iaObservationGridOK(50000, 0, -5, 40))     # 50000 is a multiple
   expect_true(.iaObservationGridOK(c(NA, 5), c(1, 1), c(0, 0), c(NA, 40)))
   expect_true(.iaObservationGridOK(5, 1, 0, 0))           # no arm size, nothing to judge
+  # the divisor is the caller's: a MEDIAN of an even number of observations
+  # moves in half-steps of the observation grid, not in hObs/N, so a median
+  # row must be judged on that coarser lattice (CodeRabbit on PR #220)
+  expect_true(.iaObservationGridOK(0.5, 1, -1, 40))       # as a MEAN: hObs/N = 0.25
+  expect_false(.iaObservationGridOK(0.5, 1, -1, 2))       # as a MEDIAN: steps of 5
+  expect_true(.iaObservationGridOK(5.0, 1, -1, 2))
+})
+
+test_that("F1: a median row is judged on the median's lattice, not the mean's", {
+  # observations rounded to tens: an even arm's median can only land on a
+  # multiple of 5, so a median printed as 12.4 is not a reading of that page
+  med <- function(ro) data.frame(
+    TRIAL = "T", ROW = "X", N = c(40, 40), MEAN = c(12.4, 12.9), SD = NA_real_,
+    Q1 = c(10, 10), Q3 = c(15, 15), ROUND_MEAN = 1, ROUND_OBSERVATION = ro,
+    ROUND_DISPERSION = 0, stringsAsFactors = FALSE)
+  expect_false(grepl("stated precision", runRow(med(1))$P))
+  expect_match(runRow(med(-1))$P, "stated precision")
 })
 
 test_that("F2: an all-zero row keeps its honest verdict and refuses the coarse claim", {
@@ -69,6 +86,11 @@ test_that("F2: an all-zero row keeps its honest verdict and refuses the coarse c
   expect_false(.iaZeroRowGridOK(c(0, 0), 0, -20))
   expect_true(.iaZeroRowGridOK(c(0, 5), 0, -20))          # not a zero row
   expect_true(.iaZeroRowGridOK(c(0, 0), 1, 2))            # dispersion FINER: fine
+  # ARM BY ARM: comparing minima would pass this, while the second arm
+  # still claims a dispersion grid of 1e20 against a location grid of 1
+  # (CodeRabbit on PR #220)
+  expect_false(.iaZeroRowGridOK(c(0, 0), c(-20, 0), c(-20, -20)))
+  expect_true(.iaZeroRowGridOK(c(0, 0), c(-20, 0), c(-20, 0)))
 })
 
 test_that("F3 and A1: the app's cap runs on a real three-column skipped frame", {

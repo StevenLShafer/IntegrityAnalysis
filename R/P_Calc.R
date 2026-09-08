@@ -265,10 +265,16 @@
 .iaZeroRowGridOK <- function(values, decLoc, decDisp) {
   v <- values[is.finite(values)]
   if (!length(v) || max(abs(v)) > 0) return(TRUE)     # not a zero row
-  dl <- suppressWarnings(as.numeric(decLoc)); dd <- suppressWarnings(as.numeric(decDisp))
-  dl <- dl[is.finite(dl)]; dd <- dd[is.finite(dd)]
-  if (!length(dl) || !length(dd)) return(TRUE)
-  min(dd) >= min(dl)                       # dispersion no coarser than location
+  n <- max(length(decLoc), length(decDisp))
+  dl <- suppressWarnings(as.numeric(rep(decLoc, length.out = n)))
+  dd <- suppressWarnings(as.numeric(rep(decDisp, length.out = n)))
+  ok <- is.finite(dl) & is.finite(dd)
+  if (!any(ok)) return(TRUE)
+  # ARM BY ARM, not minimum against minimum: precisions of c(-20, 0) beside
+  # c(-20, -20) pass a comparison of minima while the second arm still
+  # claims a dispersion grid of 1e20 against a location grid of 1
+  # (CodeRabbit on PR #220)
+  all(dd[ok] >= dl[ok])                    # dispersion no coarser than location
 }
 
 # F1, the third precision column. ROUND_OBSERVATION sets the grid every
@@ -278,10 +284,16 @@
 # rows: five arms of 40 read p = 0.433 at an honest 0 and p = 0.0125 at -2;
 # integer means near 50,000 read 0.586 and 0.00013 at -5. The consistency
 # rule for it: a statistic computed from N observations on a grid of hObs
-# lies on a grid no coarser than hObs/N, so the interval the printed value
-# stands for must contain a multiple of hObs/N. The test is vacuous
-# whenever hObs/N is no coarser than the printed value's own step, which is
+# lies on a grid no coarser than hObs/divisor, so the interval the printed
+# value stands for must contain a multiple of it. The test is vacuous
+# whenever that step is no coarser than the printed value's own, which is
 # every ordinary table.
+#
+# The divisor is the caller's, because it differs by statistic: a MEAN of N
+# observations moves in steps of hObs/N, but a MEDIAN moves in steps of
+# hObs (odd N, it is an observation) or hObs/2 (even N, the average of the
+# two central ones) - far coarser, so passing N there would accept medians
+# no rounded sample could produce (CodeRabbit on PR #220).
 .iaObservationGridOK <- function(value, decValue, decObs, N) {
   n <- max(length(value), length(decValue), length(decObs), length(N))
   value <- rep(value, length.out = n); decValue <- rep(decValue, length.out = n)
@@ -540,7 +552,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                    # 1907 F1: the third precision column drove the same
                    # false-accusation lever the other two were closed for)
                    .iaObservationGridOK(ROWS$MEAN, ROWS$ROUND_MEAN,
-                                        ROWS$ROUND_OBSERVATION, ROWS$N) &&
+                                        ROWS$ROUND_OBSERVATION,
+                                        # a median's own lattice, not a mean's
+                                        if (isQuartile)
+                                          ifelse(ROWS$N %% 2 == 0, 2, 1)
+                                        else ROWS$N) &&
                    # ...and a row of nothing but zeros, which sits on every
                    # grid, must at least have precision columns that agree
                    # with each other (screen 1907 F2)

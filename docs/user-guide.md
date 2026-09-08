@@ -872,8 +872,13 @@ it. Each of the three says what grid something sits on — the mean's, the
 dispersion's, and the grid the individual measurements were recorded on —
 and the analysis reads those grids as the intervals the printed values
 stand for, so each has to be a grid its own numbers could have been
-rounded to. A mean of 58.9 cannot have come from measurements recorded to
-the nearest hundred, and the analysis says so rather than believing it.
+rounded to. A mean of 58.9 over forty patients cannot have come from
+measurements recorded to the nearest hundred — averaging forty multiples
+of 100 can only land on a multiple of 2.5 — and the analysis says so
+rather than believing it. How much room there is depends on the arm size,
+since the mean of N measurements on a grid moves in steps of that grid
+divided by N; a median moves in whole steps, or half-steps for an even
+number of patients.
 Quartiles of 40 and 60 reported to the nearest ten are fine; quartiles of
 45 and 55 said to be printed to the nearest ten are not, and neither is
 any value paired with a far coarser claim. This matters more than it
