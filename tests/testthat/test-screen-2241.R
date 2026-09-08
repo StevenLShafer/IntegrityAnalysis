@@ -58,6 +58,15 @@ test_that("F2: a precision stated COARSER than the printed digits is disclosed",
   expect_match(.iaCoarsePrecisionNote(50, 1, -1), "coarser")
   expect_identical(.iaCoarsePrecisionNote(50, 0, 1), "")
   expect_identical(.iaCoarsePrecisionNote(50.25, 2, 2), "")
+  # ...and only where the coarse grid could merge the locations. Arms at 0
+  # and 100 stay ten steps apart on a grid of ten, so their large p owes
+  # nothing to the claim and the note would be a false causal statement
+  # (CodeRabbit on PR #224)
+  expect_identical(.iaCoarsePrecisionNote(c(0, 100), -1, 1), "")
+  expect_match(.iaCoarsePrecisionNote(c(45, 55), -1, 1), "coarser")
+  expect_match(.iaCoarsePrecisionNote(c(50, 50), -1, 1), "coarser")
+  far <- runRow(mk(c(0, 100, 50), -1, ro = 1, rd = 0, N = 100, sd = 30))
+  expect_false(grepl("coarser than the digits", far$NOTE))
 })
 
 test_that("F3: the derived payload is linear and gives the same answer as the loop", {

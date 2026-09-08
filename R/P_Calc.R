@@ -443,6 +443,13 @@
   d <- suppressWarnings(as.numeric(c(decLoc, decObs)))
   d <- d[is.finite(d)]
   if (!length(d) || min(d) >= shown) return("")
+  # ...and only where the coarse grid can actually change the answer: the
+  # printed locations must fall within one step of it, so that rounding
+  # could merge them. Locations 0 and 100 on a grid of ten stay ten steps
+  # apart and their large p owes nothing to the claim - saying otherwise
+  # would be a false causal statement (CodeRabbit on PR #224).
+  h <- 10^(-min(d))
+  if (diff(range(v)) > h * (1 + 1e-9)) return("")
   paste0("a stated precision (", min(d),
          " decimals) is coarser than the digits these values carry, which ",
          "widens the rounding the arms are judged against - a large p here ",
