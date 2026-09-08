@@ -472,13 +472,62 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           q1Pool  <- sum(ROWS$N * ROWS$Q1) / N
           q3Pool  <- sum(ROWS$N * ROWS$Q3) / N
           fit <- fitMetalog(medPool, q1Pool, q3Pool)
-          if (fit$a2 <= 0)
+          # THE QUARTILES' PRINTED INTERVALS (Steve's decision, 2026-09-07,
+          # after the GPT-6 audit's F4). A printed quartile stands for an
+          # interval half a printed unit either side, exactly as a printed
+          # SD does (2026-09-06). Fitting the metalog to the printed
+          # values as if exact mattered where the quartiles print coarsely
+          # relative to their spread: integer quartiles of a variable with
+          # an interquartile range near 0.7 print the SAME integer half
+          # the time - the row was refused ("Quartiles do not increase")
+          # for 45-85% of honest tables, and the rest were fitted to a
+          # spuriously skewed metalog, clipped, and read p = 0.72 on
+          # average (C:/dev/Corpus/synthetic/quartile-draw/, the "narrow"
+          # population). Each replicate now draws every arm's quartiles
+          # within their printed intervals (the two draws ordered, so the
+          # pair is what a truth inside both intervals could have been),
+          # pools them by N, and fits THAT replicate's metalog; the scale
+          # draw below then resamples from the replicate's fit and inverts
+          # its ratio as before. Quartiles that print the same value are
+          # therefore admissible; only quartiles that print in the wrong
+          # order are refused - and per ARM (CodeRabbit on PR #214), since
+          # drawQuartiles() orders each drawn pair, so one arm's reversed
+          # quartiles would otherwise be silently repaired whenever the
+          # other arms kept the pooled pair in order.
+          if (any(ROWS$Q3 < ROWS$Q1 - 1e-9 * (1 + abs(ROWS$Q1))))
           {
             Pdisp <- "Quartiles do not increase (Q3 must exceed Q1)"
           } else {
           a1 <- fit$a1; a2 <- fit$a2; a3 <- fit$a3
-          skewNote <- if (fit$clipped)
+          # the quartiles' printed precision, per arm: ROUND_DISPERSION (the
+          # dispersion measure of a median line IS its quartiles). A blank
+          # cell is inferred on its own from the printed quartiles' decimals,
+          # taking the variable's maximum across its arms - the validator's
+          # rule, and the rule .iaSdInterval() applies to a printed SD - so a
+          # direct caller who supplies the precision for some arms only keeps
+          # what it supplied (CodeRabbit on PR #214; the same shape as the
+          # GPT-6 audit's finding F5).
+          qPrec <- if (!is.null(ROWS$ROUND_DISPERSION))
+            suppressWarnings(as.numeric(ROWS$ROUND_DISPERSION))
+          else rep(NA_real_, COLS)
+          qBlank <- is.na(qPrec)
+          if (any(qBlank))
+            qPrec[qBlank] <- max(vapply(c(ROWS$Q1, ROWS$Q3), .iaDecimals, integer(1)))
+          hQ <- 10^(-qPrec)
+          # the note reports the PRINTED quartiles' fit; the replicates' own
+          # fits are clipped individually below without a note. A pooled fit
+          # with no width at all (every arm printing Q1 = Q3) has no skew to
+          # judge, so it earns the second note instead of the first.
+          skewNote <- if (fit$a2 > 0 && fit$clipped)
             "quartiles beyond the metalog's skew limit; fitted at the limit" else ""
+          # "flat" means the pair prints the same value; a pair one printed
+          # unit apart must not be caught by floating-point dust (0.1 read
+          # back from two one-decimal values can be a hair under hQ)
+          nFlat <- sum(ROWS$Q3 - ROWS$Q1 < hQ * (1 - 1e-9))
+          if (nFlat > 0)
+            skewNote <- paste(c(skewNote[nzchar(skewNote)], sprintf(
+              "printed quartiles do not separate in %d arm(s); the fit uses their printed intervals",
+              nFlat)), collapse = "; ")
           center     <- sum(ROWS$N * ROWS$MEAN) / N
           # TRANSLATED before the statistic (screen 2026-09-07-1459, F1): the
           # statistic is translation-invariant, and measuring from the first
@@ -490,16 +539,19 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # with two decimals defeated 1e-26 of the centre squared).
           dd         <- ROWS$MEAN - ROWS$MEAN[1]
           DiffSample <- sum((dd - sum(ROWS$N * dd) / N)^2)
-          # Per-replication uncertainty in the common location: asymptotic
-          # SD of a sample median is 1/(2 f(m) sqrt(n)); metalog density
-          # at its median is 1/(4 a2), so SD_median = 2 a2 / sqrt(n).
-          sdShift <- 2 * a2 / sqrt(mean(ROWS$N))
-          # the quartiles' printed precision, per arm: ROUND_DISPERSION (the
-          # dispersion measure of a median line IS its quartiles; the
-          # validator infers a blank one from their decimals), falling back
-          # to the median's for a direct caller without the column
-          qPrec <- if (!is.null(ROWS$ROUND_DISPERSION) && all(!is.na(ROWS$ROUND_DISPERSION)))
-            as.numeric(ROWS$ROUND_DISPERSION) else ROWS$ROUND_MEAN
+          # a chunk's worth of quartiles drawn within their printed intervals,
+          # per arm, the pair ordered, pooled by N: length-ch vectors of the
+          # replicate's pooled Q1 and Q3
+          drawQuartiles <- function(ch) {
+            q1 <- numeric(ch); q3 <- numeric(ch)
+            for (i in 1:COLS) {
+              d1 <- ROWS$Q1[i] + hQ[i] * (dqrunif(ch) - 0.5)
+              d3 <- ROWS$Q3[i] + hQ[i] * (dqrunif(ch) - 0.5)
+              w <- ROWS$N[i] / N
+              q1 <- q1 + w * pmin(d1, d3); q3 <- q3 + w * pmax(d1, d3)
+            }
+            list(q1 = q1, q3 = q3)
+          }
           # a chunk of replicates from a metalog whose coefficients may be
           # one number or one per replicate (a length-ch vector recycles
           # down the columns of a ch-row matrix, one value per replicate);
@@ -522,15 +574,23 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
               # alive in a draw, twice per replicate here, so a quarter of
               # the continuous branch's chunk keeps the peak comparable
               ch <- min(left, max(1, floor(2.5e7 / max(1, N))))
-              # the scale draw: resample every arm from the fit, take its
-              # printed quartiles, pool - the bootstrap scale a2* - and
-              # invert the ratio: the replicate's population scale is
-              # a2^2 / a2* (a degenerate resample with a2* = 0 is floored
+              # THIS replicate's population: the quartiles drawn within their
+              # printed intervals and refitted (a2q > 0 almost surely; floored
+              # at a hundredth of a printed unit so the ratios below stay
+              # finite when two draws coincide)
+              qd <- drawQuartiles(ch)
+              fq <- fitMetalog(a1, qd$q1, qd$q3)
+              a2q <- pmax(fq$a2, 0.01 * min(hQ) / (2 * log(3)))
+              a3q <- pmin(pmax(fq$a3, -.iaMetalogSkewLimit * a2q), .iaMetalogSkewLimit * a2q)
+              # the scale draw: resample every arm from the replicate's fit,
+              # take its printed quartiles, pool - the bootstrap scale a2* -
+              # and invert the ratio: the replicate's population scale is
+              # a2q^2 / a2* (a degenerate resample with a2* = 0 is floored
               # at one printed unit, so the ratio stays finite)
               bq1 <- numeric(ch); bq3 <- numeric(ch)
               for (i in 1:COLS)
               {
-                S <- Rfast::rowSort(round(drawMetalog(ch, ROWS$N[i], a1, a2, a3),
+                S <- Rfast::rowSort(round(drawMetalog(ch, ROWS$N[i], a1, a2q, a3q),
                                           ROWS$ROUND_OBSERVATION[i]))
                 w <- ROWS$N[i] / N
                 # printed to the QUARTILES' precision (ROUND_DISPERSION, which
@@ -540,9 +600,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                 bq3 <- bq3 + w * round(rowQ(S, 0.75), qPrec[i])
               }
               a2boot <- pmax((bq3 - bq1) / (2 * log(3)), 10^(-max(qPrec)) / (2 * log(3)))
-              a2rep  <- a2^2 / a2boot
-              a3rep  <- pmin(pmax(a3, -.iaMetalogSkewLimit * a2rep), .iaMetalogSkewLimit * a2rep)
-              a1rep  <- a1 + dqrnorm(ch, mean = 0, sd = sdShift)
+              a2rep  <- a2q^2 / a2boot
+              a3rep  <- pmin(pmax(a3q, -.iaMetalogSkewLimit * a2rep), .iaMetalogSkewLimit * a2rep)
+              # the common location: the pooled median plus its sampling draw,
+              # SD 2 a2 / sqrt(n) (the metalog density at its median is
+              # 1/(4 a2)) - computed from a2rep, the scale of the population
+              # the observations are actually drawn from on the next line,
+              # not from the pre-bootstrap a2q (CodeRabbit on PR #214)
+              a1rep  <- a1 + dqrnorm(ch, 0, 1) * (2 * a2rep / sqrt(mean(ROWS$N)))
               MCMed <- matrix(NA_real_, ch, COLS)
               for (i in 1:COLS)
               {

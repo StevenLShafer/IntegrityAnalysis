@@ -429,12 +429,75 @@ quartiles' own.
 precision, inferred from their decimals when blank, exactly as an SD's
 is. The order check allows each printed value half a printed unit either
 side and refuses only when no ordered quantiles can exist inside those
-intervals. The bootstrap prints its quartiles to that precision. Not yet
-done, and a decision for Steve Shafer: integrating the quartiles'
-printed rounding into the fit itself (drawing each quartile within its
-interval per replicate, as the SD is drawn since 2026-09-06) — a table
-whose quartiles print coarsely relative to their interquartile range is
-otherwise fitted to a spuriously skewed metalog and clipped.
+intervals. The bootstrap prints its quartiles to that precision. The
+second half — integrating the quartiles' printed rounding into the fit
+itself — is the next section.
+
+## 2026-09-07 — the quartiles' printed intervals enter the fit
+
+**What was wrong.** The metalog was fitted to the printed quartiles as
+if they were exact. A printed quartile is not exact: it stands for an
+interval half a printed unit either side, exactly as a printed standard
+deviation does (2026-09-06). Where a variable's interquartile range is
+comparable to one printed unit — a measurement near 5 with an
+interquartile range of about 0.7, printed as integers — both quartiles
+print the same digit much of the time, and the branch refused the row
+("Quartiles do not increase"). On honest two-arm tables from that
+population the refusal rate was 45% at ten per arm, 67% at thirty and
+85% at a hundred (1,000 tables per cell,
+`C:/dev/Corpus/synthetic/quartile-draw/`, the "narrow" population). The
+tables that survived were fitted to a spuriously skewed metalog and
+clipped at the skew limit.
+
+**What changed** (Steve Shafer's decision, 2026-09-07, the GPT-6 audit's
+finding F4). Every replicate now draws each arm's Q1 and Q3 uniformly
+within their printed intervals, orders the pair, pools them by N, and
+fits *that* replicate's metalog; the scale draw then resamples from the
+replicate's own fit and inverts the ratio as before, and the location
+draw uses the replicate's own scale, and the location's standard
+deviation is computed from that scale rather than from the pre-bootstrap
+fit. Quartiles that print the same value are admissible, and the row's
+Note says so ("printed quartiles do not separate in k arm(s); the fit
+uses their printed intervals"). Only quartiles printed in the wrong order
+are still refused, and that test is applied per ARM: because each drawn
+pair is ordered, one arm's reversed quartiles would otherwise be silently
+repaired whenever the other arms kept the pooled pair in order. A blank
+`ROUND_DISPERSION` cell is inferred on its own from the printed
+quartiles' decimals, the rule a printed SD has followed since the audit's
+finding F5, so a direct caller who supplies the precision for some arms
+only keeps what it supplied.
+
+**What it measured** (the same honest null, 1,000 tables per cell, two
+equal arms, m = 1,000, five populations at 10, 30 and 100 per arm):
+
+| | before | after |
+| --- | --- | --- |
+| Refused, narrow population, integer quartiles | 45%, 67%, 85% | 0%, 0%, 0% |
+| p ≤ 0.05, all other populations | 0.027–0.078 | 0.027–0.078 |
+| Kolmogorov–Smirnov distance from uniform, all other populations | ≤ 0.075 | ≤ 0.075 |
+| Median/IQR pin (`test-known-answer.R`) | 0.04545 | 0.0427 |
+
+Nothing outside the coarse case moved by more than Monte Carlo noise:
+the draw's width is one printed unit, negligible beside an
+interquartile range printed to two or three significant digits.
+
+**What it did not fix, and the direction of the error.** The coarse
+case is still conservative: for the narrow population with integer
+quartiles the honest p averages 0.66–0.72 and never falls below 0.05.
+Two printed quartiles that agree say only that the population's width is
+under one printed unit; drawing them uniformly inside their intervals
+implies a width of a third of a unit on average, narrower than the truth
+(about two thirds here), and a model narrower than the truth ties its
+rounded replicate medians more often than the data do, which inflates p.
+The adversarial version of that worry — a median printed finely enough
+that ties are rare, beside quartiles too coarse to pin the width, where
+a narrow model could **false-alarm** instead — was measured and does
+not occur: integer quartiles with two-decimal medians give an honest
+p ≤ 0.05 rate of 0.003, 0.000 and 0.000 at 10, 30 and 100 per arm
+(`null-draw-q0-med2.csv` against `null-point-q0-med2.csv`). A less
+conservative treatment would need a prior on the population's width
+given the printed digits, which is the dispersion-fabrication question
+the screen deliberately leaves alone.
 
 ## 2026-09-07 — counts rebuilt from percentages: the fail-safe fill
 
