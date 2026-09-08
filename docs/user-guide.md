@@ -868,9 +868,12 @@ counts, an empty category) are refused with an explanation rather than
 analyzed.
 
 A row is refused when a precision column contradicts the numbers beside
-it. `ROUND DISPERSION` says what grid the SD or the quartiles sit on, and
-the analysis reads that grid as the interval the printed value stands
-for, so it has to be a grid the value could have been rounded to.
+it. Each of the three says what grid something sits on — the mean's, the
+dispersion's, and the grid the individual measurements were recorded on —
+and the analysis reads those grids as the intervals the printed values
+stand for, so each has to be a grid its own numbers could have been
+rounded to. A mean of 58.9 cannot have come from measurements recorded to
+the nearest hundred, and the analysis says so rather than believing it.
 Quartiles of 40 and 60 reported to the nearest ten are fine; quartiles of
 45 and 55 said to be printed to the nearest ten are not, and neither is
 any value paired with a far coarser claim. This matters more than it

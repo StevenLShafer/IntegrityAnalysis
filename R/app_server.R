@@ -1163,15 +1163,7 @@ app_server <- function(input, output, session) {
             # store and the hover registry - since keeping the full frame
             # anywhere leaves the same unbounded state behind (CodeRabbit
             # on PR #219).
-            nrow0Skipped <- nrow(r$skipped)
-            keep <- seq_len(min(nrow0Skipped, .iaMaxSkippedRows))
-            r$skipped <- r$skipped[keep, , drop = FALSE]
-            if (length(keep) < nrow0Skipped)
-              r$skipped <- rbind(r$skipped, data.frame(
-                label = sprintf("... %d further unusable line(s) not shown",
-                                nrow0Skipped - length(keep)),
-                reason = "the list of unusable lines is capped",
-                stringsAsFactors = FALSE)[, names(r$skipped), drop = FALSE])
+            r$skipped <- .iaCapSkipped(r$skipped)
             extra <- d[rep(NA_integer_, nrow(r$skipped)), , drop = FALSE]
             extra$TRIAL <- files$stem[i]
             extra$ROW <- r$skipped$label
