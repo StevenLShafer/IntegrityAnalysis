@@ -52,7 +52,12 @@ writeIntegrityTemplate <- function(x, file, extraSheets = TRUE,
     stop("The parsed table is missing required column(s): ",
          paste(missingCols, collapse = ", "))
 
-  sheets <- list(Template = x$data)
+  # The value columns are written as TEXT at the precision each row
+  # declares (.iaValueColumnsAsText, 2026-09-08): a spreadsheet cell
+  # cannot hold the trailing zero of "50.0" as a number, and this file is
+  # an INPUT to the app, so the digits the parser read off the page have
+  # to survive the write.
+  sheets <- list(Template = .iaValueColumnsAsText(x$data))
   if (extraSheets) {
     prov <- x$provenance
     # Whether the dispersion column holds a standard deviation or a standard

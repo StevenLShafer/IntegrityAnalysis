@@ -38,6 +38,60 @@
   min(20L, nchar(sub("0+$", "", sub("^[^.]*[.]", "", txt))))
 }
 
+# WRITE THE PRINTED PRECISION BACK OUT (Steve Shafer, 2026-09-08). The
+# mirror of .iaDecimals() above. A spreadsheet cell holding the double 50
+# prints "50", so a mean of 50.0 that the app analysed at one decimal came
+# back out of every export at zero decimals: the file no longer said what
+# the analysis assumed, and re-uploading it changed the answer. The value
+# columns therefore leave as TEXT, formatted at the precision the row
+# declares - MEAN at ROUND_MEAN, SD / SE / Q1 / Q3 at ROUND_DISPERSION -
+# so the digits survive at the file level. Excel shows a text number with
+# the green corner and converts a block of them back in a few keystrokes,
+# which Steve weighed against losing the precision and chose.
+#
+# What is deliberately NOT converted:
+#   * N, the category counts and any other extra column. They are whole
+#     numbers, so no precision exists to lose - and is_category() calls a
+#     non-numeric column a Misc column, not a category, so exporting the
+#     counts as text would break the round trip it is meant to protect.
+#   * ROUND_MEAN / ROUND_DISPERSION / ROUND_OBSERVATION. Integers, and
+#     nothing infers a precision from them.
+#
+# The declared precision is a floor, never a ceiling: a value carrying
+# more digits than its row declares keeps them (max of the two), because
+# an export must not quietly round the datum it is exporting. A cell
+# already held as text is left verbatim - it arrived with its digits.
+# NA leaves as NA so keepNA = FALSE / na = "" blank it; a non-finite
+# value leaves as "Inf" / "NaN", which the reader refuses exactly as it
+# refuses the typed word.
+#' Format the value columns as text at each row's declared precision
+#' @param d a data frame in the template column contract
+#' @return `d` with MEAN / SD / SE / Q1 / Q3 as character
+#' @noRd
+.iaValueColumnsAsText <- function(d) {
+  if (is.null(d) || !is.data.frame(d) || nrow(d) == 0) return(d)
+  declared <- function(src) {
+    if (is.null(d[[src]])) return(rep(NA_real_, nrow(d)))
+    r <- suppressWarnings(as.numeric(d[[src]]))
+    r[!is.finite(r) | r < 0] <- NA_real_
+    r
+  }
+  roundMean <- declared("ROUND_MEAN")
+  roundDisp <- declared("ROUND_DISPERSION")
+  for (col in c("MEAN", "SD", "SE", "Q1", "Q3")) {
+    v <- d[[col]]
+    if (is.null(v) || !is.numeric(v)) next
+    dec <- if (col == "MEAN") roundMean else roundDisp
+    d[[col]] <- vapply(seq_along(v), function(i) {
+      if (is.na(v[i])) return(NA_character_)
+      if (!is.finite(v[i])) return(as.character(v[i]))
+      own <- .iaDecimals(v[i])
+      .fmtAt(v[i], if (is.na(dec[i])) own else max(own, dec[i]))
+    }, character(1))
+  }
+  d
+}
+
 is_category <- function(x, requireNA = TRUE) {
   # Remove NAs first for efficiency, then check if all values are integers
 
@@ -249,6 +303,31 @@ validateData <- function(DATA) {
   unreadable <- list()   # (row, col) cells that held TEXT where a number
                          # belongs - coerced to NA below, but remembered
                          # so the grid paints them red, not yellow
+  # THE DIGITS A TEXT CELL SHOWS (Steve, 2026-09-08). A spreadsheet stores
+  # "50.0" as the double 50, and every inference below then reads zero
+  # decimals from it - the trailing-zero problem that runs through the
+  # 2026-09-07 screens and the 2026-09-08 audit. A cell that arrives as
+  # TEXT still has its digits, so they are counted here, before the
+  # coercion, exactly as the document parsers count them off a page
+  # (.ppDecimals on the printed string; the same function, not a second
+  # one). A cell that arrives as a genuine number cannot be rescued: the
+  # information is gone at the file level, which is what the precision
+  # columns are for.
+  textDec <- list()
+  for (col in c("N", "MEAN", "SD", "SE", "Q1", "Q3"))
+    if (!is.null(DATA[[col]]) && !is.numeric(DATA[[col]])) {
+      txt <- trimws(as.character(DATA[[col]]))
+      d <- suppressWarnings(.ppDecimals(txt))
+      d[is.na(txt) | txt == "" | is.na(suppressWarnings(as.numeric(txt)))] <- NA_integer_
+      textDec[[col]] <- as.integer(d)
+    }
+  # the decimals to credit a cell with: what its text showed, or what the
+  # stored number shows, whichever is larger
+  decShown <- function(col, i) {
+    n <- .iaDecimals(DATA[[col]][i])
+    t <- if (!is.null(textDec[[col]])) textDec[[col]][i] else NA_integer_
+    if (is.na(t)) n else max(n, t)
+  }
   for (col in c("N", "MEAN", "SD", "SE", "Q1", "Q3"))
   {
     if (!is.null(DATA[[col]]) && !is.numeric(DATA[[col]]))
@@ -571,8 +650,8 @@ validateData <- function(DATA) {
         # printed decimals; the median's is ROUND_MEAN after its bump.
         hq <- 10^(-(if ("ROUND_DISPERSION" %in% names(DATA) && !is.na(DATA$ROUND_DISPERSION[i]))
                       DATA$ROUND_DISPERSION[i]
-                    else max(.iaDecimals(DATA$Q1[i]), .iaDecimals(DATA$Q3[i]))))
-        hm <- 10^(-max(DATA$ROUND_MEAN[i], .iaDecimals(DATA$MEAN[i])))
+                    else max(decShown("Q1", i), decShown("Q3", i))))
+        hm <- 10^(-max(DATA$ROUND_MEAN[i], decShown("MEAN", i)))
         DATA$Q1[i] - hq / 2 > DATA$MEAN[i] + hm / 2 || DATA$MEAN[i] - hm / 2 > DATA$Q3[i] + hq / 2
       })
       {
@@ -580,11 +659,8 @@ validateData <- function(DATA) {
         FAIL <- TRUE
       } else {
         # median printed with decimals bumps ROUND_MEAN, same as a mean
-        if (DATA$MEAN[i] %% 1 != 0)
-        {
-          digits <- .iaDecimals(DATA$MEAN[i])
-          if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
-        }
+        digits <- decShown("MEAN", i)
+        if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
       }
     } else {
       if (any(is.na(DATA[i, c("N", "MEAN", "SD")])))
@@ -626,11 +702,10 @@ validateData <- function(DATA) {
         #     MEAN != as.integer(MEAN): as.integer() returns NA for
         #     values beyond +/-2^31 (e.g. large counts), which would
         #     also crash the if().
-        if (DATA$MEAN[i] %% 1 != 0)
-        {
-          digits <- .iaDecimals(DATA$MEAN[i])
-          if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
-        }
+        # the digits the cell SHOWED, which for a text cell survives the
+        # coercion that loses "50.0" to 50 (Steve, 2026-09-08)
+        digits <- decShown("MEAN", i)
+        if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
       }
     }
   }
@@ -666,9 +741,10 @@ validateData <- function(DATA) {
     if (any(dispInferred))
     {
       sdDec <- rep(NA_real_, nrow(DATA))
-      sdDec[hasSD] <- vapply(DATA$SD[hasSD], .iaDecimals, integer(1))
-      sdDec[hasQ]  <- pmax(vapply(DATA$Q1[hasQ], .iaDecimals, integer(1)),
-                           vapply(DATA$Q3[hasQ], .iaDecimals, integer(1)))
+      # the digits each cell showed, text or numeric (Steve, 2026-09-08)
+      sdDec[hasSD] <- vapply(which(hasSD), function(i) decShown("SD", i), numeric(1))
+      sdDec[hasQ]  <- pmax(vapply(which(hasQ), function(i) decShown("Q1", i), numeric(1)),
+                           vapply(which(hasQ), function(i) decShown("Q3", i), numeric(1)))
       grpMaxSD <- stats::ave(sdDec, DATA$TRIAL, DATA$ROW,
                              FUN = function(x) if (all(is.na(x))) NA_real_ else max(x, na.rm = TRUE))
       DATA$ROUND_DISPERSION[dispInferred] <- grpMaxSD[dispInferred]
