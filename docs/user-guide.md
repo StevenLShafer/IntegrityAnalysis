@@ -895,7 +895,11 @@ standard deviation of at least 500, whatever the table prints. That check
 runs only when a table says its measurements were recorded more coarsely
 than it prints their average; when the two agree, which is what the app
 assumes if you leave the observation precision blank, nothing is
-refused. A precision finer than the printed
+refused. A precision **coarser** than the printed value is not refused either: a
+paper printing "50" may honestly have rounded to tens. But it widens the
+rounding the arms are judged against, which can take a row from an alarm
+to unremarkable, so the Note beside that row's p says the answer rests on
+the claim. A precision finer than the printed
 value is not refused — a spreadsheet drops trailing zeros, so a mean
 printed "50.000000" and one printed "50" reach the app as the same number
 — but it is disclosed: such a row is analysed as the table claims, and the

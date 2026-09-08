@@ -344,32 +344,11 @@ app_server <- function(input, output, session) {
     # demand action rather than a glance - overwrite them on conflict.
     dv <- parseDerived()
     if (!is.null(dv) && nrow(dv) > 0 && all(c("TRIAL", "ROW") %in% names(d))) {
-      issPayload <- list(); notePayload <- list()
-      for (g in seq_len(nrow(dv))) {
-        # COL "*" = every column: whole-table shading, the OCR case
-        cis <- if (identical(dv$COL[g], "*")) seq_along(names(d))
-               else match(dv$COL[g], names(d))
-        cis <- cis[!is.na(cis)]
-        if (length(cis) == 0) next
-        code <- if (!is.null(dv$KIND) && identical(dv$KIND[g], "ocr")) "ocr"
-                else if (!is.null(dv$KIND) && identical(dv$KIND[g], "failsafe")) "failsafe"
-                else "derived"
-        hits <- if (dv$ROW[g] == "*")
-          which(as.character(d$TRIAL) == dv$TRIAL[g])
-        else
-          which(as.character(d$TRIAL) == dv$TRIAL[g] &
-                as.character(d$ROW) == dv$ROW[g])
-        for (ci in cis) {
-          # paint only cells that carry a value - a green empty cell would
-          # read as "this blank is fine", which is the opposite of true
-          keep <- hits[!is.na(d[hits, ci])]
-          for (r in keep) {
-            key <- paste0(r - 1, "|", ci - 1)
-            issPayload[[key]] <- code
-            notePayload[[key]] <- dv$note[g]
-          }
-        }
-      }
+      # .iaDerivedPayload() holds the mapping and why it is written that
+      # way (security screen 2026-09-07-2241, F3: this loop was the
+      # quadratic the skip registry's was rewritten to remove)
+      pay <- .iaDerivedPayload(d, dv)
+      issPayload <- pay$iss; notePayload <- pay$note
       if (length(issPayload) == 0) { issPayload <- NULL; notePayload <- NULL }
     }
     iss <- rIssues()
@@ -1308,7 +1287,7 @@ app_server <- function(input, output, session) {
                    ROW = f$skips$label, reason = f$skips$reason,
                    stringsAsFactors = FALSE)
       }))
-      parseSkips(unique(rbind(parseSkips(), skipReg)))
+      parseSkips(.iaCapRegistry(unique(rbind(parseSkips(), skipReg))))
       deriveReg <- do.call(rbind, lapply(frames, function(f) {
         if (is.null(f$derived) || nrow(f$derived) == 0) return(NULL)
         # KIND survives into the registry so the renderer can paint OCR
@@ -1328,7 +1307,7 @@ app_server <- function(input, output, session) {
                      "before the analysis runs."),
                    stringsAsFactors = FALSE)
       }))
-      parseDerived(unique(rbind(parseDerived(), deriveReg)))
+      parseDerived(.iaCapRegistry(unique(rbind(parseDerived(), deriveReg))))
       reactiveData(DATA)
     }
   )
