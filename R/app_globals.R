@@ -11,8 +11,10 @@
 # m is the MAXIMUM replication count per row for the Monte Carlo
 # simulation (the final stage of the adaptive scheme - see the header of
 # R/P_Calc.R and docs/statistics.md). Rows simulate in stages
-# 1,000 -> 10,000 -> m, escalating only while the running mid-p is
-# < 0.01, so a typical (unalarming) row costs 1,000 replicates - CHEAPER
+# 1,000 -> 10,000 -> m, escalating while the running mid-p is < 0.1 (to
+# leave 1,000) and < 0.01 (to leave 10,000). Staging is per TRIAL, so a
+# typical (unalarming) TRIAL costs 1,000 replicates a row - an
+# unremarkable row in an alarming trial escalates with it - CHEAPER
 # than the old flat 15,000 - while alarming rows get the precision that
 # makes a "<0.0001" claim defensible (the 97.5% upper confidence bound
 # must clear it, which needs ~30,000+ replicates at zero exceedances).

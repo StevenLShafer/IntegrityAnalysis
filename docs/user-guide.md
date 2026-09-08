@@ -404,8 +404,11 @@ specific cell:
   for this arm size several counts fit it (above 100 patients at integer
   percentages, above 1,000 at one decimal). The ambiguous cells of the
   row are filled with whichever admissible counts leave the arms **least
-  alike** - every combination the printed percentages allow is tried, and
-  the least homogeneous is kept - so the row can look less alike than the
+  alike** - every combination the printed percentages allow is tried where a
+  row has eight or fewer ambiguous cells, and the least homogeneous is
+  kept; with more than eight the app searches from both ends instead of
+  trying all of them, which has matched the exhaustive answer on every
+  row measured - so the row can look less alike than the
   truth but never more: the analysis is conservative for that row,
   and markedly so — a row that would alarm on printed counts usually
   will not alarm on printed percentages. Hover the cell for the bracket
@@ -966,9 +969,9 @@ and a blank row between trials.
 | `TRIAL` | the trial identifier, as it appeared in the grid. Printed on a trial's first line only and blank on every line after it, including the Summary row, which prints beneath its own trial's rows |
 | `ROW` | the variable identifier for that line, or `Summary` |
 | `P (one-sided toward homogeneity)` | the mid-p described above — small means *more homogeneous than chance*. On the Summary row this is the exact-combination trial p |
-| `95% Monte Carlo interval` | how precisely the simulation pinned that number: the exact Clopper–Pearson 95% interval of the row p on every row, and on the Summary row the interval for the trial p when it fell below 0.001. Because the adaptive scheme decides when to stop by looking at the p itself, coverage is about 93.5% rather than 95% for a true p near an escalation threshold, and nominal away from them (see [statistics.md](statistics.md)) |
+| `95% Monte Carlo interval` | how precisely the simulation pinned that number: the exact Clopper–Pearson 95% interval of the row p on every row the app analysed (a refused row leaves this blank, and its Replicates cell too), and on the Summary row the interval for the trial p when it fell below 0.001. Because the adaptive scheme decides when to stop by looking at the p itself, coverage is about 93.5% rather than 95% for a true p near an escalation threshold, and nominal away from them (see [statistics.md](statistics.md)) |
 | `Replicates` | how many simulations the rows received (1,000 / 10,000 / 100,000 — the adaptive scheme stops as soon as the trial and every row are resolved, so an unremarkable trial shows 1,000 on every row, and an alarming one escalates every row together) |
-| `Note` | `attainable floor` when the row sits at the smallest p its printed precision allows — no honest replicate agreed better than the printed arms (see "Rounding, large trials, and rows that cannot alarm"). Blank otherwise |
+| `Note` | the Summary line's count of analysed rows when any row was refused, and on a variable's line any of: `quartiles beyond the metalog's skew limit; fitted at the limit`, `printed quartiles do not separate in k arm(s); the fit uses their printed intervals`, `the stated mean precision (k decimals) exceeds the digits these values carry ...`, and `attainable floor` when the row sits at the smallest p its printed precision allows — no honest replicate agreed better than the printed arms (see "Rounding, large trials, and rows that cannot alarm"). Blank otherwise |
 
 *Sheet 2, `Baseline Tables`* — the reconstruction, one block per trial
 stacked down the sheet under a bold `Trial: <name>` heading: variables

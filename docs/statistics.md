@@ -63,11 +63,14 @@ published 2017 values (r = 0.993 over 5,041 usable trials in the current engine,
 exactly uniform for every fixed margin of a discrete table: where the
 tie mass is large, the share of honest tables below 0.05 can sit above
 or below 5%. (An inclusive-tail p, counting every tie, would be
-conservative instead.) A tie is decided by a stated numerical
-criterion, not by exact equality of floating-point numbers: two
-statistics within one part in 10¹⁰ of each other are one value, for the
-observed row against its replicates and for the replicates among
-themselves alike, and a statistic that is zero up to floating-point
+conservative instead.) A tie between ROW statistics is decided by a stated
+numerical criterion, not by exact equality of floating-point numbers:
+two statistics within one part in 10¹⁰ of each other are one value, for
+the observed row against its replicates and for the replicates among
+themselves alike (the trial-level combination compares its Stouffer sums
+with exact equality instead, since the observed sum and a tied
+replicate's accumulate the same row values in the same order and come
+out bit-identical), and a statistic that is zero up to floating-point
 dust is zero. Floating-point error in these sums is far below that
 tolerance and the gap between distinct attainable values far above it,
 so mathematically equal statistics are never split and distinct ones
@@ -322,10 +325,10 @@ makes a number reproducible; it does not make it more precise.
 
 | Column | Meaning |
 |---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, "Printed precision beyond this magnitude's numerical resolution", "The stated precision does not match the printed values (check ROUND MEAN, ROUND DISPERSION and ROUND OBSERVATION)", ...) are refusals: the row could not be analyzed, with the reason. |
-| 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
-| Note | On the Summary line, "k of n rows analysed" when the engine refused any row of the trial, so a combined p is never read as covering a table it did not cover. On a variable's line: "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used, and "printed quartiles do not separate in k arm(s); the fit uses their printed intervals" when an arm prints Q1 and Q3 as the same value, so its width is known only to be smaller than one printed unit; and "the stated mean precision (k decimals) is finer than the printed values; the p depends on that claim" when a row whose arms print the same mean claims more decimals than those means show. Notes are joined with "; ". Blank otherwise. |
-| Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. A text entry is a refusal: the row could not be analyzed, and the text is the reason. The complete set is "Only 1 Row"; "An arm with fewer than 2 patients cannot be simulated"; "Mixed SD and quartile lines"; "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed; "The stated precision does not match the printed values (check ROUND MEAN, ROUND DISPERSION and ROUND OBSERVATION)"; "Printed precision beyond this magnitude's numerical resolution (…)"; "Incomplete category counts across arms"; and "Degenerate category table (an arm or every remaining category is empty)". The Summary line reads "No values" when no row of the trial could be analyzed. |
+| 95% Monte Carlo interval | For every row the engine analyzed (a refused row leaves this blank, as it leaves Replicates blank): the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
+| Note | On the Summary line, "k of n rows analysed" when the engine refused any row of the trial, so a combined p is never read as covering a table it did not cover. On a variable's line: "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used, and "printed quartiles do not separate in k arm(s); the fit uses their printed intervals" when an arm prints Q1 and Q3 as the same value, so its width is known only to be smaller than one printed unit; and "the stated mean precision (k decimals) exceeds the digits these values carry; the arms print alike, so the p rests on that precision - check it against the page" when a row whose arms print the same mean states more decimals than those means carry. Notes are joined with "; ". Blank otherwise. |
+| Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). Blank on a refused row. |
 
 ## What this method assumes, and what it does not measure
 
@@ -365,9 +368,13 @@ makes a number reproducible; it does not make it more precise.
   row's printed percentages allow - one end of each ambiguous arm's
   bracket, the exactly pinned arms held fixed - the row is built from the
   set with the largest value of the statistic the screen goes on to
-  simulate. The row therefore looks as *unlike* as the page permits: it
-  can look less alike than the truth, never more, and its p is
-  conservative. (Two heuristics preceded this one and neither kept that
+  simulate. Up to eight ambiguous arms every such set is tried, so that is
+  a statement about all of them; above eight the search is a coordinate
+  ascent from both ends, which matched the exhaustive answer on every row
+  measured but is not proven to reach it. The row therefore looks as
+  *unlike* as the page permits - exactly so within the exhaustive range,
+  and as far as a two-start search reaches above it - so it can look less
+  alike than the truth, never more, and its p is conservative. (Two heuristics preceded this one and neither kept that
   promise: pushing every ambiguous arm away from one pooled proportion
   gave arms on the same side identical counts, and splitting the
   ambiguous arms against each other by rank ignored the pinned arms.
@@ -402,12 +409,17 @@ makes a number reproducible; it does not make it more precise.
   is applied only where the table STATES an observation grid coarser than
   the printed value's own; where the two agree, which is the default when
   the observation precision is left blank, the quantisation it is about
-  cannot arise and nothing is refused. Too fine is not refused but
+  cannot arise and nothing is refused. It applies to mean/SD rows only: a
+  median row has no standard deviation to test, and its own location is
+  already held to the median's lattice by the rule above. Too fine is not refused but
   disclosed: a stated mean precision running past the digits the value is
   printed with erases the rounding the arms' printed agreement is judged
   against, yet a spreadsheet keeps no trailing zeros, so an honest "50.000000"
   and a manipulated "50" are the same number. Such a row is analysed as the
-  table claims, with a Note saying the p depends on that claim. A grid the value does not sit on
+  table claims, with a Note saying the p rests on that precision. The Note
+  is emitted only where the claim decides the answer — the printed means
+  all equal, which is the shape whose p *is* the tie mass; a printed unit
+  apart the effect is negligible and saying so would be noise. A grid the value does not sit on
   is not a reading of any page — quartiles of 45 and 55 said to be
   printed to the nearest ten, or to the nearest hundred thousand — and
   such a row is refused rather than simulated on a fabricated interval.
@@ -419,6 +431,15 @@ makes a number reproducible; it does not make it more precise.
   negative decimals moved an honest two-arm row from p = 0.64 to
   p = 0.005, and ten from there to the reportable floor — an accusation
   manufactured by a cell nobody would look at twice.
+- **A row of nothing but zeros is judged on its precision columns
+  alone.** Zero sits on every grid, so "0 (0–0)" — the shape a rescue-
+  analgesia row often takes — passes every test above whatever precision
+  it states, and a coarse stated dispersion would then draw its quartiles
+  across an enormous range and turn an uninformative row into an alarm.
+  Such a row states no scale of its own, so what is checked instead is
+  that its precision columns agree with each other: a dispersion grid
+  coarser than the location's is a claim no page can be making. The
+  honest all-zero row keeps its p of 0.5 and its "attainable floor" note.
 - **The numbers fit in the arithmetic.** A double carries about 15.7
   significant digits. A row whose printed precision asks for more at its
   own magnitude — twenty decimals beside a value of 10¹¹, say — is
@@ -429,7 +450,8 @@ makes a number reproducible; it does not make it more precise.
   headroom; ordinary tables are nowhere near it (two decimals at 10¹²,
   the validator's ceiling, still leaves 45 representable steps per
   printed step). The same test keeps the direct draw off any arm whose
-  mean-grid, one printed unit divided by N, falls below that spacing.
+  mean-grid — the observation grid divided by N, which is the grid a mean
+  of N rounded observations lives on — falls below that spacing.
 - **The Monte Carlo interval** describes the simulation's precision
   under the model. It does not include extraction error, an unsuitable
   randomization model, dependence, or the probability of fraud, and
