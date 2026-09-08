@@ -241,6 +241,11 @@
   }
   base <- intersect(.ppBaseColumns(), names(data))
   data <- data[, c(base, setdiff(names(data), base)), drop = FALSE]
+  # The value columns carry their declared precision as text
+  # (.iaValueColumnsAsText, 2026-09-08). This payload is the round trip -
+  # a caller POSTs it straight back - so a mean of 50.0 must not come
+  # back as 50 and be re-analysed at a coarser grid than it was.
+  data <- .iaValueColumnsAsText(data)
   con <- textConnection("out", "w", local = TRUE)
   # NOT .apiCsvSafe here: templateCsv is the ROUND-TRIP payload, and the
   # contract (issue 1) is that a caller can POST it straight back. An

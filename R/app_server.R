@@ -1498,7 +1498,10 @@ app_server <- function(input, output, session) {
              format(Sys.time(), format = "%y%m%d-%H%M%S"), ".xlsx")
     },
     content = function(file) {
-      write.xlsx(reactiveData(), file, keepNA = FALSE)
+      # numbers leave as text at the declared precision, so "50.0" is
+      # still 50.0 when this file is uploaded again (Steve, 2026-09-08)
+      write.xlsx(.iaValueColumnsAsText(reactiveData()), file,
+                 keepNA = FALSE)
     })
 
   # Journal-style reconstructed baseline table (issue 15, Steve

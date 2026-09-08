@@ -412,6 +412,13 @@ Two rules that app enforces:
 `writeIntegrityTemplate()` writes the data to the **first** worksheet because the app reads
 sheet 1; Provenance and Skipped go after it.
 
+The value columns (`MEAN`, `SD`, `SE`, `Q1`, `Q3`) are written as **text** at the precision
+each row declares (`.iaValueColumnsAsText()`, 2026-09-08): a spreadsheet cell holding a number
+cannot keep the trailing zero of "50.0", and this file is an *input* to the app, so the digits
+the parser counted off the page would not have survived the write. `N`, the category counts and
+the rounding columns stay numeric — they are whole numbers, and `is_category()` treats a
+non-numeric column as a Misc column rather than a count column.
+
 ## How the Integrity-Analysis app will use this
 
 The app's intended shape (Steve, 2026-08-16, extended 2026-09-02): a user
