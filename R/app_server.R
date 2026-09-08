@@ -400,34 +400,14 @@ app_server <- function(input, output, session) {
       rowCol <- match("ROW", names(d))
       dataCols <- intersect(c("N", "MEAN", "SD", "SE", "Q1", "Q3"),
                             names(d))
-      # One pass, not one scan per skipped line. This loop used to
-      # re-coerce both grid columns inside the loop and scan the whole
-      # frame for every registry entry, which is O(entries x rows) with a
-      # large constant: 60,000 of each - one zip of 300 documents, every
-      # file inside its own cap - measured 45 seconds per grid render, on
-      # a single-threaded shared server, repeated on every edit (security
-      # screen 2026-09-07-2000, finding F3). The key is built once and the
-      # rows are found by match().
-      keyD  <- paste0(as.character(d$TRIAL), "\r", as.character(d$ROW))
-      keySk <- paste0(as.character(sk$TRIAL), "\r", as.character(sk$ROW))
-      emptyRow <- if (length(dataCols))
-        !Reduce(`|`, lapply(d[dataCols], function(v) !is.na(v))) else
-        rep(TRUE, nrow(d))
-      bySk <- split(seq_len(nrow(d))[emptyRow], keyD[emptyRow])
-      for (s in seq_len(nrow(sk))) {
-        # match by TRIAL + ROW, but only rows still without data - once
-        # the user fills the line in, it is no longer an unread loss
-        hits <- bySk[[keySk[s]]]
-        if (is.null(hits)) next
-        for (r in hits) {
-          key <- paste0(r - 1, "|", rowCol - 1)
-          if (is.null(issPayload)) issPayload <- list()
-          if (is.null(notePayload)) notePayload <- list()
-          issPayload[[key]] <- "unreadable"
-          notePayload[[key]] <- paste0(
-            "The PDF reader saw this table line but could not use it: ",
-            sk$reason[s])
-        }
+      # .iaSkipPayload() holds the mapping and the reason it is written
+      # the way it is (screens 2026-09-07-2000 F3 and -2101 F3)
+      pay <- .iaSkipPayload(d, sk, dataCols, rowCol)
+      if (length(pay$iss)) {
+        if (is.null(issPayload)) issPayload <- list()
+        if (is.null(notePayload)) notePayload <- list()
+        issPayload[names(pay$iss)]   <- pay$iss
+        notePayload[names(pay$note)] <- pay$note
       }
     }
     # Per-row display precision (Steve, 2026-08-19): which columns are
@@ -987,17 +967,22 @@ app_server <- function(input, output, session) {
         wide <- tryCatch(parseWideTable(files$datapath[i], files$ext[i]),
                          error = function(e) NULL)
         if (!is.null(wide)) {
-          for (blk in wide) {
+          # one budget of unusable lines for the whole FILE, spent across
+          # its blocks (screen 2026-09-07-2101, F4)
+          capped <- .iaCapSkippedFile(lapply(wide, function(b) b$skipped))
+          for (bi in seq_along(wide)) {
+            blk <- wide[[bi]]
+            blk$skipped <- capped[[bi]]
             d <- blk$data
             if (all(is.na(d$TRIAL))) d$TRIAL <- files$stem[i]
             # Rows the parser could not use become GRID ROWS with the
             # reason on hover - same contract as the PDF branch below.
             if (nrow(blk$skipped) > 0) {
-              # the same cap as the document branch: this call site was
-              # missed when the cap was extracted, and a wide sheet's skips
-              # are bounded only by .iaSheetRowCap (10,000) without it
-              # (security screen 2026-09-07-2000, finding F3)
-              blk$skipped <- .iaCapSkipped(blk$skipped)
+              # already capped across the whole file above, by
+              # .iaCapSkippedFile(): this call site was missed when the cap
+              # was first extracted (screen 2026-09-07-2000, F3), and then
+              # capped per BLOCK, which bounds nothing when a sheet may
+              # hold thousands of "Trial:" markers (screen -2101, F4)
               extra <- d[rep(NA_integer_, nrow(blk$skipped)), ,
                          drop = FALSE]
               extra$TRIAL <- d$TRIAL[1]

@@ -23,7 +23,11 @@ test_that("a negative SD, a fractional or tiny N, a negative SE are refused with
   expect_false(isTRUE(z$FAIL))
   x <- suppressWarnings(shiny::isolate(P_Calc("T", z$DATA, z$CategoryNames, 10000)))
   expect_equal(as.numeric(x$P[1]), 0.5)            # identical arms, nothing to compare
-  expect_identical(x$NOTE[1], "attainable floor")
+  # the floor note, beside the disclosure that this row's stated mean
+  # precision runs past the digits its values carry - the arms print the
+  # same mean, so the p rests on that precision (screen 2026-09-07-2101,
+  # F2, which took the slack to zero)
+  expect_match(x$NOTE[1], "^attainable floor")
   v <- vd(cont(N = c(15.5, 17)))
   expect_true(isTRUE(v$FAIL)); expect_true("incongruent" %in% issueCodes(v, "N"))
   expect_match(v$issues$note[v$issues$col == "N"][1], "whole number")

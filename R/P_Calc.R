@@ -308,21 +308,62 @@
 #
 # The printed SD's own interval is used (its upper end), so no honestly
 # coarse table is refused for the width of its own printing.
-.iaSdReachesGrid <- function(sd, decDisp, decObs, N) {
-  n <- max(length(sd), length(decDisp), length(decObs), length(N))
+.iaSdReachesGrid <- function(sd, decDisp, decObs, decVal, N, meanVal) {
+  n <- max(length(sd), length(decDisp), length(decObs), length(decVal),
+           length(N), length(meanVal))
   sd <- rep(sd, length.out = n); decDisp <- rep(decDisp, length.out = n)
-  decObs <- rep(decObs, length.out = n); N <- rep(N, length.out = n)
-  ok <- is.finite(sd) & is.finite(decObs) & is.finite(N) & N > 0
+  decObs <- rep(decObs, length.out = n); decVal <- rep(decVal, length.out = n)
+  N <- rep(N, length.out = n); meanVal <- rep(meanVal, length.out = n)
+  ok <- is.finite(sd) & is.finite(decObs) & is.finite(decVal) &
+        is.finite(meanVal) & is.finite(N) & N > 0
   if (!any(ok)) return(TRUE)
-  sd <- sd[ok]; N <- N[ok]
+  sdN <- sd[ok]; Nn <- N[ok]
   # the printed SD's interval, from the same helper the simulation uses,
   # so a blank or absent ROUND_DISPERSION is INFERRED from the SD's own
   # printed decimals rather than leaving the test vacuous (an absent
   # column made hDisp empty, and every row passed) or falsely strict (an
   # NA made it zero) - CodeRabbit on PR #221
-  sdHi  <- .iaSdInterval(sd, if (is.null(decDisp)) NULL else decDisp[ok])$hi
+  sdHi  <- .iaSdInterval(sdN, if (is.null(decDisp)) NULL else decDisp[ok])$hi
   hObs  <- 10^(-decObs[ok])
-  all(sd == 0 | sdHi >= hObs / sqrt(N) * (1 - 1e-9))
+  hVal  <- 10^(-decVal[ok])
+  # ONLY where the observation grid is genuinely coarser than the printed
+  # value's own (screen 2026-09-07-2101, finding F5). A blank
+  # ROUND_OBSERVATION defaults to ROUND_MEAN, which is a GUESS - "a mean
+  # printed to d decimals means the observations lie on a grid of 10^-d" -
+  # and it is false for any continuous variable whose mean happens to
+  # print without decimals. Turning that guess into a refusal threw out
+  # honest rows: "2 +/- 0.2" at eight patients was refused, and a refused
+  # row leaves the trial silently. Where the two grids agree the
+  # quantisation this bound is about cannot happen, so the test does not
+  # apply; where the table STATES a coarser observation grid, it does.
+  stated <- hObs > hVal * (1 + 1e-9)
+  if (!any(stated)) return(TRUE)
+  # ...and the sharp form of the theorem (finding F1). For values on a
+  # lattice of width h whose sample mean is m, SD >= h * alpha with
+  # alpha = dist(m/h, integers) - the previous version used alpha's
+  # minimum feasible value, 1/sqrt(N), which at a thousand per arm is a
+  # factor of sixteen of headroom left exactly at the operating point the
+  # earlier screen had named (a mean sitting near a half-grid point).
+  # alpha is minimised over the printed mean's OWN interval, so no honest
+  # table is refused for the width of its own printing.
+  a <- (meanVal[ok] - hVal / 2) / hObs
+  b <- (meanVal[ok] + hVal / 2) / hObs
+  spansInt <- floor(b + 1e-12) >= ceiling(a - 1e-12)
+  dist2int <- function(x) abs(x - round(x))
+  alpha <- ifelse(spansInt, 0, pmin(dist2int(a), dist2int(b)))
+  # two different quantities, and the larger governs: hObs * alpha is what
+  # the mean's own offset from the lattice forces, and hObs / sqrt(N) is
+  # the smallest NON-ZERO sample SD any N values on that lattice can have
+  # (one value a step away from the rest). alpha itself can be as small as
+  # 1/N, so neither implies the other.
+  bound <- hObs * pmax(alpha, 1 / sqrt(Nn))
+  # An SD of exactly zero means every value was identical, so the mean IS
+  # one of them and must itself sit on the lattice - which it cannot when
+  # the printed mean's interval holds no multiple of the grid. The zero
+  # carve-out therefore needs that interval to span one (CodeRabbit on PR
+  # #222); without the condition, "mean 500, SD 0" on a grid of 1,000
+  # passed as an honest constant arm.
+  all(!stated | (sdN == 0 & spansInt) | sdHi >= bound * (1 - 1e-9))
 }
 
 # F2 of the same screen: .iaOnStatedGrid is one-sided by construction -
@@ -343,7 +384,14 @@
 # the table claims and the claim is DISCLOSED in the Note, where an editor
 # reading a small p can see what it rests on. The two decimals of slack
 # cover the trailing zeros a spreadsheet drops when it stores "1.20".
-.iaMeanPrecisionSlack <- 2L
+# The slack is ZERO for the note (screen 2026-09-07-2101, finding F2). At
+# two decimals of slack the row was already at the reportable floor with
+# no note at all: printed means of 0.5 with ROUND_MEAN 3 read 9.999e-05
+# and said nothing. A note is the cheap side of an error - one on an
+# honest row that lost a trailing zero costs nothing, one missing from a
+# manipulated row costs an accusation - so any stated mean precision past
+# the printed digits is disclosed.
+.iaMeanPrecisionSlack <- 0L
 # the Note the row carries when that claim is made, so a small p never
 # arrives without the thing it rests on
 .iaFinePrecisionNote <- function(value, dec) {
@@ -355,8 +403,13 @@
   v <- value[is.finite(value)]
   if (length(v) < 2 || length(unique(v)) > 1) return("")
   d <- suppressWarnings(as.numeric(dec))
+  # Worded for what the engine can actually see. A spreadsheet stores
+  # "5.0" as 5, so a stated precision past the surviving digits may be
+  # perfectly honest - the note must not assert otherwise, only say what
+  # rests on it (screen 2026-09-07-2101, F2, at slack zero).
   paste0("the stated mean precision (", max(d[is.finite(d)]),
-         " decimals) is finer than the printed values; the p depends on that claim")
+         " decimals) exceeds the digits these values carry; the arms print ",
+         "alike, so the p rests on that precision - check it against the page")
 }
 
 .iaStatedPrecisionNotTooFine <- function(value, dec) {
@@ -644,7 +697,8 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                    # hObs to within a factor of two of the median's grid.
                    (isQuartile ||
                     .iaSdReachesGrid(ROWS$SD, ROWS$ROUND_DISPERSION,
-                                     ROWS$ROUND_OBSERVATION, ROWS$N))))
+                                     ROWS$ROUND_OBSERVATION, ROWS$ROUND_MEAN,
+                                     ROWS$N, ROWS$MEAN))))
         {
           # a stated grid the printed numbers do not sit on (screen 1758 F1,
           # extended by screen 1907's F1 and F2)
@@ -900,9 +954,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
-                         note = paste(c(skewNote[nzchar(skewNote)],
-                                        .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN)),
-                                      collapse = "; "),
+                         note = { nt <- c(skewNote,
+                                          .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
+                                  paste(nt[nzchar(nt)], collapse = "; ") },
                          zeroTol = 1e-26 * (1 + center^2))
           }
           }
@@ -1316,13 +1370,25 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
   # (0.046 -> 0.0087 on the worked example, reproduced). Every line now
   # says what it is: "variable", "summary", or NA on the spacer. Consumers
   # read KIND, never the label.
+  # WHAT THE TRIAL P WAS COMPUTED FROM (security screen 2026-09-07-2101,
+  # finding F5). A row the engine refuses - a precision the printed values
+  # contradict, quartiles the wrong way round, an arm under two patients -
+  # is dropped from the combination, and until now the Summary reported a
+  # trial p as though the table were complete. Refusing can be the right
+  # answer and still leave the reader misinformed about what the number
+  # covers, so the count travels with it whenever anything was left out.
+  analysed <- sum(!is.na(x$.PNUM))
+  offered  <- sum(x$KIND == "variable", na.rm = TRUE)
+  summaryNote <- if (offered > analysed)
+    sprintf("%d of %d rows analysed; the rest were refused - see their P cells",
+            analysed, offered) else ""
   lastline <- data.frame(
     TRIAL = c(NA, NA),
     ROW = c("Summary", NA),
     P = c(as.character(P), NA),
     CI95 = c(ciStr, NA),
     M = c(NA, NA),
-    NOTE = c("", NA),
+    NOTE = c(summaryNote, NA),
     KIND = c("summary", NA),
     .PNUM = c(NA, NA),
     .KLE = c(NA, NA)

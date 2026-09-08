@@ -867,6 +867,10 @@ convention as the continuous rows. Degenerate tables (an arm with no
 counts, an empty category) are refused with an explanation rather than
 analyzed.
 
+When a row is refused, for any reason, the Summary line for that trial
+says how many of its rows were analysed, so a combined p-value is never
+read as covering a table it did not cover.
+
 A row is refused when a precision column contradicts the numbers beside
 it. Each of the three says what grid something sits on — the mean's, the
 dispersion's, and the grid the individual measurements were recorded on —
@@ -880,8 +884,15 @@ since the mean of N measurements on a grid moves in steps of that grid
 divided by N; a median moves in whole steps, or half-steps for an even
 number of patients. The reported spread is checked against the same grid
 from the other side: measurements a step apart cannot produce a standard
-deviation smaller than that step divided by the square root of the number
-of patients, unless every measurement was identical. A precision finer than the printed
+deviation smaller than the step times the distance from the mean to the
+nearest multiple of it, nor smaller than the step divided by the square
+root of the number of patients, unless every measurement was identical - a mean
+of 500 from measurements recorded to the nearest thousand forces a
+standard deviation of at least 500, whatever the table prints. That check
+runs only when a table says its measurements were recorded more coarsely
+than it prints their average; when the two agree, which is what the app
+assumes if you leave the observation precision blank, nothing is
+refused. A precision finer than the printed
 value is not refused — a spreadsheet drops trailing zeros, so a mean
 printed "50.000000" and one printed "50" reach the app as the same number
 — but it is disclosed: such a row is analysed as the table claims, and the

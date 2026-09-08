@@ -257,7 +257,7 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
 # commented-out call does not satisfy the check.
 pc <- sub("#.*$", "", srcOf("R/P_Calc.R"))
 for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
-             "\\.iaZeroRowGridOK\\s*\\("))
+             "\\.iaZeroRowGridOK\\s*\\(", "\\.iaSdReachesGrid\\s*\\("))
   # the pattern matches CALLS only ("name(" ), never the definition
   # ("name <- function"), so one match is the gate still calling it
   if (!any(grepl(fn, pc)))
@@ -272,9 +272,13 @@ for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
 # carry 300 files, so a per-file cap is the only thing between one upload
 # and a grid of tens of thousands of rows.
 # each producer named separately: counting calls would accept two in one
-# block and none in the other (CodeRabbit on PR #221)
+# block and none in the other (CodeRabbit on PR #221). The wide branch
+# caps its whole FILE with .iaCapSkippedFile(), since one sheet may hold
+# thousands of "Trial:" blocks and a per-block cap bounds nothing
+# (screen 2026-09-07-2101, F4 - which also predicted that this pin would
+# trip on the correct fix, as it did).
 as_ <- sub("#.*$", "", srcOf("R/app_server.R"))
-if (!any(grepl("blk$skipped <- .iaCapSkipped(", as_, fixed = TRUE)) ||
+if (!any(grepl(".iaCapSkippedFile(", as_, fixed = TRUE)) ||
     !any(grepl("r$skipped <- .iaCapSkipped(", as_, fixed = TRUE)))
   note(paste("R/app_server.R: one of the two skipped-line producers no longer",
              "caps what it adds to the grid - a zip of many files would build",

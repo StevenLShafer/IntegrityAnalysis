@@ -681,6 +681,42 @@ nearest ten are consistent and analyzed, and a variable whose
 interquartile range is smaller than one printed unit — the case the
 quartile draw was built for — is untouched.
 
+## 2026-09-08 — the dispersion bound, sharpened and confined
+
+The bound added the previous evening — N values on a grid of width *h*
+have a sample SD of exactly zero or at least *h*/√N — was both too weak
+and too strong, and the screen that found it (2026-09-07-2101) measured
+each half.
+
+**Too weak.** 1/√N is the smallest the lattice offset can be. The sharp
+statement has two parts, and the larger governs: values on a lattice of
+width *h* whose sample mean sits a fraction α of a step from a multiple of
+*h* have SD ≥ *h*·α, and separately the smallest non-zero sample SD N
+values on that lattice can have is *h*/√N whatever the mean. They are
+different quantities — α itself can be as small as 1/N — so a row must
+clear both. The manipulation needs α near ½ — a printed mean near a half-grid point,
+which the earlier screen had itself named as the operating point. At a
+thousand per arm that is a factor of sixteen of headroom, and honest
+tables of 1,000 printing means 500/501/499 with an SD of 40 read p = 0.414
+at an honest observation precision and 0.00235 at −3, or the reportable
+floor when the means were equal. α is now computed over the printed
+mean's own interval, so no honest table is refused for the width of its
+printing.
+
+**Too strong.** A blank `ROUND_OBSERVATION` defaults to `ROUND_MEAN`, and
+that default is a guess: "a mean printed to *d* decimals means the
+observations lie on a grid of 10^−*d*" is false for any continuous
+variable whose mean happens to print without decimals. Turning the guess
+into a refusal threw out honest rows — "2 ± 0.2" at eight patients, with
+no precision columns supplied at all — and a refused row left the trial
+silently, so a Summary reported a combined p from two of three rows with
+nothing saying so. Worse, an *impossible* row is the strongest signal the
+instrument has, and silencing it hands an author a way to remove a row
+from the analysis by printing an impossible SD. The bound is therefore
+applied only where a table states an observation grid coarser than the
+printed value's own, and **every** refusal, whatever its reason, is now
+counted on the Summary line: "k of n rows analysed".
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
