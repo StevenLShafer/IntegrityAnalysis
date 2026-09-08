@@ -121,10 +121,24 @@
 # to bound - coordinate ascent runs from both all-low and all-high starts,
 # which for this objective reaches the same vertex on every row measured.
 #
+# The bound is 8, not the 12 it started at (security screen
+# 2026-09-07-1758, finding F2). The enumeration is 2^k evaluations of a
+# row whose arm count a hostile document chooses: at twelve arms it
+# measured 59 ms per row, and a 382 KB document of such rows took 56
+# seconds against 19 with the fill off - enough for one request to hold
+# the single-threaded service for its whole timeout. At eight it is 256
+# evaluations, about 4 ms. The screen checked what that costs in answers:
+# coordinate ascent matched the exhaustive optimum on 400 of 400 random
+# rows of 13 to 16 arms.
+#
 # Duplicate rebuilt counts are not avoided: two arms printing the same
 # percentage often DO maximise the statistic at the same end, and the
 # statistic, not the appearance of the counts, is what the editor reads.
-.ppFailsafeExact <- 12L
+.ppFailsafeExact <- 8L
+# ...and the ascent terminates by construction, not by argument: each
+# sweep either improves the objective or changes nothing (4 to 5 sweeps in
+# every case measured), and the cap makes that a property of the code.
+.ppFailsafeSweeps <- 50L
 
 # the row's statistic for one assignment; 0 when every count is 0 or every
 # count is N, where the level carries no information either way
@@ -167,7 +181,7 @@
     run <- function(startHi) {
       cur <- base
       cur[amb] <- if (startHi) hi[amb] else lo[amb]
-      repeat {
+      for (sweep in seq_len(.ppFailsafeSweeps)) {
         moved <- FALSE
         for (j in amb) {
           a <- cur; a[j] <- lo[j]

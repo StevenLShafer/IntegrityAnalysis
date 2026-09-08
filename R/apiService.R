@@ -69,15 +69,51 @@
 # cap bounds the TABLE, not the lines the reader refused), and a flag that
 # one day quotes a reader's error cannot carry the request's temp path
 # back to the caller. Truncation is marked, never silent.
+# The refused table lines travel beside the flags and carry the document's
+# own text; the row cap bounds the TABLE, not the lines a reader could not
+# use, so they are bounded here too (security screen 2026-09-07-1758,
+# finding F3 - the flags fix's own rationale applied to its neighbour).
+.apiMaxSkipped <- 200L
+.apiSafeSkipped <- function(skipped, work, name) {
+  if (is.null(skipped) || !nrow(skipped)) return(list())
+  n <- nrow(skipped)
+  keep <- seq_len(min(n, .apiMaxSkipped))
+  # each string on its own - NOT through .apiSafeFlags(), whose own cap of
+  # 50 entries would have turned skipped lines 51 and beyond into one
+  # truncation message and a run of NAs (CodeRabbit on PR #219)
+  lab <- .apiSafeText(skipped$label[keep], work, name)
+  rsn <- .apiSafeText(skipped$reason[keep], work, name)
+  out <- lapply(seq_along(keep), function(i)
+    list(label = lab[i], reason = rsn[i]))
+  if (n > .apiMaxSkipped)
+    out <- c(out, list(list(
+      label = sprintf("...%d further line(s) omitted", n - .apiMaxSkipped),
+      reason = "the reply's list of unusable lines is capped")))
+  out
+}
+
 .apiMaxFlags     <- 50L
 .apiMaxFlagBytes <- 2048L
-.apiSafeFlags <- function(flags, work, name) {
-  if (is.null(flags) || !length(flags)) return(NULL)
-  f <- as.character(flags)
+
+# One string, made safe to put in a reply: valid UTF-8, the request's
+# directories removed, and no longer than .apiMaxFlagBytes BYTES. Applied
+# element by element to a vector, with no cap on how many elements - the
+# callers decide that, because a flag list and a list of refused lines are
+# bounded differently.
+.apiSafeText <- function(x, work, name) {
+  if (is.null(x) || !length(x)) return(character(0))
+  # Every step below inspects the string, and a string that is not valid
+  # UTF-8 makes nchar(), substr() and gsub(fixed = TRUE) raise - which
+  # would turn a successful parse into a 500 (security screen
+  # 2026-09-07-1758, finding F4). No reader is known to produce one; the
+  # guard is here so that none ever can.
+  f <- enc2utf8(as.character(x))
+  bad <- is.na(f) | is.na(iconv(f, "UTF-8", "UTF-8"))
+  if (any(bad)) f[bad] <- "<unreadable text removed>"
   f <- .apiScrubPath(f, work, name)
-  # by BYTES, and substr() counts characters: a flag of 2,048 accented
-  # letters is 4,096 bytes and survived the cut whole (CodeRabbit on PR
-  # #217). Characters are cut until the byte count fits, so a multi-byte
+  # by BYTES, and substr() counts characters: 2,048 accented letters are
+  # 4,096 bytes and survived the cut whole (CodeRabbit on PR #217).
+  # Characters are cut until the byte count fits, so a multi-byte
   # character is never sliced in half either.
   cut <- function(x) {
     k <- nchar(x)
@@ -86,8 +122,15 @@
                                 .apiMaxFlagBytes) %/% 4L))
     paste0(substr(x, 1, k), " ...truncated")
   }
-  long <- !is.na(f) & nchar(f, type = "bytes") > .apiMaxFlagBytes
+  long <- nchar(f, type = "bytes") > .apiMaxFlagBytes
   if (any(long)) f[long] <- vapply(f[long], cut, character(1), USE.NAMES = FALSE)
+  f
+}
+
+# ...and the flags themselves, which are additionally capped in NUMBER
+.apiSafeFlags <- function(flags, work, name) {
+  if (is.null(flags) || !length(flags)) return(NULL)
+  f <- .apiSafeText(flags, work, name)
   if (length(f) > .apiMaxFlags)
     f <- c(f[seq_len(.apiMaxFlags)],
            sprintf("...%d further flag(s) truncated", length(f) - .apiMaxFlags))

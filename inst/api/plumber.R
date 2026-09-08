@@ -157,10 +157,11 @@ function(req, res, file) {
        # 2026-09-07-1654, F3): a flag quotes lines from the document
        flags = as.list(IntegrityAnalysis:::.apiSafeFlags(r$flags, work, name)),
        rows = nrow(r$data),
-       skipped = if (!is.null(r$skipped))
-         lapply(seq_len(nrow(r$skipped)), function(i)
-           list(label = r$skipped$label[i], reason = r$skipped$reason[i]))
-       else list(),
+       # bounded and scrubbed exactly like the flags above: these carry the
+       # document's own text, one entry per line the reader could not use,
+       # and the row cap bounds the table rather than this list (security
+       # screen 2026-09-07-1758, finding F3)
+       skipped = IntegrityAnalysis:::.apiSafeSkipped(r$skipped, work, name),
        templateCsv = IntegrityAnalysis:::.apiTemplateCsv(r$data),
        deleted = TRUE)
 }

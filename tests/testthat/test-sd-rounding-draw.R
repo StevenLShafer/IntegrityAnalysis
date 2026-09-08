@@ -85,11 +85,23 @@ test_that("a printed SD of exactly zero is not an interval: identical arms with 
   expect_identical(x$NOTE[1], "attainable floor")
 })
 
-test_that("the interval never goes below zero: a small SD printed coarsely still simulates", {
+test_that("the interval never goes below zero, and a coarse claim the SD does not sit on is refused", {
+  # The helper's floor, which is its own subject: an SD smaller than half
+  # a printed step would otherwise be given a negative lower bound.
+  iv <- .iaSdInterval(c(0.2, 0.3), c(0, 0))
+  expect_true(all(iv$lo >= 0))
+  expect_equal(iv$hi, c(0.7, 0.8))
+  # Through P_Calc that pairing is now REFUSED rather than simulated: an
+  # SD of 0.2 is not a number printed to no decimals, and a stated grid
+  # the value does not sit on multiplied the null's width without saying
+  # so (security screen 2026-09-07-1758, finding F1).
   d <- data.frame(TRIAL = "T", ROW = "X", N = c(20, 20), MEAN = c(0.3, 0.4), SD = c(0.2, 0.3),
                   ROUND_MEAN = 1, ROUND_OBSERVATION = 1, ROUND_DISPERSION = 0,
                   stringsAsFactors = FALSE)
   x <- runP(d, m = 1000)
-  p <- rowP(x)
+  expect_match(x$P[1], "stated precision")
+  # ...and the same small SDs, honestly printed to one decimal, simulate
+  d$ROUND_DISPERSION <- 1
+  p <- rowP(runP(d, m = 1000))
   expect_true(is.finite(p) && p > 0 && p <= 1)
 })

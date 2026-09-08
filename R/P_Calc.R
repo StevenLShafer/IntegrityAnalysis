@@ -212,6 +212,45 @@
                 "a double carries)"), as.integer(dec), format(mag, digits = 3))
 }
 
+# THE STATED PRECISION MUST MATCH THE PRINTED DIGITS (security screen
+# 2026-09-07-1758, finding F1). A precision column says what grid the
+# printed number sits on, and the engine turns that grid into an interval:
+# a printed SD stands for +/- half a grid step (2026-09-06), and since the
+# quartile draw a printed quartile does too (2026-09-07). Nothing bounded
+# the grid against the number it describes. A single cell of a supplied
+# spreadsheet or a posted template - ROUND_DISPERSION = -5, which the
+# validator accepted anywhere in [-20, 20] - therefore multiplied the
+# null's spread by 100,000 and drove an honest row to the reportable
+# floor. Measured on an honest two-arm median row (N = 40, medians 50 and
+# 52, quartiles 45-55 and 47-57, m = 10,000): p = 0.64 at 0, 0.187 at -3,
+# 0.0049 at -5, and 9.999e-05 - a maximal alarm - at -10 and below. The
+# mean/SD branch carried the same lever: 0.624, 0.037, 9.999e-05.
+#
+# The test is not "is the grid coarse" - a table may honestly report
+# quartiles to the nearest ten, and a variable whose interquartile range
+# is smaller than one printed unit is exactly the case the quartile draw
+# was built for. It is whether the PRINTED VALUE SITS ON THE STATED GRID.
+# Quartiles of 40 and 60 with a grid of 10 are consistent and analyzed;
+# quartiles of 45 and 55 with a grid of 10, or of 100,000, are not a
+# reading of that page, and the row is refused with the reason instead of
+# simulated on a fabricated interval.
+# `x` the printed values and `dec` the precision stated for EACH of them
+# (recycled, one column's precision against that column's numbers - the
+# coarsest grid is what matters, so a value must never be judged against
+# another column's finer one).
+.iaOnStatedGrid <- function(x, dec) {
+  dec <- suppressWarnings(as.numeric(rep(dec, length.out = length(x))))
+  ok <- is.finite(x) & is.finite(dec)
+  if (!any(ok)) return(TRUE)
+  x <- x[ok]; h <- 10^(-dec[ok])
+  # a value is on the grid when it is a whole number of steps from zero,
+  # within the arithmetic's own dust at that magnitude
+  # the tolerance absorbs floating-point dust, which is proportional to the
+  # VALUE - never to the grid, or a grid of 1e20 would swallow every number
+  # ever printed
+  all(abs(x - round(x / h) * h) <= 1e-9 * abs(x))
+}
+
 # A trial p as a number, for the closed-form combination ACROSS trials
 # (results workbook, graphs, API): the exact combination reports
 # "<0.0001" when its bound licenses it, and that enters the combination
@@ -447,6 +486,16 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # direct caller gets the refusal by name rather than a crash
           Pdisp <- "An arm with fewer than 2 patients cannot be simulated"
         }
+        else if (!(.iaOnStatedGrid(ROWS$MEAN, ROWS$ROUND_MEAN) &&
+                   .iaOnStatedGrid(ROWS$SD, ROWS$ROUND_DISPERSION) &&
+                   (!isQuartile ||
+                    (.iaOnStatedGrid(ROWS$Q1, ROWS$ROUND_DISPERSION) &&
+                     .iaOnStatedGrid(ROWS$Q3, ROWS$ROUND_DISPERSION)))))
+        {
+          # a stated grid the printed numbers do not sit on (screen 1758 F1)
+          Pdisp <- paste("The stated precision does not match the printed",
+                         "values (check ROUND MEAN and ROUND DISPERSION)")
+        }
         else if (!is.null(resRefusal <- .iaResolutionRefusal(
                    c(ROWS$MEAN, if (isQuartile) c(ROWS$Q1, ROWS$Q3)),
                    c(ROWS$ROUND_MEAN, ROWS$ROUND_OBSERVATION,
@@ -634,7 +683,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
               # chunk so chunk*N stays bounded: three ch x N_i matrices are
               # alive in a draw, twice per replicate here, so a quarter of
               # the continuous branch's chunk keeps the peak comparable
-              ch <- min(left, max(1, floor(2.5e7 / max(1, N))))
+              # ...and by the arm count, as the continuous branch has been
+              # since screen 2026-09-07-1459's F2: the same four ch x arms
+              # matrices are built below, and a row of many one-subject arms
+              # would otherwise reach 2.5e7 doubles apiece where the
+              # continuous branch deliberately stops at 1e7 (the observation
+              # closing screen 2026-09-07-1758)
+              ch <- min(left, max(1, floor(2.5e7 / max(1, N))),
+                        max(1, floor(1e7 / COLS)))
               # THIS replicate's population: the quartiles drawn within their
               # printed intervals and refitted (a2q > 0 almost surely; floored
               # at a hundredth of a printed unit so the ratios below stay

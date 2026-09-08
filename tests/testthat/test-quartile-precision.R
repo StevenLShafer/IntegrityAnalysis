@@ -46,7 +46,10 @@ test_that("honest samples summarised with integer quartiles and two-decimal medi
 })
 
 test_that("a supplied ROUND_DISPERSION on a median line is kept and reaches the bootstrap's quartile printing", {
-  d <- rbind(med(12.0, 8.0, 17.0, rm = 1, ro = 1), med(11.5, 8.5, 16.0, rm = 1, ro = 1))
+  # whole-number quartiles, so they sit on the stated grid of 1 as well as
+  # on the finer one compared against below (security screen
+  # 2026-09-07-1758 F1 refuses a value off the grid its precision names)
+  d <- rbind(med(12.0, 8.0, 17.0, rm = 1, ro = 1), med(11.5, 9.0, 16.0, rm = 1, ro = 1))
   d$ROUND_DISPERSION <- 0
   v <- vd(d)
   expect_false(isTRUE(v$FAIL))
