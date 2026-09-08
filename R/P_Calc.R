@@ -416,7 +416,29 @@
   # enough to clear zeroTol - 1e-12 on means of 0.5 - passes the first and
   # not the second (security screen 2026-09-07-2339, F1).
   shownMin <- min(vapply(v, .iaDecimals, integer(1)))
-  alike <- isTRUE(identical) || length(unique(round(v, shownMin))) == 1L
+  shownMax <- max(vapply(v, .iaDecimals, integer(1)))
+  # ...AND the arms must actually be close (security screen
+  # 2026-09-08-0709, F1). Rounding to the FEWEST decimals any arm carries
+  # is not on its own evidence that the arms agree, because a spreadsheet
+  # stores 45.0 as the double 45 and .iaDecimals() then reports zero
+  # decimals for that arm. On a perfectly ordinary row printing
+  # 45.2 / 45.0 / 44.8 the minimum is 0, all three round to 45, and the
+  # note fired - telling the editor the arms "print alike" when the page
+  # shows them differing in the first decimal. Worse, the inferred
+  # ROUND_MEAN is the row MAXIMUM across arms, so on any row with mixed
+  # decimal counts the suppression gate below could never fire either.
+  # The note is the whole adjudicated remedy for the shape screen 2000
+  # declined to refuse, and a note that appears on most rows discloses
+  # nothing; it is also a cheap lever, since printing one arm with a
+  # trailing zero would have hung the note on any row an author chose.
+  # So the arms must also lie within one step of the FINEST precision
+  # printed - the same "within one step, or the claim did not decide the
+  # answer" gate .iaCoarsePrecisionNote() applies below. The 1e-3 is dust
+  # allowance, not slack: 0.5000000000001 - 0.5 reads 1.000311e-13, so a
+  # 1e-9 allowance would fail the pinned 1e-13 perturbation.
+  alike <- isTRUE(identical) ||
+           (length(unique(round(v, shownMin))) == 1L &&
+            diff(range(v)) <= 10^(-shownMax) * (1 + 1e-3))
   if (!alike) return("")
   # ...and the digits the values carry is the MINIMUM across the arms, not
   # the maximum: giving one arm fifteen decimals must not raise the bar
@@ -428,9 +450,14 @@
   # "5.0" as 5, so a stated precision past the surviving digits may be
   # perfectly honest - the note must not assert otherwise, only say what
   # rests on it (screen 2026-09-07-2101, F2, at slack zero).
+  # "equal at the digits they print" rather than "print alike": the
+  # first branch of `alike` admits arms the engine judged equal by its
+  # own zero snap, which is not the same as printing the same characters
+  # (screen 2026-09-08-0709, F1, second half).
   paste0("the stated mean precision (", max(d[is.finite(d)]),
-         " decimals) exceeds the digits these values carry; the arms print ",
-         "alike, so the p rests on that precision - check it against the page")
+         " decimals) exceeds the digits these values carry, and the arms ",
+         "are equal at the digits they print, so the p rests on that ",
+         "precision - check it against the page")
 }
 
 # The mirror of the note above (security screen 2026-09-07-2241, finding
@@ -471,6 +498,78 @@
          " decimals) is coarser than the digits these values carry, which ",
          "widens the rounding the arms are judged against; this row's p ",
          "rests on that claim - check it against the page")
+}
+
+# THE ZERO SNAP, defined once (security screens 2026-09-08-0709 F4 and
+# -1048 F1). Two separate defects met here.
+#
+# F4 was that the note's idea of "the arms are equal" and the engine's
+# were the same expression WRITTEN TWICE, six lines apart, in each of two
+# branches. They agreed, but nothing made them agree, and the tolerance
+# has already been changed three times on the record. One binding, used
+# by both, is the property the commit that introduced them claimed.
+#
+# 1048 F1 was that the expression itself - 1e-26 * (1 + centre^2) - is a
+# property of the COORDINATE SYSTEM, not of the thing it thresholds. The
+# statistic is a sum of squared DIFFERENCES of means: unchanged when a
+# constant is added to every arm, multiplied by k^2 when the units are
+# scaled by k. The old tolerance was quadratic in an arbitrary origin and
+# had an absolute floor of 1e-26 at small magnitudes, so an author's free
+# choice of origin or units moved it independently of the data. Measured
+# on this machine, three arms of 1,000 with SD 0.001 and means differing
+# by 2e-5, 3e-5 and 5e-5:
+#
+#     printed difference     at origin 0     at origin 1e9
+#     2e-5                   p = 0.3105      p = 0.492
+#     3e-5                   p = 0.573       p = 0.492
+#     5e-5                   p = 0.897       p = 0.492
+#
+# At the large origin the tolerance (1e-8) swallowed the observed
+# statistic and almost every replicate, so the p stopped depending on the
+# data at all and sat at the tie-dominated 0.49 whatever the arms said.
+# Nothing refused those rows: the resolution refusal, the stated-grid
+# check and the validator's ceiling all pass.
+#
+# Scaling the tolerance to the TRANSLATED deviations fixes both
+# directions at once. dd is already measured from the first arm's printed
+# value, so the tolerance inherits the statistic's own invariances: add a
+# constant and dd does not move, scale by k and both sides move by k^2.
+# When every mean agrees, dd is all zeros and the tolerance is exactly
+# zero - which is right, because since the translation of screen
+# 2026-09-07-1459 identical means give exactly zero anyway and the snap
+# is a guard, not the mechanism. 1e-12 sits far above the float dust in
+# these sums and far below a grid step squared.
+# The screen proposed 1e-12 * max(dd^2) alone. That is invariant, but it
+# collapses to EXACTLY ZERO when the arms agree - which is the one case
+# the snap exists for. Measured: it moved a pinned value in
+# test-sd-rounding-draw.R (two arms of 30, means tied at 2.3, SD printed
+# "1") by 0.013, because with the tolerance at zero the replicates whose
+# arms all drew the same mean stopped counting as ties. The observed row
+# is exactly zero after translation, but a REPLICATE is translated by the
+# OBSERVED first arm, so its N-weighted centre of equal drawn values is
+# not bitwise equal to them and leaves dust.
+#
+# The printed grid step is the floor, and it has the invariances the
+# origin did not: it does not move when a constant is added to every arm,
+# and it scales with the units exactly as the statistic does. The finest
+# step is used, so the tolerance is the smallest one that still catches
+# dust: at one printed decimal it is 1e-14, some fourteen orders below a
+# real statistic on that grid and some fourteen above the dust.
+.iaZeroSnapTol <- function(dd, h = numeric(0)) {
+  d2 <- dd[is.finite(dd)]^2
+  hh <- h[is.finite(h) & h > 0]
+  parts <- c(if (length(d2)) max(d2) else 0,
+             if (length(hh)) min(hh)^2 else 0)
+  1e-12 * max(c(parts, 0))
+}
+
+# the finest printed step among the arms' stated mean precisions, which is
+# what .iaZeroSnapTol() floors on
+.iaMeanStep <- function(dec) {
+  d <- suppressWarnings(as.numeric(dec))
+  d <- d[is.finite(d)]
+  if (!length(d)) return(numeric(0))
+  10^(-d)
 }
 
 .iaStatedPrecisionNotTooFine <- function(value, dec, use = max) {
@@ -1018,14 +1117,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
+          zt <- .iaZeroSnapTol(dd, .iaMeanStep(ROWS$ROUND_MEAN))     # ONE binding: the note and the
+                                       # engine cannot drift apart
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
-                         note = { zt <- 1e-26 * (1 + center^2)
-                                  same <- isTRUE(DiffSample <= zt)
+                         note = { same <- isTRUE(DiffSample <= zt)
                                   nt <- c(skewNote,
                                           .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
                                           .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
-                         zeroTol = 1e-26 * (1 + center^2))
+                         zeroTol = zt)
           }
           }
         }
@@ -1197,13 +1297,13 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
+          zt <- .iaZeroSnapTol(dd, .iaMeanStep(ROWS$ROUND_MEAN))     # ONE binding, see the median branch
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
-                         note = { zt <- 1e-26 * (1 + Meanmean^2)
-                                  same <- isTRUE(DiffSample <= zt)
+                         note = { same <- isTRUE(DiffSample <= zt)
                                   nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
                                           .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
-                         zeroTol = 1e-26 * (1 + Meanmean^2))
+                         zeroTol = zt)
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the
