@@ -266,6 +266,17 @@ for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
                "- a stated grid the values do not sit on would widen the",
                "null without saying so"))
 
+# Both producers of unusable table lines must cap what they hand the grid:
+# the cap was extracted into .iaCapSkipped() so the two call sites could
+# share it, and one of them did not (screen 2026-09-07-2000, F3). A zip may
+# carry 300 files, so a per-file cap is the only thing between one upload
+# and a grid of tens of thousands of rows.
+as_ <- sub("#.*$", "", srcOf("R/app_server.R"))
+if (sum(grepl(".iaCapSkipped(", as_, fixed = TRUE)) < 2)
+  note(paste("R/app_server.R: one of the two skipped-line producers no longer",
+             "caps what it adds to the grid - a zip of many files would build",
+             "an unbounded grid and an unbounded skip registry"))
+
 ## 4 - committed credentials ----------------------------------------------
 # Tracked text files only; the corpus xlsx and PDFs are gitignored.
 tracked <- system2("git", c("ls-files"), stdout = TRUE)

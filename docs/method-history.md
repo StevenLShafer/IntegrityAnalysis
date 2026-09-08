@@ -646,7 +646,36 @@ grid**, so a row printing nothing but zeros — "0 (0–0)", a shape many
 analgesia trials carry — passed at any stated precision and went from its
 honest p = 0.5 to below 0.0001 at `ROUND_DISPERSION = -20`; such a row
 states no scale of its own, so what is checked instead is that its
-precision columns agree with each other. The test is consistency, not coarseness, which matters because
+precision columns agree with each other.
+
+The screen after that one (2026-09-07-2000) found the location-side rule
+vacuous wherever the observation grid divided by N is finer than the
+printed mean's own step — which the arm size decides, so the choice was
+the manipulator's — and closed it from the dispersion side, where the
+bound is a theorem rather than a heuristic: **N values on a grid of width
+h have a sample SD that is either exactly zero or at least h/√N**. A table
+claiming an SD of 1 for a thousand values on a grid of a thousand is
+arithmetically impossible, and was being simulated: three arms of 1,000
+printing mean 500 and SD 1 read p = 0.5 honestly and 9.999e−05 — the
+reportable floor — at `ROUND_OBSERVATION = -3`.
+
+The same screen found the whole gate one-sided. Every decimal sits on
+every *finer* grid, so a precision finer than the printed value passed
+every test, and an over-fine `ROUND_MEAN` erases the rounding of the
+simulated arm means — which is the tie mass by which an honest table with
+identical printed means earns a large p (0.4185 to 9.999e−05 at
+`ROUND_MEAN = 15`). The anchor in that direction can only be the value's
+own digits — and there the engine stops short of refusing, deliberately. A
+mean stored as 50 may have been printed "50" or "50.000000"; a spreadsheet
+keeps no trailing zeros, so the honest row and the manipulated one are the
+same numbers, and the 2026-09-06 audit's own case is the honest one
+(integer observations beside a six-decimal printed mean, where the small p
+IS the right answer). The row is therefore analysed as the table claims
+and the claim travels with the answer: a Note says that the stated mean
+precision is finer than the printed values and that the p depends on it,
+on the rows where it decides anything. The same claim was measured and
+rejected for the other two columns, which are inert in the fine
+direction. The test is consistency, not coarseness, which matters because
 two honest shapes look coarse: quartiles of 40 and 60 reported to the
 nearest ten are consistent and analyzed, and a variable whose
 interquartile range is smaller than one printed unit — the case the
