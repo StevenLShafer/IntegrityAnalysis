@@ -729,7 +729,14 @@ doubles**, so perturbing one arm by a single unit in the last place —
 invisible to `format(digits = 15)`, to `.iaDecimals()` and to the grid —
 removed the note while the row still read the reportable floor. The arms
 are now compared at the precision their values carry (security screen
-2026-09-07-2241, F1).
+2026-09-07-2241, F1) — and, after the next screen defeated that too by
+widening the perturbation one decimal, on EITHER of two tests, so that
+both must be defeated: the engine's own verdict that the arms are equal
+(the observed statistic snapped to zero) and equality at the fewest
+decimals any arm carries. The lesson is worth keeping: when a disclosure
+is chosen instead of a refusal, its trigger must be the same quantity the
+engine itself acts on, not a second and stricter definition computed from
+the same numbers (screen 2026-09-07-2339, F1).
 
 The same screen made a larger point. Every guard added over 2026-09-07
 points at the **accusing** direction: a stated precision that drives a p

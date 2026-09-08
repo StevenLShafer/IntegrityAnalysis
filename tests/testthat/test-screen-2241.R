@@ -53,18 +53,21 @@ test_that("F2: a precision stated COARSER than the printed digits is disclosed",
   expect_gt(as.numeric(sub("^<", "", quiet$P)), as.numeric(sub("^<", "", alarm$P)))
   expect_match(quiet$NOTE, "coarser than the digits")
   expect_false(grepl("coarser than the digits", alarm$NOTE))
-  # the helper, on both columns
-  expect_match(.iaCoarsePrecisionNote(50, -1, 1), "coarser")
-  expect_match(.iaCoarsePrecisionNote(50, 1, -1), "coarser")
-  expect_identical(.iaCoarsePrecisionNote(50, 0, 1), "")
-  expect_identical(.iaCoarsePrecisionNote(50.25, 2, 2), "")
+  # the helper. ROUND_OBSERVATION was dropped from it the next hour
+  # (screen 2026-09-07-2339, F2): a coarse observation grid beside a finer
+  # printed mean is the user guide's own worked example, so a note there
+  # accused honest rows. The mechanism this note describes is the MEAN's
+  # own grid.
+  expect_match(.iaCoarsePrecisionNote(50, -1), "coarser")
+  expect_identical(.iaCoarsePrecisionNote(50, 0), "")
+  expect_identical(.iaCoarsePrecisionNote(50.25, 2), "")
   # ...and only where the coarse grid could merge the locations. Arms at 0
   # and 100 stay ten steps apart on a grid of ten, so their large p owes
   # nothing to the claim and the note would be a false causal statement
   # (CodeRabbit on PR #224)
-  expect_identical(.iaCoarsePrecisionNote(c(0, 100), -1, 1), "")
-  expect_match(.iaCoarsePrecisionNote(c(45, 55), -1, 1), "coarser")
-  expect_match(.iaCoarsePrecisionNote(c(50, 50), -1, 1), "coarser")
+  expect_identical(.iaCoarsePrecisionNote(c(0, 100), -1), "")
+  expect_match(.iaCoarsePrecisionNote(c(45, 55), -1), "coarser")
+  expect_match(.iaCoarsePrecisionNote(c(50, 50), -1), "coarser")
   far <- runRow(mk(c(0, 100, 50), -1, ro = 1, rd = 0, N = 100, sd = 30))
   expect_false(grepl("coarser than the digits", far$NOTE))
 })
@@ -118,7 +121,11 @@ test_that("both registries are capped for a session", {
   reg <- data.frame(TRIAL = "T", ROW = paste0("R", seq_len(9000)),
                     COL = "N", KIND = "derived", note = "n",
                     stringsAsFactors = FALSE)
-  expect_equal(nrow(.iaCapRegistry(reg)), .iaMaxRegistryRows)
+  capped <- .iaCapRegistry(reg)
+  expect_equal(nrow(capped), .iaMaxRegistryRows)
+  # the NEWEST rows survive, so an early file cannot push a later table's
+  # OCR warning out of the grid (screen 2026-09-07-2339, F4)
+  expect_equal(capped$ROW[nrow(capped)], reg$ROW[nrow(reg)])
   small <- reg[1:5, , drop = FALSE]
   expect_identical(.iaCapRegistry(small), small)
 })

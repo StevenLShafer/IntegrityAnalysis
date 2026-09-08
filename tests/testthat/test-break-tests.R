@@ -164,7 +164,13 @@ test_that("'attainable floor' means the arms agree exactly, not merely that no r
   d <- data.frame(TRIAL = "T", ROW = "W", N = 6, MEAN = c(77, 77.000001), SD = 30,
                   ROUND_MEAN = 6, ROUND_OBSERVATION = 6, stringsAsFactors = FALSE)
   x <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
-  expect_identical(x$NOTE[1], "")
+  # NO floor note: the arms do not agree exactly, which is this test's
+  # subject. The precision disclosure does appear, and belongs there - the
+  # arms differ only in a sixth decimal that "77" does not show, so the p
+  # does rest on the claim that the table prints six of them (screen
+  # 2026-09-07-2339, F1, which widened the note's trigger)
+  expect_false(grepl("attainable floor", x$NOTE[1]))
+  expect_match(x$NOTE[1], "stated mean precision")
   d$MEAN <- c(77, 77)
   dqrng::dqset.seed(1); set.seed(1)
   y <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
