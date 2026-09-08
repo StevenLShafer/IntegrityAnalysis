@@ -396,25 +396,33 @@
 .iaMeanPrecisionSlack <- 0L
 # the Note the row carries when that claim is made, so a small p never
 # arrives without the thing it rests on
-.iaFinePrecisionNote <- function(value, dec) {
-  if (.iaStatedPrecisionNotTooFine(value, dec)) return("")
-  # ...and only where the claim decides the answer: the printed means all
-  # equal, which is the shape whose p is the tie mass. With the means a
-  # printed unit apart the screen measured the effect as negligible
-  # (0.0029 -> 0.0036), so a note there would be noise.
-  #
-  # "Equal" AT THE PRECISION THE VALUES CARRY, not bitwise (security screen
-  # 2026-09-07-2241, finding F1). Comparing raw doubles let one arm be
-  # perturbed by a single unit in the last place - invisible to
-  # format(digits = 15), to .iaDecimals(), and to the grid - and the note
-  # vanished while the row still read the reportable floor. The note IS the
-  # whole remedy here, since screen 2000's F2 was adjudicated as disclosure
-  # rather than refusal, so a remedy the manuscript can switch off is no
-  # remedy.
+.iaFinePrecisionNote <- function(value, dec, identical = TRUE) {
+  # THE ENGINE'S OWN TEST OF "these arms are equal", not a second and
+  # stricter one (security screen 2026-09-07-2339, finding F1). Two
+  # patches tried to define equality here - bitwise, then to the values'
+  # own decimals - and each was defeated by perturbing one arm a little
+  # further, because both quantities are computed from the same
+  # attacker-supplied doubles. The engine already has an answer: it snaps
+  # an observed statistic below zeroTol to zero, so for means near 0.5
+  # every perturbation up to about 1.4e-13 gives a bitwise-identical p at
+  # the reportable floor. The caller passes THAT verdict in, and the gap
+  # the two definitions left between them closes by construction.
   v <- value[is.finite(value)]
   if (length(v) < 2) return("")
-  shown <- max(vapply(v, .iaDecimals, integer(1)))
-  if (length(unique(round(v, shown))) > 1) return("")
+  # EITHER definition of "the arms are equal" is enough, so an attacker
+  # must defeat both: the engine's own verdict (the observed statistic
+  # snapped to zero), and equality at the fewest decimals any arm carries.
+  # A perturbation small enough to keep the p at the floor but large
+  # enough to clear zeroTol - 1e-12 on means of 0.5 - passes the first and
+  # not the second (security screen 2026-09-07-2339, F1).
+  shownMin <- min(vapply(v, .iaDecimals, integer(1)))
+  alike <- isTRUE(identical) || length(unique(round(v, shownMin))) == 1L
+  if (!alike) return("")
+  # ...and the digits the values carry is the MINIMUM across the arms, not
+  # the maximum: giving one arm fifteen decimals must not raise the bar
+  # the stated precision is measured against, which is how the same
+  # perturbation slipped past the first gate as well.
+  if (.iaStatedPrecisionNotTooFine(v, dec, use = min)) return("")
   d <- suppressWarnings(as.numeric(dec))
   # Worded for what the engine can actually see. A spreadsheet stores
   # "5.0" as 5, so a stated precision past the surviving digits may be
@@ -436,11 +444,20 @@
 # neither is impossible - a paper printing "50" may honestly have rounded
 # to tens - so the claim is disclosed instead, on the rows where it
 # decides the answer.
-.iaCoarsePrecisionNote <- function(value, decLoc, decObs) {
+.iaCoarsePrecisionNote <- function(value, decLoc) {
+  # ROUND_OBSERVATION is deliberately NOT part of this (security screen
+  # 2026-09-07-2339, finding F2). A measurement recorded as an integer
+  # beside a mean printed to one decimal is the normal case, and the
+  # user guide's own worked example teaches it, so a note there fires on
+  # honest rows - including alarming ones, where it asserted that a large
+  # p rested on a claim that had moved the p by nothing. The mechanism
+  # the note describes is the MEAN's own grid. The observation grid's
+  # effect on a median row is real and undisclosed, and is part of the
+  # dispersion-side test left open for Steve Shafer in the log.
   v <- value[is.finite(value)]
   if (!length(v)) return("")
   shown <- max(vapply(v, .iaDecimals, integer(1)))
-  d <- suppressWarnings(as.numeric(c(decLoc, decObs)))
+  d <- suppressWarnings(as.numeric(decLoc))
   d <- d[is.finite(d)]
   if (!length(d) || min(d) >= shown) return("")
   # ...and only where the coarse grid can actually change the answer: the
@@ -450,18 +467,22 @@
   # would be a false causal statement (CodeRabbit on PR #224).
   h <- 10^(-min(d))
   if (diff(range(v)) > h * (1 + 1e-9)) return("")
-  paste0("a stated precision (", min(d),
+  paste0("the stated mean precision (", min(d),
          " decimals) is coarser than the digits these values carry, which ",
-         "widens the rounding the arms are judged against - a large p here ",
-         "rests on that claim")
+         "widens the rounding the arms are judged against; this row's p ",
+         "rests on that claim - check it against the page")
 }
 
-.iaStatedPrecisionNotTooFine <- function(value, dec) {
+.iaStatedPrecisionNotTooFine <- function(value, dec, use = max) {
   n <- max(length(value), length(dec))
   value <- rep(value, length.out = n); dec <- suppressWarnings(as.numeric(rep(dec, length.out = n)))
   ok <- is.finite(value) & is.finite(dec)
   if (!any(ok)) return(TRUE)
-  shown <- max(vapply(value[ok], .iaDecimals, integer(1)))
+  # `use` is the caller's: max() asks whether ANY printed value carries
+  # that many digits (the right question for a refusal), min() whether
+  # EVERY one does (the right question for the note, where one arm given
+  # extra decimals must not raise the bar - screen 2026-09-07-2339, F1)
+  shown <- use(vapply(value[ok], .iaDecimals, integer(1)))
   all(dec[ok] <= shown + .iaMeanPrecisionSlack)
 }
 
@@ -998,10 +1019,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
-                         note = { nt <- c(skewNote,
-                                          .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
-                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN,
-                                                                 ROWS$ROUND_OBSERVATION))
+                         note = { zt <- 1e-26 * (1 + center^2)
+                                  same <- isTRUE(DiffSample <= zt)
+                                  nt <- c(skewNote,
+                                          .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
+                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
                          zeroTol = 1e-26 * (1 + center^2))
           }
@@ -1176,9 +1198,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
-                         note = { nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
-                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN,
-                                                                 ROWS$ROUND_OBSERVATION))
+                         note = { zt <- 1e-26 * (1 + Meanmean^2)
+                                  same <- isTRUE(DiffSample <= zt)
+                                  nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
+                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
                          zeroTol = 1e-26 * (1 + Meanmean^2))
         } else {
