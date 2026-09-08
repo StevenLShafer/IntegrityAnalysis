@@ -322,7 +322,7 @@ makes a number reproducible; it does not make it more precise.
 
 | Column | Meaning |
 |---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, ...) are refusals: the row could not be analyzed, with the reason. |
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, "Printed precision beyond this magnitude's numerical resolution", ...) are refusals: the row could not be analyzed, with the reason. |
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
 | Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used, and "printed quartiles do not separate in k arm(s); the fit uses their printed intervals" when an arm prints Q1 and Q3 as the same value, so its width is known only to be smaller than one printed unit. Notes are joined with "; ". Blank otherwise. |
 | Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
@@ -379,6 +379,17 @@ makes a number reproducible; it does not make it more precise.
   printed percentages. The app paints such cells orange and states the
   bracket; both API routes name the rows in their response flags. The
   printed counts, if the author supplies them, replace the guess.
+- **The numbers fit in the arithmetic.** A double carries about 15.7
+  significant digits. A row whose printed precision asks for more at its
+  own magnitude — twenty decimals beside a value of 10¹¹, say — is
+  refused by name rather than simulated, because the simulation would
+  round on the floating-point grid instead of the printed one and say
+  nothing about it. The test is the printed grid against the spacing
+  between representable numbers at that magnitude, with three bits of
+  headroom; ordinary tables are nowhere near it (two decimals at 10¹²,
+  the validator's ceiling, still leaves 45 representable steps per
+  printed step). The same test keeps the direct draw off any arm whose
+  mean-grid, one printed unit divided by N, falls below that spacing.
 - **The Monte Carlo interval** describes the simulation's precision
   under the model. It does not include extraction error, an unsuitable
   randomization model, dependence, or the probability of fraud, and

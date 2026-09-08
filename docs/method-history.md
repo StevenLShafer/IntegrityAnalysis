@@ -571,6 +571,39 @@ them until the same screen's finding F2 — and the user guide, the API
 guide and statistics.md state it as a design decision for incomplete
 data. Exact conversions are untouched.
 
+## 2026-09-07 — a row whose printed precision the arithmetic cannot carry
+
+**What was wrong.** The validator caps a value's magnitude (10¹²) and its
+printed decimals separately, and neither cap asks whether the two are
+compatible. A double carries about 15.7 significant digits, so a table
+printing twenty decimals beside a value of 10¹¹ is asking for a
+resolution the arithmetic does not have; the simulation then rounds on
+the floating-point grid instead of the printed one, silently. The GPT-6
+audit's demonstration (finding F7, `docs/audits/`): 100 and 101 per arm,
+identical means, a standard deviation of 10⁻⁶ and twenty printed
+decimals reaches the replicate floor (0.000999) at means of zero and
+reports **0.5** with both means moved to 10¹¹ — the draws collapse. Both
+inputs pass validation. Reproduced, and the drift is visible long before
+the collapse: 0.004 at 10⁴, 0.046 at 10⁵, 0.35 at 10⁶.
+
+**What changed.** A row is refused by name — "Printed precision beyond
+this magnitude's numerical resolution" — when the finest grid it asks for
+(the mean's, the observations', and for a median row the quartiles')
+falls below eight times the spacing between representable numbers at its
+own largest printed magnitude. Eight is three bits of headroom: rounding
+to a grid a few units of least precision wide is arithmetic, not
+measurement. Ordinary tables are far from it — two decimals at 10¹², the
+validator's ceiling, still leaves 45 representable steps per printed step
+— and every shape the security screens pinned (a thousand arms printing
+10⁹ + 0.25 at two decimals; five thousand per arm at 10⁹) is unaffected.
+
+The same test is applied to the direct draw, which snaps a drawn mean to
+h/N, the grid a mean of N rounded observations lives on. Where that grid
+falls below the arithmetic's spacing the snap makes no ties at all, and
+missing ties is the *alarming* direction, so those arms simulate in full
+instead. That is a narrower condition than the row refusal, since h/N is
+N times finer than the printed grid.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
