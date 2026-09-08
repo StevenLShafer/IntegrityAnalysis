@@ -621,6 +621,45 @@ if (file.exists("R/utils.R")) {
                 "encoded for Anthropic to reject"))
 }
 
+## 7 - one definition of the zero snap ------------------------------------
+# Security screen 2026-09-08-0709, finding F4. The disclosure note and
+# the engine each decide "the arms are equal" from a zero tolerance, and
+# they were the SAME EXPRESSION WRITTEN TWICE, six lines apart, in each
+# of two branches of P_Calc(). They agreed, but nothing made them agree,
+# and the tolerance has already been changed three times on the record
+# (screens 1441 I1, 1459 F1, and 1048 F1, which found it depended on the
+# author's choice of origin). A one-line edit to either copy reopens the
+# gap the commit that introduced them existed to close.
+#
+# The property: in CODE, not in comments, every simRow that snaps takes
+# its zeroTol from the shared .iaZeroSnapTol() binding, there is exactly
+# one definition of it, and the origin-dependent expression does not
+# come back. The categorical branch is the one legitimate literal - a
+# contingency-table statistic has no floating-point dust to snap, so it
+# passes zeroTol = 0 and is allowed by name.
+pcCode <- sub("#.*$", "", srcOf("R/P_Calc.R"))
+zeroTolLines <- grep("zeroTol\\s*=", pcCode, value = TRUE)
+badLit <- grep("zeroTol\\s*=\\s*0\\s*\\)", zeroTolLines,
+               value = TRUE, invert = TRUE)
+badLit <- grep("zeroTol\\s*=\\s*[0-9]", badLit, value = TRUE)
+if (length(badLit))
+  note(paste("R/P_Calc.R: a simRow sets zeroTol from a literal rather than",
+             "the shared .iaZeroSnapTol() binding (screen 2026-09-08-0709",
+             "F4) -", paste(trimws(badLit), collapse = " | ")))
+snapDef <- grep("^\\s*\\.iaZeroSnapTol\\s*<-", pcCode)
+if (length(snapDef) != 1L)
+  note(paste("R/P_Calc.R: .iaZeroSnapTol() must be defined exactly once,",
+             "found", length(snapDef)))
+snapCalls <- setdiff(grep("\\.iaZeroSnapTol\\s*\\(", pcCode), snapDef)
+if (length(snapCalls) != 2L)
+  note(paste("R/P_Calc.R: expected exactly two callers of .iaZeroSnapTol()",
+             "- the median and the continuous branch - found",
+             length(snapCalls)))
+if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
+  note(paste("R/P_Calc.R: the origin-dependent zero tolerance",
+             "1e-26 * (1 + centre^2) is back in code (screen",
+             "2026-09-08-1048 F1)"))
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -630,5 +669,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "6 property groups.
+    "7 property groups.
 ")
