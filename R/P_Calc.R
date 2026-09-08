@@ -450,7 +450,21 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
         else if (!is.null(resRefusal <- .iaResolutionRefusal(
                    c(ROWS$MEAN, if (isQuartile) c(ROWS$Q1, ROWS$Q3)),
                    c(ROWS$ROUND_MEAN, ROWS$ROUND_OBSERVATION,
-                     if (isQuartile) ROWS$ROUND_DISPERSION))))
+                     # a median row's quartile precision is inferred from the
+                     # printed quartiles where the column is blank, which is
+                     # how the row arrives from the parser - and the inferred
+                     # value can be FINER than the median's, so inferring
+                     # after this test would let such a row through
+                     # (CodeRabbit on PR #218)
+                     if (isQuartile) {
+                       qd <- if (!is.null(ROWS$ROUND_DISPERSION))
+                         suppressWarnings(as.numeric(ROWS$ROUND_DISPERSION))
+                       else rep(NA_real_, nrow(ROWS))
+                       if (any(is.na(qd)))
+                         qd[is.na(qd)] <- max(vapply(c(ROWS$Q1, ROWS$Q3),
+                                                     .iaDecimals, integer(1)))
+                       qd
+                     }))))
         {
           # the printed grid is finer than this magnitude can carry, so
           # the simulation would round on the floating-point grid instead

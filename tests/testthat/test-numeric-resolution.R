@@ -62,6 +62,18 @@ test_that("a median row is judged on its quartiles' magnitude and precision too"
     stringsAsFactors = FALSE)
   bad <- runRow(medRow(c(1e11, 1e11), c(1e11 - 1, 1e11 - 1), c(1e11 + 1, 1e11 + 1), 20))
   expect_match(bad$P, "numerical resolution")
+  # ...and on the precision INFERRED from the printed quartiles when the
+  # ROUND_DISPERSION column is blank, which is how a parsed row arrives.
+  # The inference can be finer than the median's own precision, so it has
+  # to happen before the test (CodeRabbit on PR #218): six decimals at 1e9
+  # is sixteen significant digits.
+  blank <- data.frame(TRIAL = "T", ROW = "X", N = c(30, 30),
+                      MEAN = c(1e9, 1e9), SD = NA_real_,
+                      Q1 = c(1e9 - 0.000002, 1e9 - 0.000003),
+                      Q3 = c(1e9 + 0.000002, 1e9 + 0.000003),
+                      ROUND_MEAN = 0, ROUND_OBSERVATION = 0,
+                      stringsAsFactors = FALSE)
+  expect_match(runRow(blank)$P, "numerical resolution")
   ok <- runRow(medRow(c(12.4, 12.9), c(10.2, 10.8), c(15.1, 15.4), 1))
   expect_false(grepl("resolution", ok$P))
 })
@@ -70,7 +82,11 @@ test_that("the direct draw stands down where its own grid is unrepresentable", {
   # the direct draw snaps to h/N, the grid a mean of N rounded observations
   # lives on; where that snap is finer than the arithmetic it makes no ties
   # at all, which is the alarming direction. Such arms simulate in full.
-  D <- meanRow(c(1e11, 1e11), c(3, 3), 0, N = c(5000, 5000))
+  # N must be large enough that h/N falls below the threshold: at 1e11 that
+  # is 1.8e-4, so integer observations need more than about 5,600 per arm
+  # (CodeRabbit on PR #218 - the first version used 5,000 and the direct
+  # draw still ran)
+  D <- meanRow(c(1e11, 1e11), c(3, 3), 0, N = c(8000, 8000))
   row <- runRow(D, m = 1000)
   expect_false(grepl("resolution", row$P))
   p <- as.numeric(sub("^<", "", row$P))
