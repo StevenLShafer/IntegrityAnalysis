@@ -473,9 +473,13 @@ were rounded — the heart of the method. `ROUND OBSERVATION` is the
 precision of the raw data (0 = integers); `ROUND MEAN` is the decimal
 places of the printed mean. If omitted, the app infers them from the
 decimal places of the values themselves: `ROUND MEAN` becomes the most
-decimal places any of the variable's means shows (a trailing zero is
-lost when a spreadsheet stores 1.20 as a number, so the variable's
-maximum is used), and `ROUND OBSERVATION` follows it. That second
+decimal places any of the variable's means shows, and `ROUND OBSERVATION`
+follows it. A cell holding **text** is read for its digits before it is
+converted, so "1.20" typed or pasted as text counts as two decimals; a
+cell holding a **number** cannot be, because a spreadsheet stores 1.20 as
+1.2 and the trailing zero is already gone by the time the app opens the
+file. That is why the variable's maximum is used across its arms, and why
+the app writes its own spreadsheets with the numbers as text (below). That second
 inference is a guess — a mean printed to one decimal is often computed
 from integer measurements — so when you know the raw precision, say so
 in the column. An optional `ROUND DISPERSION`
@@ -905,9 +909,9 @@ paper printing "50" may honestly have rounded to tens. But it widens the
 rounding the arms are judged against, which can take a row from an alarm
 to unremarkable, so the Note beside that row's p says the answer rests on
 the claim. A precision finer than the printed
-value is not refused — a spreadsheet drops trailing zeros, so a mean
-printed "50.000000" and one printed "50" reach the app as the same number
-— but it is disclosed: such a row is analysed as the table claims, and the
+value is not refused — a spreadsheet cell holding a number drops trailing
+zeros, so a mean printed "50.000000" and one printed "50" reach the app as
+the same number — but it is disclosed: such a row is analysed as the table claims, and the
 Note beside its p says the answer depends on that claim, because a finer
 precision quietly removes the rounding that decides whether two arms
 printing the same number is remarkable.
@@ -1055,6 +1059,18 @@ presentation or a report figure.
 input file: for a partially extracted PDF it is the round trip (fill the
 gaps in Excel, re-upload), and for hand-typed data it is the checkpoint,
 since nothing is retained between sessions.
+
+The mean, SD, SE and quartile columns are written as **text**, formatted
+at the precision that row was analysed at — a mean of 50.0 is written
+"50.0", not 50. A spreadsheet cannot hold a trailing zero in a number, so
+writing them as numbers would have thrown away the precision the analysis
+used, and re-uploading the file would have analysed the same table on a
+coarser grid. Excel shows text numbers left-aligned with a green corner
+and offers "Convert to Number"; converting a block of them is a few
+keystrokes, and it is only needed to do arithmetic in the sheet — the app
+itself reads them either way, and reads the digits before converting. `N`,
+the category counts and the rounding columns stay as numbers: they are
+whole numbers, so there is no precision in them to lose.
 
 **Download Baseline Table (journal view)** — the reconstruction of the
 baseline table as a journal would print it, one worksheet per trial:

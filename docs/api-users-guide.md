@@ -166,7 +166,7 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 | `flags` | array of strings | review notes about the table as a whole: what the reader had to assume (SD versus SE), what it recovered from the Methods text, whether OCR was involved, and which category rows carry **fail-safe counts** (below). Read them; they are the same notes the app shows an editor |
 | `rows` | integer | rows in `templateCsv` (one per variable per arm) |
 | `skipped` | array of `{label, reason}` | table lines the reader could not use, each with the reason in the app's own words ("median with a min–max range - needs quartiles", "n (%) with unknown arm N", …). These rows are absent from the table; an editor would type them in |
-| `templateCsv` | string | the extracted table as CSV in the template layout (section 6). This is valid input to `/analyze` as a `.csv` |
+| `templateCsv` | string | the extracted table as CSV in the template layout (section 6). This is valid input to `/analyze` as a `.csv`. The `MEAN`, `SD`, `SE`, `Q1` and `Q3` fields are quoted and carry their printed precision — a mean of 50.0 is `"50.0"`, not `50` — so a caller that POSTs the payload back gets the same analysis. Parse them as decimal strings, not integers |
 
 **Incomplete data: fail-safe counts.** A table that prints only a
 percentage for a categorical level gives the count exactly when the arm

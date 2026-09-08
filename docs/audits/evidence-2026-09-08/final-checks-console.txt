@@ -1,0 +1,155 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+i Loading IntegrityAnalysis
+There were 41 warnings (use warnings() to see them)
+EXACT TWO BY THREE CONDITIONAL ENUMERATION
+      tables         mass           X2         less        equal          mid 
+1.350400e+04 1.000000e+00 7.354596e-05 0.000000e+00 8.235202e-03 4.117601e-03 
+      tables         mass           X2         less        equal          mid 
+1.351300e+04 1.000000e+00 6.066176e-02 2.422712e-02 3.195797e-02 4.020610e-02 
+EXHAUSTIVE SD MINIMUM CHECK
+n 2 : all 16 ordered samples satisfy and attain the sharp bound
+n 3 : all 64 ordered samples satisfy and attain the sharp bound
+n 4 : all 256 ordered samples satisfy and attain the sharp bound
+n 5 : all 1024 ordered samples satisfy and attain the sharp bound
+n 6 : all 4096 ordered samples satisfy and attain the sharp bound
+n 7 : all 16384 ordered samples satisfy and attain the sharp bound
+REFERENCE MONTE CARLO STANDARD ERROR
+SE 0.000317336 
+MIXED SUPPLIED AND INFERRED MEAN PRECISION
+[1] FALSE
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 10    1  1          4                 4                1
+2     T   X 10    1  1          4                 4                1
+Trial T: p = 2e-05 (95% Monte Carlo interval 0 to 1e-04)
+ 
+  TRIAL     ROW     P       CI95     M
+1     T       X 2e-05 0 to 1e-04 1e+05
+2  <NA> Summary 2e-05 0 to 1e-04  <NA>
+3  <NA>    <NA>  <NA>       <NA>  <NA>
+                                                                                                                                                                                NOTE
+1 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry; the arms print alike, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                   
+3                                                                                                                                                                               <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+[1] FALSE
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 10    1  1          4                 4                1
+2     T   X 10    1  1          4                 4                1
+Trial T: p = 4e-05 (95% Monte Carlo interval 0 to 0.00016)
+ 
+  TRIAL     ROW     P         CI95     M
+1     T       X 4e-05 0 to 0.00016 1e+05
+2  <NA> Summary 4e-05 0 to 0.00016  <NA>
+3  <NA>    <NA>  <NA>         <NA>  <NA>
+                                                                                                                                                                                NOTE
+1 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry; the arms print alike, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                   
+3                                                                                                                                                                               <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+SUPPLIED PRECISION BUMP
+[1] FALSE
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 10  1.1  1          1                 1                1
+2     T   X 10  1.2  1          1                 1                1
+Trial T: p = No values
+ 
+  TRIAL     ROW
+1     T       X
+2  <NA> Summary
+3  <NA>    <NA>
+                                                                                                                  P
+1 The stated precision does not match the printed values (check ROUND MEAN, ROUND DISPERSION and ROUND OBSERVATION)
+2                                                                                                         No values
+3                                                                                                              <NA>
+  CI95    M                                                            NOTE
+1      <NA>                                                                
+2      <NA> 0 of 1 rows analysed; the rest were refused - see their P cells
+3 <NA> <NA>                                                            <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+[1] FALSE
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 10  1.1  1          1                 1                1
+2     T   X 10  1.2  1          1                 1                1
+Trial T: p = 0.163 (95% Monte Carlo interval 0.068 to 0.27)
+ 
+  TRIAL     ROW     P          CI95    M NOTE     KIND
+1     T       X 0.163 0.068 to 0.27 1000      variable
+2  <NA> Summary 0.163 0.068 to 0.27 <NA>       summary
+3  <NA>    <NA>  <NA>          <NA> <NA> <NA>     <NA>
+FRACTIONAL PRECISION
+[1] FALSE
+  TRIAL ROW   N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 100   50 10          0              -0.5                0
+2     T   X 100   52 10          0              -0.5                0
+Trial T: p = 0.815 (95% Monte Carlo interval 0.69 to 0.93)
+ 
+  TRIAL     ROW     P         CI95    M NOTE     KIND
+1     T       X 0.815 0.69 to 0.93 1000      variable
+2  <NA> Summary 0.815 0.69 to 0.93 <NA>       summary
+3  <NA>    <NA>  <NA>         <NA> <NA> <NA>     <NA>
+Requested h 3.162278 ; R rounds c(1,2,3,4) to 1 2 3 4 
+P_CALC HELP AVAILABILITY
+[1] FALSE
+Source man/P_Calc.Rd exists: FALSE 
+SESSION METADATA
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: America/Los_Angeles
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices datasets  utils     methods   base     
+
+other attached packages:
+ [1] IntegrityAnalysis_0.2.0 testthat_3.3.2          MBESS_4.9.42           
+ [4] Rfast_2.1.5.2           RcppParallel_5.1.11-2   zigg_0.0.2             
+ [7] Rcpp_1.1.2              foreach_1.5.2           dqrng_0.4.1            
+[10] shiny_1.13.0           
+
+loaded via a namespace (and not attached):
+ [1] bslib_0.10.0            httr2_1.2.2             shinyjs_2.1.1          
+ [4] htmlwidgets_1.6.4       vctrs_0.7.2             tools_4.5.3            
+ [7] generics_0.1.4          tibble_3.3.1            pkgconfig_2.0.3        
+[10] pdftools_3.9.0          rvg_0.4.1               desc_1.4.3             
+[13] uuid_1.2-2              tesseract_5.2.5         lifecycle_1.0.5        
+[16] compiler_4.5.3          brio_1.1.5              textshaping_1.0.5      
+[19] codetools_0.2-20        httpuv_1.6.17           fontquiver_0.2.1       
+[22] fontLiberation_0.1.0    shinyWidgets_0.9.1      htmltools_0.5.9        
+[25] sass_0.4.10             later_1.4.8             pillar_1.11.1          
+[28] jquerylib_0.1.4         tidyr_1.3.2             openssl_2.4.2          
+[31] cachem_1.1.0            iterators_1.0.14        mime_0.13              
+[34] fontBitstreamVera_0.1.1 tidyselect_1.2.1        zip_2.3.3              
+[37] digest_0.6.39           stringi_1.8.9           dplyr_1.2.0            
+[40] purrr_1.2.1             rprojroot_2.1.1         fastmap_1.2.0          
+[43] cli_3.6.6               magrittr_2.0.5          pkgbuild_1.4.8         
+[46] withr_3.0.3             gdtools_0.5.0           promises_1.5.0         
+[49] rappdirs_0.3.4          officer_0.7.3           jpeg_0.1-11            
+[52] otel_0.2.0              qpdf_1.4.1              askpass_1.2.1          
+[55] ragg_1.5.2              png_0.1-9               openxlsx_4.2.8.1       
+[58] rlang_1.3.0             xtable_1.8-8            glue_1.8.1             
+[61] xml2_1.5.2              renv_1.2.0              shinydashboard_0.7.3   
+[64] pkgload_1.5.3           jsonlite_2.0.0          rhandsontable_0.3.8    
+[67] R6_2.6.1                systemfonts_1.3.2      

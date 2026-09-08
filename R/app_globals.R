@@ -145,15 +145,30 @@ m <- 100000
 # session - a baseline table registers a handful of derived cells - and
 # what is dropped is only the PAINT and its hover note, never a number.
 .iaMaxRegistryRows <- 5000L
+# The kinds that WARN. These say the numbers beside them may not be the
+# numbers on the page, so they are the last paint to drop, never the
+# first: "derived" alone means the parser computed a cell arithmetically,
+# which is ordinary.
+.iaWarnKinds <- c("ocr", "ai", "failsafe", "recovered")
 .iaCapRegistry <- function(reg, cap = .iaMaxRegistryRows) {
   if (is.null(reg) || nrow(reg) <= cap) return(reg)
-  # the NEWEST rows, not the oldest (security screen 2026-09-07-2339,
-  # finding F4): these registries accumulate in upload order, so keeping
-  # the head meant an early file in a zip could push a later table's OCR
-  # warning paint out of the grid - the paint that says "this table was
-  # read by optical character recognition, verify the digits".
+  # BY PRIORITY, not by position (security screen 2026-09-08-0709, F3).
+  # Keeping the head let an early file in a zip push a later table's OCR
+  # warning out of the grid; keeping the tail, which was the fix for
+  # that, let a LAST file yielding thousands of ordinary derived cells
+  # evict the OCR warning of every earlier file. Both ends are reachable
+  # through a zip, so swapping ends traded one exposure for the other.
+  # Warning rows are kept while any ordinary derived row remains, and
+  # registry order is preserved either way because .iaDerivedPayload()
+  # resolves a shared cell last-entry-wins.
   n <- nrow(reg)
-  out <- reg[seq.int(n - cap + 1L, n), , drop = FALSE]
+  kind <- if (!is.null(reg$KIND)) as.character(reg$KIND) else rep("derived", n)
+  warn  <- which(kind %in% .iaWarnKinds)
+  plain <- which(!(kind %in% .iaWarnKinds))
+  keep <- if (length(warn) >= cap)
+            utils::tail(warn, cap)
+          else c(warn, utils::tail(plain, cap - length(warn)))
+  out <- reg[sort(keep), , drop = FALSE]
   rownames(out) <- NULL
   out
 }
@@ -206,6 +221,28 @@ m <- 100000
 #
 # `dv` is the registry (TRIAL, ROW, COL, KIND, note; "*" in ROW or COL
 # means every row of that trial, or every column). `d` is the grid frame.
+# ONE KEY for a (TRIAL, ROW) pair (security screen 2026-09-08-0709, S1).
+# Both fields are document text - a trial name is a file stem or a TRIAL
+# cell, a row label is lifted off the page - and both registries matched
+# grid rows against registry rows by pasting them with a carriage return
+# between. A field carrying that separator made the decomposition
+# ambiguous: TRIAL "A" with ROW "B<CR>C", and TRIAL "A<CR>B" with ROW
+# "C", produce the same key, so one registry entry could claim a grid
+# row it does not name and, in the wrong order, replace an OCR warning
+# with a benign derived note. The screen could not construct a parser
+# that emits a carriage return into those fields and neither could I, so
+# this is the shape closed rather than a demonstrated exploit - but a
+# user can type into the grid, and the fix costs nothing.
+# Length-prefixing each field makes the encoding unambiguous whatever
+# the content: no string can forge another string's key, because the
+# byte counts have to match first.
+.iaCellKey <- function(trial, row) {
+  t <- as.character(trial); r <- as.character(row)
+  t[is.na(t)] <- ""; r[is.na(r)] <- ""
+  paste0(nchar(t, type = "bytes"), "\r", t, "\r",
+         nchar(r, type = "bytes"), "\r", r)
+}
+
 .iaDerivedPayload <- function(d, dv, nameCols = names(d)) {
   empty <- list(iss = list(), note = list())
   if (is.null(dv) || !nrow(dv) || is.null(d) || !nrow(d)) return(empty)
@@ -244,8 +281,8 @@ m <- 100000
   # the per-cell overwrite did.
   addr <- which(dv$ROW != "*")
   if (length(addr)) {
-    keyD <- paste0(trialD, "\r", rowD)
-    keyR <- paste0(as.character(dv$TRIAL[addr]), "\r", as.character(dv$ROW[addr]))
+    keyD <- .iaCellKey(trialD, rowD)
+    keyR <- .iaCellKey(dv$TRIAL[addr], dv$ROW[addr])
     idx  <- length(addr) + 1L - match(keyD, rev(keyR))     # index into addr, or NA
     # one pass to group the grid rows by the entry that claims them; a
     # `which()` per group would be a scan of the grid per entry again
@@ -285,8 +322,8 @@ m <- 100000
 .iaSkipPayload <- function(d, sk, dataCols, rowCol) {
   empty <- list(iss = list(), note = list())
   if (is.null(sk) || !nrow(sk) || is.null(d) || !nrow(d)) return(empty)
-  keyD  <- paste0(as.character(d$TRIAL), "\r", as.character(d$ROW))
-  keySk <- paste0(as.character(sk$TRIAL), "\r", as.character(sk$ROW))
+  keyD  <- .iaCellKey(d$TRIAL, d$ROW)
+  keySk <- .iaCellKey(sk$TRIAL, sk$ROW)
   emptyRow <- if (length(dataCols))
     !Reduce(`|`, lapply(d[dataCols], function(v) !is.na(v))) else rep(TRUE, nrow(d))
   # the LAST registry entry for a key wins, which is what the per-entry

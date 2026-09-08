@@ -1,0 +1,36 @@
+$cases
+[1] 17955
+
+$worst
+$worst$N
+[1]  101 1001
+
+$worst$percent
+[1] 0 0
+
+$worst$lo
+[1] 0 0
+
+$worst$hi
+[1] 0 5
+
+$worst$chosen
+[1] 0 5
+
+$worst$chosenP
+[1] 0.3089112
+
+$worst$alternative
+Var1 Var2 
+   0    1 
+
+$worst$alternativeP
+[1] 0.4541742
+
+$worst$chosenStat
+[1] 0.5067949
+
+$worst$alternativeStat
+[1] 0.1009907
+
+

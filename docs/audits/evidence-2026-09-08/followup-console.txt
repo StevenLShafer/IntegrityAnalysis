@@ -1,0 +1,222 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+i Loading IntegrityAnalysis
+There were 41 warnings (use warnings() to see them)
+INDEPENDENT COUNT ANSWERS
+Count 1 independent p 0.4541742 
+FAIL FALSE 
+Trial T: p = 0.451 (95% Monte Carlo interval 0 to 0.92)
+ 
+  TRIAL     ROW     P      CI95    M NOTE     KIND
+1     T       X 0.451 0 to 0.92 1000      variable
+2  <NA> Summary 0.451 0 to 0.92 <NA>       summary
+3  <NA>    <NA>  <NA>      <NA> <NA> <NA>     <NA>
+Count 5 independent p 0.3089112 
+FAIL FALSE 
+Trial T: p = 0.3185 (95% Monte Carlo interval 0 to 0.67)
+ 
+  TRIAL     ROW      P      CI95    M NOTE     KIND
+1     T       X 0.3185 0 to 0.67 1000      variable
+2  <NA> Summary 0.3185 0 to 0.67 <NA>       summary
+3  <NA>    <NA>   <NA>      <NA> <NA> <NA>     <NA>
+INDEPENDENT NORMAL INTEGRATION AND SIMULATION
+Unrounded t-mixture reference, Riemann quadrature: 0.1744527 
+Rounded-model reference: 0.1737645 counts 88028 171473 B 1000000 
+TYPE-8 QUARTILES OF AN HONEST INTEGER SAMPLE
+     25%      50%      75% 
+1.166667 3.000000 4.833333 
+25% 50% 75% 
+1.5 3.0 4.5 
+TIE GROUP CONSISTENCY
+[1] 2 2 2
+kLess   kEq 
+    0     2 
+[1] 0.5
+MULTICATEGORY PERCENTAGE FIXTURE
+[1] "docs/audits/evidence-2026-09-08/synthetic-three-category.pdf"
+                      TRIAL     ROW  N MEAN SD SE ROUND_MEAN ROUND_DISPERSION
+5  synthetic-three-category Race, % NA   NA NA NA         NA               NA
+51 synthetic-three-category Race, % NA   NA NA NA         NA               NA
+   ROUND_OBSERVATION Asian White Black
+5                 NA    69    65    69
+51                NA    67    63    67
+        arm   N
+1   Control 200
+2 Treatment 200
+       ROW   COL     KIND
+5  Race, % Asian failsafe
+51 Race, % White failsafe
+52 Race, % Black failsafe
+                                                                                                                                                                                                                 NOTE
+5  FAIL-SAFE: 34% of N=200 fits 67..69; 69 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 34% of N=200 fits 67..69; 67 taken - the reading of the page that leaves the arms least alike
+51 FAIL-SAFE: 32% of N=200 fits 63..65; 65 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 32% of N=200 fits 63..65; 63 taken - the reading of the page that leaves the arms least alike
+52 FAIL-SAFE: 34% of N=200 fits 67..69; 69 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 34% of N=200 fits 67..69; 67 taken - the reading of the page that leaves the arms least alike
+  5  51 
+203 197 
+FAIL FALSE 
+Trial T: p = 0.00417 (95% Monte Carlo interval 0 to 0.0089)
+ 
+  TRIAL     ROW       P        CI95     M NOTE     KIND
+1     T Race, % 0.00417 0 to 0.0089 1e+05      variable
+2  <NA> Summary 0.00417 0 to 0.0089  <NA>       summary
+3  <NA>    <NA>    <NA>        <NA>  <NA> <NA>     <NA>
+Feasible original counts, all percentages round to the same page:
+   TRIAL     ROW  N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+5      T Race, % NA   NA NA NA         NA               NA                NA
+51     T Race, % NA   NA NA NA         NA               NA                NA
+   Asian White Black
+5     69    63    68
+51    67    65    68
+   Asian White Black
+5     34    32    34
+51    34    32    34
+FAIL FALSE 
+Trial T: p = 0.043 (95% Monte Carlo interval 0.024 to 0.063)
+ 
+  TRIAL     ROW     P           CI95     M NOTE     KIND
+1     T Race, % 0.043 0.024 to 0.063 10000      variable
+2  <NA> Summary 0.043 0.024 to 0.063  <NA>       summary
+3  <NA>    <NA>  <NA>           <NA>  <NA> <NA>     <NA>
+REFUSAL NOTE IN RESULTS WORKBOOK
+Trial T: p = 0.168 (95% Monte Carlo interval 0.14 to 0.2)
+ 
+  TRIAL     ROW     P        CI95    M
+3  <NA> Summary 0.168 0.14 to 0.2 <NA>
+                                                             NOTE    KIND
+3 1 of 2 rows analysed; the rest were refused - see their P cells summary
+  TRIAL P.(one-sided.toward.homogeneity) 95%.Monte.Carlo.interval
+1     T                            0.168              0.14 to 0.2
+SELECTED CURRENT TESTS
+known-answer: Trial T: p = 0.0462 (95% Monte Carlo interval 0.022 to 0.073)
+ 
+..Trial T: p = 0.00015 (95% Monte Carlo interval 0 to 0.00088)
+ 
+....Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+.Trial T: p = 0.0427 (95% Monte Carlo interval 0.023 to 0.064)
+ 
+.Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+.Trial T: p = 0.9999 (95% Monte Carlo interval 1 to 1)
+ 
+.
+
+== DONE ========================================================================
+tie-criterion: .....Trial T: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+..Trial T: p = 0.0831
+ 
+...Trial T: p = 0.008 (95% Monte Carlo interval 0 to 0.026)
+ 
+.Trial T: p = 0.038 (95% Monte Carlo interval 0.0084 to 0.078)
+ 
+.
+
+== DONE ========================================================================
+numeric-resolution: ........Trial T: p = No values
+ 
+.Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+..Trial T: p = 0.832 (95% Monte Carlo interval 0.81 to 0.86)
+ 
+.Trial T: p = 0.229 (95% Monte Carlo interval 0 to 0.49)
+ 
+.Trial T: p = 0.8245 (95% Monte Carlo interval 0.62 to 1)
+ 
+.Trial T: p = 0.227 (95% Monte Carlo interval 0 to 0.49)
+ 
+.Trial T: p = No values
+ 
+.Trial T: p = No values
+ 
+Trial T: p = No values
+ 
+.Trial T: p = 0.356 (95% Monte Carlo interval 0.29 to 0.42)
+ 
+.Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+...
+
+== DONE ========================================================================
+quartile-precision: .........Trial T: p = 0.207 (95% Monte Carlo interval 0.16 to 0.25)
+ 
+Trial T: p = 0.209 (95% Monte Carlo interval 0.17 to 0.25)
+ 
+..
+
+== DONE ========================================================================
+quartile-draw: Trial T: p = 0.805 (95% Monte Carlo interval 0.6 to 0.98)
+ 
+...Trial T: p = No values
+ 
+.Trial T: p = 0.186 (95% Monte Carlo interval 0.12 to 0.26)
+ 
+.Trial T: p = 0.108 (95% Monte Carlo interval 0.077 to 0.14)
+ 
+.Trial T: p = No values
+ 
+.Trial T: p = 0.355 (95% Monte Carlo interval 0.3 to 0.41)
+ 
+.Trial T: p = 0.355 (95% Monte Carlo interval 0.3 to 0.41)
+ 
+.Trial T: p = No values
+ 
+.Trial T: p = 0.3085 (95% Monte Carlo interval 0.25 to 0.37)
+ 
+Trial T: p = 0.3085 (95% Monte Carlo interval 0.25 to 0.37)
+ 
+.Trial T: p = 0.42 (95% Monte Carlo interval 0 to 0.86)
+ 
+.Trial T: p = 0.004 (95% Monte Carlo interval 0 to 0.016)
+ 
+...Trial T: p = 0.557 (95% Monte Carlo interval 0.49 to 0.62)
+ 
+Trial T: p = 0.5445 (95% Monte Carlo interval 0.48 to 0.6)
+ 
+Trial T: p = 0.5385 (95% Monte Carlo interval 0.48 to 0.6)
+ 
+Trial T: p = 0.543 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+Trial T: p = 0.557 (95% Monte Carlo interval 0.49 to 0.62)
+ 
+Trial T: p = 0.5515 (95% Monte Carlo interval 0.49 to 0.61)
+ 
+Trial T: p = 0.5495 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+Trial T: p = 0.5335 (95% Monte Carlo interval 0.47 to 0.6)
+ 
+Trial T: p = 0.5355 (95% Monte Carlo interval 0.47 to 0.6)
+ 
+Trial T: p = 0.548 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+.
+
+== DONE ========================================================================
+pcalc-direct: Trial T1: p = 0.052
+ 
+Trial T1: p = 0.052
+ 
+..Trial T1: p = 0.1435 (95% Monte Carlo interval 0.085 to 0.21)
+ 
+Trial T1: p = 0.1435 (95% Monte Carlo interval 0.085 to 0.21)
+ 
+.Trial T1: p = No values
+ 
+..Trial T1: p = No values
+ 
+Trial T1: p = No values
+ 
+..Trial T1: p = 0.0715 (95% Monte Carlo interval 0.043 to 0.11)
+ 
+Trial T1: p = 0.0715 (95% Monte Carlo interval 0.043 to 0.11)
+ 
+.
+
+== DONE ========================================================================
+pct-failsafe: ....................................................................
+
+== DONE ========================================================================
