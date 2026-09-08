@@ -213,6 +213,12 @@ m <- 100000
     else if (k == "ocr") "ocr" else if (k == "failsafe") "failsafe" else "derived"
   trialD <- as.character(d$TRIAL); rowD <- as.character(d$ROW)
   keys <- character(0); codes <- character(0); notes <- character(0)
+  # the registry position each painted cell came from, so that the entry
+  # LATER in the registry wins a shared cell whichever kind it is - the
+  # addressed entries are gathered before the whole-trial ones, and
+  # without this an earlier "*" entry would overwrite a later addressed
+  # one (CodeRabbit on PR #225)
+  froms <- integer(0)
 
   addCells <- function(rows, i) {
     cis <- if (identical(dv$COL[i], "*")) seq_along(nameCols)
@@ -226,6 +232,7 @@ m <- 100000
       keys  <<- c(keys,  paste0(keep - 1L, "|", ci - 1L))
       codes <<- c(codes, rep(codeOf(dv$KIND[i]), length(keep)))
       notes <<- c(notes, rep(dv$note[i], length(keep)))
+      froms <<- c(froms, rep(i, length(keep)))
     }
   }
 
@@ -240,8 +247,12 @@ m <- 100000
     keyD <- paste0(trialD, "\r", rowD)
     keyR <- paste0(as.character(dv$TRIAL[addr]), "\r", as.character(dv$ROW[addr]))
     idx  <- length(addr) + 1L - match(keyD, rev(keyR))     # index into addr, or NA
-    for (g in unique(idx[!is.na(idx)]))
-      addCells(which(!is.na(idx) & idx == g), addr[g])
+    # one pass to group the grid rows by the entry that claims them; a
+    # `which()` per group would be a scan of the grid per entry again
+    # (CodeRabbit on PR #225)
+    seen <- which(!is.na(idx))
+    for (g in split(seen, idx[seen]))
+      addCells(g, addr[idx[g[1]]])
   }
 
   # ...and the whole-trial entries, which are few - one per OCR-read or
@@ -252,6 +263,9 @@ m <- 100000
   }
 
   if (!length(keys)) return(empty)
+  # in REGISTRY order, so the last entry to name a cell wins it
+  ord <- order(froms)
+  keys <- keys[ord]; codes <- codes[ord]; notes <- notes[ord]
   keep <- !duplicated(keys, fromLast = TRUE)
   keys <- keys[keep]; codes <- codes[keep]; notes <- notes[keep]
   iss <- as.list(codes);  names(iss)  <- keys

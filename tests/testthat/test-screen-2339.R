@@ -99,6 +99,17 @@ test_that("F3: the payload still answers what the loop answered", {
   p2 <- .iaDerivedPayload(d, dv2)
   expect_equal(p2$iss[["0|2"]], "failsafe")
   expect_equal(p2$note[["0|2"]], "second")
+  # ...including when the loser is a whole-trial entry that comes FIRST:
+  # the addressed entry after it must win the cell they share (CodeRabbit
+  # on PR #225 - the two kinds are gathered separately, so registry order
+  # has to be carried rather than implied by the order of the passes)
+  dv3 <- data.frame(TRIAL = "T", ROW = c("*", "R1"), COL = c("N", "N"),
+                    KIND = c("ocr", "failsafe"), note = c("whole", "one row"),
+                    stringsAsFactors = FALSE)
+  p3 <- .iaDerivedPayload(d, dv3)
+  expect_equal(p3$iss[["0|2"]], "failsafe")
+  expect_equal(p3$note[["0|2"]], "one row")
+  expect_equal(p3$iss[["2|2"]], "ocr")      # a row the addressed entry does not name
 })
 
 test_that("F4: the registry cap keeps the newest rows", {
