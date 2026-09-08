@@ -175,6 +175,43 @@
        hi = ifelse(sd == 0, 0, sd + h / 2))
 }
 
+# THE NUMERICAL-RESOLUTION REFUSAL (GPT-6 audit F7, 2026-09-07).
+# The validator caps a value's magnitude (1e12) and its printed decimals
+# separately, and neither cap asks whether the two are compatible. A
+# double carries about 15.7 significant digits: at a magnitude of 1e11 the
+# spacing between representable numbers is about 2e-5, so a table printing
+# twenty decimals there is asking for a resolution the arithmetic does not
+# have. The simulation then rounds on the floating-point grid instead of
+# the printed one, silently. The audit's demonstration: 100 and 101 per
+# arm, identical means, SD 1e-6, twenty decimals: at means of zero the row
+# reaches the replicate floor (0.000999), and translating both means to
+# 1e11 gives 0.5 - the draws collapse. The drift is visible well before
+# the collapse (0.004 at 1e4, 0.046 at 1e5, 0.35 at 1e6).
+#
+# So the row is refused when the finest printed grid it asks for is not
+# comfortably representable at its own magnitude. The factor of 8 is three
+# bits of headroom: rounding to a grid only a few units of least precision
+# wide is arithmetic, not measurement. Ordinary tables are nowhere near
+# it - two decimals at 1e12, the validator's ceiling, still has 45 units
+# of least precision per printed step - and the shapes the screens pinned
+# (a thousand arms printing 1e9 + 0.25, five thousand per arm at 1e9)
+# pass unchanged.
+.iaResolutionFactor <- 8
+
+# `mag` the row's largest printed magnitude, `dec` its printed decimals
+# (every column that sets a grid); NULL when the row is representable.
+.iaResolutionRefusal <- function(mag, dec) {
+  mag <- suppressWarnings(max(abs(mag[is.finite(mag)]), 0))
+  dec <- suppressWarnings(max(dec[is.finite(dec)], 0))
+  if (!is.finite(mag) || mag <= 0 || !is.finite(dec)) return(NULL)
+  ulp  <- .Machine$double.eps * mag
+  grid <- 10^(-dec)
+  if (grid >= .iaResolutionFactor * ulp) return(NULL)
+  sprintf(paste("Printed precision beyond this magnitude's numerical resolution",
+                "(%d decimals at %s needs more than the 15 significant digits",
+                "a double carries)"), as.integer(dec), format(mag, digits = 3))
+}
+
 # A trial p as a number, for the closed-form combination ACROSS trials
 # (results workbook, graphs, API): the exact combination reports
 # "<0.0001" when its bound licenses it, and that enters the combination
@@ -409,6 +446,30 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # the validator refuses this before the app or API gets here; a
           # direct caller gets the refusal by name rather than a crash
           Pdisp <- "An arm with fewer than 2 patients cannot be simulated"
+        }
+        else if (!is.null(resRefusal <- .iaResolutionRefusal(
+                   c(ROWS$MEAN, if (isQuartile) c(ROWS$Q1, ROWS$Q3)),
+                   c(ROWS$ROUND_MEAN, ROWS$ROUND_OBSERVATION,
+                     # a median row's quartile precision is inferred from the
+                     # printed quartiles where the column is blank, which is
+                     # how the row arrives from the parser - and the inferred
+                     # value can be FINER than the median's, so inferring
+                     # after this test would let such a row through
+                     # (CodeRabbit on PR #218)
+                     if (isQuartile) {
+                       qd <- if (!is.null(ROWS$ROUND_DISPERSION))
+                         suppressWarnings(as.numeric(ROWS$ROUND_DISPERSION))
+                       else rep(NA_real_, nrow(ROWS))
+                       if (any(is.na(qd)))
+                         qd[is.na(qd)] <- max(vapply(c(ROWS$Q1, ROWS$Q3),
+                                                     .iaDecimals, integer(1)))
+                       qd
+                     }))))
+        {
+          # the printed grid is finer than this magnitude can carry, so
+          # the simulation would round on the floating-point grid instead
+          # of the printed one and say nothing about it (GPT-6 audit F7)
+          Pdisp <- resRefusal
         }
         else if (isQuartile && all(!is.na(ROWS$N)))
         {
@@ -723,7 +784,16 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           # per arm: the full simulation below .iaDirectDrawN, the direct
           # draw of the arm mean at or above it (see the constant's note)
           hObs   <- 10^(-ROWS$ROUND_OBSERVATION)
-          direct <- ROWS$N >= .iaDirectDrawN & Meansd >= .iaDirectDrawSdOverGrid * hObs
+          # ...and only where the mean's own grid, h/N, is representable at
+          # this magnitude: the direct draw snaps to that grid to reproduce
+          # the ties a rounded sample mean makes, and a snap finer than the
+          # arithmetic silently makes none, which is the alarming direction
+          # (GPT-6 audit F7; the row-level refusal above catches the printed
+          # grid, this catches the finer grid the draw itself uses)
+          drawableGrid <- hObs / ROWS$N >=
+            .iaResolutionFactor * .Machine$double.eps * max(abs(ROWS$MEAN))
+          direct <- ROWS$N >= .iaDirectDrawN & Meansd >= .iaDirectDrawSdOverGrid * hObs &
+                    drawableGrid
           # the chunk size is set by the arms still simulated in full;
           # a row of direct-draw arms costs one draw per arm per replicate
           Nfull <- sum(ROWS$N[!direct])

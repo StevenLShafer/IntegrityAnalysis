@@ -867,6 +867,15 @@ convention as the continuous rows. Degenerate tables (an arm with no
 counts, an empty category) are refused with an explanation rather than
 analyzed.
 
+A row is also refused when its printed precision asks for more accuracy
+than the computer's arithmetic can carry: a value near a hundred billion
+printed to twenty decimals wants more than the fifteen or so significant
+digits a double-precision number holds, and the simulation would quietly
+round on the machine's own grid instead of the printed one. The results
+table says so in place of a p-value. Real tables are nowhere near this
+limit; the check exists so that a number too big and too precise cannot
+produce a confident-looking answer.
+
 ## Statistical details
 
 - The arms' reported SDs are pooled into one population variance,

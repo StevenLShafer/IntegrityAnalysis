@@ -289,7 +289,7 @@ The round-trip contract: the failure payload is the next call's input.
 |---|---|
 | `missing` | a required cell is blank: an arm N, a mean or an SD; a quartile of a median row; the `ROW` cell of a categorical line with no matching line in another arm |
 | `unreadable` | the cell holds something that is not a number |
-| `incongruent` | the cell is a number that cannot be right where it sits: a negative count, SD or SE; an N that is not a whole number of at least 2; a median outside its quartiles; a count with a fraction; a continuous value on a categorical line, or a dispersion where the table gives none; a magnitude no measurement reaches |
+| `incongruent` | the cell is a number that cannot be right where it sits: a negative count, SD or SE; an N that is not a whole number of at least 2; a median outside its quartiles; a count with a fraction; a continuous value on a categorical line, or a dispersion where the table gives none; a magnitude no measurement reaches. A row whose magnitude and printed precision together ask for more than the 15 significant digits a double carries passes validation but is refused by the engine, and its `P` cell says so |
 | `too_large` | an N or a count over the arm ceiling (section 7); as the only entry, with `detail`, when the whole table exceeds a limit |
 | `too_much_compute` | the table is within every size limit but the simulation it asks for is not; `detail` carries the arithmetic and the advice |
 | `error` | the validator (stage `validation`) or the analysis (stage `analysis`) failed in a way the service did not foresee; `note` names the trial and the failure, never the document's content |
