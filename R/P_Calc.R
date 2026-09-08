@@ -315,9 +315,14 @@
   ok <- is.finite(sd) & is.finite(decObs) & is.finite(N) & N > 0
   if (!any(ok)) return(TRUE)
   sd <- sd[ok]; N <- N[ok]
-  hDisp <- ifelse(is.finite(decDisp[ok]), 10^(-decDisp[ok]), 0)
+  # the printed SD's interval, from the same helper the simulation uses,
+  # so a blank or absent ROUND_DISPERSION is INFERRED from the SD's own
+  # printed decimals rather than leaving the test vacuous (an absent
+  # column made hDisp empty, and every row passed) or falsely strict (an
+  # NA made it zero) - CodeRabbit on PR #221
+  sdHi  <- .iaSdInterval(sd, if (is.null(decDisp)) NULL else decDisp[ok])$hi
   hObs  <- 10^(-decObs[ok])
-  all(sd == 0 | (sd + hDisp / 2) >= hObs / sqrt(N) * (1 - 1e-9))
+  all(sd == 0 | sdHi >= hObs / sqrt(N) * (1 - 1e-9))
 }
 
 # F2 of the same screen: .iaOnStatedGrid is one-sided by construction -

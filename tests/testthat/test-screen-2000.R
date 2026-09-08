@@ -49,6 +49,21 @@ test_that("F1: the bound itself, and what it must never refuse", {
   expect_true(.iaSdReachesGrid(c(NA, 10), c(0, 0), c(0, 0), c(40, 40)))
   # a printed SD exactly at the bound is admissible
   expect_true(.iaSdReachesGrid(0.5, 6, 0, 4))          # 0.5 against 0.5
+  # A BLANK or ABSENT dispersion precision is inferred from the SD's own
+  # printed decimals, as the simulation infers it - an absent column made
+  # the whole test vacuous and an NA made it falsely strict (CodeRabbit on
+  # PR #221)
+  expect_false(.iaSdReachesGrid(1, NULL, -3, 1000))    # still caught
+  expect_false(.iaSdReachesGrid(1, NA, -3, 1000))
+  expect_true(.iaSdReachesGrid(10, NULL, 0, 40))       # honest, still passes
+  expect_true(.iaSdReachesGrid(1, NA, 0, 4))           # inferred interval, 1.5 vs 0.5
+})
+
+test_that("F1 reaches a direct caller that supplies no ROUND_DISPERSION column", {
+  D <- data.frame(TRIAL = "T", ROW = "X", N = rep(1000, 3), MEAN = rep(500, 3),
+                  SD = rep(1, 3), ROUND_MEAN = 0, ROUND_OBSERVATION = -3,
+                  stringsAsFactors = FALSE)
+  expect_match(runRow(D)$P, "stated precision")
 })
 
 test_that("F2: a stated precision finer than the printed value is DISCLOSED, not refused", {

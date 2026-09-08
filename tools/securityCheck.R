@@ -271,8 +271,11 @@ for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
 # share it, and one of them did not (screen 2026-09-07-2000, F3). A zip may
 # carry 300 files, so a per-file cap is the only thing between one upload
 # and a grid of tens of thousands of rows.
+# each producer named separately: counting calls would accept two in one
+# block and none in the other (CodeRabbit on PR #221)
 as_ <- sub("#.*$", "", srcOf("R/app_server.R"))
-if (sum(grepl(".iaCapSkipped(", as_, fixed = TRUE)) < 2)
+if (!any(grepl("blk$skipped <- .iaCapSkipped(", as_, fixed = TRUE)) ||
+    !any(grepl("r$skipped <- .iaCapSkipped(", as_, fixed = TRUE)))
   note(paste("R/app_server.R: one of the two skipped-line producers no longer",
              "caps what it adds to the grid - a zip of many files would build",
              "an unbounded grid and an unbounded skip registry"))
