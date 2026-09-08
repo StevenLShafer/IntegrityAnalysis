@@ -448,46 +448,49 @@ there is no error text to read. A legend under the grid explains the
 colors whenever any cell is painted, and hovering over a painted cell
 explains that specific cell:</p>
 <ul>
-<li><strong>Yellow — missing.</strong> A required value is empty. Enter
-it, or delete the row. Rows with a label but no data at all are left out
-of the analysis (they do not block it).</li>
-<li><strong>Red — unreadable.</strong> Text where a number belongs — for
-example “n/a” in an SD cell of an uploaded spreadsheet — or a table line
-the PDF reader saw but could not use. For a PDF line, hover over the red
-cell to see the reader’s reason (for example, “median [range] - the
-analysis needs quartiles (Q1/Q3), not the range”).</li>
-<li><strong>Blue — incongruent.</strong> The value conflicts with the
+<li><p><strong>Yellow — missing.</strong> A required value is empty.
+Enter it, or delete the row. Rows with a label but no data at all are
+left out of the analysis (they do not block it).</p></li>
+<li><p><strong>Red — unreadable.</strong> Text where a number belongs —
+for example “n/a” in an SD cell of an uploaded spreadsheet — or a table
+line the PDF reader saw but could not use. For a PDF line, hover over
+the red cell to see the reader’s reason (for example, “median [range] -
+the analysis needs quartiles (Q1/Q3), not the range”).</p></li>
+<li><p><strong>Blue — incongruent.</strong> The value conflicts with the
 type of its row: an SD on a median/IQR row, continuous entries on a
 category row, a median outside its own quartiles, an SE standing in for
-a missing SD.</li>
-<li><strong>Green — derived or AI-read.</strong> The parser computed the
-value (a percentage converted to a count, or an arm N recovered from the
-document), or the AI assist read the line off the page (its ROW cell is
-green). Usable as it stands, but check it against the manuscript before
-it runs; hover the cell to see how it was derived.</li>
-<li><strong>Orange — fail-safe count.</strong> The page printed only a
-percentage, and for this arm size several counts fit it (above 100
-patients at integer percentages, above 1,000 at one decimal). The
-ambiguous cells of the row are filled with whichever admissible counts
-leave the arms <strong>least alike</strong> - every combination the
-printed percentages allow is tried where a row has eight or fewer
-ambiguous cells, and the least homogeneous is kept; with more than eight
-the app searches from both ends instead of trying all of them, which has
-matched the exhaustive answer on every row measured - so the row can
-look less alike than the truth but never more: the analysis is
-conservative for that row, and markedly so — a row that would alarm on
-printed counts usually will not alarm on printed percentages. Hover the
-cell for the bracket of counts the percentage allows. This is a design
-decision for incomplete data, not a reading of the page; the printed
-counts, if you can get them from the author, settle it. The checkbox
-above the upload turns the fill off, in which case such rows are left
-out of the analysis.</li>
-<li><strong>Pale cyan — read by OCR.</strong> The whole table came from
-a scanned page, or an uploaded picture of a table, read by optical
+a missing SD.</p></li>
+<li><p><strong>Green — derived or AI-read.</strong> The parser computed
+the value (a percentage converted to a count, or an arm N recovered from
+the document), or the AI assist read the line off the page (its ROW cell
+is green). Usable as it stands, but check it against the manuscript
+before it runs; hover the cell to see how it was derived.</p></li>
+<li><p><strong>Orange — fail-safe count.</strong> The page printed only
+a percentage, and for this arm size several counts fit it (above 100
+patients at integer percentages, above 1,000 at one decimal). The app
+then reads the page in the way most favourable to the authors. Every
+whole table the printed percentages allow is built — each cell inside
+the bracket its percentage permits, and each arm’s counts adding up to
+that arm’s N — and each is scored with the same statistic and the same
+null the analysis itself uses. The one <strong>analysed is the one with
+the largest p</strong>: the authors get every benefit of the doubt the
+page allows. Hover the cell for the bracket of counts the percentage
+allows and for the best and worst p the page could have produced.</p>
+<p>When the best and the worst reading fall on opposite sides of p =
+0.01, the row says so, because then the printed counts decide the answer
+and the percentages do not. Ask the authors for the counts before acting
+on such a trial. If a row allows more readings than can be enumerated,
+the app says that too, and the best of a bounded search is used instead.
+This is a design decision for incomplete data, not a reading of the
+page; the printed counts, if you can get them from the author, settle
+it. The checkbox above the upload turns the fill off, in which case such
+rows are left out of the analysis.</p></li>
+<li><p><strong>Pale cyan — read by OCR.</strong> The whole table came
+from a scanned page, or an uploaded picture of a table, read by optical
 character recognition. OCR can misread digits (3 vs 8, 1 vs 7), and in a
 fraud screen a single silently wrong digit matters — verify every value
 against the manuscript, or enter an Anthropic API key and re-upload for
-the higher-accuracy AI read.</li>
+the higher-accuracy AI read.</p></li>
 </ul>
 <p>A table with no colors and no legend validated cleanly. The
 <strong>Analyze</strong> button appears whenever validation did not fail

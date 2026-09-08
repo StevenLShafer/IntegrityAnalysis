@@ -521,6 +521,17 @@
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
   pctApproxRows <- character(0) # rows using the opt-in approximation
+  # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
+  # counts a printed percentage allows are decided for the whole
+  # arms-by-levels block at once, and a block is only complete after
+  # this loop has walked every one of its lines. So each line records
+  # its brackets here, keyed by the block and the level column, and the
+  # choice is made below, once, against the statistic P_Calc actually
+  # scores. See R/failsafeTable.R for why the per-line rule it replaced
+  # was not merely imprecise but backwards.
+  pctBrackets  <- list()       # [[blockKey]][[column]] = list(lo, hi, pct)
+  pctStraddle  <- character(0) # blocks where the choice crosses p = 0.01
+  pctBounded   <- character(0) # ... and where the search had to be bounded
   derivedCells <- list()       # (ROW, COL, KIND, NOTE) for the app grid
   addDerived <- function(rowName, colName, kind, note)
     derivedCells[[length(derivedCells) + 1]] <<-
@@ -703,10 +714,16 @@
       # response flags name the rows. Exact brackets (one integer) are
       # untouched.
       lo <- rep(NA_integer_, nArms); hi <- rep(NA_integer_, nArms)
+      # the PERCENTAGE each arm printed, kept here because the loop
+      # below overwrites armTok[[j]]$num1 with the count it chose, and
+      # the note built after that would otherwise quote the count where
+      # it means to quote the percentage
+      pctSeen <- rep(NA_real_, nArms)
       for (j in which(present)) {
         t <- armTok[[j]]
         if (!t$type %in% c("pctOnly", "plain")) next
         N <- armN[arms[j]]
+        pctSeen[j] <- suppressWarnings(as.numeric(t$num1))
         b <- .ppCountBracket(t$num1, t$dec1, N)
         if (anyNA(b)) next
         if (b[1] == b[2]) {
@@ -757,7 +774,12 @@
         pendingDerive <- list(
           kind = if (any(approx[present])) "failsafe" else "unique",
           note = paste(notes[present][!is.na(notes[present])],
-                       collapse = "; "))
+                       collapse = "; "),
+          # the bracket ends and the printed percentage, per arm, NA
+          # where this arm's cell was pinned or absent; consumed with
+          # the note below and settled jointly after the loop
+          lo = lo, hi = hi,
+          pct = pctSeen)
         # Children of a category header accumulate into its row as counts;
         # a standalone percent row is a binary category with a complement,
         # exactly like a printed "n (%)" cell.
@@ -954,14 +976,33 @@
         if (haveN) out[[complementName]] <- armN[arms[j]] - cnt
         out
       })
+      # A binary "n (%)" row is a two-level table in its own right, and
+      # its counts are chosen the same way (2026-09-08). The complement
+      # is not free: it is the arm N minus the count, so its bracket is
+      # the count's bracket reflected, and the sum-to-N constraint below
+      # ties the pair together. Recording it under a key of its own
+      # keeps it out of any category BLOCK, which merges by header.
+      npctKey <- paste0("__npct__", rowName)
       if (!is.null(pendingDerive)) {
         addDerived(rowName, catName, pendingDerive$kind, pendingDerive$note)
         if (haveN)
           addDerived(rowName, complementName, pendingDerive$kind,
                      "complement: arm N minus the derived count")
+        if (identical(pendingDerive$kind, "failsafe") && haveN &&
+            !is.null(pendingDerive$lo)) {
+          armSize <- armN[arms]
+          pctBrackets[[npctKey]] <- list()
+          pctBrackets[[npctKey]][[catName]] <-
+            list(lo = pendingDerive$lo, hi = pendingDerive$hi,
+                 pct = pendingDerive$pct)
+          pctBrackets[[npctKey]][[complementName]] <-
+            list(lo = as.integer(armSize - pendingDerive$hi),
+                 hi = as.integer(armSize - pendingDerive$lo),
+                 pct = 100 - pendingDerive$pct)
+        }
       }
       outRows[[length(outRows) + 1]] <-
-        list(row = rowName, type = "category", perArm = perArm)
+        list(row = rowName, type = "category", perArm = perArm, key = npctKey)
 
     } else if (mainType == "plain") {
       # "Median  71.9  82.3 ..." is a summary statistic, not counts, and
@@ -1011,8 +1052,16 @@
             if (!is.null(counts[[j]]))
               outRows[[e]]$perArm[[j]] <- c(outRows[[e]]$perArm[[j]], counts[[j]])
         }
-        if (!is.null(pendingDerive))
+        if (!is.null(pendingDerive)) {
           addDerived(rowName, catName, pendingDerive$kind, pendingDerive$note)
+          if (identical(pendingDerive$kind, "failsafe") &&
+              !is.null(pendingDerive$lo)) {
+            if (is.null(pctBrackets[[key]])) pctBrackets[[key]] <- list()
+            pctBrackets[[key]][[catName]] <-
+              list(lo = pendingDerive$lo, hi = pendingDerive$hi,
+                   pct = pendingDerive$pct)
+          }
+        }
       } else {
         addSkip(label, "bare number with no category header and no SD - not usable",
                 txt)
@@ -1021,6 +1070,119 @@
   }
 
   if (length(outRows) == 0) return(NULL)
+
+  # ---- THE JOINT FAIL-SAFE FILL -------------------------------------------
+  # Every level of the variable is now known, so the counts behind its
+  # printed percentages can be chosen the way P_Calc will read them: as
+  # one arms-by-levels table, with each arm's counts summing to that
+  # arm's N. .ppFailsafeTableFill() enumerates the admissible tables,
+  # scores each with the engine's own statistic and null, and returns
+  # the BEST CASE - the largest p, the reading most favourable to the
+  # authors (Steve Shafer's decision, 2026-09-08). The smallest p comes
+  # back beside it, and when the two fall on opposite sides of p = 0.01
+  # the block is named so the app and the flags can say that the choice
+  # decided the answer.
+  #
+  # Until this pass existed the levels were chosen one line at a time,
+  # each maximising its own statistic against its own complement. That
+  # drove every level the same way in the same arm, which left the arms
+  # in identical proportions - the most homogeneous reading, not the
+  # least - and let an arm of 200 be rebuilt as 203. R/failsafeTable.R
+  # carries the measurements.
+  if (length(pctBrackets)) {
+    Ns <- armN[arms]
+    for (bk in names(pctBrackets)) {
+      e <- which(vapply(outRows, function(r) identical(r$key, bk), logical(1)))
+      if (!length(e)) next
+      e <- e[1]
+      # every level of the block, not only the ambiguous ones: a level
+      # printed as a count constrains the arm total just as much
+      cols <- unique(unlist(lapply(outRows[[e]]$perArm, names)))
+      if (length(cols) < 2) next
+      lo <- hi <- cnt <- matrix(NA_integer_, nArms, length(cols),
+                                dimnames = list(NULL, cols))
+      for (j in seq_len(nArms)) {
+        v <- outRows[[e]]$perArm[[j]]
+        if (is.null(v)) next
+        for (k in seq_along(cols))
+          if (!is.null(v[[cols[k]]])) cnt[j, k] <- as.integer(v[[cols[k]]])
+      }
+      b <- pctBrackets[[bk]]
+      for (k in seq_along(cols)) {
+        bb <- b[[cols[k]]]
+        if (is.null(bb)) next
+        lo[, k] <- as.integer(bb$lo); hi[, k] <- as.integer(bb$hi)
+        # the per-line rule already wrote a count into these cells; drop
+        # it, so the joint pass chooses them rather than inheriting a
+        # choice made against the wrong statistic
+        cnt[!is.na(bb$lo), k] <- NA_integer_
+      }
+      amb <- is.na(cnt) & !is.na(lo) & !is.na(hi)
+      if (!any(amb)) next
+      lo[!amb] <- cnt[!amb]; hi[!amb] <- cnt[!amb]
+      usable <- which(is.finite(Ns) & Ns > 0 &
+                      rowSums(is.na(lo) | is.na(hi)) == 0)
+      if (length(usable) < 2) next
+      # DO THE LEVELS PARTITION THE ARM? Only then do the counts have to
+      # sum to N. The test is whether N is reachable at all from the
+      # admissible cells, and whether the middle of the brackets lands
+      # near it; a block of overlapping or non-exhaustive levels fails
+      # both and is enumerated under the weaker constraint instead.
+      mid <- (lo + hi) / 2
+      exhaustive <- all(vapply(usable, function(j)
+        sum(lo[j, ]) <= Ns[j] && Ns[j] <= sum(hi[j, ]) &&
+        abs(sum(mid[j, ]) - Ns[j]) <= 0.02 * Ns[j], logical(1)))
+      res <- .ppFailsafeTableFill(lo[usable, , drop = FALSE],
+                                  hi[usable, , drop = FALSE],
+                                  cnt[usable, , drop = FALSE], Ns[usable],
+                                  exhaustive = exhaustive)
+      if (!is.finite(res$pBest)) next
+      rowName <- outRows[[e]]$row
+      for (u in seq_along(usable)) {
+        j <- usable[u]
+        for (k in seq_along(cols)) {
+          if (!amb[j, k] || is.na(res$counts[u, k])) next
+          outRows[[e]]$perArm[[j]][[cols[k]]] <- as.integer(res$counts[u, k])
+        }
+      }
+      if (isTRUE(res$straddles)) pctStraddle <- c(pctStraddle, rowName)
+      if (!isTRUE(res$complete))  pctBounded <- c(pctBounded, rowName)
+      # the hover note now says what was actually done
+      for (k in seq_along(cols)) {
+        bb <- b[[cols[k]]]
+        if (is.null(bb)) next
+        txtNote <- character(0)
+        for (u in seq_along(usable)) {
+          j <- usable[u]
+          if (!amb[j, k]) next
+          txtNote <- c(txtNote, sprintf(
+            "%s%% of N=%d fits %d..%d; %d taken",
+            format(bb$pct[j]), as.integer(Ns[j]),
+            as.integer(bb$lo[j]), as.integer(bb$hi[j]),
+            as.integer(res$counts[u, k])))
+        }
+        if (!length(txtNote)) next
+        tail <- sprintf(
+          paste("FAIL-SAFE (best case): %s. Of the %s readings this page",
+                "allows, the one analysed is the one with the LARGEST p,",
+                "so the arms are given every benefit of the doubt.",
+                "Best case p ~ %.3g; worst case p ~ %.3g%s"),
+          paste(txtNote, collapse = "; "),
+          format(res$nTables, big.mark = ","), res$pBest, res$pWorst,
+          if (isTRUE(res$straddles))
+            " - the choice moves this row across p = 0.01" else "")
+        # compared by VALUE, not identical(): .ppUniqueName() returns a
+        # named character, and identical() counts the name, so the
+        # match silently found nothing and the hover note kept
+        # describing a choice that was no longer the one made
+        hit <- vapply(derivedCells, function(d)
+          isTRUE(unname(d$ROW) == unname(rowName)) &&
+          isTRUE(unname(d$COL) == unname(cols[k])) &&
+          isTRUE(unname(d$KIND) == "failsafe"), logical(1))
+        for (h in which(hit)) derivedCells[[h]]$NOTE <- tail
+      }
+    }
+  }
 
   # ---- Assemble the template-format data frame ----------------------------
   # Q1/Q3 appear only when a median row was actually emitted (issue 18):
@@ -1076,6 +1238,11 @@
        armNSource = armNSource[arms][keep],
        derivedCounts = unique(pctDerived),
        approxCounts  = unique(pctApproxRows),
+       # rows where the best and the worst admissible readings fall on
+       # opposite sides of p = 0.01, and rows whose admissible set was
+       # too large to enumerate completely (2026-09-08)
+       approxStraddle = unique(pctStraddle),
+       approxBounded  = unique(pctBounded),
        derivedCells  = if (length(derivedCells)) do.call(rbind, derivedCells)
                        else NULL,
        clusters   = nArms,
@@ -1545,6 +1712,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
          armNSource = best$armNSource,
          derivedCounts = best$derivedCounts,
          approxCounts  = best$approxCounts,
+         approxStraddle = best$approxStraddle,
+         approxBounded  = best$approxBounded,
          derivedCells  = best$derivedCells,
          engine     = eng),
     class = "ParsePDFTable")

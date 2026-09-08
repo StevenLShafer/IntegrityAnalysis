@@ -238,20 +238,26 @@ app_ui <- function(testNote = NULL)
                                ".jpg", ".jpeg", ".png", ".tif", ".tiff",
                                ".zip")),
           # The fail-safe fill (Steve, 2026-09-07; first an opt-in
-          # approximation, 2026-08-21). Of every set of counts the row's
-          # printed percentages allow, the row is built from the one that
-          # leaves the arms LEAST alike, so it can look less alike than
-          # the truth but never more. That is a maximisation, not a rule
-          # of thumb: the two heuristics that came before it (push each
-          # arm away from the pooled proportion; split the ambiguous arms
-          # against each other) each left honest rows more alike than the
-          # page allows - security screens 2026-09-07-1609 and -1654.
+          # approximation, 2026-08-21; rule replaced 2026-09-08). Every
+          # whole arms-by-levels table the printed percentages allow is
+          # enumerated - each cell inside its own bracket, each arm's
+          # counts summing to that arm's N - and scored with the
+          # statistic and null the analysis uses. The reading kept is the
+          # one with the LARGEST p: the best case for the authors, which
+          # is Steve's decision and the only one of the four rules tried
+          # here that is what it claims to be. The three before it each
+          # optimised a proxy, and the last was actively harmful - it
+          # maximised each LEVEL against its own complement, which drove
+          # every level the same way in the same arm and so left the arms
+          # in identical proportions, the most homogeneous reading of the
+          # page rather than the least. See R/failsafeTable.R.
           # Such cells paint ORANGE in the grid with the bracket in their
           # hover note; exact conversions still paint green.
           checkboxInput("pctApprox", paste(
             "Fill percent-only cells whose percentage fits several counts",
-            "with the counts that leave the arms least alike (fail-safe;",
-            "such cells show orange in the table below)"), value = TRUE, width = "100%"),
+            "with the reading of the page that gives the authors the",
+            "benefit of the doubt (fail-safe, best case; such cells show",
+            "orange in the table below)"), value = TRUE, width = "100%"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never
           # goes in a URL, is never stored or logged, and dies with the

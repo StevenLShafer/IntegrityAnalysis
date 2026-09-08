@@ -367,19 +367,36 @@ makes a number reproducible; it does not make it more precise.
   **maximisation**, not by a rule of thumb: of every set of counts the
   row's printed percentages allow - one end of each ambiguous arm's
   bracket, the exactly pinned arms held fixed - the row is built from the
-  set with the largest value of the statistic the screen goes on to
-  simulate. Up to eight ambiguous arms every such set is tried, so that is
-  a statement about all of them; above eight the search is a coordinate
-  ascent from both ends, which matched the exhaustive answer on every row
-  measured but is not proven to reach it. The row therefore looks as
-  *unlike* as the page permits - exactly so within the exhaustive range,
-  and as far as a two-start search reaches above it - so it can look less
-  alike than the truth, never more, and its p is conservative. (Two heuristics preceded this one and neither kept that
-  promise: pushing every ambiguous arm away from one pooled proportion
-  gave arms on the same side identical counts, and splitting the
-  ambiguous arms against each other by rank ignored the pinned arms.
-  Both were caught by the security screens of 2026-09-07 and are
-  recorded in [method-history.md](method-history.md).) How conservative is worth stating: a
+  whole TABLE with the largest p. The candidates are every
+  arms-by-levels table in which each cell lies inside the bracket its
+  printed percentage allows and each arm's counts sum to that arm's N;
+  each is scored with the fixed-margin Pearson statistic against its own
+  simulated null, which is what the screen goes on to compute. The
+  reading analysed is the one most favourable to the authors, and the
+  smallest p over the same candidates is reported beside it whenever the
+  two fall on opposite sides of p = 0.01.
+
+  Two economies make that affordable. The null depends only on the
+  margins, and constraining each arm to its N pins the arm margin, so
+  only the level totals vary: three levels across two arms of 200 admit
+  49 tables but only 19 distinct nulls, five levels admit 2,601 tables
+  and 381 nulls. And within one level-total group the mid-p is
+  non-decreasing in the statistic, so only that group's extreme tables
+  can be its best or its worst. Beyond `.ppTableEnumMax` candidates the
+  search is bounded rather than complete and the row is flagged as such.
+
+  (Three rules preceded this one and none kept its promise. Pushing
+  every ambiguous arm away from one pooled proportion gave arms on the
+  same side identical counts; splitting the ambiguous arms by rank
+  ignored the pinned arms; and maximising each LEVEL against its own
+  complement — the rule until 2026-09-08 — was worse than either. It
+  optimised a statistic the engine does not compute, it let an arm of
+  200 be rebuilt as 203, and because it drove every level the same way
+  in the same arm it left the arms in identical proportions: the most
+  homogeneous reading of the page rather than the least. On three levels
+  printed 33/33/34 across two arms of 200 it returned p = 0.0041 where
+  the admissible readings run to 0.048. All are recorded in
+  [method-history.md](method-history.md).) How conservative is worth stating: a
   two-arm row of 5,000 per arm printed as counts 2,500 and 2,500 reads
   p = 0.008, and the same row printed as "50%" and "50%" reads p = 0.68.
   A row that would alarm on printed counts usually will not alarm on

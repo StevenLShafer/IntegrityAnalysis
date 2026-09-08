@@ -171,16 +171,26 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 **Incomplete data: fail-safe counts.** A table that prints only a
 percentage for a categorical level gives the count exactly when the arm
 has 100 or fewer patients (1,000 at one printed decimal); above that,
-several counts fit the printed percentage. The service fills such cells by
-**maximisation**: of every set of counts the row's printed percentages
-allow, with the exactly pinned arms held fixed, it builds the set that
-leaves the arms least alike. The
-row can look less alike than the truth but never more, and the trial p is
-conservative for that row — markedly so: a two-arm row of 5,000 per arm
+several counts fit the printed percentage. The service fills such cells
+with the **best case for the authors**: it enumerates every whole
+arms-by-levels table the printed percentages allow — each cell inside
+its own bracket, each arm's counts summing to that arm's N — scores each
+with the statistic and null the analysis itself uses, and keeps the one
+with the largest p. The trial p is therefore the most favourable reading
+the page permits, and markedly so: a two-arm row of 5,000 per arm
 printed as counts 2,500 and 2,500 reads p = 0.008, and the same row
-printed as "50%" and "50%" reads p = 0.68. Every such row is named in
-`flags` ("… category row(s) use FAIL-SAFE counts …") on **both** routes,
-`/parse` and `/analyze`, and the same rule and colour apply in the app. This is a design decision for incomplete data, not a
+printed as "50%" and "50%" reads a far larger one. Every such row is
+named in `flags` ("… category row(s) use FAIL-SAFE counts …") on
+**both** routes, `/parse` and `/analyze`, and the same rule and colour
+apply in the app.
+
+Two further flags may follow. When the best and the worst admissible
+readings fall on opposite sides of p = 0.01, the rows are named ("… row(s)
+cross p = 0.01 between the best and the worst reading …"): for those the
+printed counts decide the answer and the percentages do not, so get the
+counts before acting. When a row allows more readings than can be
+enumerated, the rows are named too and the best of a bounded search is
+used, which may not be the best the page allows. This is a design decision for incomplete data, not a
 reading of the page: if the author supplies the printed counts, resubmit
 with them. Cells whose percentage fits exactly one count are converted
 exactly and flagged as such.
