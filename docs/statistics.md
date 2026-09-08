@@ -377,6 +377,24 @@ makes a number reproducible; it does not make it more precise.
   under the model. It does not include extraction error, an unsuitable
   randomization model, dependence, or the probability of fraud, and
   more replicates cannot correct those.
+- **What the screen looks at, and what it therefore cannot see.** The
+  statistic is built from the arms' *locations* — their means, or their
+  medians — measured against the spread the table reports. The arms'
+  dispersions enter only as the one pooled number that says how far
+  apart honest locations should fall; their disagreement with each other
+  is never itself a tested quantity. **Fabrication confined to the
+  dispersions is therefore invisible to this screen**, by construction
+  and not by accident. The GPT-6 audit of 2026-09-07 demonstrated it
+  directly: with 100 per arm and means of 50 and 52, replacing the
+  standard deviations (10, 10) with (0, √200) — a radical change, one
+  arm with no variation at all — leaves the pooled variance and the
+  reported p identical at 0.8365, and both tables pass validation
+  ([docs/audits/](audits/), finding F6). A separate dispersion-aware
+  instrument is the remedy, calibrated on its own; the package ships one
+  (Barnett's test, below) and deliberately does not fold its evidence
+  into this combination, because two instruments looking at the same
+  table are not independent evidence and combining them would understate
+  the p. Read them side by side instead.
 
 ## One sentence for the skeptical reader
 
