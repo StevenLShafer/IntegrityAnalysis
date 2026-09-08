@@ -294,6 +294,80 @@
 # hObs (odd N, it is an observation) or hObs/2 (even N, the average of the
 # two central ones) - far coarser, so passing N there would accept medians
 # no rounded sample could produce (CodeRabbit on PR #220).
+# F1 of screen 2026-09-07-2000: the location-side rule above is vacuous
+# wherever hObs/N is finer than the printed mean's own step, which an
+# attacker arranges by picking N - at a thousand per arm and integer means,
+# an observation grid of a thousand passes unconditionally. The
+# DISPERSION side closes it, and it is a theorem rather than a heuristic:
+# N values on a grid of width h have a sample SD that is either exactly 0
+# (every value the same) or at least h/sqrt(N). A table claiming SD 1 for
+# a thousand values on a grid of a thousand is arithmetically impossible,
+# and it was simulated anyway - three arms of 1,000 printing mean 500 and
+# SD 1 read p = 0.5 honestly and 9.999e-05, the reportable floor with the
+# "attainable floor" note, at ROUND_OBSERVATION = -3.
+#
+# The printed SD's own interval is used (its upper end), so no honestly
+# coarse table is refused for the width of its own printing.
+.iaSdReachesGrid <- function(sd, decDisp, decObs, N) {
+  n <- max(length(sd), length(decDisp), length(decObs), length(N))
+  sd <- rep(sd, length.out = n); decDisp <- rep(decDisp, length.out = n)
+  decObs <- rep(decObs, length.out = n); N <- rep(N, length.out = n)
+  ok <- is.finite(sd) & is.finite(decObs) & is.finite(N) & N > 0
+  if (!any(ok)) return(TRUE)
+  sd <- sd[ok]; N <- N[ok]
+  # the printed SD's interval, from the same helper the simulation uses,
+  # so a blank or absent ROUND_DISPERSION is INFERRED from the SD's own
+  # printed decimals rather than leaving the test vacuous (an absent
+  # column made hDisp empty, and every row passed) or falsely strict (an
+  # NA made it zero) - CodeRabbit on PR #221
+  sdHi  <- .iaSdInterval(sd, if (is.null(decDisp)) NULL else decDisp[ok])$hi
+  hObs  <- 10^(-decObs[ok])
+  all(sd == 0 | sdHi >= hObs / sqrt(N) * (1 - 1e-9))
+}
+
+# F2 of the same screen: .iaOnStatedGrid is one-sided by construction -
+# every decimal sits on every FINER grid - so a stated precision finer than
+# the printed value passes every check above. An over-fine ROUND_MEAN
+# erases the rounding of the simulated arm means, and the tie mass that
+# rounding creates IS how an honest table with identical printed means
+# earns a large p: three arms of 30 printing mean 0.5 read 0.4185 at
+# ROUND_MEAN = 1 and 9.999e-05 at 15.
+#
+# This one is NOT a refusal, and the reason matters. A mean stored as 50
+# may have been printed "50" or "50.000000" - a spreadsheet keeps no
+# trailing zeros - so the honest row and the manipulated one are the same
+# numbers. The engine cannot tell them apart, and the 2026-09-06 outside
+# audit's own case is the honest one: integer observations with a
+# six-decimal printed mean, where the small p IS the right answer, because
+# means agreeing to six decimals is remarkable. So the row is analysed as
+# the table claims and the claim is DISCLOSED in the Note, where an editor
+# reading a small p can see what it rests on. The two decimals of slack
+# cover the trailing zeros a spreadsheet drops when it stores "1.20".
+.iaMeanPrecisionSlack <- 2L
+# the Note the row carries when that claim is made, so a small p never
+# arrives without the thing it rests on
+.iaFinePrecisionNote <- function(value, dec) {
+  if (.iaStatedPrecisionNotTooFine(value, dec)) return("")
+  # ...and only where the claim decides the answer: the printed means all
+  # equal, which is the shape whose p is the tie mass. With the means a
+  # printed unit apart the screen measured the effect as negligible
+  # (0.0029 -> 0.0036), so a note there would be noise.
+  v <- value[is.finite(value)]
+  if (length(v) < 2 || length(unique(v)) > 1) return("")
+  d <- suppressWarnings(as.numeric(dec))
+  paste0("the stated mean precision (", max(d[is.finite(d)]),
+         " decimals) is finer than the printed values; the p depends on that claim")
+}
+
+.iaStatedPrecisionNotTooFine <- function(value, dec) {
+  n <- max(length(value), length(dec))
+  value <- rep(value, length.out = n); dec <- suppressWarnings(as.numeric(rep(dec, length.out = n)))
+  ok <- is.finite(value) & is.finite(dec)
+  if (!any(ok)) return(TRUE)
+  shown <- max(vapply(value[ok], .iaDecimals, integer(1)))
+  all(dec[ok] <= shown + .iaMeanPrecisionSlack)
+}
+
 .iaObservationGridOK <- function(value, decValue, decObs, N) {
   n <- max(length(value), length(decValue), length(decObs), length(N))
   value <- rep(value, length.out = n); decValue <- rep(decValue, length.out = n)
@@ -562,7 +636,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                    # with each other (screen 1907 F2)
                    .iaZeroRowGridOK(c(ROWS$MEAN, ROWS$SD,
                                       if (isQuartile) c(ROWS$Q1, ROWS$Q3)),
-                                    ROWS$ROUND_MEAN, ROWS$ROUND_DISPERSION)))
+                                    ROWS$ROUND_MEAN, ROWS$ROUND_DISPERSION) &&
+                   # the dispersion side of the observation grid: values on
+                   # a lattice cannot have an SD below h/sqrt(N) unless they
+                   # are all identical (screen 2000 F1). The median branch
+                   # needs no analogue - its divisor of 1 or 2 already holds
+                   # hObs to within a factor of two of the median's grid.
+                   (isQuartile ||
+                    .iaSdReachesGrid(ROWS$SD, ROWS$ROUND_DISPERSION,
+                                     ROWS$ROUND_OBSERVATION, ROWS$N))))
         {
           # a stated grid the printed numbers do not sit on (screen 1758 F1,
           # extended by screen 1907's F1 and F2)
@@ -817,7 +899,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median", note = skewNote,
+          simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
+                         note = paste(c(skewNote[nzchar(skewNote)],
+                                        .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN)),
+                                      collapse = "; "),
                          zeroTol = 1e-26 * (1 + center^2))
           }
           }
@@ -991,6 +1076,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
+                         note = .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
                          zeroTol = 1e-26 * (1 + Meanmean^2))
         } else {
           # FIX: drop = FALSE added. With a single category column,

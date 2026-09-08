@@ -878,7 +878,16 @@ of 100 can only land on a multiple of 2.5 — and the analysis says so
 rather than believing it. How much room there is depends on the arm size,
 since the mean of N measurements on a grid moves in steps of that grid
 divided by N; a median moves in whole steps, or half-steps for an even
-number of patients.
+number of patients. The reported spread is checked against the same grid
+from the other side: measurements a step apart cannot produce a standard
+deviation smaller than that step divided by the square root of the number
+of patients, unless every measurement was identical. A precision finer than the printed
+value is not refused — a spreadsheet drops trailing zeros, so a mean
+printed "50.000000" and one printed "50" reach the app as the same number
+— but it is disclosed: such a row is analysed as the table claims, and the
+Note beside its p says the answer depends on that claim, because a finer
+precision quietly removes the rounding that decides whether two arms
+printing the same number is remarkable.
 Quartiles of 40 and 60 reported to the nearest ten are fine; quartiles of
 45 and 55 said to be printed to the nearest ten are not, and neither is
 any value paired with a far coarser claim. This matters more than it

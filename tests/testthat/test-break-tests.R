@@ -168,7 +168,13 @@ test_that("'attainable floor' means the arms agree exactly, not merely that no r
   d$MEAN <- c(77, 77)
   dqrng::dqset.seed(1); set.seed(1)
   y <- suppressWarnings(shiny::isolate(P_Calc("T", d, NULL, 100000)))
-  expect_identical(y$NOTE[1], "attainable floor")
+  # the floor note, now beside the disclosure that this row's six-decimal
+  # claim is finer than its printed values - the arms print "77", so the
+  # p rests on a precision the page does not show (security screen
+  # 2026-09-07-2000, F2, which is a note and not a refusal because the
+  # honest and the manipulated row are the same numbers)
+  expect_match(y$NOTE[1], "^attainable floor")
+  expect_match(y$NOTE[1], "stated mean precision")
 })
 
 test_that("a Word table wider than the JATS caps, or with too many cells, is not materialised (repeat screen F2)", {
