@@ -106,12 +106,18 @@ test_that("the honest shapes every earlier screen pinned still run", {
   expect_false(grepl("precision", runRow(flat(2, 40, 5, 0, 0, 0, 0), m = 1000)$P))
 })
 
-test_that("F3: both producers of unusable lines share the cap", {
-  # the cap was extracted so that both call sites could use it, and one of
-  # them did not (the wide-spreadsheet branch, whose skips are otherwise
-  # bounded only by the sheet row cap of 10,000)
-  src <- readLines(system.file("..", "R", "app_server.R",
-                               package = "IntegrityAnalysis", mustWork = FALSE))
-  if (!length(src)) src <- readLines(file.path("..", "..", "R", "app_server.R"))
-  expect_gte(sum(grepl(".iaCapSkipped(", src, fixed = TRUE)), 2)
+test_that("F3: the cap itself, and both producers sharing it", {
+  # the function both producers call: a 250-row frame comes back capped
+  # with its marker, whatever columns the parser's frame carries
+  sk <- data.frame(label = paste("line", seq_len(250)),
+                   reason = paste("reason", seq_len(250)),
+                   text = paste("text", seq_len(250)), stringsAsFactors = FALSE)
+  expect_equal(nrow(.iaCapSkipped(sk)), .iaMaxSkippedRows + 1L)
+  # ...and that BOTH call sites use it. The source is not installed with
+  # the package, so this half runs from a source checkout only; the same
+  # property is pinned in tools/securityCheck.R, which the security screen
+  # runs before every screen.
+  src <- file.path("..", "..", "R", "app_server.R")
+  skip_if(!file.exists(src), "not a source checkout")
+  expect_gte(sum(grepl(".iaCapSkipped(", readLines(src), fixed = TRUE)), 2)
 })
