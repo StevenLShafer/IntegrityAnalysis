@@ -75,9 +75,19 @@
   if (is.null(flags) || !length(flags)) return(NULL)
   f <- as.character(flags)
   f <- .apiScrubPath(f, work, name)
+  # by BYTES, and substr() counts characters: a flag of 2,048 accented
+  # letters is 4,096 bytes and survived the cut whole (CodeRabbit on PR
+  # #217). Characters are cut until the byte count fits, so a multi-byte
+  # character is never sliced in half either.
+  cut <- function(x) {
+    k <- nchar(x)
+    while (k > 0 && nchar(substr(x, 1, k), type = "bytes") > .apiMaxFlagBytes)
+      k <- max(0L, k - max(1L, (nchar(substr(x, 1, k), type = "bytes") -
+                                .apiMaxFlagBytes) %/% 4L))
+    paste0(substr(x, 1, k), " ...truncated")
+  }
   long <- !is.na(f) & nchar(f, type = "bytes") > .apiMaxFlagBytes
-  if (any(long))
-    f[long] <- paste0(substr(f[long], 1, .apiMaxFlagBytes), " ...truncated")
+  if (any(long)) f[long] <- vapply(f[long], cut, character(1), USE.NAMES = FALSE)
   if (length(f) > .apiMaxFlags)
     f <- c(f[seq_len(.apiMaxFlags)],
            sprintf("...%d further flag(s) truncated", length(f) - .apiMaxFlags))

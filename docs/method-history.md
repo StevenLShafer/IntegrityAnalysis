@@ -544,10 +544,15 @@ instead of the thing promised.
    statistic of the level against its complement. It is convex in the
    counts, so its maximum over the box of admissible counts sits at a
    vertex, and every vertex is one lo/hi choice per ambiguous arm. Up to
-   twelve ambiguous arms every vertex is enumerated; beyond that — the
-   arm count follows the columns a document declares, so it is not ours
-   to bound — coordinate ascent runs from both corners. Verified against
-   exhaustive search on 3,000 random rows. Splitting arms that print
+   twelve ambiguous arms every vertex is enumerated, and there the answer
+   is the maximum by construction — verified against exhaustive search on
+   3,000 random rows. Beyond twelve — the arm count follows the columns a
+   document declares, so it is not ours to bound — coordinate ascent runs
+   from both corners, which is a local maximum and matched the exhaustive
+   answer on every row measured but is not proven to be the global one. A
+   baseline table with thirteen or more arms whose percentages are all
+   ambiguous is not a shape that has been seen; the guarantee is exact
+   below the bound and empirical above it. Splitting arms that print
    alike is no longer a rule but a consequence, and where the brackets
    force two rebuilt counts to coincide they are allowed to: what the
    editor reads is the row's p, not the appearance of the counts.

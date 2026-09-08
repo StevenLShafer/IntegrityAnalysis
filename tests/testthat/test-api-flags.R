@@ -28,6 +28,18 @@ test_that("a long flag is truncated, and the truncation is marked", {
   expect_match(out[1], "truncated")
 })
 
+test_that("a long flag of multi-byte characters is truncated by BYTES", {
+  # substr() counts characters: 2,048 euro signs are 6,144 bytes and used
+  # to pass the cut whole (CodeRabbit on PR #217)
+  # built by code point: a non-ASCII literal in a test file is a portability
+  # problem of its own
+  long <- strrep(intToUtf8(0x20AC), 3000)
+  out <- .apiSafeFlags(long, tempdir(), "u.pdf")
+  expect_lte(nchar(out[1], type = "bytes"), .apiMaxFlagBytes + 32L)
+  expect_match(out[1], "truncated")
+  expect_false(is.na(nchar(out[1])))          # no half character left behind
+})
+
 test_that("a long ARRAY of flags is truncated, and says how many were dropped", {
   many <- paste0("flag ", seq_len(120))
   out <- .apiSafeFlags(many, tempdir(), "u.pdf")
