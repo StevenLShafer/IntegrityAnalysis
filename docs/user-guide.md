@@ -772,6 +772,21 @@ help that the method is open: the mechanics are published in the
 Carlisle papers and the source is on GitHub, so a determined person can
 also use this tool to check whether their fabricated table passes.
 
+There is a second limitation, narrower and just as concrete. The screen
+compares the arms' **locations** — their means, or their medians —
+against the spread the table reports. The reported spreads themselves
+enter only as one pooled number saying how far apart honest locations
+should fall; whether the arms' standard deviations agree with each other
+is never a quantity this screen tests. **Numbers invented in the
+dispersion column alone are therefore invisible to it.** An independent
+audit demonstrated it on a two-arm table of 100 patients: changing the
+standard deviations from 10 and 10 to 0 and 14.14 — one arm with no
+variation whatsoever — leaves the p-value unchanged at 0.8365, because
+the pooled variance is the same. Barnett's dispersion test, which the
+package also implements, is the instrument that looks at that column;
+the two are reported side by side rather than combined, since two
+readings of one table are not two pieces of evidence.
+
 That is an honest limitation, not a reason to keep the method secret.
 Screening raises the cost and the risk of fabrication; it does not make
 fabrication impossible. It is one instrument among several — structural
