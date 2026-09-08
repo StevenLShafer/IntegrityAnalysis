@@ -693,7 +693,9 @@
       # enumeration 38% of honest 5,000-per-arm pairs fell below p = 0.01.
       # An ambiguous cell takes the count that leaves the arms LEAST
       # alike, chosen by .ppFailsafeCounts() below, which maximises the
-      # row's own statistic over the admissible sets (two heuristics
+      # row's own statistic over the admissible sets - exhaustively up to
+      # .ppFailsafeExact ambiguous arms, and by two-start coordinate
+      # ascent above that, which is a local maximum (two heuristics
       # preceded it and neither kept the promise; see that function) - the row can never look more homogeneous than the
       # page allows, only less - and is painted its own colour with the
       # note below, so the editor sees a design decision about incomplete

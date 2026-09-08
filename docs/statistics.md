@@ -372,9 +372,9 @@ makes a number reproducible; it does not make it more precise.
   a statement about all of them; above eight the search is a coordinate
   ascent from both ends, which matched the exhaustive answer on every row
   measured but is not proven to reach it. The row therefore looks as
-  *unlike* as the page permits: it
-  can look less alike than the truth, never more, and its p is
-  conservative. (Two heuristics preceded this one and neither kept that
+  *unlike* as the page permits - exactly so within the exhaustive range,
+  and as far as a two-start search reaches above it - so it can look less
+  alike than the truth, never more, and its p is conservative. (Two heuristics preceded this one and neither kept that
   promise: pushing every ambiguous arm away from one pooled proportion
   gave arms on the same side identical counts, and splitting the
   ambiguous arms against each other by rank ignored the pinned arms.
