@@ -104,6 +104,13 @@ test_that("F3: the reply's list of unusable lines is bounded and scrubbed", {
   expect_equal(length(out), .apiMaxSkipped + 1L)
   expect_match(out[[length(out)]]$label, "further line")
   expect_match(out[[length(out)]]$label, "300")
+  # every entry up to the cap carries its own text: routing these through
+  # .apiSafeFlags() would have spent that function's cap of 50 on them and
+  # left entries 51 to 200 as NA (CodeRabbit on PR #219)
+  expect_equal(out[[51]]$label, "line 51")
+  expect_equal(out[[.apiMaxSkipped]]$label, paste("line", .apiMaxSkipped))
+  expect_equal(out[[51]]$reason, "reason 51")
+  expect_false(any(vapply(out, function(e) is.na(e$label), logical(1))))
   # a short list passes through whole
   short <- data.frame(label = "a line", reason = "a reason", stringsAsFactors = FALSE)
   expect_equal(length(.apiSafeSkipped(short, tempdir(), "u.pdf")), 1L)

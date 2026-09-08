@@ -1158,15 +1158,23 @@ app_server <- function(input, output, session) {
             # otherwise put one grid row in the browser per refused line
             # (security screen 2026-09-07-1758, finding F3, the app half).
             # The cap is generous beside any real table; the count is
-            # shown so nothing disappears silently.
-            keep <- seq_len(min(nrow(r$skipped), .iaMaxSkippedRows))
-            lab  <- r$skipped$label[keep]
-            if (nrow(r$skipped) > .iaMaxSkippedRows)
-              lab <- c(lab, sprintf("... %d further unusable line(s) not shown",
-                                    nrow(r$skipped) - .iaMaxSkippedRows))
-            extra <- d[rep(NA_integer_, length(lab)), , drop = FALSE]
+            # shown so nothing disappears silently. The BOUNDED frame is
+            # what everything downstream sees - the grid, the reactive
+            # store and the hover registry - since keeping the full frame
+            # anywhere leaves the same unbounded state behind (CodeRabbit
+            # on PR #219).
+            nrow0Skipped <- nrow(r$skipped)
+            keep <- seq_len(min(nrow0Skipped, .iaMaxSkippedRows))
+            r$skipped <- r$skipped[keep, , drop = FALSE]
+            if (length(keep) < nrow0Skipped)
+              r$skipped <- rbind(r$skipped, data.frame(
+                label = sprintf("... %d further unusable line(s) not shown",
+                                nrow0Skipped - length(keep)),
+                reason = "the list of unusable lines is capped",
+                stringsAsFactors = FALSE)[, names(r$skipped), drop = FALSE])
+            extra <- d[rep(NA_integer_, nrow(r$skipped)), , drop = FALSE]
             extra$TRIAL <- files$stem[i]
-            extra$ROW <- lab
+            extra$ROW <- r$skipped$label
             rownames(extra) <- NULL
             d <- rbind(d, extra)
           }
