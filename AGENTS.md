@@ -65,7 +65,9 @@ recognised by a blank on a continuous line, or by construction in a table
 that is nothing but counts or one in the long LEVEL layout) → per-trial
 `P_Calc()`: variances pooled by degrees of freedom, a sigma drawn per
 replicate, Monte Carlo of rounded simulated means (continuous; the arm
-mean drawn directly on its h/N grid at N >= 100), a metalog fit for
+mean drawn directly on its h/N grid where the arm has at least 100
+patients, its SD spans at least three observation-grid steps, and that
+grid is representable at the row's magnitude), a metalog fit for
 median/IQR rows, simulated chi-square under fixed margins (categorical),
 **mid-p** ties, rows combined by the EXACT COMBINATION (Stouffer's sum of
 row z-scores judged against its own simulated null; the closed-form

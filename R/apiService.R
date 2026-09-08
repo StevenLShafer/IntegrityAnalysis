@@ -277,7 +277,7 @@
 # N = 1e9 passes a row gate and then asks for gigabytes. Category
 # variables allocate r2dtable over the category COLUMNS, so a table
 # that is short but very wide is the same attack. Both are capped.
-# The ceiling is 10,000 subjects per arm, and the reason is editorial
+# The ceiling is .iaMaxArmN subjects per arm - 5,000 - and the reason is editorial
 # rather than computational (Steve, 2026-08-27):
 #
 #   "A 10,000 patient randomized controlled trial is huge. It is

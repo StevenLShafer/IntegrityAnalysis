@@ -228,7 +228,7 @@ Captured (the example workbook, two trials):
 |---|---|---|
 | `trials` | integer | trials analysed (a document is one trial; a spreadsheet may hold several, distinguished by its TRIAL column) |
 | `overallP` | number or string | **the result**: the one-sided p-value toward excessive homogeneity, combined across every row of every trial. Small means the baseline data are more alike across arms than random sampling explains. For one trial it is that trial's exact-combination p, and it arrives as the string `"<0.0001"` when the Monte Carlo licenses that bound. For several trials it is always a number: the closed-form Stouffer combination of the trial p's, a trial's `<0.0001` entering as 0.0001 |
-| `resultsCsv` | string | CSV, one line per variable with its row p-value — which may be a **refusal in words** rather than a number when the engine could not analyse that row ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)", "The stated precision does not match the printed values", "Printed precision beyond this magnitude's numerical resolution"): the request still succeeds, and a client that parses `P` as a number must expect text — then a summary line per trial with the trial's combined p. Its seven columns are listed in the next table; a script tells the summary line by its `KIND` column, never by the text in `ROW` |
+| `resultsCsv` | string | CSV, one line per variable with its row p-value. The `Summary` line's `NOTE` carries `k of n rows analysed; the rest were refused - see their P cells` whenever the engine refused any row of that trial, so a combined p is never read as covering a table it did not cover — which may be a **refusal in words** rather than a number when the engine could not analyse that row ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)", "The stated precision does not match the printed values", "Printed precision beyond this magnitude's numerical resolution"): the request still succeeds, and a client that parses `P` as a number must expect text — then a summary line per trial with the trial's combined p. Its seven columns are listed in the next table; a script tells the summary line by its `KIND` column, never by the text in `ROW` |
 | `journalTables` | object of strings | one CSV per trial, keyed by trial name: the baseline table reconstructed from the extracted numbers in journal layout (variables as rows, arms as columns with "(n = …)" in the headers, "mean (SD)" cells). This is what an editor compares against the manuscript page |
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the analysed table in the template layout, as `/parse` returns it |
@@ -243,9 +243,9 @@ gives them:
 | `TRIAL` | TRIAL | the trial; printed on a trial's first line only |
 | `ROW` | ROW | the variable, as printed in the manuscript; the label `Summary` on the trial's last line. A manuscript may itself have a variable called "Summary", so do not identify the trial's line by this text: use `KIND` |
 | `P` | P (one-sided toward homogeneity) | the row's Monte Carlo mid-p, printed as `<0.0001` only when the bound in the next column licenses it. On the `Summary` line, the trial's combined p: the exact combination (the rows' Stouffer sum judged against its own simulated null), floored at 1/(replicates + 1) |
-| `CI95` | 95% Monte Carlo interval | the exact Clopper–Pearson 95 % interval of that p from the Monte Carlo's own sampling uncertainty, as `lower to upper` (about the simulation, not the data); on every variable line, and on the `Summary` line when the trial p is below 0.001 |
+| `CI95` | 95% Monte Carlo interval (blank on a refused row, as `M` is) | the exact Clopper–Pearson 95 % interval of that p from the Monte Carlo's own sampling uncertainty, as `lower to upper` (about the simulation, not the data); on every variable line, and on the `Summary` line when the trial p is below 0.001 |
 | `M` | Replicates | the replicates the row actually used (1,000, 10,000 or 100,000; section 3); blank on the `Summary` line |
-| `NOTE` | Note | `attainable floor` when the row sits at the smallest p its printed precision allows (the arms printed exactly the same value and no honest replicate agreed better); for a median row, `quartiles beyond the metalog's skew limit; fitted at the limit` when the printed quartiles were more skewed than the model can carry, and `printed quartiles do not separate in k arm(s); the fit uses their printed intervals` when an arm printed Q1 and Q3 as the same number, so its width is known only to be under one printed unit; and `the stated mean precision (k decimals) is finer than the printed values; the p depends on that claim` when a row whose arms print the same mean claims more decimals than those means show — read that one before quoting a small p (notes are joined with `; `); else blank. A script should not read such a row as reassurance; whether it is informative depends on how rare exact agreement is at that N and precision, which is what its `P` says (0.27 for integer age at 1,000 per arm is nothing; 0.001 for a two-decimal row is a finding) |
+| `NOTE` | Note | `attainable floor` when the row sits at the smallest p its printed precision allows (the arms printed exactly the same value and no honest replicate agreed better); for a median row, `quartiles beyond the metalog's skew limit; fitted at the limit` when the printed quartiles were more skewed than the model can carry, and `printed quartiles do not separate in k arm(s); the fit uses their printed intervals` when an arm printed Q1 and Q3 as the same number, so its width is known only to be under one printed unit; and `the stated mean precision (k decimals) exceeds the digits these values carry; the arms print alike, so the p rests on that precision - check it against the page` when a row whose arms print the same mean states more decimals than those means carry — read that one before quoting a small p (notes are joined with `; `); else blank. A script should not read such a row as reassurance; whether it is informative depends on how rare exact agreement is at that N and precision, which is what its `P` says (0.27 for integer age at 1,000 per arm is nothing; 0.001 for a two-decimal row is a finding) |
 | `KIND` | (not printed) | what the line is: `variable` for a variable's line, `summary` for the trial's combined p, empty on the blank spacer between trials. Added 2026-09-07 after an audit showed a variable named "Summary" being read as a second trial summary |
 
 Values in the CSVs are sanitised against spreadsheet formula injection:
@@ -352,6 +352,8 @@ whichever it sent.
 | table | 5,000 rows, 200 columns, 200 trials, arm N up to 5,000 | 422, `stage: "too_large"` |
 | compute | 12 billion simulated values per request (the worst case of every row escalating to 100,000 replicates, times the subjects each row draws); precision is never reduced to fit | 422, `stage: "too_large"`, code `too_much_compute`, with the arithmetic and the advice (one trial per request; or the web app, which has no request timeout) in `detail` |
 | journal tables | 200,000 cells across the reply | omitted, with `journalTablesOmitted` set |
+| `flags` | 50 entries, each 2 KiB | truncated, with `...N further flag(s) truncated` as the last entry and ` ...truncated` ending a cut string |
+| `skipped` (`/parse`) | 200 entries, each field 2 KiB | truncated, with a final entry whose `label` reads `...N further line(s) omitted` |
 
 The service handles one request at a time per worker; a pathological
 document costs at most its timeout.
@@ -465,8 +467,10 @@ article PDF and the example workbook):
 surprising the agreement between the arms' baseline data is under
 honest randomization. The user guide's section "What to do with a
 flag" is written for the editor who receives one. Two things a script
-should do with every reply: read `flags` and `skipped`, because they
-say what the reader assumed and what it could not use; and keep
+should do with every reply: read `flags`, which both routes return, and
+on `/parse` also `skipped`, because they say what the reader assumed and
+what it could not use (`/analyze` returns the flags but not the list of
+unusable lines; use `/parse` when you want that list); and keep
 `journalTables`, because comparing the reconstructed table against the
 manuscript page is the check that catches an extraction error before
 it becomes a number in an email.

@@ -47,7 +47,8 @@
 #     tie at their minima - the evidence the table actually holds. The
 #     staging is therefore per TRIAL: all usable rows draw the same
 #     number of replicates at each stage, and the trial escalates while
-#     its own mid-p or any row's is < 0.01. The trial p is floored at
+#     its own mid-p or any row's is < 0.1 (leaving 1,000) or < 0.01
+#     (leaving 10,000) - the two thresholds in advanceBelow. The trial p is floored at
 #     1/(m+1) like a row, displays "<0.0001" under the same bound rule,
 #     and carries an exact Clopper-Pearson 95% interval when < 0.001.
 #     This replaced the closed-form Stouffer sum and its parametric
@@ -138,8 +139,9 @@
 .iaDirectDrawN          <- 100L
 .iaDirectDrawSdOverGrid <- 3
 # The three-term metalog is a valid distribution only while |a3|/a2 is
-# below 1.66711 (Keelin 2016); a fit beyond that is clipped to this
-# limit rather than refused (2026-09-07, see the median branch)
+# below 1.66711 (Keelin 2016); a fit beyond that is clipped to the limit
+# below - 1.66, just inside Keelin's bound - rather than refused
+# (2026-09-07, see the median branch)
 .iaMetalogSkewLimit     <- 1.66
 
 #' The interval a printed SD stands for
