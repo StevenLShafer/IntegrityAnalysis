@@ -717,6 +717,37 @@ applied only where a table states an observation grid coarser than the
 printed value's own, and **every** refusal, whatever its reason, is now
 counted on the Summary line: "k of n rows analysed".
 
+## 2026-09-08 — the precision claim, in both directions
+
+The note that discloses a stated mean precision finer than the printed
+digits was adjudicated as the whole remedy for that shape: refusal was
+considered and rejected, because a spreadsheet drops trailing zeros and
+the honest row and the manipulated one are the same numbers. A remedy the
+manuscript can switch off is no remedy, and this one could be: the filter
+that limited the note to rows whose arms print alike compared **raw
+doubles**, so perturbing one arm by a single unit in the last place —
+invisible to `format(digits = 15)`, to `.iaDecimals()` and to the grid —
+removed the note while the row still read the reportable floor. The arms
+are now compared at the precision their values carry (security screen
+2026-09-07-2241, F1).
+
+The same screen made a larger point. Every guard added over 2026-09-07
+points at the **accusing** direction: a stated precision that drives a p
+down. The mirror direction is the one an author benefits from, and it was
+neither refused nor disclosed. Three arms of 100 printing an integer 50
+with an SD of 30 read p = 9.999e−05 at `ROUND_MEAN = 1` and 0.275 at −1; a
+median row's `ROUND_OBSERVATION` took p = 0.0557 to 0.5. Neither is
+impossible — a paper printing "50" may honestly have rounded to tens — so
+neither is refused; both are now disclosed by a Note, on the rows where
+the claim decides the answer.
+
+Not done, and a decision for Steve Shafer: the screen also asks for a
+dispersion-side consistency test on the median branch, requiring the
+printed quartiles to be reachable as type-7 quantiles of N values on the
+stated observation lattice. That is a new refusal, and the two screens
+before this one each caught a new refusal throwing out honest rows. It
+wants its own measurement against the corpus first.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a

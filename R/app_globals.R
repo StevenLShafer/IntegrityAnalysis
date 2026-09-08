@@ -137,6 +137,19 @@ m <- 100000
 # any real baseline table, and the count of the rest is shown.
 .iaMaxSkippedRows <- 200L
 
+# ...and the registries a SESSION may accumulate across uploads. Both grow
+# by rbind on every file and neither shrinks, so a zip of 300 documents
+# multiplies whatever one document yields; the derived registry had no
+# bound at all, and it is the one that paints cells (security screen
+# 2026-09-07-2241, finding F3). The ceilings are far above any real
+# session - a baseline table registers a handful of derived cells - and
+# what is dropped is only the PAINT and its hover note, never a number.
+.iaMaxRegistryRows <- 5000L
+.iaCapRegistry <- function(reg, cap = .iaMaxRegistryRows) {
+  if (is.null(reg) || nrow(reg) <= cap) return(reg)
+  reg[seq_len(cap), , drop = FALSE]
+}
+
 # A whole FILE's unusable lines, capped across its blocks. parseWideTable()
 # returns one block per "Trial:" marker row and nothing caps the number of
 # markers, so capping each block separately bounded 200 times the block
@@ -153,8 +166,9 @@ m <- 100000
     # .iaCapSkipped() marks its OWN truncation; what it cannot see is the
     # blocks after it, which the exhausted budget drops whole. Their count
     # is carried and reported below, so no unusable line ever disappears
-    # without being counted (CodeRabbit on PR #222).
-    omitted <<- omitted + max(0L, nrow(sk) - sum(!grepl("^\\.\\.\\.", kept$label)))
+    # without being counted (CodeRabbit on PR #222). The marker is counted
+    # out by its reason, never by its label (screen 2241, F4).
+    omitted <<- omitted + max(0L, nrow(sk) - sum(!.iaIsSkipMarker(kept)))
     budget  <<- max(0L, budget - nrow(kept))
     kept
   })
@@ -165,12 +179,59 @@ m <- 100000
       mk <- out[[i]][1, , drop = FALSE]
       mk[] <- NA_character_
       mk$label  <- sprintf("... %d further unusable line(s) not shown", omitted)
-      mk$reason <- "the list of unusable lines is capped for this file"
-      out[[i]] <- rbind(out[[i]][!grepl("^\\.\\.\\.", out[[i]]$label), , drop = FALSE], mk)
+      mk$reason <- .iaSkipMarkerReason
+      out[[i]] <- rbind(out[[i]][!.iaIsSkipMarker(out[[i]]), , drop = FALSE], mk)
       rownames(out[[i]]) <- NULL
     }
   }
   out
+}
+
+# The grid payload for the DERIVED-cell registry: which cells paint which
+# colour and what their hover note says. Same shape, same reason, and same
+# measurements as .iaSkipPayload() below - this loop was left behind when
+# that one was rewritten, forty lines above it in the same reactive, and a
+# screen measured the replicated version at 7.8 s for 25,000 painted keys
+# and 191.9 s for 100,000 (security screen 2026-09-07-2241, finding F3).
+# The registry it walks has no cap and accumulates across uploads, so the
+# cost is the editor's whole session.
+#
+# `dv` is the registry (TRIAL, ROW, COL, KIND, note; "*" in ROW or COL
+# means every row of that trial, or every column). `d` is the grid frame.
+.iaDerivedPayload <- function(d, dv, nameCols = names(d)) {
+  empty <- list(iss = list(), note = list())
+  if (is.null(dv) || !nrow(dv) || is.null(d) || !nrow(d)) return(empty)
+  trialD <- as.character(d$TRIAL); rowD <- as.character(d$ROW)
+  keys <- character(0); codes <- character(0); notes <- character(0)
+  for (g in seq_len(nrow(dv))) {
+    cis <- if (identical(dv$COL[g], "*")) seq_along(nameCols)
+           else match(dv$COL[g], nameCols)
+    cis <- cis[!is.na(cis)]
+    if (!length(cis)) next
+    code <- if (!is.null(dv$KIND) && identical(dv$KIND[g], "ocr")) "ocr"
+            else if (!is.null(dv$KIND) && identical(dv$KIND[g], "failsafe")) "failsafe"
+            else "derived"
+    hits <- if (dv$ROW[g] == "*") which(trialD == dv$TRIAL[g])
+            else which(trialD == dv$TRIAL[g] & rowD == dv$ROW[g])
+    if (!length(hits)) next
+    for (ci in cis) {
+      # paint only cells that carry a value - a green empty cell would
+      # read as "this blank is fine", which is the opposite of true
+      keep <- hits[!is.na(d[hits, ci])]
+      if (!length(keep)) next
+      keys  <- c(keys,  paste0(keep - 1L, "|", ci - 1L))
+      codes <- c(codes, rep(code, length(keep)))
+      notes <- c(notes, rep(dv$note[g], length(keep)))
+    }
+  }
+  if (!length(keys)) return(empty)
+  # LAST entry wins, as the per-cell overwrite did, and both payloads are
+  # assigned in one bulk `[<-` rather than one insert per cell
+  keep <- !duplicated(keys, fromLast = TRUE)
+  keys <- keys[keep]; codes <- codes[keep]; notes <- notes[keep]
+  iss <- as.list(codes);  names(iss)  <- keys
+  note <- as.list(notes); names(note) <- keys
+  list(iss = iss, note = note)
 }
 
 # The grid payload for the skip registry: which rows carry the "unreadable"
@@ -208,6 +269,18 @@ m <- 100000
 # parser's skipped frame carries three columns (label, reason, text), and
 # a two-column literal raised "undefined columns selected" on exactly the
 # documents the cap exists for (screen 1907, F3).
+# A marker row is recognised by its REASON, which the parser writes from
+# its own vocabulary, never by its label, which is the document's own text
+# (security screen 2026-09-07-2241, finding F4: a sheet with a row labelled
+# "... continued" had that row filtered out of the frame and mis-counted).
+.iaSkipMarkerReason <- "the list of unusable lines is capped"
+.iaIsSkipMarker <- function(sk) {
+  # vectorised over the frame's rows: `&&` would fold it to one value and
+  # error on a frame of more than one row
+  if (is.null(sk) || !nrow(sk) || is.null(sk$reason)) return(logical(0))
+  !is.na(sk$reason) & sk$reason == .iaSkipMarkerReason
+}
+
 .iaCapSkipped <- function(skipped, cap = .iaMaxSkippedRows) {
   if (is.null(skipped) || !nrow(skipped) || nrow(skipped) <= cap) return(skipped)
   n <- nrow(skipped)
@@ -215,7 +288,7 @@ m <- 100000
   mk <- skipped[1, , drop = FALSE]
   mk[] <- NA_character_
   mk$label  <- sprintf("... %d further unusable line(s) not shown", n - cap)
-  mk$reason <- "the list of unusable lines is capped"
+  mk$reason <- .iaSkipMarkerReason
   out <- rbind(out, mk)
   rownames(out) <- NULL
   out

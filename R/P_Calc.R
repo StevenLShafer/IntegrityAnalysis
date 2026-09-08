@@ -402,8 +402,19 @@
   # equal, which is the shape whose p is the tie mass. With the means a
   # printed unit apart the screen measured the effect as negligible
   # (0.0029 -> 0.0036), so a note there would be noise.
+  #
+  # "Equal" AT THE PRECISION THE VALUES CARRY, not bitwise (security screen
+  # 2026-09-07-2241, finding F1). Comparing raw doubles let one arm be
+  # perturbed by a single unit in the last place - invisible to
+  # format(digits = 15), to .iaDecimals(), and to the grid - and the note
+  # vanished while the row still read the reportable floor. The note IS the
+  # whole remedy here, since screen 2000's F2 was adjudicated as disclosure
+  # rather than refusal, so a remedy the manuscript can switch off is no
+  # remedy.
   v <- value[is.finite(value)]
-  if (length(v) < 2 || length(unique(v)) > 1) return("")
+  if (length(v) < 2) return("")
+  shown <- max(vapply(v, .iaDecimals, integer(1)))
+  if (length(unique(round(v, shown))) > 1) return("")
   d <- suppressWarnings(as.numeric(dec))
   # Worded for what the engine can actually see. A spreadsheet stores
   # "5.0" as 5, so a stated precision past the surviving digits may be
@@ -412,6 +423,37 @@
   paste0("the stated mean precision (", max(d[is.finite(d)]),
          " decimals) exceeds the digits these values carry; the arms print ",
          "alike, so the p rests on that precision - check it against the page")
+}
+
+# The mirror of the note above (security screen 2026-09-07-2241, finding
+# F2). Every guard added this week points at the ACCUSATION direction - a
+# stated precision that drives p down. A precision stated COARSER than the
+# printed digits drives p the other way, by manufacturing tie mass in the
+# simulated arms, and it is the direction an author benefits from: three
+# arms of 100 printing an integer 50 with SD 30 read p = 9.999e-05 at
+# ROUND_MEAN 1 and p = 0.275 at ROUND_MEAN -1, and a median row's
+# ROUND_OBSERVATION took p = 0.0557 to 0.5. Neither is refused, because
+# neither is impossible - a paper printing "50" may honestly have rounded
+# to tens - so the claim is disclosed instead, on the rows where it
+# decides the answer.
+.iaCoarsePrecisionNote <- function(value, decLoc, decObs) {
+  v <- value[is.finite(value)]
+  if (!length(v)) return("")
+  shown <- max(vapply(v, .iaDecimals, integer(1)))
+  d <- suppressWarnings(as.numeric(c(decLoc, decObs)))
+  d <- d[is.finite(d)]
+  if (!length(d) || min(d) >= shown) return("")
+  # ...and only where the coarse grid can actually change the answer: the
+  # printed locations must fall within one step of it, so that rounding
+  # could merge them. Locations 0 and 100 on a grid of ten stay ten steps
+  # apart and their large p owes nothing to the claim - saying otherwise
+  # would be a false causal statement (CodeRabbit on PR #224).
+  h <- 10^(-min(d))
+  if (diff(range(v)) > h * (1 + 1e-9)) return("")
+  paste0("a stated precision (", min(d),
+         " decimals) is coarser than the digits these values carry, which ",
+         "widens the rounding the arms are judged against - a large p here ",
+         "rests on that claim")
 }
 
 .iaStatedPrecisionNotTooFine <- function(value, dec) {
@@ -957,7 +999,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
                          note = { nt <- c(skewNote,
-                                          .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
+                                          .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
+                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN,
+                                                                 ROWS$ROUND_OBSERVATION))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
                          zeroTol = 1e-26 * (1 + center^2))
           }
@@ -1132,7 +1176,10 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             out
           }
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
-                         note = .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
+                         note = { nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN),
+                                          .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN,
+                                                                 ROWS$ROUND_OBSERVATION))
+                                  paste(nt[nzchar(nt)], collapse = "; ") },
                          zeroTol = 1e-26 * (1 + Meanmean^2))
         } else {
           # FIX: drop = FALSE added. With a single category column,
