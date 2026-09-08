@@ -686,11 +686,34 @@
   gsub("[,\u00b7]", ".", txt)
 }
 
+# THE DIGITS A PRINTED NUMBER SHOWS. Everything after the first "." used
+# to be counted, exponent included, so "5.0e1" read THREE decimals where
+# it shows the same unit precision as "50" - one mantissa decimal less
+# one exponent (independent audit 2026-09-09, F4). A spreadsheet writes
+# scientific notation for large and small magnitudes without being asked,
+# and the count feeds ROUND_MEAN, which is the width of the interval the
+# engine draws over: the fictitious precision took a row from p = 0.083
+# to p = 0.0024.
+#
+# The exponent is subtracted and the result FLOORED AT ZERO. The audit
+# asked for negative precisions to be retained as well, and that is
+# right in principle - "5e1" is a number printed to the nearest ten. It
+# is deliberately not taken here: this helper also feeds the document
+# tokenizer, so a negative would put coarse-grid claims into every parsed
+# manuscript, and the same audit's F3 shows how fragile the handling of a
+# negative precision still is. Reading "5e1" as "50" is the conservative
+# error, and it is the reading the old code gave for the plain spelling.
 .ppDecimals <- function(txt) {
   txt <- .ppNumText(txt)
-  ifelse(grepl("\\.", txt),
-         nchar(sub("^[^.]*\\.", "", txt)),
-         0L)
+  mant <- sub("[eE][+-]?[0-9]+$", "", txt)
+  dec  <- ifelse(grepl(".", mant, fixed = TRUE),
+                 nchar(sub("^[^.]*[.]", "", mant)),
+                 0L)
+  expo <- suppressWarnings(as.integer(sub("^.*[eE]([+-]?[0-9]+)$", "\\1",
+                                          ifelse(grepl("[eE][+-]?[0-9]+$", txt),
+                                                 txt, "0"))))
+  expo[is.na(expo)] <- 0L
+  pmax(0L, as.integer(dec) - expo)
 }
 
 # Convert printed number text to numeric (comma / middle-dot decimals,

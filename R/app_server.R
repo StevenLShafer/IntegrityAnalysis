@@ -924,7 +924,9 @@ app_server <- function(input, output, session) {
         }
         if (ext == "csv") {
           if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
-          return(capped(read.csv(path, nrows = .iaSheetRowCap + 1L)))
+          # value columns as text: see .iaReadCsvKeepingText()
+          return(capped(.iaReadCsvKeepingText(path,
+                                              nrows = .iaSheetRowCap + 1L)))
         }
         # (.xls was read here by readxl until 2026-09-06; dropped - see
         # .wideRawCells. The allowlist above no longer admits it.)

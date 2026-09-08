@@ -478,7 +478,12 @@ follows it. A cell holding **text** is read for its digits before it is
 converted, so "1.20" typed or pasted as text counts as two decimals; a
 cell holding a **number** cannot be, because a spreadsheet stores 1.20 as
 1.2 and the trailing zero is already gone by the time the app opens the
-file. That is why the variable's maximum is used across its arms, and why
+file. A comma-separated file is read the same way, so it keeps its digits
+too, and a number written in scientific notation is counted at the
+precision it really shows: "5.0e1" is 50 to the nearest unit, not to
+three decimals. A precision you supply yourself is never overwritten,
+including one coarser than the value's own digits - a mean of 50 declared
+to the nearest ten stays that way. That is why the variable's maximum is used across its arms, and why
 the app writes its own spreadsheets with the numbers as text (below). That second
 inference is a guess — a mean printed to one decimal is often computed
 from integer measurements — so when you know the raw precision, say so

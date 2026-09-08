@@ -715,7 +715,18 @@
       # bounded like .wideRawCells (the sparse-sheet expansion, 2026-09-05)
       if (ext == "csv") {
         if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"))
-        utils::read.csv(path, check.names = FALSE, nrows = .iaSheetRowCap + 1L)
+        # THE VALUE COLUMNS ARE READ AS TEXT (independent audit 2026-09-09, F5).
+        # read.csv() coerces "50.000" to the double 50 before the validator can
+        # count its trailing zeros, so the precision the spreadsheet route now
+        # preserves was still destroyed on the comma-separated one: the same
+        # table read 3 and 2 decimals as text and 0 and 0 as a CSV, and the p
+        # moved from 0.0047 to 0.35. Only the value columns are held as text -
+        # validateData() coerces those itself and reads their digits first,
+        # while N, the counts and every other column must stay numeric or
+        # is_category() stops seeing a count column. Reading them as text also
+        # stops a trial named "T" becoming the logical TRUE.
+        .iaReadCsvKeepingText(path, check.names = FALSE,
+                              nrows = .iaSheetRowCap + 1L)
       } else {
         openxlsx::read.xlsx(path, rows = seq_len(.iaSheetRowCap + 1L),
                             cols = seq_len(.iaSheetColCap + 1L))
