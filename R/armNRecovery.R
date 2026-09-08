@@ -98,6 +98,19 @@
   c(cLo, cHi)
 }
 
+# SUPERSEDED 2026-09-08, and kept only as the provisional value a line
+# carries until the whole block is known. THE GUARANTEE BELOW IS FALSE
+# AS STATED, which is why it was replaced: this maximises each LEVEL
+# against its own complement, which is not the statistic P_Calc scores,
+# and applying it level by level drives every level the same way in the
+# same arm - leaving the arms in identical proportions, the most
+# homogeneous reading of the page rather than the least. It also lets
+# the levels of one variable disagree about the arm total (200 rebuilt
+# as 203). The counts that survive into the analysis are now chosen for
+# the whole arms-by-levels table at once, by p rather than by proxy, in
+# .ppFailsafeTableFill() - see R/failsafeTable.R, which carries the
+# measurements. Read the rest of this comment as history.
+#
 # THE FAIL-SAFE ASSIGNMENT (Steve's decision, 2026-09-07; rewritten
 # 2026-09-07 after security screen 2026-09-07-1654, finding F1). Given the
 # arms' bracket ends and the counts already pinned exactly, choose one end

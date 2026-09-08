@@ -499,6 +499,97 @@ conservative treatment would need a prior on the population's width
 given the printed digits, which is the dispersion-fabrication question
 the screen deliberately leaves alone.
 
+## 2026-09-08 — the fail-safe fill chooses a whole table, by p
+
+**What was wrong.** The rule of 2026-09-07 maximised, for each category
+LEVEL on its own table line, that level's fixed-margin statistic against
+its own complement. Three things were wrong with it, and they compound.
+
+1. *It optimised a statistic the engine does not compute.* `P_Calc()`
+   scores the whole arms-by-levels table with both margins fixed
+   (`R/P_Calc.R`, `r2dtable`), not a level against its complement.
+
+2. *The levels did not have to agree about the arm.* Each level was
+   chosen alone, so three levels printed 33 / 33 / 34 % across two arms
+   of 200 were rebuilt with arm totals of 203 and 197 — a table that
+   cannot exist. The 2026-09-08 independent audit reported the same
+   arithmetic (its F2, `docs/audits/`).
+
+3. *It ran backwards.* For one level the maximising choice is the high
+   count in one arm and the low in another, and the enumeration reached
+   the same orientation first every time. Applied level by level that
+   scaled one arm up and the other down uniformly, leaving the two arms
+   in identical proportions — the most homogeneous table there is.
+   Measured chi-square of the table the engine actually scores:
+
+   | page | the old rule | range over admissible readings |
+   |---|---|---|
+   | 3 levels 33/33/34, arms of 200 | 0.000 | 0.000 to 0.061 |
+   | 4 levels 25 each, arms of 200 | 0.000 | 0.000 to 0.160 |
+   | 3 levels 33/33/34, three arms of 200 | 0.000 | 0.000 to 0.090 |
+   | 4 levels 10/20/30/40, arms of 300 | 0.032 | 0.000 to 0.139 |
+
+   In p terms for the first of those the admissible readings run from
+   0.0041 to 0.0482, and the old rule returned 0.0041. The guarantee
+   stated in seven user-facing places — "the row can look less alike
+   than the truth, never more" — was false in the direction that makes
+   an honest paper look fabricated. On the audit's own synthetic
+   fixture the trial p moved from 0.00072 to 0.0043 when this was fixed.
+
+**Why maximising the statistic was never going to be enough**, even done
+jointly. A p is the statistic judged against the fixed-margin null, and
+one of those margins is the level total — the very thing being chosen.
+Raising a count moves the statistic and moves the null it is measured
+against. Over 72 three-level rows with unequal arms the
+statistic-maximising table was not the p-maximising table in 44 of them,
+worst case p = 0.0148 chosen against 0.0247 available. The old rule
+could not reach the answer even in principle for a second reason: a
+convex statistic is maximised at a bracket end, so the search only ever
+considered ends, and the largest p is sometimes at a middle value.
+
+**What changed** (Steve Shafer's decision, 2026-09-08: "testing all
+possible combinations in these ambiguous cases, and simply defaulting to
+giving the authors the benefit of the doubt", then "best case, with
+worst case only appearing if it straddles 0.01"). Every whole
+arms-by-levels table the printed percentages allow is enumerated — each
+cell inside its own bracket, each arm's counts summing to that arm's N
+where the levels partition it — and each is scored with the engine's own
+statistic and null. **The reading analysed is the one with the largest
+p**, the best case for the authors. The smallest p over the same
+candidates is carried beside it, and when the two fall on opposite sides
+of p = 0.01 the row is named in the flags and in its hover note, because
+for those rows the printed counts decide the answer and the percentages
+do not. `R/failsafeTable.R` holds it.
+
+**What makes it affordable.** The null depends only on the margins.
+Constraining each arm to its N pins the arm margin, so only the level
+totals vary, and within one level-total group the mid-p is
+non-decreasing in the statistic — so only that group's extreme tables
+can be its best or its worst. Three levels across two arms of 200 admit
+49 tables but 19 distinct nulls; five levels admit 2,601 tables and 381
+nulls. Measured with the engine's own `r2dtable`, nineteen nulls cost
+0.3 s staged. Beyond `.ppTableEnumMax` candidates — a hostile document
+chooses the arm count, the level count and the arm sizes, and three
+levels across arms of 5,000 admit 3.8 million tables — the search is
+bounded rather than complete, and the row says so rather than letting a
+guarantee quietly stop holding.
+
+**Two things fixed alongside it, because the disclosure depends on
+them.** A hybrid parse (heuristics plus the AI assist) dropped
+`derivedCells` and `approxCounts` at the merge, so those parses painted
+no orange cell and showed no hover note although the flag text named the
+rows; they are carried through now. And the note attached to a
+fail-safe cell was matched by `identical()` against a named character
+vector, which never matched, so the note kept describing a choice that
+was no longer the one made.
+
+**What is still a proxy, and is stated rather than promised.**
+Maximising each row's p does not exactly maximise the TRIAL p: the trial
+null is simulated from the row nulls, and those shift with the margins
+being chosen. It is the same mechanism as the defect above, one level
+up, and it is small — but it is a proxy, and the documentation says so
+rather than claiming an exactness the code does not have.
+
 ## 2026-09-07 — counts rebuilt from percentages: the fail-safe fill
 
 **What was wrong.** The opt-in approximation of 2026-08-21 rebuilt a

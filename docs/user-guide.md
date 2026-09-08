@@ -402,17 +402,22 @@ specific cell:
   before it runs; hover the cell to see how it was derived.
 - **Orange — fail-safe count.** The page printed only a percentage, and
   for this arm size several counts fit it (above 100 patients at integer
-  percentages, above 1,000 at one decimal). The ambiguous cells of the
-  row are filled with whichever admissible counts leave the arms **least
-  alike** - every combination the printed percentages allow is tried where a
-  row has eight or fewer ambiguous cells, and the least homogeneous is
-  kept; with more than eight the app searches from both ends instead of
-  trying all of them, which has matched the exhaustive answer on every
-  row measured - so the row can look less alike than the
-  truth but never more: the analysis is conservative for that row,
-  and markedly so — a row that would alarm on printed counts usually
-  will not alarm on printed percentages. Hover the cell for the bracket
-  of counts the percentage allows. This is a
+  percentages, above 1,000 at one decimal). The app then reads the page in the way most
+  favourable to the authors. Every whole table the printed percentages
+  allow is built — each cell inside the bracket its percentage permits,
+  and each arm's counts adding up to that arm's N — and each is scored
+  with the same statistic and the same null the analysis itself uses.
+  The one **analysed is the one with the largest p**: the authors get
+  every benefit of the doubt the page allows. Hover the cell for the
+  bracket of counts the percentage allows and for the best and worst p
+  the page could have produced.
+
+  When the best and the worst reading fall on opposite sides of
+  p = 0.01, the row says so, because then the printed counts decide the
+  answer and the percentages do not. Ask the authors for the counts
+  before acting on such a trial. If a row allows more readings than can
+  be enumerated, the app says that too, and the best of a bounded search
+  is used instead. This is a
   design decision for incomplete data, not a reading of the page; the
   printed counts, if you can get them from the author, settle it. The
   checkbox above the upload turns the fill off, in which case such rows

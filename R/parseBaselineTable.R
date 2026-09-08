@@ -62,21 +62,40 @@ reviewFlags <- function(x) {
                              "converted from printed percentages via the ",
                              "arm N (unique-count bracket): ",
                              paste(x$derivedCounts, collapse = ", ")))
-  # FAIL-SAFE conversions (pctApprox = TRUE; Steve, 2026-09-07): the printed
-  # percentage fit several counts for the arm size, and of every set of
-  # counts the row's percentages allow, the one leaving the arms least
-  # alike was built, so the row can look less alike than the truth but
-  # never more. A design decision for
-  # incomplete data, not a datum: the printed counts would settle it.
+  # FAIL-SAFE conversions (pctApprox = TRUE; Steve, 2026-09-07, rule
+  # replaced 2026-09-08). The printed percentage fit several counts for
+  # the arm size. Every whole arms-by-levels table the page allows is
+  # enumerated and scored with the engine's own statistic, and the one
+  # analysed is the BEST CASE - the largest p, the reading most
+  # favourable to the authors. A design decision for incomplete data,
+  # not a datum: the printed counts would settle it.
   if (!is.null(x$approxCounts) && length(x$approxCounts) > 0)
     flags <- c(flags, paste0(length(x$approxCounts), " category row(s) use ",
                              "FAIL-SAFE counts - the printed percentage fit ",
-                             "several counts for the arm size and the counts ",
-                             "that leave the arms least alike were taken, so the ",
-                             "row cannot look more alike than the page allows: ",
+                             "several counts for the arm size, so of every ",
+                             "reading the page allows the one with the ",
+                             "LARGEST p was taken, giving the authors the ",
+                             "benefit of the doubt: ",
                              paste(x$approxCounts, collapse = ", "),
                              ". Check these against the paper before ",
                              "analyzing."))
+  # Only when the choice decided the answer (Steve, 2026-09-08: "worst
+  # case only appearing if it straddles 0.01"). Saying it on every
+  # fail-safe row would train the reader to skip it.
+  if (!is.null(x$approxStraddle) && length(x$approxStraddle) > 0)
+    flags <- c(flags, paste0(length(x$approxStraddle), " of those row(s) ",
+                             "cross p = 0.01 between the best and the worst ",
+                             "reading the page allows, so the printed counts ",
+                             "decide this row and the percentages do not: ",
+                             paste(x$approxStraddle, collapse = ", "),
+                             ". Get the counts from the authors before ",
+                             "acting on this trial."))
+  if (!is.null(x$approxBounded) && length(x$approxBounded) > 0)
+    flags <- c(flags, paste0(length(x$approxBounded), " category row(s) ",
+                             "allowed too many readings to enumerate them ",
+                             "all; the best of a bounded search was taken, ",
+                             "which may not be the best the page allows: ",
+                             paste(x$approxBounded, collapse = ", ")))
   disp <- if ("SE" %in% names(x$data))
     !is.na(x$data$SD) | !is.na(x$data$SE) else !is.na(x$data$SD)
   cont <- !is.na(x$data$MEAN) | disp
@@ -572,6 +591,18 @@ parseBaselineTable <- function(pdfFile,
          trial      = trial,
          notes      = aiRes$notes,
          flags      = c(imageNote, tatrFlags, flags),
+         # CARRIED THROUGH THE MERGE (2026-09-08). These were dropped
+         # here, so a hybrid parse painted no fail-safe cell orange and
+         # showed no hover note, even though the flag text above named
+         # the rows. The heuristic half of a hybrid result is still the
+         # half that read the percentages, so its record of what it
+         # rebuilt is still the truth about those cells.
+         approxCounts   = het$approxCounts,
+         approxStraddle = het$approxStraddle,
+         approxBounded  = het$approxBounded,
+         derivedCells   = het$derivedCells,
+         derivedCounts  = het$derivedCounts,
+         dispersion     = het$dispersion,
          engine     = "hybrid"),
     class = "ParsePDFTable")
 }
