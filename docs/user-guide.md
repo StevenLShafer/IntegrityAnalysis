@@ -885,7 +885,8 @@ divided by N; a median moves in whole steps, or half-steps for an even
 number of patients. The reported spread is checked against the same grid
 from the other side: measurements a step apart cannot produce a standard
 deviation smaller than the step times the distance from the mean to the
-nearest multiple of it, unless every measurement was identical - a mean
+nearest multiple of it, nor smaller than the step divided by the square
+root of the number of patients, unless every measurement was identical - a mean
 of 500 from measurements recorded to the nearest thousand forces a
 standard deviation of at least 500, whatever the table prints. That check
 runs only when a table says its measurements were recorded more coarsely

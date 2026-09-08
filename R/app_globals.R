@@ -142,14 +142,33 @@ m <- 100000
 # (screen 2026-09-07-2101, F4). One budget, spent in order; the block that
 # exhausts it carries the marker and the rest contribute nothing.
 .iaCapSkippedFile <- function(blocks, cap = .iaMaxSkippedRows) {
-  budget <- cap
-  lapply(blocks, function(sk) {
+  budget  <- cap
+  omitted <- 0L
+  out <- lapply(blocks, function(sk) {
     if (is.null(sk) || !nrow(sk)) return(sk)
-    if (budget <= 0) return(sk[0, , drop = FALSE])
-    out <- .iaCapSkipped(sk, budget)
-    budget <<- max(0L, budget - nrow(out))
-    out
+    if (budget <= 0) { omitted <<- omitted + nrow(sk); return(sk[0, , drop = FALSE]) }
+    kept <- .iaCapSkipped(sk, budget)
+    # .iaCapSkipped() marks its OWN truncation; what it cannot see is the
+    # blocks after it, which the exhausted budget drops whole. Their count
+    # is carried and reported below, so no unusable line ever disappears
+    # without being counted (CodeRabbit on PR #222).
+    omitted <<- omitted + max(0L, nrow(sk) - sum(!grepl("^\\.\\.\\.", kept$label)))
+    budget  <<- max(0L, budget - nrow(kept))
+    kept
   })
+  if (omitted > 0) {
+    last <- which(vapply(out, function(x) !is.null(x) && nrow(x) > 0, logical(1)))
+    if (length(last)) {
+      i  <- last[length(last)]
+      mk <- out[[i]][1, , drop = FALSE]
+      mk[] <- NA_character_
+      mk$label  <- sprintf("... %d further unusable line(s) not shown", omitted)
+      mk$reason <- "the list of unusable lines is capped for this file"
+      out[[i]] <- rbind(out[[i]][!grepl("^\\.\\.\\.", out[[i]]$label), , drop = FALSE], mk)
+      rownames(out[[i]]) <- NULL
+    }
+  }
+  out
 }
 
 # The grid payload for the skip registry: which rows carry the "unreadable"

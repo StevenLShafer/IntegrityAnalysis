@@ -351,8 +351,19 @@
   spansInt <- floor(b + 1e-12) >= ceiling(a - 1e-12)
   dist2int <- function(x) abs(x - round(x))
   alpha <- ifelse(spansInt, 0, pmin(dist2int(a), dist2int(b)))
+  # two different quantities, and the larger governs: hObs * alpha is what
+  # the mean's own offset from the lattice forces, and hObs / sqrt(N) is
+  # the smallest NON-ZERO sample SD any N values on that lattice can have
+  # (one value a step away from the rest). alpha itself can be as small as
+  # 1/N, so neither implies the other.
   bound <- hObs * pmax(alpha, 1 / sqrt(Nn))
-  all(!stated | sdN == 0 | sdHi >= bound * (1 - 1e-9))
+  # An SD of exactly zero means every value was identical, so the mean IS
+  # one of them and must itself sit on the lattice - which it cannot when
+  # the printed mean's interval holds no multiple of the grid. The zero
+  # carve-out therefore needs that interval to span one (CodeRabbit on PR
+  # #222); without the condition, "mean 500, SD 0" on a grid of 1,000
+  # passed as an honest constant arm.
+  all(!stated | (sdN == 0 & spansInt) | sdHi >= bound * (1 - 1e-9))
 }
 
 # F2 of the same screen: .iaOnStatedGrid is one-sided by construction -

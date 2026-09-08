@@ -51,6 +51,11 @@ test_that("F1: alpha is the mean's own lattice offset, over its printed interval
   expect_false(.iaSdReachesGrid(100, 0, -3, 0, 1000, 500))
   # a mean ON the grid: alpha is zero and only the 1/sqrt(N) floor remains
   expect_true(.iaSdReachesGrid(40, 0, -3, 0, 1000, 1000))
+  # an SD of exactly zero means every value was identical, so the mean is
+  # one of them and must sit on the lattice too - which a mean of 500 on a
+  # grid of 1,000 does not (CodeRabbit on PR #222)
+  expect_false(.iaSdReachesGrid(0, 0, -3, 0, 1000, 500))
+  expect_true(.iaSdReachesGrid(0, 0, -3, 0, 1000, 1000))
   # ...and where the printed interval spans a grid point, nothing is refused
   expect_true(.iaSdReachesGrid(40, 0, -3, -3, 1000, 500))
 })
@@ -165,4 +170,13 @@ test_that("F4: a file's unusable lines are capped across ALL its blocks", {
   # a small file is untouched
   small <- list(blk(3), blk(4))
   expect_identical(.iaCapSkippedFile(small), small)
+  # nothing disappears uncounted: the blocks dropped whole after the
+  # budget is spent are counted in the marker (CodeRabbit on PR #222)
+  labs <- unlist(lapply(out, function(x) x$label))
+  isMark <- startsWith(labs, "...")
+  expect_equal(sum(isMark), 1L)
+  mark <- labs[isMark]
+  expect_match(mark, "further unusable line")
+  n <- as.integer(strsplit(mark, " ", fixed = TRUE)[[1]][2])
+  expect_equal(n + sum(!isMark), 3300L)
 })

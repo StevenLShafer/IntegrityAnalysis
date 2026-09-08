@@ -689,9 +689,12 @@ and too strong, and the screen that found it (2026-09-07-2101) measured
 each half.
 
 **Too weak.** 1/√N is the smallest the lattice offset can be. The sharp
-statement is that values on a lattice of width *h* whose sample mean sits
-a fraction α of a step from a multiple of *h* have SD ≥ *h*·α, and the
-manipulation needs α near ½ — a printed mean near a half-grid point,
+statement has two parts, and the larger governs: values on a lattice of
+width *h* whose sample mean sits a fraction α of a step from a multiple of
+*h* have SD ≥ *h*·α, and separately the smallest non-zero sample SD N
+values on that lattice can have is *h*/√N whatever the mean. They are
+different quantities — α itself can be as small as 1/N — so a row must
+clear both. The manipulation needs α near ½ — a printed mean near a half-grid point,
 which the earlier screen had itself named as the operating point. At a
 thousand per arm that is a factor of sixteen of headroom, and honest
 tables of 1,000 printing means 500/501/499 with an SD of 40 read p = 0.414

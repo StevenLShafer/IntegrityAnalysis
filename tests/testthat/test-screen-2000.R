@@ -48,7 +48,11 @@ test_that("F1: the bound itself, and what it must never refuse", {
   expect_true(.iaSdReachesGrid(10, 0, 0, 0, 40, 50))       # ordinary
   expect_false(.iaSdReachesGrid(1, 0, -3, 0, 1000, 500))   # 1 against 499.5
   expect_false(.iaSdReachesGrid(1, 0, -2, 0, 100, 50))     # 1 against 50
-  expect_true(.iaSdReachesGrid(0, 0, -3, 0, 1000, 500))    # every value identical: allowed
+  # an SD of exactly zero: allowed only where the mean could BE one of the
+  # identical values, i.e. where its interval holds a multiple of the grid
+  # (CodeRabbit on PR #222; a mean of 500 on a grid of 1,000 cannot)
+  expect_true(.iaSdReachesGrid(0, 0, -3, 0, 1000, 1000))
+  expect_false(.iaSdReachesGrid(0, 0, -3, 0, 1000, 500))
   # the printed SD's own interval is used, so an honestly coarse SD passes
   expect_true(.iaSdReachesGrid(1, 0, 0, 0, 4, 50))
   expect_true(.iaSdReachesGrid(c(NA, 10), c(0, 0), c(0, 0), c(0, 0), c(40, 40), c(50, 50)))

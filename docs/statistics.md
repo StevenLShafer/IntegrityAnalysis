@@ -386,10 +386,17 @@ makes a number reproducible; it does not make it more precise.
   sets the grid every simulated observation is rounded to. Each is checked
   against the numbers it describes, in both directions. Too coarse: a
   value that does not sit on its own stated grid, or a standard deviation
-  below what values on that grid can have. That second bound is exact:
-  values a step h apart whose sample mean sits a fraction alpha of a step
-  away from a multiple of h have a sample SD of exactly zero or at least
-  h times alpha, and never below h/sqrt(N). A table claiming an SD of 1
+  below what values on that grid can have. That second bound is two
+  statements, and the larger of them governs. Values a step h apart whose
+  sample mean sits a fraction alpha of a step from a multiple of h have a
+  sample SD of at least h times alpha. Separately, the smallest non-zero
+  sample SD that N values on that grid can have at all is h divided by the
+  square root of N, whatever the mean. The two are different quantities -
+  alpha itself can be as small as one over N - so neither implies the
+  other, and a row must clear both. A sample SD of exactly zero is exempt,
+  since it says every value was identical, but only where the printed mean
+  could itself be one of those values: identical values on a grid put the
+  mean on the grid too. A table claiming an SD of 1
   for a thousand values on a grid of a thousand, with a mean of 500, is
   claiming the impossible - the mean alone forces an SD of 500. The bound
   is applied only where the table STATES an observation grid coarser than
