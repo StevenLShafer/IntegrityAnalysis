@@ -60,6 +60,30 @@
   reasons
 }
 
+# The reader's flags, made safe to put in a reply (security screen
+# 2026-09-07-1654, finding F3). A flag quotes the document: skipped table
+# lines and the arm-size sentences the reader recovered N from, and with
+# the AI assist on, model output the manuscript can steer. Two properties
+# are pinned here rather than left to the goodwill of every present and
+# future flag constructor: the array cannot grow without bound (the row
+# cap bounds the TABLE, not the lines the reader refused), and a flag that
+# one day quotes a reader's error cannot carry the request's temp path
+# back to the caller. Truncation is marked, never silent.
+.apiMaxFlags     <- 50L
+.apiMaxFlagBytes <- 2048L
+.apiSafeFlags <- function(flags, work, name) {
+  if (is.null(flags) || !length(flags)) return(NULL)
+  f <- as.character(flags)
+  f <- .apiScrubPath(f, work, name)
+  long <- !is.na(f) & nchar(f, type = "bytes") > .apiMaxFlagBytes
+  if (any(long))
+    f[long] <- paste0(substr(f[long], 1, .apiMaxFlagBytes), " ...truncated")
+  if (length(f) > .apiMaxFlags)
+    f <- c(f[seq_len(.apiMaxFlags)],
+           sprintf("...%d further flag(s) truncated", length(f) - .apiMaxFlags))
+  f
+}
+
 .apiTokens <- function()
   trimws(strsplit(Sys.getenv("INTEGRITY_API_TOKENS", ""), ",")[[1]])
 

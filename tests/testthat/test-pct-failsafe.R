@@ -51,43 +51,72 @@ test_that("two arms printing the same ambiguous percentage are pushed APART, and
   expect_false(any(r2$derivedCells$KIND == "failsafe"))
 })
 
-test_that("the fail-safe rule itself: the ambiguous arms are split against EACH OTHER, not against one pooled number", {
-  # replicate the choice in isolation, as the heuristics apply it. The
-  # first version compared every ambiguous arm with one pooled proportion,
-  # so arms on the same side of it all took the same endpoint - security
-  # screen 2026-09-07-1609, finding F1.
-  choose <- function(lo, hi, cnt, N) {
-    approx <- is.na(cnt)
-    mid <- ifelse(approx, (lo + hi) / 2, cnt)
-    prop <- mid / N
-    amb <- which(approx)
-    if (length(amb) == 1L) {
-      pooled <- sum(mid) / sum(N)
-      cnt[amb] <- if (prop[amb] >= pooled) hi[amb] else lo[amb]
-    } else {
-      r <- rank(prop[amb], ties.method = "first")
-      take <- ifelse(r <= length(amb) / 2, "lo", "hi")
-      for (g in split(seq_along(amb), format(prop[amb], digits = 15)))
-        if (length(g) > 1L) take[g] <- c("lo", "hi")[1 + (seq_along(g) - 1) %% 2]
-      cnt[amb] <- ifelse(take == "hi", hi[amb], lo[amb])
-    }
-    cnt
+test_that("the fail-safe rule is a maximisation, and the helper itself is what the parser calls", {
+  # The rule is not a heuristic any more (security screen 2026-09-07-1654,
+  # finding F1): .ppFailsafeCounts() enumerates the lo/hi choices and takes
+  # the assignment with the largest fixed-margin Pearson statistic - the
+  # most heterogeneous reading the printed page permits, which is the
+  # guarantee the app and the guides state. The earlier tests replicated
+  # the rule in the test file, so they could not have failed when the rule
+  # was wrong; these call the function the parser calls.
+  brackets <- function(pcts, Ns, dec = 0) {
+    b <- t(vapply(seq_along(pcts), function(i) as.numeric(.ppCountBracket(pcts[i], dec, Ns[i])),
+                  numeric(2)))
+    cnt <- ifelse(b[, 1] == b[, 2], b[, 1], NA_real_)
+    lo <- ifelse(is.na(cnt), b[, 1], NA_real_); hi <- ifelse(is.na(cnt), b[, 2], NA_real_)
+    list(lo = lo, hi = hi, cnt = cnt)
   }
-  # two ambiguous arms at the same percentage: pushed apart
-  expect_equal(choose(c(495, 495), c(505, 505), c(NA, NA), c(1000, 1000)), c(495, 505))
-  # THREE arms printing the same percentage beside a small pinned arm: the
-  # old rule gave all three 990 - identical proportions, the very defect
-  # the fill exists to prevent. They must not all take one endpoint.
-  got <- choose(c(990, 990, 990, NA), c(1010, 1010, 1010, NA),
-                c(NA, NA, NA, 31), c(2000, 2000, 2000, 60))
-  expect_true(length(unique(got[1:3])) > 1)
-  expect_equal(sort(unique(got[1:3])), c(990, 1010))
-  # one pinned arm (30% of 40 = 12), one ambiguous arm at 35% of 1000 (345..355): away from 30%
-  expect_equal(choose(c(NA, 345), c(NA, 355), c(12, NA), c(40, 1000)), c(12, 355))
-  # the ambiguous arm below the pooled proportion takes the bottom
-  expect_equal(choose(c(NA, 245), c(NA, 255), c(20, NA), c(40, 1000)), c(20, 245))
-  # two ambiguous arms at DIFFERENT percentages still take opposite ends
-  expect_equal(choose(c(327, 303), c(333, 309), c(NA, NA), c(702, 695)), c(333, 303))
+  fill <- function(pcts, Ns, dec = 0) {
+    b <- brackets(pcts, Ns, dec); .ppFailsafeCounts(b$lo, b$hi, b$cnt, Ns)
+  }
+
+  # two arms at the same percentage: the ends of the bracket
+  expect_setequal(fill(c(50, 50), c(1000, 1000)), c(495, 505))
+  # two arms at different percentages: pushed apart, not together
+  expect_equal(fill(c(47, 44), c(702, 695)), c(333, 303))
+  # one ambiguous arm beside a pinned one: away from it
+  expect_equal(fill(c(30, 35), c(40, 1000)), c(12, 355))
+  expect_equal(fill(c(50, 25), c(40, 1000)), c(20, 245))
+
+  # THE SCREEN'S WORST CASE. The rank rule split the two arms printing 47%
+  # and the two printing 49% correctly against each other and wrongly
+  # against the rest of the row, building 1455/18/93/2375/74 - row
+  # statistic 1.16 - where 1485/18/93/2325/74 is equally consistent with
+  # the page and reads 7.15. The maximiser must find the second.
+  Ns <- c(3000, 40, 200, 5000, 150)
+  got <- fill(c(49, 45, 47, 47, 49), Ns)
+  expect_equal(got, c(1485, 18, 93, 2325, 74))
+  expect_gt(.ppRowStat(got, Ns), .ppRowStat(c(1455, 18, 93, 2375, 74), Ns))
+
+  # and it IS the maximum, checked against every admissible assignment
+  bestOf <- function(pcts, Ns, dec = 0) {
+    b <- brackets(pcts, Ns, dec); amb <- which(is.na(b$cnt))
+    best <- -Inf
+    for (v in 0:(2^length(amb) - 1)) {
+      pick <- bitwAnd(bitwShiftR(v, seq_along(amb) - 1L), 1L) == 1L
+      tr <- b$cnt; tr[amb] <- ifelse(pick, b$hi[amb], b$lo[amb])
+      best <- max(best, .ppRowStat(tr, Ns))
+    }
+    best
+  }
+  set.seed(4)
+  for (i in 1:40) {
+    k <- sample(2:5, 1)
+    Ns <- sample(c(40, 150, 200, 700, 1000, 2000, 5000), k, replace = TRUE)
+    pcts <- sample(20:80, k, replace = TRUE)
+    expect_gte(.ppRowStat(fill(pcts, Ns), Ns), bestOf(pcts, Ns) - 1e-9)
+  }
+
+  # an arm that reports nothing on this line is not an arm reporting zero:
+  # it must stay out of the statistic and out of the fill
+  out <- .ppFailsafeCounts(c(495, NA), c(505, NA), c(NA, NA), c(1000, 800))
+  expect_true(out[1] %in% c(495, 505))   # filled from its own bracket
+  expect_true(is.na(out[2]))             # and the silent arm stays silent
+  # with one arm reporting there is nothing to be alike TO: every choice
+  # gives the same statistic, and the fill takes the bracket's bottom
+  expect_equal(.ppRowStat(c(495), c(1000)), .ppRowStat(c(505), c(1000)))
+  # add a second reporting arm and the choice becomes real again
+  expect_equal(.ppFailsafeCounts(c(495, NA), c(505, NA), c(NA, 300), c(1000, 800))[1], 505)
 })
 
 test_that("arms printing the same percentage are not rebuilt identically when a fourth arm shifts the pooled proportion (screen 1609, F1)", {

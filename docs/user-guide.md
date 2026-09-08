@@ -403,9 +403,10 @@ specific cell:
 - **Orange — fail-safe count.** The page printed only a percentage, and
   for this arm size several counts fit it (above 100 patients at integer
   percentages, above 1,000 at one decimal). The ambiguous cells of the
-  row are split against each other, each taking the end of its bracket
-  that leaves the arms least alike, so the row can look less alike than
-  the truth but never more: the analysis is conservative for that row,
+  row are filled with whichever admissible counts leave the arms **least
+  alike** - every combination the printed percentages allow is tried, and
+  the least homogeneous is kept - so the row can look less alike than the
+  truth but never more: the analysis is conservative for that row,
   and markedly so — a row that would alarm on printed counts usually
   will not alarm on printed percentages. Hover the cell for the bracket
   of counts the percentage allows. This is a

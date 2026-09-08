@@ -153,7 +153,9 @@ function(req, res, file) {
                 deleted = TRUE))
   }
   list(ok = TRUE, file = name, engine = r$engine,
-       flags = as.list(r$flags),
+       # scrubbed and length-bounded like /analyze's (screen
+       # 2026-09-07-1654, F3): a flag quotes lines from the document
+       flags = as.list(IntegrityAnalysis:::.apiSafeFlags(r$flags, work, name)),
        rows = nrow(r$data),
        skipped = if (!is.null(r$skipped))
          lapply(seq_len(nrow(r$skipped)), function(i)
@@ -269,8 +271,11 @@ function(req, res, file, seed = NULL) {
   # back an overallP computed from FAIL-SAFE counts - counts not printed
   # on the manuscript page - with nothing in the reply saying so
   # (security screen 2026-09-07-1609, finding F2). Omitted entirely when
-  # there is nothing to say, so the ordinary response is unchanged.
-  if (length(r$flags)) out$flags <- as.list(r$flags)
+  # there is nothing to say, so the ordinary response is unchanged, and
+  # passed through the same scrub as `reasons` plus a length bound, since
+  # a flag quotes the document (screen 2026-09-07-1654, finding F3).
+  safeFlags <- IntegrityAnalysis:::.apiSafeFlags(r$flags, work, name)
+  if (length(safeFlags)) out$flags <- as.list(safeFlags)
   # the seed the run used, when one was sent (2026-09-05)
   if (!is.null(seedValue)) out$seed <- seedValue
   out

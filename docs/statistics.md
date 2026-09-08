@@ -360,13 +360,19 @@ makes a number reproducible; it does not make it more precise.
   honest arms whose percentages happen to round the same would be
   rebuilt with identical proportions, an agreement the real counts never
   had (by exact enumeration, 38% of honest 5,000-per-arm pairs would
-  fall below p = 0.01). So the ambiguous cells of a row are
-  split against **each other**: ordered by the proportion their brackets
-  imply, the lower half take the bottom of their bracket and the upper
-  half the top, and cells whose percentages imply the same proportion
-  alternate, so arms printing the same percentage are spread across both
-  ends of their bracket rather than all taking one end. The row can look less alike than the truth, never
-  more, and its p is conservative. How conservative is worth stating: a
+  fall below p = 0.01). So the choice is made by
+  **maximisation**, not by a rule of thumb: of every set of counts the
+  row's printed percentages allow - one end of each ambiguous arm's
+  bracket, the exactly pinned arms held fixed - the row is built from the
+  set with the largest value of the statistic the screen goes on to
+  simulate. The row therefore looks as *unlike* as the page permits: it
+  can look less alike than the truth, never more, and its p is
+  conservative. (Two heuristics preceded this one and neither kept that
+  promise: pushing every ambiguous arm away from one pooled proportion
+  gave arms on the same side identical counts, and splitting the
+  ambiguous arms against each other by rank ignored the pinned arms.
+  Both were caught by the security screens of 2026-09-07 and are
+  recorded in [method-history.md](method-history.md).) How conservative is worth stating: a
   two-arm row of 5,000 per arm printed as counts 2,500 and 2,500 reads
   p = 0.008, and the same row printed as "50%" and "50%" reads p = 0.68.
   A row that would alarm on printed counts usually will not alarm on
