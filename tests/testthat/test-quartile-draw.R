@@ -94,9 +94,12 @@ test_that("coarser printed quartiles are no less conservative than finer ones", 
   # coarse row's intervals are a hundred times wider, so its null carries
   # more scale uncertainty and its p cannot be the smaller one by much.
   # Averaged over seeds so the comparison is not one draw's luck.
+  # the quartiles are whole numbers, so they sit on BOTH grids - a value
+  # off the grid its precision names is refused since security screen
+  # 2026-09-07-1758, and 10.6 is not a number printed to no decimals
   pOf <- function(qDec, seed) {
     D <- medRow(c(40, 40), c(12.4, 13.1),
-                c(10.00, 10.60), c(15.00, 15.40), qDec = qDec, medDec = 1)
+                c(10, 11), c(15, 15), qDec = qDec, medDec = 1)
     as.numeric(sub("^<", "", runRow(D, m = 1000, seed = seed)$P))
   }
   seeds <- c(11, 22, 33, 44, 55)

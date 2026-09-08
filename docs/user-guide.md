@@ -867,6 +867,17 @@ convention as the continuous rows. Degenerate tables (an arm with no
 counts, an empty category) are refused with an explanation rather than
 analyzed.
 
+A row is refused when a precision column contradicts the numbers beside
+it. `ROUND DISPERSION` says what grid the SD or the quartiles sit on, and
+the analysis reads that grid as the interval the printed value stands
+for, so it has to be a grid the value could have been rounded to.
+Quartiles of 40 and 60 reported to the nearest ten are fine; quartiles of
+45 and 55 said to be printed to the nearest ten are not, and neither is
+any value paired with a far coarser claim. This matters more than it
+sounds: the interval multiplies the width of the comparison the analysis
+makes, so one mistyped cell could otherwise turn an unremarkable row into
+an apparent finding.
+
 A row is also refused when its printed precision asks for more accuracy
 than the computer's arithmetic can carry: a value near a hundred billion
 printed to twenty decimals wants more than the fifteen or so significant

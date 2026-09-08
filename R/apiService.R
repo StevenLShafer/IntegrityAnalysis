@@ -69,11 +69,38 @@
 # cap bounds the TABLE, not the lines the reader refused), and a flag that
 # one day quotes a reader's error cannot carry the request's temp path
 # back to the caller. Truncation is marked, never silent.
+# The refused table lines travel beside the flags and carry the document's
+# own text; the row cap bounds the TABLE, not the lines a reader could not
+# use, so they are bounded here too (security screen 2026-09-07-1758,
+# finding F3 - the flags fix's own rationale applied to its neighbour).
+.apiMaxSkipped <- 200L
+.apiSafeSkipped <- function(skipped, work, name) {
+  if (is.null(skipped) || !nrow(skipped)) return(list())
+  n <- nrow(skipped)
+  keep <- seq_len(min(n, .apiMaxSkipped))
+  lab <- .apiSafeFlags(skipped$label[keep], work, name)
+  rsn <- .apiSafeFlags(skipped$reason[keep], work, name)
+  out <- lapply(seq_along(keep), function(i)
+    list(label = lab[i], reason = rsn[i]))
+  if (n > .apiMaxSkipped)
+    out <- c(out, list(list(
+      label = sprintf("...%d further line(s) omitted", n - .apiMaxSkipped),
+      reason = "the reply's list of unusable lines is capped")))
+  out
+}
+
 .apiMaxFlags     <- 50L
 .apiMaxFlagBytes <- 2048L
 .apiSafeFlags <- function(flags, work, name) {
   if (is.null(flags) || !length(flags)) return(NULL)
-  f <- as.character(flags)
+  # Every step below inspects the string, and a string that is not valid
+  # UTF-8 makes nchar(), substr() and gsub(fixed = TRUE) raise - which
+  # would turn a successful parse into a 500 (security screen
+  # 2026-09-07-1758, finding F4). No reader is known to produce one; the
+  # guard is here so that none ever can.
+  f <- enc2utf8(as.character(flags))
+  bad <- is.na(iconv(f, "UTF-8", "UTF-8"))
+  if (any(bad)) f[bad] <- "<unreadable flag text removed>"
   f <- .apiScrubPath(f, work, name)
   # by BYTES, and substr() counts characters: a flag of 2,048 accented
   # letters is 4,096 bytes and survived the cut whole (CodeRabbit on PR

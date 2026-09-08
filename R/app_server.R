@@ -1154,9 +1154,19 @@ app_server <- function(input, output, session) {
           # out of the analysis until the user fills them in or deletes
           # them.
           if (nrow(r$skipped) > 0) {
-            extra <- d[rep(NA_integer_, nrow(r$skipped)), , drop = FALSE]
+            # bounded: a page whose lines mostly fail to parse would
+            # otherwise put one grid row in the browser per refused line
+            # (security screen 2026-09-07-1758, finding F3, the app half).
+            # The cap is generous beside any real table; the count is
+            # shown so nothing disappears silently.
+            keep <- seq_len(min(nrow(r$skipped), .iaMaxSkippedRows))
+            lab  <- r$skipped$label[keep]
+            if (nrow(r$skipped) > .iaMaxSkippedRows)
+              lab <- c(lab, sprintf("... %d further unusable line(s) not shown",
+                                    nrow(r$skipped) - .iaMaxSkippedRows))
+            extra <- d[rep(NA_integer_, length(lab)), , drop = FALSE]
             extra$TRIAL <- files$stem[i]
-            extra$ROW <- r$skipped$label
+            extra$ROW <- lab
             rownames(extra) <- NULL
             d <- rbind(d, extra)
           }

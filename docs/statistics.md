@@ -322,7 +322,7 @@ makes a number reproducible; it does not make it more precise.
 
 | Column | Meaning |
 |---|---|
-| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, "Printed precision beyond this magnitude's numerical resolution", ...) are refusals: the row could not be analyzed, with the reason. |
+| P | The one-sided p toward homogeneity. "<0.0001" means the 97.5% upper confidence bound clears 0.0001. Text entries ("Only 1 Row", "Quartiles do not increase (Q3 must exceed Q1)" — printed the wrong way round, since quartiles that merely print the same value are analyzed, "Printed precision beyond this magnitude's numerical resolution", "The stated precision does not match the printed values", ...) are refusals: the row could not be analyzed, with the reason. |
 | 95% Monte Carlo interval | For every row: the exact Clopper–Pearson 95% interval of the row p. For the Summary row: the exact interval of the trial p, shown when P < 0.001. Its coverage is discussed above. |
 | Note | "attainable floor" when the arms agree exactly and no honest replicate agreed better (see "Rounding, convergence, and the attainable floor"); for a median row, "quartiles beyond the metalog's skew limit; fitted at the limit" when the printed quartiles imply more skew than a three-term metalog can carry, so the closest feasible one was used, and "printed quartiles do not separate in k arm(s); the fit uses their printed intervals" when an arm prints Q1 and Q3 as the same value, so its width is known only to be smaller than one printed unit. Notes are joined with "; ". Blank otherwise. |
 | Replicates | Simulations this row's final stage used (1,000 for unremarkable trials; up to 100,000 for alarming ones; the same for every row of a trial). |
@@ -379,6 +379,21 @@ makes a number reproducible; it does not make it more precise.
   printed percentages. The app paints such cells orange and states the
   bracket; both API routes name the rows in their response flags. The
   printed counts, if the author supplies them, replace the guess.
+- **A stated precision describes the number beside it.** The precision
+  columns say what grid a printed value sits on, and the engine turns
+  that grid into an interval: a printed SD stands for half a step either
+  side, and so does a printed quartile. A grid the value does not sit on
+  is not a reading of any page — quartiles of 45 and 55 said to be
+  printed to the nearest ten, or to the nearest hundred thousand — and
+  such a row is refused rather than simulated on a fabricated interval.
+  The check is arithmetic, not a matter of taste: quartiles of 40 and 60
+  reported to the nearest ten are consistent and are analyzed, and so is
+  a variable whose interquartile range is smaller than one printed unit.
+  It matters because the interval is a direct multiplier on the null's
+  spread: before the check, a single spreadsheet cell claiming five
+  negative decimals moved an honest two-arm row from p = 0.64 to
+  p = 0.005, and ten from there to the reportable floor — an accusation
+  manufactured by a cell nobody would look at twice.
 - **The numbers fit in the arithmetic.** A double carries about 15.7
   significant digits. A row whose printed precision asks for more at its
   own magnitude — twenty decimals beside a value of 10¹¹, say — is

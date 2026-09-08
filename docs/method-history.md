@@ -604,6 +604,42 @@ missing ties is the *alarming* direction, so those arms simulate in full
 instead. That is a narrower condition than the row refusal, since h/N is
 N times finer than the printed grid.
 
+## 2026-09-07 — a stated precision has to describe the number beside it
+
+**What was wrong.** The precision columns say what grid a printed value
+sits on, and since 2026-09-06 for a standard deviation and 2026-09-07 for
+a quartile the engine reads that grid as the *interval* the printed value
+stands for. Nothing bounded the grid against the value it describes. The
+validator accepted any precision in [−20, 20], so one cell of a supplied
+spreadsheet or a posted template — `ROUND_DISPERSION = −5` — multiplied
+the width of the null by a hundred thousand while the observed statistic
+stayed put. Measured on an honest two-arm median row (N = 40, medians 50
+and 52, quartiles 45–55 and 47–57, m = 10,000):
+
+| `ROUND_DISPERSION` | 0 | −1 | −2 | −3 | −5 | −10 | −20 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| p | 0.64 | 0.718 | 0.629 | 0.187 | 0.0049 | 9.999e−05 | 9.999e−05 |
+
+9.999e−05 is the floor of the reportable range: a maximal alarm on an
+honest trial, produced by a cell nobody would look at twice. The mean/SD
+branch carried the same lever (0.624, 0.037, 9.999e−05). The quartile
+draw had made the failure *worse* in the sense that counts: before it, a
+coarse `ROUND_DISPERSION` collapsed the bootstrap scale and every row read
+p ≈ 1, a false clearance; after it, the same cell produces a false
+accusation (security screen 2026-09-07-1758, finding F1).
+
+**What changed.** A row is refused — "The stated precision does not match
+the printed values" — when a printed value does not sit on the grid its
+own precision column names, checked per column: means against
+`ROUND_MEAN`, standard deviations and quartiles against
+`ROUND_DISPERSION`, with a tolerance proportional to the value and never
+to the grid (a grid of 10²⁰ would otherwise swallow every number ever
+printed). The test is consistency, not coarseness, which matters because
+two honest shapes look coarse: quartiles of 40 and 60 reported to the
+nearest ten are consistent and analyzed, and a variable whose
+interquartile range is smaller than one printed unit — the case the
+quartile draw was built for — is untouched.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a

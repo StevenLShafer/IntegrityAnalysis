@@ -129,6 +129,12 @@ m <- 100000
   DATA
 }
 
+# The grid rows a file's UNUSABLE lines may add (security screen
+# 2026-09-07-1758, F3): a page whose lines mostly fail to parse would
+# otherwise put one row in the browser per refused line. Generous beside
+# any real baseline table, and the count of the rest is shown.
+.iaMaxSkippedRows <- 200L
+
 # THE LONG CATEGORICAL LAYOUT (Steve, 2026-09-05: "would it be more
 # logical on the input spreadsheet to use the column N for categorical
 # variables ... As it is, the spreadsheet becomes quite wide when there
