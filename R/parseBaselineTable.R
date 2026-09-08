@@ -63,16 +63,16 @@ reviewFlags <- function(x) {
                              "arm N (unique-count bracket): ",
                              paste(x$derivedCounts, collapse = ", ")))
   # FAIL-SAFE conversions (pctApprox = TRUE; Steve, 2026-09-07): the printed
-  # percentage fit several counts for the arm size, and each ambiguous cell
-  # took the end of its bracket that leaves the arms least alike, so the row
-  # can look less alike than the truth but never more. A design decision for
+  # percentage fit several counts for the arm size, and of every set of
+  # counts the row's percentages allow, the one leaving the arms least
+  # alike was built, so the row can look less alike than the truth but
+  # never more. A design decision for
   # incomplete data, not a datum: the printed counts would settle it.
   if (!is.null(x$approxCounts) && length(x$approxCounts) > 0)
     flags <- c(flags, paste0(length(x$approxCounts), " category row(s) use ",
                              "FAIL-SAFE counts - the printed percentage fit ",
-                             "several counts for the arm size and the end of ",
-                             "the bracket that leaves the arms least alike was ",
-                             "taken, so the ",
+                             "several counts for the arm size and the counts ",
+                             "that leave the arms least alike were taken, so the ",
                              "row cannot look more alike than the page allows: ",
                              paste(x$approxCounts, collapse = ", "),
                              ". Check these against the paper before ",

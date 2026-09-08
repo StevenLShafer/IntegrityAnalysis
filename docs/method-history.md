@@ -514,22 +514,48 @@ never had. The GPT-6 audit's exact enumeration (finding F3,
 Arms of 100 or fewer were never affected: there every count has its own
 percentage and the conversion is exact.
 
-**What changed** (Steve Shafer's decision, 2026-09-07). An ambiguous
-cell takes the end of its bracket that leaves the arms least alike, so
-the row can look less alike than the truth but never more, and its p is
-conservative. The first version of the rule compared every ambiguous arm
-with one pooled proportion; that gave every ambiguous arm on the same
-side of it the SAME endpoint, which reproduced the defect the rule
-exists to prevent (three arms printing 50% of 2,000 beside a small arm
-printing 52% all became 990, and an honest row of that shape read
-p = 0.0094 — security screen 2026-09-07-1609, finding F1). The rule now
-splits the ambiguous cells against **each other**: ordered by the
-proportion their brackets imply, the lower half take the bottom of their
-bracket and the upper half the top, and cells whose percentages imply the
-same proportion alternate, so arms printing alike are spread across both
-ends of their bracket rather than all taking one end (with three or more
-of them two must share an end, since a bracket has only two). A single ambiguous cell, which has no other ambiguous arm to be
-split from, still moves away from the pooled proportion of the rest.
+**What changed** (Steve Shafer's decision, 2026-09-07). Of every set of
+counts the row's printed percentages allow — one end of each ambiguous
+arm's bracket, the exactly pinned arms held fixed — the row is built from
+the set that leaves the arms least alike, so it can look less alike than
+the truth but never more, and its p is conservative.
+
+That guarantee took three attempts, and the two that failed are worth
+recording, because each was a plausible rule that optimised a proxy
+instead of the thing promised.
+
+1. *Away from the pooled proportion* (the first version). Every
+   ambiguous arm on the same side of one pooled number took the same end
+   of its bracket, so three arms printing 50% of 2,000 beside a small arm
+   printing 52% of 60 all became 990 — identical proportions, the defect
+   the rule exists to prevent — and an honest row of that shape read
+   p = 0.0094 (security screen 2026-09-07-1609, finding F1).
+2. *Split the ambiguous arms against each other by rank.* This fixed that
+   case and left another: the ordering looked only at the ambiguous arms,
+   so the exactly pinned arms had no vote, and two pairs of arms could be
+   split correctly against each other while both moved toward the rest of
+   the row. Over 86,310 synthetic rows the assignment fell short of the
+   most heterogeneous consistent reading in 57.9% of rows, and in the
+   worst case measured — five arms printing 49%, 45%, 47%, 47% and 49% —
+   it built a row reading p = 0.116 where an equally consistent reading
+   reads p = 0.872 (screen 2026-09-07-1654, finding F1).
+3. *Maximisation* (what runs now). The objective is the statistic the
+   engine simulates for a categorical row: the fixed-margin Pearson
+   statistic of the level against its complement. It is convex in the
+   counts, so its maximum over the box of admissible counts sits at a
+   vertex, and every vertex is one lo/hi choice per ambiguous arm. Up to
+   twelve ambiguous arms every vertex is enumerated, and there the answer
+   is the maximum by construction — verified against exhaustive search on
+   3,000 random rows. Beyond twelve — the arm count follows the columns a
+   document declares, so it is not ours to bound — coordinate ascent runs
+   from both corners, which is a local maximum and matched the exhaustive
+   answer on every row measured but is not proven to be the global one. A
+   baseline table with thirteen or more arms whose percentages are all
+   ambiguous is not a shape that has been seen; the guarantee is exact
+   below the bound and empirical above it. Splitting arms that print
+   alike is no longer a rule but a consequence, and where the brackets
+   force two rebuilt counts to coincide they are allowed to: what the
+   editor reads is the row's p, not the appearance of the counts.
 
 How conservative the rule is, measured (lower-tail mid-p of the Pearson
 statistic under `r2dtable`, 200,000 draws): a two-arm row of 5,000 per

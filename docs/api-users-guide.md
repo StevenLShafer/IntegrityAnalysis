@@ -171,12 +171,10 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 **Incomplete data: fail-safe counts.** A table that prints only a
 percentage for a categorical level gives the count exactly when the arm
 has 100 or fewer patients (1,000 at one printed decimal); above that,
-several counts fit the printed percentage. The service splits such cells against
-**each other**: ordered by the proportion their brackets imply, the lower
-half take the bottom of their bracket and the upper half the top, and
-cells whose percentages imply the same proportion alternate, so arms
-printing the same percentage are spread across both ends of their bracket
-rather than all taking one end. The
+several counts fit the printed percentage. The service fills such cells by
+**maximisation**: of every set of counts the row's printed percentages
+allow, with the exactly pinned arms held fixed, it builds the set that
+leaves the arms least alike. The
 row can look less alike than the truth but never more, and the trial p is
 conservative for that row — markedly so: a two-arm row of 5,000 per arm
 printed as counts 2,500 and 2,500 reads p = 0.008, and the same row

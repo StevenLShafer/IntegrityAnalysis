@@ -60,6 +60,40 @@
   reasons
 }
 
+# The reader's flags, made safe to put in a reply (security screen
+# 2026-09-07-1654, finding F3). A flag quotes the document: skipped table
+# lines and the arm-size sentences the reader recovered N from, and with
+# the AI assist on, model output the manuscript can steer. Two properties
+# are pinned here rather than left to the goodwill of every present and
+# future flag constructor: the array cannot grow without bound (the row
+# cap bounds the TABLE, not the lines the reader refused), and a flag that
+# one day quotes a reader's error cannot carry the request's temp path
+# back to the caller. Truncation is marked, never silent.
+.apiMaxFlags     <- 50L
+.apiMaxFlagBytes <- 2048L
+.apiSafeFlags <- function(flags, work, name) {
+  if (is.null(flags) || !length(flags)) return(NULL)
+  f <- as.character(flags)
+  f <- .apiScrubPath(f, work, name)
+  # by BYTES, and substr() counts characters: a flag of 2,048 accented
+  # letters is 4,096 bytes and survived the cut whole (CodeRabbit on PR
+  # #217). Characters are cut until the byte count fits, so a multi-byte
+  # character is never sliced in half either.
+  cut <- function(x) {
+    k <- nchar(x)
+    while (k > 0 && nchar(substr(x, 1, k), type = "bytes") > .apiMaxFlagBytes)
+      k <- max(0L, k - max(1L, (nchar(substr(x, 1, k), type = "bytes") -
+                                .apiMaxFlagBytes) %/% 4L))
+    paste0(substr(x, 1, k), " ...truncated")
+  }
+  long <- !is.na(f) & nchar(f, type = "bytes") > .apiMaxFlagBytes
+  if (any(long)) f[long] <- vapply(f[long], cut, character(1), USE.NAMES = FALSE)
+  if (length(f) > .apiMaxFlags)
+    f <- c(f[seq_len(.apiMaxFlags)],
+           sprintf("...%d further flag(s) truncated", length(f) - .apiMaxFlags))
+  f
+}
+
 .apiTokens <- function()
   trimws(strsplit(Sys.getenv("INTEGRITY_API_TOKENS", ""), ",")[[1]])
 

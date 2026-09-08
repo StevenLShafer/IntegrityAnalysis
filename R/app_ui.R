@@ -238,20 +238,19 @@ app_ui <- function(testNote = NULL)
                                ".jpg", ".jpeg", ".png", ".tif", ".tiff",
                                ".zip")),
           # The fail-safe fill (Steve, 2026-09-07; first an opt-in
-          # approximation, 2026-08-21): a percent-only cell whose printed
-          # rounding fits several counts takes the end of its bracket that
-          # leaves the arms least alike - the ambiguous cells of a row are
-          # split against EACH OTHER (corrected after security screen
-          # 2026-09-07-1609), so arms printing the same percentage are
-          # spread across both ends of their bracket instead of all taking
-          # one end (with three or more such arms two must share an end;
-          # there are only two) - and the row can look less alike than the
-          # truth but never more. Such cells paint ORANGE in
-          # the grid with the bracket in their hover note; exact
-          # conversions still paint green.
+          # approximation, 2026-08-21). Of every set of counts the row's
+          # printed percentages allow, the row is built from the one that
+          # leaves the arms LEAST alike, so it can look less alike than
+          # the truth but never more. That is a maximisation, not a rule
+          # of thumb: the two heuristics that came before it (push each
+          # arm away from the pooled proportion; split the ambiguous arms
+          # against each other) each left honest rows more alike than the
+          # page allows - security screens 2026-09-07-1609 and -1654.
+          # Such cells paint ORANGE in the grid with the bracket in their
+          # hover note; exact conversions still paint green.
           checkboxInput("pctApprox", paste(
             "Fill percent-only cells whose percentage fits several counts",
-            "with the count that leaves the arms least alike (fail-safe;",
+            "with the counts that leave the arms least alike (fail-safe;",
             "such cells show orange in the table below)"), value = TRUE, width = "100%"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never

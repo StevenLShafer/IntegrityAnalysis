@@ -715,41 +715,23 @@
       }
       if (any(approx)) {
         Ns  <- armN[arms]
-        mid <- ifelse(approx, (lo + hi) / 2, cnts)
-        use <- present & !is.na(mid) & !is.na(Ns)
-        prop <- mid / Ns
-        amb  <- which(approx)
-        # WHICH END OF THE BRACKET (corrected 2026-09-07 after security
-        # screen 2026-09-07-1609, finding F1). The first version pushed
-        # every ambiguous arm away from ONE pooled proportion, which gave
-        # every ambiguous arm on the same side of it the SAME endpoint:
-        # three arms printing 50% of 2,000 all became 990, the identical
-        # proportions the fill exists to prevent (an honest four-arm row
-        # measured p = 0.0094 that way). The choice is made among the
-        # ambiguous arms themselves instead.
-        if (length(amb) == 1L) {
-          # one ambiguous arm: away from the pooled proportion of the rest,
-          # which is the only other information the row carries
-          pooled <- sum(mid[use]) / sum(Ns[use])
-          cnts[amb] <- if (prop[amb] >= pooled) hi[amb] else lo[amb]
-        } else {
-          # several: order them by the proportion their bracket middles
-          # imply and split the order - the lower half takes the bottom of
-          # its bracket, the upper half the top - so the set is spread as
-          # wide as the printed page allows.
-          r <- rank(prop[amb], ties.method = "first")
-          take <- ifelse(r <= length(amb) / 2, "lo", "hi")
-          # Arms whose printed percentages imply the SAME proportion have
-          # no order between them, and splitting them by position would
-          # hand a run of them one endpoint; they alternate instead, so no
-          # two arms printing alike are rebuilt alike.
-          for (g in split(seq_along(amb), format(prop[amb], digits = 15)))
-            if (length(g) > 1L) take[g] <- c("lo", "hi")[1 + (seq_along(g) - 1) %% 2]
-          cnts[amb] <- ifelse(take == "hi", hi[amb], lo[amb])
-        }
-        for (j in amb)
+        # WHICH END OF EACH BRACKET. Not a heuristic: the assignment that
+        # MAXIMISES the row's own statistic, which is the most
+        # heterogeneous reading the printed page permits and is therefore
+        # the guarantee the app and the guides state, enforced by
+        # construction. Two heuristics preceded it and each left honest
+        # rows more alike than a consistent reading allows - pushing every
+        # arm away from one pooled proportion (identical counts for arms
+        # on the same side; an honest four-arm row read p = 0.0094;
+        # security screen 2026-09-07-1609) and splitting the ambiguous
+        # arms against each other by rank (58% of rows short of the
+        # conservative read, worst measured p 0.116 against 0.872; screen
+        # 2026-09-07-1654). .ppFailsafeCounts() holds the maximisation and
+        # its bound on the enumeration.
+        cnts <- .ppFailsafeCounts(lo, hi, cnts, Ns)
+        for (j in which(approx))
           notes[j] <- sprintf(
-            "FAIL-SAFE: %s%% of N=%d fits %d..%d; %d taken - the end of the bracket that leaves the arms least alike",
+            "FAIL-SAFE: %s%% of N=%d fits %d..%d; %d taken - the reading of the page that leaves the arms least alike",
             format(armTok[[j]]$num1), as.integer(Ns[j]), lo[j], hi[j], cnts[j])
       }
       if (any(present) && !any(is.na(cnts[present]))) {
