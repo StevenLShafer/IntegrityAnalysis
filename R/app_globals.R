@@ -135,6 +135,52 @@ m <- 100000
 # any real baseline table, and the count of the rest is shown.
 .iaMaxSkippedRows <- 200L
 
+# A whole FILE's unusable lines, capped across its blocks. parseWideTable()
+# returns one block per "Trial:" marker row and nothing caps the number of
+# markers, so capping each block separately bounded 200 times the block
+# count - a 10,000-row sheet of three-row blocks was unbounded in practice
+# (screen 2026-09-07-2101, F4). One budget, spent in order; the block that
+# exhausts it carries the marker and the rest contribute nothing.
+.iaCapSkippedFile <- function(blocks, cap = .iaMaxSkippedRows) {
+  budget <- cap
+  lapply(blocks, function(sk) {
+    if (is.null(sk) || !nrow(sk)) return(sk)
+    if (budget <= 0) return(sk[0, , drop = FALSE])
+    out <- .iaCapSkipped(sk, budget)
+    budget <<- max(0L, budget - nrow(out))
+    out
+  })
+}
+
+# The grid payload for the skip registry: which rows carry the "unreadable"
+# mark and its hover text. Two versions of this ran quadratically inside
+# the upload observer - the first scanned the whole frame per registry
+# entry, the second used a list-name lookup, which is a linear search
+# because R hashes environments and not list names, and grew the payload
+# one `[[<-` at a time (screens 2026-09-07-2000 F3 and -2101 F3, the
+# second of which measured both and found the "linear" claim false). This
+# is match() plus one bulk assignment, and it is a function so that a test
+# can measure it.
+.iaSkipPayload <- function(d, sk, dataCols, rowCol) {
+  empty <- list(iss = list(), note = list())
+  if (is.null(sk) || !nrow(sk) || is.null(d) || !nrow(d)) return(empty)
+  keyD  <- paste0(as.character(d$TRIAL), "\r", as.character(d$ROW))
+  keySk <- paste0(as.character(sk$TRIAL), "\r", as.character(sk$ROW))
+  emptyRow <- if (length(dataCols))
+    !Reduce(`|`, lapply(d[dataCols], function(v) !is.na(v))) else rep(TRUE, nrow(d))
+  # the LAST registry entry for a key wins, which is what the per-entry
+  # loop did by overwriting as it went
+  idx <- length(keySk) + 1L - match(keyD, rev(keySk))
+  hit <- emptyRow & !is.na(idx)
+  if (!any(hit)) return(empty)
+  keys <- paste0(which(hit) - 1L, "|", rowCol - 1L)
+  iss  <- as.list(rep("unreadable", sum(hit)));  names(iss)  <- keys
+  note <- as.list(paste0(
+    "The PDF reader saw this table line but could not use it: ",
+    sk$reason[idx[hit]]));                       names(note) <- keys
+  list(iss = iss, note = note)
+}
+
 # ...and the capping itself, a function rather than a block inside the
 # upload observer so that a test can call what the app calls (screen
 # 2026-09-07-1907, A1). The marker row is built FROM the frame: the

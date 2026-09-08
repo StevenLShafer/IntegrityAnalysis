@@ -39,24 +39,26 @@ test_that("F1: an SD no sample on the stated observation grid could produce is r
 })
 
 test_that("F1: the bound itself, and what it must never refuse", {
-  # SD >= h/sqrt(N) unless every value is identical
-  expect_true(.iaSdReachesGrid(10, 0, 0, 40))          # ordinary
-  expect_false(.iaSdReachesGrid(1, 0, -3, 1000))       # 1 against 31.6
-  expect_false(.iaSdReachesGrid(1, 0, -2, 100))        # 1 against 10
-  expect_true(.iaSdReachesGrid(0, 0, -3, 1000))        # every value identical: allowed
+  # The signature and the bound both changed the next hour (screen
+  # 2026-09-07-2101): the arguments carry the printed value's own
+  # precision and the mean, the bound is h times the mean's lattice
+  # offset rather than h/sqrt(N), and it applies only where a COARSER
+  # observation grid is stated. These calls are updated to that shape;
+  # test-screen-2101.R holds the cases for the sharpened rule.
+  expect_true(.iaSdReachesGrid(10, 0, 0, 0, 40, 50))       # ordinary
+  expect_false(.iaSdReachesGrid(1, 0, -3, 0, 1000, 500))   # 1 against 499.5
+  expect_false(.iaSdReachesGrid(1, 0, -2, 0, 100, 50))     # 1 against 50
+  expect_true(.iaSdReachesGrid(0, 0, -3, 0, 1000, 500))    # every value identical: allowed
   # the printed SD's own interval is used, so an honestly coarse SD passes
-  expect_true(.iaSdReachesGrid(1, 0, 0, 4))            # 1.5 against 0.5
-  expect_true(.iaSdReachesGrid(c(NA, 10), c(0, 0), c(0, 0), c(40, 40)))
-  # a printed SD exactly at the bound is admissible
-  expect_true(.iaSdReachesGrid(0.5, 6, 0, 4))          # 0.5 against 0.5
+  expect_true(.iaSdReachesGrid(1, 0, 0, 0, 4, 50))
+  expect_true(.iaSdReachesGrid(c(NA, 10), c(0, 0), c(0, 0), c(0, 0), c(40, 40), c(50, 50)))
   # A BLANK or ABSENT dispersion precision is inferred from the SD's own
   # printed decimals, as the simulation infers it - an absent column made
   # the whole test vacuous and an NA made it falsely strict (CodeRabbit on
   # PR #221)
-  expect_false(.iaSdReachesGrid(1, NULL, -3, 1000))    # still caught
-  expect_false(.iaSdReachesGrid(1, NA, -3, 1000))
-  expect_true(.iaSdReachesGrid(10, NULL, 0, 40))       # honest, still passes
-  expect_true(.iaSdReachesGrid(1, NA, 0, 4))           # inferred interval, 1.5 vs 0.5
+  expect_false(.iaSdReachesGrid(1, NULL, -3, 0, 1000, 500))   # still caught
+  expect_false(.iaSdReachesGrid(1, NA, -3, 0, 1000, 500))
+  expect_true(.iaSdReachesGrid(10, NULL, 0, 0, 40, 50))       # honest, still passes
 })
 
 test_that("F1 reaches a direct caller that supplies no ROUND_DISPERSION column", {
@@ -64,6 +66,14 @@ test_that("F1 reaches a direct caller that supplies no ROUND_DISPERSION column",
                   SD = rep(1, 3), ROUND_MEAN = 0, ROUND_OBSERVATION = -3,
                   stringsAsFactors = FALSE)
   expect_match(runRow(D)$P, "stated precision")
+})
+
+test_that("F1's rows are all judged on a STATED coarse observation grid", {
+  # the bound is confined to that case since screen 2026-09-07-2101's F5;
+  # every row this file refuses states ROUND_OBSERVATION coarser than
+  # ROUND_MEAN, which is what makes the refusal a statement about the
+  # table rather than about a default
+  expect_false(grepl("stated precision", runRow(flat(3, 1000, 500, 1, 0, 0, 0))$P))
 })
 
 test_that("F2: a stated precision finer than the printed value is DISCLOSED, not refused", {
@@ -94,10 +104,14 @@ test_that("F2: the slack is enough for the trailing zeros a spreadsheet drops", 
   # printed mean - must be ANALYSED, which is why this is a note and not
   # a refusal
   expect_false(grepl("stated precision", runRow(flat(2, 100, 50, 3, 6, 0, 0))$P))
-  # "1.20" stored as 1.2, "50.00" stored as 50: the stated precision may
-  # run a couple of decimals past the digits that survived storage
-  expect_true(.iaStatedPrecisionNotTooFine(1.2, 2))
-  expect_true(.iaStatedPrecisionNotTooFine(50, 2))
+  # The slack went to ZERO the next hour (screen 2026-09-07-2101, F2): at
+  # two decimals the row was already at the reportable floor with no note
+  # at all, and a note is the cheap side of an error. The note's wording
+  # carries the trailing-zero caveat instead of the threshold doing it.
+  expect_false(.iaStatedPrecisionNotTooFine(1.2, 2))
+  expect_false(.iaStatedPrecisionNotTooFine(50, 2))
+  expect_true(.iaStatedPrecisionNotTooFine(1.2, 1))
+  expect_true(.iaStatedPrecisionNotTooFine(50, 0))
   expect_false(.iaStatedPrecisionNotTooFine(50, 13))
   expect_false(.iaStatedPrecisionNotTooFine(0.5, 15))
   # judged on the finest printed value in the row, not arm by arm
@@ -134,5 +148,10 @@ test_that("F3: the cap itself, and both producers sharing it", {
   # runs before every screen.
   src <- file.path("..", "..", "R", "app_server.R")
   skip_if(!file.exists(src), "not a source checkout")
-  expect_gte(sum(grepl(".iaCapSkipped(", readLines(src), fixed = TRUE)), 2)
+  txt <- readLines(src)
+  # the wide branch caps its whole FILE, since one sheet may hold thousands
+  # of "Trial:" blocks and a per-block cap bounds nothing (screen
+  # 2026-09-07-2101, F4); the document branch caps its own frame
+  expect_true(any(grepl(".iaCapSkippedFile(", txt, fixed = TRUE)))
+  expect_true(any(grepl("r$skipped <- .iaCapSkipped(", txt, fixed = TRUE)))
 })
