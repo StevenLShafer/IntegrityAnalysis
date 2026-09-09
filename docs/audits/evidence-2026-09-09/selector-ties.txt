@@ -1,0 +1,12 @@
+selector-ties started 2026-09-08 15:57:53 
+Independent exact mid-p: 0.35 
+Selector:
+[1] 0.099834
+validation failed: FALSE 
+Trial T: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+  TRIAL     ROW     P      CI95    M NOTE     KIND
+1     T       X 0.346 0 to 0.72 1000      variable
+2  <NA> Summary 0.346 0 to 0.72 <NA>       summary
+3  <NA>    <NA>  <NA>      <NA> <NA> <NA>     <NA>
+elapsed 0.23 seconds

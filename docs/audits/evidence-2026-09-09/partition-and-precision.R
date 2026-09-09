@@ -1,0 +1,30 @@
+# Independent probes of new partition and text-precision code; GPT-6 (Codex).
+suppressPackageStartupMessages({library(shiny);library(dqrng);library(foreach);library(Rfast);library(MBESS);pkgload::load_all()})
+od<-'docs/audits/evidence-2026-09-09';sink(file.path(od,'partition-and-precision.txt'),split=TRUE)
+run<-function(d,validate=TRUE){set.seed(42);dqset.seed(42);v<-shiny::isolate(validateData(d));print(v$DATA);print(v$FAIL);if(!v$FAIL)print(shiny::isolate(P_Calc('T',if(validate)v$DATA else d,v$CategoryNames,100000)))}
+cat('NEGATIVE PRECISION REGRESSION\n')
+d<-data.frame(TRIAL='T',ROW='X',N=rep(100,3),MEAN=50,SD=30,ROUND_MEAN=-1,ROUND_OBSERVATION=0,ROUND_DISPERSION=0)
+run(d,FALSE);run(d,TRUE)
+cat('SCIENTIFIC TEXT PRECISION\n')
+d<-data.frame(TRIAL='T',ROW='X',N=c(40,40),MEAN='50',SD='10',ROUND_OBSERVATION=0)
+run(d);d$MEAN<-'5.0e1';d$SD<-'1.0e1';run(d)
+cat('FALSE PARTITION: SELECTED LEVELS TOTAL 98 PERCENT\n')
+source('tests/testthat/helper-syntheticPdf.R');f<-file.path(od,'incomplete-category.pdf');vx<-c(300,420)
+cells<-c(list(list(x=72,y=80,text='Table 1. Baseline patient characteristics',adj=0)),
+ rowCells(110,'',c('Control','Treatment'),vx),rowCells(128,'',c('(n = 1000)','(n = 1000)'),vx),
+ rowCells(150,'Age (yr)',c('45.3 (12.1)','46.1 (11.8)'),vx),rowCells(180,'Race, %',c('',''),vx))
+for(j in 1:4)cells<-c(cells,rowCells(185+20*j,c('Asian','White','Black','Hispanic')[j],rep(as.character(c(24,24,24,26)[j]),2),vx,labelX=82))
+cells<-c(cells,list(list(x=72,y=300,text='Other categories omitted.',adj=0)))
+makeTablePdf(f,cells);set.seed(42)
+r<-parseBaselineTableHeuristics(f,pctApprox=TRUE,quiet=TRUE);print(r$data);print(r$derivedCells);print(r[c('approxBounded','approxStraddle')]);saveRDS(r,file.path(od,'incomplete-category.rds'))
+r$data$TRIAL<-'T';run(r$data[r$data$ROW=='Race, %',])
+d<-data.frame(TRIAL='T',ROW='X',N=NA_real_,MEAN=NA_real_,SD=NA_real_,Asian=c(235,245),White=c(245,235),Black=c(235,245),Hispanic=c(265,255),Other=c(20,20))
+cat('Feasible original partition, including omitted Other:\n');print(d);run(d)
+cat('TRUE PARTITION REJECTED BY HEURISTIC\n')
+cnt<-c(rep(29L,6),26L);pct<-round(100*cnt/200)
+lo<-ceiling(200*(pct-.5)/100);hi<-floor(200*(pct+.5)/100)
+partition<-sum(lo)<=200&&200<=sum(hi)&&abs(sum((lo+hi)/2)-200)<=.02*200
+print(list(counts=cnt,percentages=pct,sum=sum(cnt),lo=lo,hi=hi,exhaustive=partition))
+cat('Vectors admitted by actual FALSE mode:',nrow(.ppArmVectors(lo,hi,200,FALSE,200000)),'\n')
+cat('but by TRUE mode:',nrow(.ppArmVectors(lo,hi,200,TRUE,200000)),'\n')
+sink()

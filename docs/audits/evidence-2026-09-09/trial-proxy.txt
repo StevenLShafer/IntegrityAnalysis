@@ -1,0 +1,66 @@
+$n1
+[1] 5
+
+$n2
+[1] 9
+
+$C
+[1] 7
+
+$obs
+[1] 1
+
+$rowP
+[1] 0.3756061 0.3414135 0.3103194
+
+$trialP
+[1] 0.6435210 0.7857911 0.7599796
+
+$Bp
+[1] 0.8566434
+
+$gap
+[1] 0.1422701
+
+  TRIAL ROW  N MEAN SD Event Other
+1     T   A NA   NA NA     0   200
+2     T   A NA   NA NA     3  1997
+3     T   B NA   NA NA     1     4
+4     T   B NA   NA NA     6     3
+[1] FALSE
+Trial T: p = 0.827
+ 
+  TRIAL     ROW     P         CI95    M NOTE     KIND
+1     T       A 0.378    0 to 0.78 1000      variable
+2  <NA>       B 0.869 0.73 to 0.99 1000      variable
+3  <NA> Summary 0.827              <NA>       summary
+4  <NA>    <NA>  <NA>         <NA> <NA> <NA>     <NA>
+Diagnostic single 100,000-replicate batch, not default staging:
+Trial T: p = 0.6417
+ 
+  TRIAL     ROW      P         CI95     M NOTE     KIND
+1     T       A 0.3748    0 to 0.75 1e+05      variable
+2  <NA>       B 0.8565 0.73 to 0.98 1e+05      variable
+3  <NA> Summary 0.6417               <NA>       summary
+4  <NA>    <NA>   <NA>         <NA>  <NA> <NA>     <NA>
+  TRIAL ROW  N MEAN SD Event Other
+1     T   A NA   NA NA     0   200
+2     T   A NA   NA NA     4  1996
+3     T   B NA   NA NA     1     4
+4     T   B NA   NA NA     6     3
+[1] FALSE
+Trial T: p = 0.8075
+ 
+  TRIAL     ROW      P         CI95    M NOTE     KIND
+1     T       A  0.347    0 to 0.72 1000      variable
+2  <NA>       B  0.869 0.73 to 0.99 1000      variable
+3  <NA> Summary 0.8075              <NA>       summary
+4  <NA>    <NA>   <NA>         <NA> <NA> <NA>     <NA>
+Diagnostic single 100,000-replicate batch, not default staging:
+Trial T: p = 0.785
+ 
+  TRIAL     ROW      P         CI95     M NOTE     KIND
+1     T       A 0.3402    0 to 0.68 1e+05      variable
+2  <NA>       B 0.8565 0.73 to 0.98 1e+05      variable
+3  <NA> Summary  0.785               <NA>       summary
+4  <NA>    <NA>   <NA>         <NA>  <NA> <NA>     <NA>

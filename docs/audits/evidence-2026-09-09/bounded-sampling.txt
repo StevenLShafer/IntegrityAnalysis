@@ -1,0 +1,124 @@
+null device 
+          1 
+               TRIAL    ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+2  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+3  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+4  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+5  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+6  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+7  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+8  eight-arm-bounded    Age 5000 45.3 12.1 NA          1                1
+51 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+52 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+53 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+54 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+55 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+56 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+57 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+58 eight-arm-bounded Sex, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Male Female
+1                  2   NA     NA
+2                  2   NA     NA
+3                  2   NA     NA
+4                  2   NA     NA
+5                  2   NA     NA
+6                  2   NA     NA
+7                  2   NA     NA
+8                  2   NA     NA
+51                NA 2523   2477
+52                NA 2475   2525
+53                NA 2523   2477
+54                NA 2475   2525
+55                NA 2475   2525
+56                NA 2475   2525
+57                NA 2515   2485
+58                NA 2475   2525
+$approxBounded
+[1] "Sex, %"
+
+$approxStraddle
+[1] "Sex, %"
+
+      ROW    COL     KIND
+5  Sex, %   Male failsafe
+51 Sex, % Female failsafe
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               NOTE
+5  FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2523 taken; 50% of N=5000 fits 2475..2525; 2475 taken; 50% of N=5000 fits 2475..2525; 2523 taken; 50% of N=5000 fits 2475..2525; 2475 taken; 50% of N=5000 fits 2475..2525; 2475 taken; 50% of N=5000 fits 2475..2525; 2475 taken; 50% of N=5000 fits 2475..2525; 2515 taken; 50% of N=5000 fits 2475..2525; 2475 taken. Of the 6,561 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.125; worst case p ~ 2.5e-05 - the choice moves this row across p = 0.01
+51 FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2477 taken; 50% of N=5000 fits 2475..2525; 2525 taken; 50% of N=5000 fits 2475..2525; 2477 taken; 50% of N=5000 fits 2475..2525; 2525 taken; 50% of N=5000 fits 2475..2525; 2525 taken; 50% of N=5000 fits 2475..2525; 2525 taken; 50% of N=5000 fits 2475..2525; 2485 taken; 50% of N=5000 fits 2475..2525; 2525 taken. Of the 6,561 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.125; worst case p ~ 2.5e-05 - the choice moves this row across p = 0.01
+selected 
+   Male Female
+51 2523   2477
+52 2475   2525
+53 2523   2477
+54 2475   2525
+55 2475   2525
+56 2475   2525
+57 2515   2485
+58 2475   2525
+$B
+[1] 2e+05
+
+$seed
+[1] 8821
+
+$midP
+[1] 0.126155
+
+$SE
+[1] 0.0007423122
+
+$normal95
+[1] 0.1247001 0.1276099
+
+$less
+[1] 25217
+
+$equal
+[1] 28
+
+[1] FALSE
+Trial T: p = 0.122 (95% Monte Carlo interval 0.1 to 0.14)
+ 
+  TRIAL     ROW     P        CI95    M NOTE     KIND
+1     T     Sex 0.122 0.1 to 0.14 1000      variable
+2  <NA> Summary 0.122 0.1 to 0.14 <NA>       summary
+3  <NA>    <NA>  <NA>        <NA> <NA> <NA>     <NA>
+alternative 
+     [,1] [,2]
+[1,] 2475 2525
+[2,] 2475 2525
+[3,] 2475 2525
+[4,] 2475 2525
+[5,] 2525 2475
+[6,] 2525 2475
+[7,] 2525 2475
+[8,] 2525 2475
+$B
+[1] 2e+05
+
+$seed
+[1] 8822
+
+$midP
+[1] 0.2202225
+
+$SE
+[1] 0.0009264965
+
+$normal95
+[1] 0.2184066 0.2220384
+
+$less
+[1] 44026
+
+$equal
+[1] 37
+
+[1] FALSE
+Trial T: p = 0.215 (95% Monte Carlo interval 0.19 to 0.24)
+ 
+  TRIAL     ROW     P         CI95    M NOTE     KIND
+1     T     Sex 0.215 0.19 to 0.24 1000      variable
+2  <NA> Summary 0.215 0.19 to 0.24 <NA>       summary
+3  <NA>    <NA>  <NA>         <NA> <NA> <NA>     <NA>

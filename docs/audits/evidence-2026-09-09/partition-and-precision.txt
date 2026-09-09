@@ -1,0 +1,139 @@
+NEGATIVE PRECISION REGRESSION
+  TRIAL ROW   N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 100   50 30          0                 0                0
+2     T   X 100   50 30          0                 0                0
+3     T   X 100   50 30          0                 0                0
+[1] FALSE
+Trial T: p = 0.2595 (95% Monte Carlo interval 0 to 0.55)
+ 
+  TRIAL     ROW      P      CI95    M
+1     T       X 0.2595 0 to 0.55 1000
+2  <NA> Summary 0.2595 0 to 0.55 <NA>
+3  <NA>    <NA>   <NA>      <NA> <NA>
+                                                                                                                                                                                                                          NOTE
+1 attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page
+2                                                                                                                                                                                                                             
+3                                                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+  TRIAL ROW   N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 100   50 30          0                 0                0
+2     T   X 100   50 30          0                 0                0
+3     T   X 100   50 30          0                 0                0
+[1] FALSE
+Trial T: p = 0.005305 (95% Monte Carlo interval 0 to 0.011)
+ 
+  TRIAL     ROW        P       CI95     M             NOTE     KIND
+1     T       X 0.005305 0 to 0.011 1e+05 attainable floor variable
+2  <NA> Summary 0.005305 0 to 0.011  <NA>                   summary
+3  <NA>    <NA>     <NA>       <NA>  <NA>             <NA>     <NA>
+SCIENTIFIC TEXT PRECISION
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 40   50 10          0                 0                0
+2     T   X 40   50 10          0                 0                0
+[1] FALSE
+Trial T: p = 0.0831 (95% Monte Carlo interval 0 to 0.17)
+ 
+  TRIAL     ROW      P      CI95     M             NOTE     KIND
+1     T       X 0.0831 0 to 0.17 10000 attainable floor variable
+2  <NA> Summary 0.0831 0 to 0.17  <NA>                   summary
+3  <NA>    <NA>   <NA>      <NA>  <NA>             <NA>     <NA>
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1     T   X 40   50 10          3                 0                3
+2     T   X 40   50 10          3                 0                3
+[1] FALSE
+Trial T: p = 0.00235 (95% Monte Carlo interval 0 to 0.0051)
+ 
+  TRIAL     ROW       P        CI95     M
+1     T       X 0.00235 0 to 0.0051 1e+05
+2  <NA> Summary 0.00235 0 to 0.0051  <NA>
+3  <NA>    <NA>    <NA>        <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+FALSE PARTITION: SELECTED LEVELS TOTAL 98 PERCENT
+[1] "docs/audits/evidence-2026-09-09/incomplete-category.pdf"
+                 TRIAL     ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  incomplete-category     Age 1000 45.3 12.1 NA          1                1
+2  incomplete-category     Age 1000 46.1 11.8 NA          1                1
+5  incomplete-category Race, %   NA   NA   NA NA         NA               NA
+51 incomplete-category Race, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Asian White Black Hispanic
+1                  2    NA    NA    NA       NA
+2                  2    NA    NA    NA       NA
+5                 NA   245   245   245      265
+51                NA   245   245   245      265
+       ROW      COL     KIND
+5  Race, %    Asian failsafe
+51 Race, %    White failsafe
+52 Race, %    Black failsafe
+53 Race, % Hispanic failsafe
+                                                                                                                                                                                                                                                                                     NOTE
+5  FAIL-SAFE (best case): 24% of N=1000 fits 235..245; 245 taken; 24% of N=1000 fits 235..245; 245 taken. Of the 1 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 1e-04; worst case p ~ 5e-05
+51 FAIL-SAFE (best case): 24% of N=1000 fits 235..245; 245 taken; 24% of N=1000 fits 235..245; 245 taken. Of the 1 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 1e-04; worst case p ~ 5e-05
+52 FAIL-SAFE (best case): 24% of N=1000 fits 235..245; 245 taken; 24% of N=1000 fits 235..245; 245 taken. Of the 1 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 1e-04; worst case p ~ 5e-05
+53 FAIL-SAFE (best case): 26% of N=1000 fits 255..265; 265 taken; 26% of N=1000 fits 255..265; 265 taken. Of the 1 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 1e-04; worst case p ~ 5e-05
+$approxBounded
+character(0)
+
+$approxStraddle
+character(0)
+
+   TRIAL     ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION SE ROUND_DISPERSION
+5      T Race, % NA   NA NA         NA                NA NA               NA
+51     T Race, % NA   NA NA         NA                NA NA               NA
+   ASIAN WHITE BLACK HISPANIC
+5    245   245   245      265
+51   245   245   245      265
+[1] FALSE
+Trial T: p = 3e-05 (95% Monte Carlo interval 0 to 0.00013)
+ 
+  TRIAL     ROW     P         CI95     M             NOTE     KIND
+1     T Race, % 3e-05 0 to 0.00013 1e+05 attainable floor variable
+2  <NA> Summary 3e-05 0 to 0.00013  <NA>                   summary
+3  <NA>    <NA>  <NA>         <NA>  <NA>             <NA>     <NA>
+Feasible original partition, including omitted Other:
+  TRIAL ROW  N MEAN SD Asian White Black Hispanic Other
+1     T   X NA   NA NA   235   245   235      265    20
+2     T   X NA   NA NA   245   235   245      255    20
+  TRIAL ROW  N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION ASIAN
+1     T   X NA   NA NA         NA                NA               NA   235
+2     T   X NA   NA NA         NA                NA               NA   245
+  WHITE BLACK HISPANIC OTHER
+1   245   235      265    20
+2   235   245      255    20
+[1] FALSE
+Trial T: p = 0.0619 (95% Monte Carlo interval 0.057 to 0.067)
+ 
+  TRIAL     ROW      P           CI95     M NOTE     KIND
+1     T       X 0.0619 0.057 to 0.067 10000      variable
+2  <NA> Summary 0.0619 0.057 to 0.067  <NA>       summary
+3  <NA>    <NA>   <NA>           <NA>  <NA> <NA>     <NA>
+TRUE PARTITION REJECTED BY HEURISTIC
+$counts
+[1] 29 29 29 29 29 29 26
+
+$percentages
+[1] 14 14 14 14 14 14 13
+
+$sum
+[1] 200
+
+$lo
+[1] 27 27 27 27 27 27 25
+
+$hi
+[1] 29 29 29 29 29 29 27
+
+$exhaustive
+[1] FALSE
+
+Vectors admitted by actual FALSE mode: 2186 
+but by TRUE mode: 7 
