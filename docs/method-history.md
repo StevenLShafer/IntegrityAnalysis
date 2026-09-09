@@ -950,6 +950,69 @@ stated observation lattice. That is a new refusal, and the two screens
 before this one each caught a new refusal throwing out honest rows. It
 wants its own measurement against the corpus first.
 
+## 2026-09-09 — a replicate is translated by its own first arm
+
+Independent audit 2026-09-09, finding F6. The engine's zero snap decides
+when a replicate is *exactly as homogeneous* as the printed table, and
+that decision was being made by a tolerance where it should have needed
+none.
+
+**What was wrong.** The observed row is translated by its own first arm
+(`dd <- ROWS$MEAN - ROWS$MEAN[1]`), so arms that print alike give a
+statistic that is structurally, bitwise zero. Every replicate was
+translated by that same *observed* constant. When all arms of a replicate
+draw the same value the translated values are equal — but their
+N-weighted centre is not bitwise equal to them, so the statistic came out
+as dust rather than zero, and a tolerance had to forgive it. The
+tolerance is proportional to the finest printed step squared, so the
+finer the printed precision the smaller it gets; below about eleven
+decimals it falls under the dust and genuine ties start being dropped.
+Screen 2026-09-07-1459's own comment states the intent — the translation
+exists so that identical means are exactly zero "in the observed row and
+in every replicate" — and subtracting a single constant only ever
+delivered the first half of it.
+
+**Measured.** The audit's construction is two arms of 30 with `MEAN` 2.3,
+`SD` 3.007, integer observations; an arithmetically feasible integer
+sample exists (nine 3s, eight 6s, eight −2s, five 2s). Both six and
+fourteen printed decimals distinguish adjacent possible sample means,
+whose spacing is 1/30, so equality is the *same event* at both. A
+reference that compares integer sample **sums**, never a floating
+statistic, puts the mid-p at 0.008474 over a million draws (0.008529 over
+400,000 here). Applying the two centrings to the same draws:
+
+| `ROUND_MEAN` | ties | lost before | lost after |
+|---|---|---|---|
+| 6 | 6,823 | 0 (0.00%) | 0 (0.00%) |
+| 14 | 6,823 | 1,243 (**18.22%**) | 0 (0.00%) |
+
+End to end the row read 0.00816 at six decimals and 0.0066 at fourteen;
+it now reads 0.00816 at both.
+
+**The median branch had the same defect, and the audit did not test it.**
+It is invisible on an integer observation grid, because a median is then
+a multiple of a half and halves are exact in binary, so no dust can
+arise. On a tenths grid it appears: two arms of 31 (odd, so the median
+*is* an observation and rounding it to one or to fourteen decimals
+changes nothing) read 0.01995 at one and six decimals and drifted to
+0.01755 from eleven on. They now read 0.01995 at every precision. At an
+*even* N the median is a multiple of 0.05, so rounding to one decimal
+genuinely coarsens it and the p is still expected to differ — that is a
+different equality event, and a test pins the difference so it cannot be
+flattened later.
+
+**What changed.** `MCMean <- MCMean - MCMean[, 1]` and
+`MCMed <- MCMed - MCMed[, 1]`. The statistic is translation-invariant, so
+this is the same quantity; only the floating point differs. Nothing moves
+at any precision a real paper prints — the pinned ordinary rows are
+bitwise unchanged — and the units and origin invariance the earlier
+audits established is unaffected.
+
+The general lesson is the one the fail-safe rule taught in a different
+place: **an exact property should be arranged structurally, not defended
+with a tolerance.** A tolerance has to be tuned against two moving
+quantities, and here one of them was under the manuscript's control.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
