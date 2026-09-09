@@ -1,0 +1,8 @@
+bounded-dimensions started 2026-09-08 15:21:50 
+Arms 18 
+Selected arm-vector counts: 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 ; proposed tables: 262144 
+audit allocation intercept 
+Arms 32 
+Selected arm-vector counts: 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 ; proposed tables: 4294967296 
+audit allocation intercept 
+elapsed 0.16 seconds

@@ -1,0 +1,119 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+text-roundtrip started 2026-09-08 15:22:50 
+validation failed: FALSE 
+Trial T: p = 0.00469 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW       P      CI95     M
+1     T       X 0.00469 0 to 0.01 1e+05
+2  <NA> Summary 0.00469 0 to 0.01  <NA>
+3  <NA>    <NA>    <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+$ok
+[1] TRUE
+
+$engine
+[1] "template"
+
+  TRIAL ROW   N MEAN SD ROUND_OBSERVATION
+1  TRUE   X 100   50  3                 0
+2  TRUE   X 100   50  3                 0
+validation failed: FALSE 
+Trial T: p = 0.351 (95% Monte Carlo interval 0 to 0.73)
+ 
+  TRIAL     ROW     P      CI95    M             NOTE     KIND
+1     T       X 0.351 0 to 0.73 1000 attainable floor variable
+2  <NA> Summary 0.351 0 to 0.73 <NA>                   summary
+3  <NA>    <NA>  <NA>      <NA> <NA>             <NA>     <NA>
+$ok
+[1] TRUE
+
+$engine
+[1] "template"
+
+  TRIAL ROW   N   MEAN   SD ROUND_OBSERVATION
+1     T   X 100 50.000 3.00                 0
+2     T   X 100 50.000 3.00                 0
+validation failed: FALSE 
+Trial T: p = 0.00469 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW       P      CI95     M
+1     T       X 0.00469 0 to 0.01 1e+05
+2  <NA> Summary 0.00469 0 to 0.01  <NA>
+3  <NA>    <NA>    <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+Negative precision after new validator:
+validation failed: FALSE 
+Trial T: p = 0.351 (95% Monte Carlo interval 0 to 0.73)
+ 
+  TRIAL     ROW     P      CI95    M             NOTE     KIND
+1     T       X 0.351 0 to 0.73 1000 attainable floor variable
+2  <NA> Summary 0.351 0 to 0.73 <NA>                   summary
+3  <NA>    <NA>  <NA>      <NA> <NA>             <NA>     <NA>
+Helper text spellings:
+   50.000   5.000e1 0.05000e3  1.230e-2 
+        3         5         7         6 
+elapsed 1.21 seconds
+per-arm-cap started 2026-09-08 15:22:52 
+               TRIAL     ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  five-category-cap     Age 4000 45.3 12.1 NA          1                1
+2  five-category-cap     Age 4000 46.1 11.8 NA          1                1
+5  five-category-cap Race, %   NA   NA   NA NA         NA               NA
+51 five-category-cap Race, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Asian White Black Hispanic Other
+1                  2    NA    NA    NA       NA    NA
+2                  2    NA    NA    NA       NA    NA
+5                 NA   820   820   820      820   820
+51                NA   780   780   780      780   780
+$approxCounts
+[1] "Asian"    "White"    "Black"    "Hispanic" "Other"   
+
+$approxBounded
+character(0)
+
+$approxStraddle
+character(0)
+
+       ROW      COL     KIND
+5  Race, %    Asian failsafe
+51 Race, %    White failsafe
+52 Race, %    Black failsafe
+53 Race, % Hispanic failsafe
+54 Race, %    Other failsafe
+                                                                                                                                                                                                                         NOTE
+5  FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+51 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+52 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+53 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+54 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+validation failed: FALSE 
+Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 3.7e-05)
+ 
+  TRIAL     ROW       P         CI95     M             NOTE     KIND
+1     T Race, % <0.0001 0 to 3.7e-05 1e+05 attainable floor variable
+2  <NA> Summary <0.0001 0 to 3.7e-05  <NA>                   summary
+3  <NA>    <NA>    <NA>         <NA>  <NA>             <NA>     <NA>
+    TRIAL         ROW  N MEAN SD Level A Level B Level C Level D Level E
+1       T Category, % NA   NA NA     820     820     780     780     800
+1.1     T Category, % NA   NA NA     780     780     820     820     800
+validation failed: FALSE 
+Trial T: p = 0.5835 (95% Monte Carlo interval 0.55 to 0.61)
+ 
+  TRIAL         ROW      P         CI95    M NOTE     KIND
+1     T Category, % 0.5835 0.55 to 0.61 1000      variable
+2  <NA>     Summary 0.5835 0.55 to 0.61 <NA>       summary
+3  <NA>        <NA>   <NA>         <NA> <NA> <NA>     <NA>
+elapsed 8.01 seconds

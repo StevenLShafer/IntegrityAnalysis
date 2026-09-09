@@ -1,0 +1,88 @@
+Trial T: p = 0.0107 (95% Monte Carlo interval 0 to 0.024)
+ 
+   N mean d      P       CI95     M
+1 20    1 6 0.0107 0 to 0.024 10000
+Trial T: p = 0.009525 (95% Monte Carlo interval 0 to 0.02)
+ 
+   N mean  d        P      CI95     M
+1 20    1 14 0.009525 0 to 0.02 1e+05
+Trial T: p = 0.0122 (95% Monte Carlo interval 0 to 0.028)
+ 
+   N mean d      P       CI95     M
+1 20  2.3 6 0.0122 0 to 0.028 10000
+Trial T: p = 0.0109 (95% Monte Carlo interval 0 to 0.025)
+ 
+   N mean  d      P       CI95     M
+1 20  2.3 14 0.0109 0 to 0.025 10000
+Trial T: p = 0.0082 (95% Monte Carlo interval 0 to 0.017)
+ 
+   N mean d      P       CI95     M
+1 30    1 6 0.0082 0 to 0.017 1e+05
+Trial T: p = 0.00711 (95% Monte Carlo interval 0 to 0.015)
+ 
+   N mean  d       P       CI95     M
+1 30    1 14 0.00711 0 to 0.015 1e+05
+Trial T: p = 0.00806 (95% Monte Carlo interval 0 to 0.017)
+ 
+   N mean d       P       CI95     M
+1 30  2.3 6 0.00806 0 to 0.017 1e+05
+Trial T: p = 0.00656 (95% Monte Carlo interval 0 to 0.014)
+ 
+   N mean  d       P       CI95     M
+1 30  2.3 14 0.00656 0 to 0.014 1e+05
+Trial T: p = 0.007755 (95% Monte Carlo interval 0 to 0.016)
+ 
+   N mean d        P       CI95     M
+1 40    1 6 0.007755 0 to 0.016 1e+05
+Trial T: p = 0.007085 (95% Monte Carlo interval 0 to 0.015)
+ 
+   N mean  d        P       CI95     M
+1 40    1 14 0.007085 0 to 0.015 1e+05
+Trial T: p = 0.00735 (95% Monte Carlo interval 0 to 0.015)
+ 
+   N mean d       P       CI95     M
+1 40  2.3 6 0.00735 0 to 0.015 1e+05
+Trial T: p = 0.006885 (95% Monte Carlo interval 0 to 0.015)
+ 
+   N mean  d        P       CI95     M
+1 40  2.3 14 0.006885 0 to 0.015 1e+05
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+    N mean d      P      CI95     M
+1 100    1 6 0.0047 0 to 0.01 1e+05
+Trial T: p = 0.00411 (95% Monte Carlo interval 0 to 0.0088)
+ 
+    N mean  d       P        CI95     M
+1 100    1 14 0.00411 0 to 0.0088 1e+05
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+    N mean d      P      CI95     M
+1 100  2.3 6 0.0047 0 to 0.01 1e+05
+Trial T: p = 0.004115 (95% Monte Carlo interval 0 to 0.0088)
+ 
+    N mean  d        P        CI95     M
+1 100  2.3 14 0.004115 0 to 0.0088 1e+05
+Trial T: p = 0.004665 (95% Monte Carlo interval 0 to 0.0099)
+ 
+    N mean d        P        CI95     M
+1 101    1 6 0.004665 0 to 0.0099 1e+05
+Trial T: p = 0.003625 (95% Monte Carlo interval 0 to 0.0078)
+ 
+    N mean  d        P        CI95     M
+1 101    1 14 0.003625 0 to 0.0078 1e+05
+Trial T: p = No values
+ 
+    N mean d
+1 101  2.3 6
+                                                                                                                  P
+1 The stated precision does not match the printed values (check ROUND MEAN, ROUND DISPERSION and ROUND OBSERVATION)
+  CI95    M
+1      <NA>
+Trial T: p = No values
+ 
+    N mean  d
+1 101  2.3 14
+                                                                                                                  P
+1 The stated precision does not match the printed values (check ROUND MEAN, ROUND DISPERSION and ROUND OBSERVATION)
+  CI95    M
+1      <NA>

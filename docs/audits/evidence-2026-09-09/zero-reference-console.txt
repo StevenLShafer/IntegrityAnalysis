@@ -1,0 +1,120 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+i Loading IntegrityAnalysis
+There were 41 warnings (use warnings() to see them)
+$honestGridSample
+ [1]  3  3  3  3  3  3  3  3  3  6  6  6  6  6  6  6  6 -2 -2 -2 -2 -2 -2 -2 -2
+[26]  2  2  2  2  2
+
+$mean
+[1] 2.3
+
+$sd
+[1] 3.007462
+
+$printedSD
+[1] 3.007
+
+$B
+[1] 1e+06
+
+$seed
+[1] 19371
+
+$exactIntegerTies
+[1] 16948
+
+$referenceMidP
+[1] 0.008474
+
+$SE
+[1] 6.453829e-05
+
+$normal95
+[1] 0.008347505 0.008600495
+
+$lostTies
+[1] 3016
+
+$midPWithEngineSnap
+[1] 0.006966
+
+Precision 6 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+  TRIAL     ROW       P       CI95     M
+1     T       X 0.00816 0 to 0.017 1e+05
+2  <NA> Summary 0.00816 0 to 0.017  <NA>
+3  <NA>    <NA>    <NA>       <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+Precision 14 
+Trial T: p = 0.0066 (95% Monte Carlo interval 0 to 0.014)
+ 
+  TRIAL     ROW      P       CI95     M
+1     T       X 0.0066 0 to 0.014 1e+05
+2  <NA> Summary 0.0066 0 to 0.014  <NA>
+3  <NA>    <NA>   <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+original 
+Trial T: p = 0.163 (95% Monte Carlo interval 0.069 to 0.27)
+ 
+  TRIAL     ROW     P          CI95    M
+1     T       X 0.163 0.069 to 0.27 1000
+2  <NA> Summary 0.163 0.069 to 0.27 <NA>
+3  <NA>    <NA>  <NA>          <NA> <NA>
+                                                                                                                                                                                         NOTE
+1 the stated mean precision (1 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                            
+3                                                                                                                                                                                        <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+scaled 
+Trial T: p = 0.1645 (95% Monte Carlo interval 0.073 to 0.27)
+ 
+  TRIAL     ROW      P          CI95    M
+1     T       X 0.1645 0.073 to 0.27 1000
+2  <NA> Summary 0.1645 0.073 to 0.27 <NA>
+3  <NA>    <NA>   <NA>          <NA> <NA>
+                                                                                                                                                                                          NOTE
+1 the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                             
+3                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+translated 
+Trial T: p = 0.164 (95% Monte Carlo interval 0.068 to 0.27)
+ 
+  TRIAL     ROW     P          CI95    M
+1     T       X 0.164 0.068 to 0.27 1000
+2  <NA> Summary 0.164 0.068 to 0.27 <NA>
+3  <NA>    <NA>  <NA>          <NA> <NA>
+                                                                                                                                                                                         NOTE
+1 the stated mean precision (1 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                            
+3                                                                                                                                                                                        <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>

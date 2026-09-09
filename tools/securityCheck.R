@@ -660,6 +660,30 @@ if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
              "1e-26 * (1 + centre^2) is back in code (screen",
              "2026-09-08-1048 F1)"))
 
+# AND THE EQUALITY THAT MATTERS IS STRUCTURAL, NOT FORGIVEN (independent
+# audit 2026-09-09, F6). A replicate must be translated by ITS OWN first
+# arm, so that arms which all drew the same value give a bitwise zero and
+# need no tolerance at all. Translating by the OBSERVED first arm instead
+# - one constant for every replicate - leaves dust the tolerance has to
+# catch, and that tolerance shrinks with the printed precision, which the
+# manuscript supplies: at fourteen decimals it dropped about 18% of
+# genuine ties. The two spellings differ by a few characters in the
+# reading and by a factor of two in the answer, so both are pinned.
+for (nm in c("MCMean", "MCMed")) {
+  bad <- grep(paste0(nm, "\\s*<-\\s*", nm, "\\s*-\\s*ROWS\\$MEAN\\["),
+              pcCode, value = TRUE)
+  if (length(bad))
+    note(paste0("R/P_Calc.R: ", nm, " is translated by the OBSERVED first arm ",
+                "again - equal arms in a replicate stop being exactly zero ",
+                "(audit 2026-09-09 F6) - ", paste(trimws(bad), collapse = " | ")))
+  ok <- grep(paste0(nm, "\\s*<-\\s*", nm, "\\s*-\\s*", nm, "\\[\\s*,\\s*1\\s*\\]"),
+             pcCode)
+  if (!length(ok))
+    note(paste0("R/P_Calc.R: ", nm, " is no longer translated by its own first ",
+                "arm; the zero snap goes back to forgiving dust instead of ",
+                "never producing it (audit 2026-09-09 F6)"))
+}
+
 ## 8 - the fail-safe fill spends simulation only on ranked candidates ----
 # Security screens 2026-09-08-2100 (F1) and 2026-09-09-0721 (F1). Scoring
 # every distinct null was the dominant cost of parsing: an ordinary Table

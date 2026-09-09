@@ -1,0 +1,98 @@
+zero-floor started 2026-09-08 15:21:48 
+N 100 100 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW      P      CI95     M
+1     T       X 0.0047 0 to 0.01 1e+05
+2  <NA> Summary 0.0047 0 to 0.01  <NA>
+3  <NA>    <NA>   <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 100 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW      P      CI95     M
+1     T       X 0.0047 0 to 0.01 1e+05
+2  <NA> Summary 0.0047 0 to 0.01  <NA>
+3  <NA>    <NA>   <NA>      <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 200 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.002765 (95% Monte Carlo interval 0 to 0.006)
+ 
+  TRIAL     ROW        P       CI95     M
+1     T       X 0.002765 0 to 0.006 1e+05
+2  <NA> Summary 0.002765 0 to 0.006  <NA>
+3  <NA>    <NA>     <NA>       <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 200 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.002765 (95% Monte Carlo interval 0 to 0.006)
+ 
+  TRIAL     ROW        P       CI95     M
+1     T       X 0.002765 0 to 0.006 1e+05
+2  <NA> Summary 0.002765 0 to 0.006  <NA>
+3  <NA>    <NA>     <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 300 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.00186 (95% Monte Carlo interval 0 to 0.0041)
+ 
+  TRIAL     ROW       P        CI95     M
+1     T       X 0.00186 0 to 0.0041 1e+05
+2  <NA> Summary 0.00186 0 to 0.0041  <NA>
+3  <NA>    <NA>    <NA>        <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 300 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.00186 (95% Monte Carlo interval 0 to 0.0041)
+ 
+  TRIAL     ROW       P        CI95     M
+1     T       X 0.00186 0 to 0.0041 1e+05
+2  <NA> Summary 0.00186 0 to 0.0041  <NA>
+3  <NA>    <NA>    <NA>        <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+elapsed 1.36 seconds

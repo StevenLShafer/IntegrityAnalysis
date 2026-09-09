@@ -1,0 +1,79 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+FILE test-failsafe-table.R 
+failsafe-table: ...............................
+
+== DONE ========================================================================
+FILE test-text-precision.R 
+text-precision: ..............................
+
+== DONE ========================================================================
+Woot!
+FILE test-screen-2026-09-08.R 
+screen-2026-09-08: .......Trial T: p = 0.3105 (95% Monte Carlo interval 0.26 to 0.36)
+ 
+Trial T: p = 0.312 (95% Monte Carlo interval 0.27 to 0.35)
+ 
+..............Trial T: p = 0.004 (95% Monte Carlo interval 0.0021 to 0.0065)
+ 
+...............
+
+== DONE ========================================================================
+FILE test-sd-rounding-draw.R 
+sd-rounding-draw: ...........Trial T: p = 0.07625 (95% Monte Carlo interval 0 to 0.16)
+ 
+Trial T: p = 0.07655 (95% Monte Carlo interval 0 to 0.16)
+ 
+...Trial T: p = 0.07105 (95% Monte Carlo interval 0 to 0.15)
+ 
+Trial T: p = 0.07105 (95% Monte Carlo interval 0 to 0.15)
+ 
+.Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+....Trial T: p = No values
+ 
+.Trial T: p = 0.6775 (95% Monte Carlo interval 0.4 to 0.94)
+ 
+.
+
+== DONE ========================================================================
+FILE test-tie-criterion.R 
+tie-criterion: .....Trial T: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+..Trial T: p = 0.0831
+ 
+...Trial T: p = 0.008 (95% Monte Carlo interval 0 to 0.026)
+ 
+.Trial T: p = 0.038 (95% Monte Carlo interval 0.0084 to 0.078)
+ 
+.
+
+== DONE ========================================================================
+FILE test-known-answer.R 
+known-answer: Trial T: p = 0.0462 (95% Monte Carlo interval 0.022 to 0.073)
+ 
+..Trial T: p = 0.00015 (95% Monte Carlo interval 0 to 0.00088)
+ 
+....Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+.Trial T: p = 0.0427 (95% Monte Carlo interval 0.023 to 0.064)
+ 
+.Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+.Trial T: p = 0.9999 (95% Monte Carlo interval 1 to 1)
+ 
+.
+
+== DONE ========================================================================
+COUNTS
+                   file passed failed errors skipped
+1 test-failsafe-table.R     31      0      0       0
+                   file passed failed errors skipped
+1 test-text-precision.R     30      0      0       0
+                      file passed failed errors skipped
+1 test-screen-2026-09-08.R     36      0      0       0
+                     file passed failed errors skipped
+1 test-sd-rounding-draw.R     21      0      0       0
+                  file passed failed errors skipped
+1 test-tie-criterion.R     12      0      0       0
+                 file passed failed errors skipped
+1 test-known-answer.R     10      0      0       0

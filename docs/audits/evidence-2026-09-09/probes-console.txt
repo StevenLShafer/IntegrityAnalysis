@@ -1,0 +1,199 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+zero-floor started 2026-09-08 15:21:48 
+N 100 100 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW      P      CI95     M
+1     T       X 0.0047 0 to 0.01 1e+05
+2  <NA> Summary 0.0047 0 to 0.01  <NA>
+3  <NA>    <NA>   <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 100 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.0047 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW      P      CI95     M
+1     T       X 0.0047 0 to 0.01 1e+05
+2  <NA> Summary 0.0047 0 to 0.01  <NA>
+3  <NA>    <NA>   <NA>      <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 200 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.002765 (95% Monte Carlo interval 0 to 0.006)
+ 
+  TRIAL     ROW        P       CI95     M
+1     T       X 0.002765 0 to 0.006 1e+05
+2  <NA> Summary 0.002765 0 to 0.006  <NA>
+3  <NA>    <NA>     <NA>       <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 200 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.002765 (95% Monte Carlo interval 0 to 0.006)
+ 
+  TRIAL     ROW        P       CI95     M
+1     T       X 0.002765 0 to 0.006 1e+05
+2  <NA> Summary 0.002765 0 to 0.006  <NA>
+3  <NA>    <NA>     <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 300 mean precision 6 
+validation failed: FALSE 
+Trial T: p = 0.00186 (95% Monte Carlo interval 0 to 0.0041)
+ 
+  TRIAL     ROW       P        CI95     M
+1     T       X 0.00186 0 to 0.0041 1e+05
+2  <NA> Summary 0.00186 0 to 0.0041  <NA>
+3  <NA>    <NA>    <NA>        <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+N 100 300 mean precision 14 
+validation failed: FALSE 
+Trial T: p = 0.00186 (95% Monte Carlo interval 0 to 0.0041)
+ 
+  TRIAL     ROW       P        CI95     M
+1     T       X 0.00186 0 to 0.0041 1e+05
+2  <NA> Summary 0.00186 0 to 0.0041  <NA>
+3  <NA>    <NA>    <NA>        <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+elapsed 1.36 seconds
+selector-ties started 2026-09-08 15:21:49 
+Reference exact mid-p = .35. Selector:
+[1] 0.099834
+validation failed: FALSE 
+Trial T: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+  TRIAL     ROW     P      CI95    M NOTE     KIND
+1     T       X 0.346 0 to 0.72 1000      variable
+2  <NA> Summary 0.346 0 to 0.72 <NA>       summary
+3  <NA>    <NA>  <NA>      <NA> <NA> <NA>     <NA>
+elapsed 0.25 seconds
+text-roundtrip started 2026-09-08 15:21:50 
+validation failed: FALSE 
+Trial T: p = 0.00469 (95% Monte Carlo interval 0 to 0.01)
+ 
+  TRIAL     ROW       P      CI95     M
+1     T       X 0.00469 0 to 0.01 1e+05
+2  <NA> Summary 0.00469 0 to 0.01  <NA>
+3  <NA>    <NA>    <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+$ok
+[1] TRUE
+
+$engine
+[1] "template"
+
+  TRIAL ROW   N MEAN SD ROUND_OBSERVATION
+1  TRUE   X 100   50  3                 0
+2  TRUE   X 100   50  3                 0
+validation failed: FALSE 
+ERROR: invalid 'times' argument 
+elapsed 0.22 seconds
+per-arm-cap started 2026-09-08 15:21:50 
+ERROR: No usable baseline table could be parsed from docs/audits/evidence-2026-09-09/five-category-cap.pdf. Try the `pages` or `layout` argument, or ai = "always". 
+elapsed 0.15 seconds
+bounded-dimensions started 2026-09-08 15:21:50 
+Arms 18 
+Selected arm-vector counts: 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 ; proposed tables: 262144 
+audit allocation intercept 
+Arms 32 
+Selected arm-vector counts: 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 ; proposed tables: 4294967296 
+audit allocation intercept 
+elapsed 0.16 seconds
+metadata started 2026-09-08 15:21:50 
+Execution date 2026-09-08 15:21:50 
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: America/Los_Angeles
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices datasets  utils     methods   base     
+
+other attached packages:
+ [1] IntegrityAnalysis_0.2.0 testthat_3.3.2          MBESS_4.9.42           
+ [4] Rfast_2.1.5.2           RcppParallel_5.1.11-2   zigg_0.0.2             
+ [7] Rcpp_1.1.2              foreach_1.5.2           dqrng_0.4.1            
+[10] shiny_1.13.0           
+
+loaded via a namespace (and not attached):
+ [1] bslib_0.10.0            httr2_1.2.2             shinyjs_2.1.1          
+ [4] htmlwidgets_1.6.4       vctrs_0.7.2             tools_4.5.3            
+ [7] generics_0.1.4          tibble_3.3.1            pkgconfig_2.0.3        
+[10] pdftools_3.9.0          rvg_0.4.1               desc_1.4.3             
+[13] uuid_1.2-2              tesseract_5.2.5         lifecycle_1.0.5        
+[16] compiler_4.5.3          brio_1.1.5              textshaping_1.0.5      
+[19] codetools_0.2-20        httpuv_1.6.17           fontquiver_0.2.1       
+[22] fontLiberation_0.1.0    shinyWidgets_0.9.1      htmltools_0.5.9        
+[25] sass_0.4.10             later_1.4.8             pillar_1.11.1          
+[28] jquerylib_0.1.4         tidyr_1.3.2             openssl_2.4.2          
+[31] cachem_1.1.0            iterators_1.0.14        mime_0.13              
+[34] fontBitstreamVera_0.1.1 tidyselect_1.2.1        zip_2.3.3              
+[37] digest_0.6.39           stringi_1.8.9           dplyr_1.2.0            
+[40] purrr_1.2.1             rprojroot_2.1.1         fastmap_1.2.0          
+[43] cli_3.6.6               magrittr_2.0.5          pkgbuild_1.4.8         
+[46] withr_3.0.3             gdtools_0.5.0           promises_1.5.0         
+[49] rappdirs_0.3.4          officer_0.7.3           jpeg_0.1-11            
+[52] otel_0.2.0              qpdf_1.4.1              askpass_1.2.1          
+[55] ragg_1.5.2              png_0.1-9               openxlsx_4.2.8.1       
+[58] rlang_1.3.0             xtable_1.8-8            glue_1.8.1             
+[61] xml2_1.5.2              renv_1.2.0              shinydashboard_0.7.3   
+[64] pkgload_1.5.3           jsonlite_2.0.0          rhandsontable_0.3.8    
+[67] R6_2.6.1                systemfonts_1.3.2      
+elapsed 0.11 seconds

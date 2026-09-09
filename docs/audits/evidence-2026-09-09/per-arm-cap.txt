@@ -1,0 +1,50 @@
+per-arm-cap started 2026-09-08 15:22:52 
+               TRIAL     ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  five-category-cap     Age 4000 45.3 12.1 NA          1                1
+2  five-category-cap     Age 4000 46.1 11.8 NA          1                1
+5  five-category-cap Race, %   NA   NA   NA NA         NA               NA
+51 five-category-cap Race, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Asian White Black Hispanic Other
+1                  2    NA    NA    NA       NA    NA
+2                  2    NA    NA    NA       NA    NA
+5                 NA   820   820   820      820   820
+51                NA   780   780   780      780   780
+$approxCounts
+[1] "Asian"    "White"    "Black"    "Hispanic" "Other"   
+
+$approxBounded
+character(0)
+
+$approxStraddle
+character(0)
+
+       ROW      COL     KIND
+5  Race, %    Asian failsafe
+51 Race, %    White failsafe
+52 Race, %    Black failsafe
+53 Race, % Hispanic failsafe
+54 Race, %    Other failsafe
+                                                                                                                                                                                                                         NOTE
+5  FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+51 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+52 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+53 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+54 FAIL-SAFE: 20% of N=4000 fits 780..820; 820 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 20% of N=4000 fits 780..820; 780 taken - the reading of the page that leaves the arms least alike
+validation failed: FALSE 
+Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 3.7e-05)
+ 
+  TRIAL     ROW       P         CI95     M             NOTE     KIND
+1     T Race, % <0.0001 0 to 3.7e-05 1e+05 attainable floor variable
+2  <NA> Summary <0.0001 0 to 3.7e-05  <NA>                   summary
+3  <NA>    <NA>    <NA>         <NA>  <NA>             <NA>     <NA>
+    TRIAL         ROW  N MEAN SD Level A Level B Level C Level D Level E
+1       T Category, % NA   NA NA     820     820     780     780     800
+1.1     T Category, % NA   NA NA     780     780     820     820     800
+validation failed: FALSE 
+Trial T: p = 0.5835 (95% Monte Carlo interval 0.55 to 0.61)
+ 
+  TRIAL         ROW      P         CI95    M NOTE     KIND
+1     T Category, % 0.5835 0.55 to 0.61 1000      variable
+2  <NA>     Summary 0.5835 0.55 to 0.61 <NA>       summary
+3  <NA>        <NA>   <NA>         <NA> <NA> <NA>     <NA>
+elapsed 8.01 seconds
