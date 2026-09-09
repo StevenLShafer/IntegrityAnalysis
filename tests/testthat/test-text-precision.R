@@ -131,8 +131,18 @@ test_that("50.0 survives the API round-trip payload", {
   expect_true(grepl('"50.0"', csv, fixed = TRUE))
   expect_true(grepl('"10.00"', csv, fixed = TRUE))
 
-  back <- utils::read.csv(text = csv, check.names = FALSE,
-                          colClasses = "character")
+  # THROUGH THE PRODUCTION READER. This test used to pass `colClasses =
+  # "character"` to read.csv, which is not how the app or the API reads a
+  # file, and that is exactly why it did not catch the defect the
+  # 2026-09-09 audit found in F5: the real reader coerced "50.0" to 50
+  # before the validator could count its digits, so the comma-separated
+  # route still destroyed the precision the spreadsheet route preserved.
+  # A test that reads the payload differently from the product tests
+  # nothing about the product.
+  f <- tempfile(fileext = ".csv")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(csv, f)
+  back <- .iaReadCsvKeepingText(f, check.names = FALSE)
   bare <- back[, setdiff(names(back), c("ROUND_MEAN", "ROUND_DISPERSION"))]
   v <- vd(bare)
   expect_false(v$FAIL)
@@ -158,4 +168,104 @@ test_that("the parser's template spreadsheet carries its digits too", {
   back <- openxlsx::read.xlsx(f, sheet = 1)
   expect_identical(back$MEAN, c("50.0", "51.0"))
   expect_identical(back$SD, c("10.00", "10.00"))
+})
+
+
+# ---- the 2026-09-09 audit ---------------------------------------------
+
+test_that("a supplied coarse mean precision is not overwritten", {
+  # AUDIT 2026-09-09, F3. The bump that raises ROUND_MEAN to the digits a
+  # cell shows was made unconditional when the text reader went in, so a
+  # mean of 50 legitimately declared to the nearest ten had its own claim
+  # rewritten to 0 - and that moved the row from p = 0.26 to p = 0.005.
+  # A value showing no decimals is no evidence against a coarser claim.
+  d <- data.frame(TRIAL = "T", ROW = "X", N = c(100, 100, 100), MEAN = 50,
+                  SD = 30, SE = NA_real_, ROUND_MEAN = -1,
+                  ROUND_OBSERVATION = 0, ROUND_DISPERSION = 0,
+                  stringsAsFactors = FALSE)
+  expect_equal(vd(d)$DATA$ROUND_MEAN, c(-1, -1, -1))
+  # ...and the bump still does its job when the page really shows digits
+  d2 <- d; d2$MEAN <- c("50.0", "50.0", "50.0")
+  expect_equal(vd(d2)$DATA$ROUND_MEAN, c(1, 1, 1))
+  d3 <- d; d3$MEAN <- c(45.25, 45.25, 45.25); d3$ROUND_MEAN <- 0
+  expect_equal(vd(d3)$DATA$ROUND_MEAN, c(2, 2, 2))
+})
+
+test_that("a median row keeps a supplied coarse precision too", {
+  d <- data.frame(TRIAL = "T", ROW = "X", N = c(30, 30), MEAN = c(50, 50),
+                  SD = NA_real_, SE = NA_real_, Q1 = c(40, 40), Q3 = c(60, 60),
+                  ROUND_MEAN = -1, ROUND_OBSERVATION = 0,
+                  ROUND_DISPERSION = -1, stringsAsFactors = FALSE)
+  expect_equal(vd(d)$DATA$ROUND_MEAN, c(-1, -1))
+})
+
+test_that("scientific notation is not read as extra decimal places", {
+  # AUDIT 2026-09-09, F4. Everything after the first "." was counted,
+  # exponent included, so "5.0e1" read three decimals where it shows the
+  # same unit precision as "50" - and a spreadsheet writes scientific
+  # notation without being asked.
+  expect_equal(.ppDecimals("5.0e1"), 0L)
+  expect_equal(.ppDecimals("1.0e1"), 0L)
+  expect_equal(.ppDecimals("50"), 0L)
+  expect_equal(.ppDecimals("50.00"), 2L)
+  # a negative exponent adds precision rather than removing it
+  expect_equal(.ppDecimals("0.5e-2"), 3L)
+  expect_equal(.ppDecimals("5E-3"), 3L)
+  # vectorised, as its callers use it
+  expect_equal(.ppDecimals(c("5.0e1", "1.25", "7")), c(0L, 2L, 0L))
+  # and the two spellings of the same number now infer the same grid
+  mk <- function(mean, sd) data.frame(
+    TRIAL = "T", ROW = "X", N = c(40, 40), MEAN = mean, SD = sd,
+    SE = NA_real_, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)
+  a <- vd(mk(c("50", "50"), c("10", "10")))
+  b <- vd(mk(c("5.0e1", "5.0e1"), c("1.0e1", "1.0e1")))
+  expect_equal(a$DATA$ROUND_MEAN, b$DATA$ROUND_MEAN)
+  expect_equal(a$DATA$ROUND_DISPERSION, b$DATA$ROUND_DISPERSION)
+})
+
+test_that("the comma-separated reader keeps the printed digits", {
+  # AUDIT 2026-09-09, F5. Both routes read a CSV with read.csv, which
+  # coerces before the validator can count trailing zeros.
+  f <- tempfile(fileext = ".csv")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(c('"TRIAL","ROW","N","MEAN","SD","ROUND_OBSERVATION","Male","Female"',
+               '"T","X",100,"50.000","3.00",0,,',
+               '"T","X",100,"50.000","3.00",0,,',
+               '"T","Sex",,,,,60,40',
+               '"T","Sex",,,,,55,45'), f)
+  d <- .iaReadCsvKeepingText(f)
+  expect_true(is.character(d$MEAN))
+  expect_true(is.numeric(d$N))
+  expect_true(is.numeric(d$Male))
+  v <- vd(d)
+  expect_false(v$FAIL)
+  # by LABEL, not position: validateData() reorders the rows
+  cont <- which(v$DATA$ROW == "X")
+  expect_equal(v$DATA$ROUND_MEAN[cont], c(3, 3))
+  expect_equal(v$DATA$ROUND_DISPERSION[cont], c(2, 2))
+  # the count columns are still counts, not Misc columns
+  expect_setequal(toupper(v$CategoryNames), c("MALE", "FEMALE"))
+})
+
+test_that("a trial named T is a label, not a logical", {
+  # read.csv turns the bare token T into TRUE; reading as text does not
+  f <- tempfile(fileext = ".csv")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(c("TRIAL,ROW,N,MEAN,SD,ROUND_OBSERVATION",
+               "T,X,40,50.0,10.0,0",
+               "T,X,40,51.0,10.0,0"), f)
+  d <- .iaReadCsvKeepingText(f)
+  expect_identical(unique(as.character(d$TRIAL)), "T")
+})
+
+test_that("a stray word still leaves its column unreadable, not silently numeric", {
+  f <- tempfile(fileext = ".csv")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(c("TRIAL,ROW,N,MEAN,SD,ROUND_OBSERVATION",
+               "T,X,forty,50.0,10.0,0",
+               "T,X,40,51.0,10.0,0"), f)
+  d <- .iaReadCsvKeepingText(f)
+  expect_true(is.character(d$N))
+  v <- vd(d)
+  expect_true(v$FAIL)
 })

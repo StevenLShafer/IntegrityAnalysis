@@ -79,21 +79,34 @@ test_that("F1: the grid test itself", {
   expect_false(.iaOnStatedGrid(c(45, 55), -1))
 })
 
-test_that("F2: the enumeration is bounded, and the ascent terminates", {
-  expect_lte(.ppFailsafeExact, 8L)
-  expect_true(is.numeric(.ppFailsafeSweeps) && .ppFailsafeSweeps >= 1)
-  # a row of twelve ambiguous arms now takes the ascent, and still returns
-  # an assignment at the ends of the brackets
-  Ns <- rep(1000, 12)
-  lo <- rep(495, 12); hi <- rep(505, 12); cnt <- rep(NA_real_, 12)
+test_that("F2: the enumeration is bounded, and past the bound nothing is invented", {
+  # The bound this screen imposed was on .ppFailsafeExact, the old
+  # per-level rule's 2^k vertex enumeration. That rule is gone
+  # (2026-09-09). The property it protected - a document chooses the arm
+  # count and the level count, so the work must be bounded - now belongs
+  # to .ppTableEnumMax, and the behaviour AT the bound is the part that
+  # matters: the search is complete or the block is left unresolved.
+  expect_true(is.numeric(.ppTableEnumMax) && .ppTableEnumMax >= 1)
+  expect_lte(.ppTableEnumMax, 1e6)
+
+  # one arm alone over the bound: unresolved, counts untouched, and a
+  # reason. Previously this returned "complete" with no p, and the
+  # caller kept the old rule's counts (audit 2026-09-09, F1).
+  lo <- matrix(780L, 2, 5); hi <- matrix(820L, 2, 5)
+  cnt <- matrix(NA_integer_, 2, 5)
+  r <- .ppFailsafeTableFill(lo, hi, cnt, c(4000, 4000))
+  expect_false(r$resolved)
+  expect_true(nzchar(r$reason))
+  expect_true(all(is.na(r$counts)))
+
+  # many arms: the product is checked BEFORE anything is allocated, so a
+  # 32-arm page cannot propose billions of tables (audit F8)
+  lo2 <- matrix(99L, 32, 2); hi2 <- matrix(101L, 32, 2)
   t0 <- Sys.time()
-  got <- .ppFailsafeCounts(lo, hi, cnt, Ns)
-  secs <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-  expect_true(all(got %in% c(495, 505)))
-  expect_lt(secs, 0.5)                      # 59 ms per row was the finding
-  # and the ascent's answer is the exhaustive answer on this row: half low,
-  # half high, which is the maximum for equal arms
-  expect_equal(sum(got == 505), 6)
+  r2 <- .ppFailsafeTableFill(lo2, hi2, matrix(NA_integer_, 32, 2),
+                             rep(200, 32))
+  expect_false(r2$resolved)
+  expect_lt(as.numeric(Sys.time() - t0, units = "secs"), 10)
 })
 
 test_that("F3: the reply's list of unusable lines is bounded and scrubbed", {

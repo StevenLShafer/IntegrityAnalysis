@@ -90,12 +90,18 @@ reviewFlags <- function(x) {
                              paste(x$approxStraddle, collapse = ", "),
                              ". Get the counts from the authors before ",
                              "acting on this trial."))
-  if (!is.null(x$approxBounded) && length(x$approxBounded) > 0)
-    flags <- c(flags, paste0(length(x$approxBounded), " category row(s) ",
-                             "allowed too many readings to enumerate them ",
-                             "all; the best of a bounded search was taken, ",
-                             "which may not be the best the page allows: ",
-                             paste(x$approxBounded, collapse = ", ")))
+  # UNRESOLVED rows (audit 2026-09-09, F1 and F8; Steve Shafer's
+  # decision: "Skip"). The search is complete or it does not happen, so
+  # there is no "best of a bounded search" to report - those cells are
+  # blank and the row is not analysed.
+  if (!is.null(x$approxUnresolved) && length(x$approxUnresolved) > 0)
+    flags <- c(flags, paste0(length(x$approxUnresolved), " category row(s) ",
+                             "could NOT be read as counts and are left ",
+                             "blank, so they are not analysed: ",
+                             paste(sprintf("%s (%s)", names(x$approxUnresolved),
+                                           x$approxUnresolved),
+                                   collapse = "; "),
+                             ". Enter the printed counts to analyse them."))
   disp <- if ("SE" %in% names(x$data))
     !is.na(x$data$SD) | !is.na(x$data$SE) else !is.na(x$data$SD)
   cont <- !is.na(x$data$MEAN) | disp
@@ -599,7 +605,7 @@ parseBaselineTable <- function(pdfFile,
          # rebuilt is still the truth about those cells.
          approxCounts   = het$approxCounts,
          approxStraddle = het$approxStraddle,
-         approxBounded  = het$approxBounded,
+         approxUnresolved = het$approxUnresolved,
          derivedCells   = het$derivedCells,
          derivedCounts  = het$derivedCounts,
          dispersion     = het$dispersion,

@@ -376,14 +376,29 @@ makes a number reproducible; it does not make it more precise.
   smallest p over the same candidates is reported beside it whenever the
   two fall on opposite sides of p = 0.01.
 
-  Two economies make that affordable. The null depends only on the
-  margins, and constraining each arm to its N pins the arm margin, so
-  only the level totals vary: three levels across two arms of 200 admit
-  49 tables but only 19 distinct nulls, five levels admit 2,601 tables
-  and 381 nulls. And within one level-total group the mid-p is
-  non-decreasing in the statistic, so only that group's extreme tables
-  can be its best or its worst. Beyond `.ppTableEnumMax` candidates the
-  search is bounded rather than complete and the row is flagged as such.
+  The candidates are constrained only by the brackets. Whether a
+  variable's categories divide the arm between them is a statement about
+  what the categories mean, and arithmetic cannot establish it, so no
+  partition is assumed except where this code builds the complement
+  itself (a binary "n (%)" row, whose other column *is* the arm N minus
+  the count). A chosen reading may therefore total a little more or less
+  than the arm's N, and the row's note says so when it does.
+
+  One economy makes the search affordable: the null depends only on the
+  margins, so candidates sharing both margins share a null, and within
+  such a group the mid-p is non-decreasing in the statistic — only that
+  group's extreme tables can be its best or its worst.
+
+  **Beyond `.ppTableEnumMax` candidates the row is left unresolved.**
+  The guarantee is that the reading analysed is the most favourable one
+  the page allows, and that can only be checked by scoring every
+  reading. Where there are too many, the cells go back to blank, the row
+  is named in the flags, and it is not analysed — every refusal being
+  counted on the summary's "k of n rows analysed" line. Sampling was
+  tried first and removed: an independent audit measured a bounded
+  search missing a valid reading worth 0.094 in p on an eight-arm page,
+  and the same fallback proposing 2³² tables on a 32-arm one. A reading
+  that cannot be shown to be the best case is not one.
 
   (Three rules preceded this one and none kept its promise. Pushing
   every ambiguous arm away from one pooled proportion gave arms on the

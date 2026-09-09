@@ -659,8 +659,19 @@ validateData <- function(DATA) {
         FAIL <- TRUE
       } else {
         # median printed with decimals bumps ROUND_MEAN, same as a mean
+        # ...but ONLY when the value actually shows a decimal (independent
+        # audit 2026-09-09, F3). A value showing no decimals is no
+        # evidence against a COARSER claim, and the bump was
+        # unconditional: a mean of 50 legitimately declared to the
+        # nearest ten (ROUND_MEAN -1) had its own claim overwritten with
+        # 0, which moved that row from p = 0.26 to p = 0.005. The guard
+        # this replaces tested the mean for a fractional part, which is
+        # why removing it looked safe - but a text cell reading "50.0"
+        # has no fractional part either, and its decimal is the whole
+        # point of counting the printed digits.
         digits <- decShown("MEAN", i)
-        if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
+        if (digits > 0 && DATA$ROUND_MEAN[i] < digits)
+          DATA$ROUND_MEAN[i] <- digits
       }
     } else {
       if (any(is.na(DATA[i, c("N", "MEAN", "SD")])))
@@ -704,8 +715,19 @@ validateData <- function(DATA) {
         #     also crash the if().
         # the digits the cell SHOWED, which for a text cell survives the
         # coercion that loses "50.0" to 50 (Steve, 2026-09-08)
+        # ...but ONLY when the value actually shows a decimal (independent
+        # audit 2026-09-09, F3). A value showing no decimals is no
+        # evidence against a COARSER claim, and the bump was
+        # unconditional: a mean of 50 legitimately declared to the
+        # nearest ten (ROUND_MEAN -1) had its own claim overwritten with
+        # 0, which moved that row from p = 0.26 to p = 0.005. The guard
+        # this replaces tested the mean for a fractional part, which is
+        # why removing it looked safe - but a text cell reading "50.0"
+        # has no fractional part either, and its decimal is the whole
+        # point of counting the printed digits.
         digits <- decShown("MEAN", i)
-        if (DATA$ROUND_MEAN[i] < digits) DATA$ROUND_MEAN[i] <- digits
+        if (digits > 0 && DATA$ROUND_MEAN[i] < digits)
+          DATA$ROUND_MEAN[i] <- digits
       }
     }
   }

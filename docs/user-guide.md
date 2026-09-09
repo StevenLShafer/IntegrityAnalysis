@@ -415,9 +415,25 @@ specific cell:
   When the best and the worst reading fall on opposite sides of
   p = 0.01, the row says so, because then the printed counts decide the
   answer and the percentages do not. Ask the authors for the counts
-  before acting on such a trial. If a row allows more readings than can
-  be enumerated, the app says that too, and the best of a bounded search
-  is used instead. This is a
+  before acting on such a trial.
+
+  **When the page allows more readings than can be counted, the app
+  does not guess.** The largest-p promise can only be kept by scoring
+  every reading, so where there are too many the cells are left
+  **blank**, the row is named, and it is not analysed. The summary line
+  says how many of the trial's rows were analysed, so the gap is
+  visible. Type the printed counts in and the row analyses normally.
+  This is uncommon — one manuscript in 558 of our reference collection
+  triggers the fill at all — and it happens on the largest tables,
+  where a reconstruction would deserve the least trust.
+
+  The app also does **not** assume that a variable's categories divide
+  the arm between them. Percentages adding to about 100 is arithmetic,
+  not a statement about what the categories mean, and a table can print
+  a partial list. So a rebuilt row may total slightly more or less than
+  the arm's N, and when it does the cell's note says so. If you can see
+  from the page that the categories are exhaustive, the printed counts
+  settle it. This is a
   design decision for incomplete data, not a reading of the page; the
   printed counts, if you can get them from the author, settle it. The
   checkbox above the upload turns the fill off, in which case such rows
@@ -478,7 +494,12 @@ follows it. A cell holding **text** is read for its digits before it is
 converted, so "1.20" typed or pasted as text counts as two decimals; a
 cell holding a **number** cannot be, because a spreadsheet stores 1.20 as
 1.2 and the trailing zero is already gone by the time the app opens the
-file. That is why the variable's maximum is used across its arms, and why
+file. A comma-separated file is read the same way, so it keeps its digits
+too, and a number written in scientific notation is counted at the
+precision it really shows: "5.0e1" is 50 to the nearest unit, not to
+three decimals. A precision you supply yourself is never overwritten,
+including one coarser than the value's own digits - a mean of 50 declared
+to the nearest ten stays that way. That is why the variable's maximum is used across its arms, and why
 the app writes its own spreadsheets with the numbers as text (below). That second
 inference is a guess — a mean printed to one decimal is often computed
 from integer measurements — so when you know the raw precision, say so

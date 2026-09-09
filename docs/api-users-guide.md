@@ -174,23 +174,35 @@ has 100 or fewer patients (1,000 at one printed decimal); above that,
 several counts fit the printed percentage. The service fills such cells
 with the **best case for the authors**: it enumerates every whole
 arms-by-levels table the printed percentages allow — each cell inside
-its own bracket, each arm's counts summing to that arm's N — scores each
-with the statistic and null the analysis itself uses, and keeps the one
-with the largest p. The trial p is therefore the most favourable reading
-the page permits, and markedly so: a two-arm row of 5,000 per arm
+its own bracket — scores each with the statistic and null the analysis
+itself uses, and keeps the one with the largest p. That is the most
+favourable reading of **that row**; it is not a claim about the trial p,
+which combines rows and does not move monotonically with any one of
+them. The effect is still large: a two-arm row of 5,000 per arm
 printed as counts 2,500 and 2,500 reads p = 0.008, and the same row
 printed as "50%" and "50%" reads a far larger one. Every such row is
 named in `flags` ("… category row(s) use FAIL-SAFE counts …") on
 **both** routes, `/parse` and `/analyze`, and the same rule and colour
 apply in the app.
 
+No partition is assumed. Whether a variable's categories divide the arm
+between them is a statement about what the categories mean, so a chosen
+reading may total slightly more or less than the arm's N.
+
 Two further flags may follow. When the best and the worst admissible
 readings fall on opposite sides of p = 0.01, the rows are named ("… row(s)
 cross p = 0.01 between the best and the worst reading …"): for those the
 printed counts decide the answer and the percentages do not, so get the
-counts before acting. When a row allows more readings than can be
-enumerated, the rows are named too and the best of a bounded search is
-used, which may not be the best the page allows. This is a design decision for incomplete data, not a
+counts before acting.
+
+When a row allows more readings than can be enumerated, it is **not
+reconstructed at all**. Its cells come back empty, the row is named in
+`flags` ("… category row(s) could NOT be read as counts and are left
+blank …") with the reason, and the row is not analysed — the trial's
+summary reports how many of its rows were. Submit the printed counts to
+analyse such a row. The largest-p guarantee can only be kept by scoring
+every reading, so where every reading cannot be scored the service
+declines rather than estimating. This is a design decision for incomplete data, not a
 reading of the page: if the author supplies the printed counts, resubmit
 with them. Cells whose percentage fits exactly one count are converted
 exactly and flagged as such.

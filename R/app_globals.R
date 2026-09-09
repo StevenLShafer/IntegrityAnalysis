@@ -236,6 +236,34 @@ m <- 100000
 # Length-prefixing each field makes the encoding unambiguous whatever
 # the content: no string can forge another string's key, because the
 # byte counts have to match first.
+# THE VALUE COLUMNS ARE READ AS TEXT (independent audit 2026-09-09, F5).
+# read.csv() coerces "50.000" to the double 50 before the validator can
+# count its trailing zeros, so the precision the spreadsheet route now
+# preserves was still destroyed on the comma-separated one: the same
+# table read 3 and 2 decimals as text and 0 and 0 as a CSV, and the p
+# moved from 0.0047 to 0.35. Only the value columns are held as text -
+# validateData() coerces those itself and reads their digits first,
+# while N, the counts and every other column must stay numeric or
+# is_category() stops seeing a count column. Reading them as text also
+# stops a trial named "T" becoming the logical TRUE.
+.iaReadCsvKeepingText <- function(path, ...) {
+  d <- utils::read.csv(path, colClasses = "character", ...)
+  keepText <- c("MEAN", "SD", "SE", "Q1", "Q3")
+  for (nm in names(d)) {
+    if (nm %in% keepText) next
+    v <- trimws(d[[nm]])
+    blank <- is.na(v) | v == ""
+    num <- suppressWarnings(as.numeric(v))
+    # a column is numeric only if every non-blank cell reads as a number;
+    # one stray word and it stays text, exactly as read.csv would have
+    # left it, so the validator still paints that cell unreadable
+    if (!all(blank | !is.na(num))) next
+    num[blank] <- NA_real_
+    d[[nm]] <- num
+  }
+  d
+}
+
 .iaCellKey <- function(trial, row) {
   t <- as.character(trial); r <- as.character(row)
   t[is.na(t)] <- ""; r[is.na(r)] <- ""
