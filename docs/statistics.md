@@ -71,12 +71,23 @@ themselves alike (the trial-level combination compares its Stouffer sums
 with exact equality instead, since the observed sum and a tied
 replicate's accumulate the same row values in the same order and come
 out bit-identical), and a statistic that is zero up to floating-point
-dust is zero. Floating-point error in these sums is far below that
-tolerance and the gap between distinct attainable values far above it,
-so mathematically equal statistics are never split and distinct ones
-never merged (an independent audit found the strict comparison
-splitting a categorical tie group into 0.10 where the exact mid-p was
-0.35; see [method-history.md](method-history.md)).
+dust is zero.
+
+The equality that matters most does not rely on that tolerance at all.
+A replicate whose arms all drew the same value is translated by its own
+first arm before its centre is taken, exactly as the observed row is, so
+its statistic is **structurally** zero rather than nearly zero — no dust
+arises to be forgiven. Until 2026-09-09 the replicates were translated
+by one *observed* constant instead, which left dust that the tolerance
+had to catch, and at fine printed precision the tolerance had shrunk
+below it: about 18% of genuine ties were dropped, and the same equality
+event returned a different p depending on how many decimals the table
+claimed to print. Where the tolerance still applies, floating-point
+error in these sums is far below it and the gap between distinct
+attainable values far above it, so mathematically equal statistics are
+not split and distinct ones not merged (an independent audit found the
+strict comparison splitting a categorical tie group into 0.10 where the
+exact mid-p was 0.35; see [method-history.md](method-history.md)).
 
 A simulated p-value is itself an estimate. If 0 of 1,000 replicates
 agree as well as the printed data, the true p could still plausibly be

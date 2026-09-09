@@ -1107,10 +1107,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                   Rfast::rowMedians(round(X, ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
               }
-              # translated by the first arm's printed median (see DiffSample);
-              # the N-weighted centre by matrix product, without a ch x arms
-              # weight matrix (screen 1459, F2)
-              MCMed <- MCMed - ROWS$MEAN[1]
+              # each replicate translated by its own first arm, exactly as the
+              # continuous branch is and for the same reason (audit 2026-09-09,
+              # F6 - see the long note there). THE AUDIT DID NOT TEST THIS
+              # BRANCH; the defect was identical here by reading, and is
+              # measured in tests/testthat/test-audit-2026-09-09-f6.R. The
+              # N-weighted centre is still a matrix product, without a ch x arms
+              # weight matrix (screen 1459, F2).
+              MCMed <- MCMed - MCMed[, 1]
               MedC <- drop(MCMed %*% ROWS$N) / N
               out <- c(out, rowsums((MCMed - MedC)^2))
               left <- left - ch
@@ -1287,10 +1291,40 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                     matrix(rnorm(ROWS$N[i] * ch), nrow = ch) * sig + meansim,
                     ROWS$ROUND_OBSERVATION[i])),
                   ROWS$ROUND_MEAN[i])
-              # translated by the first arm's printed mean (see DiffSample); the
-              # N-weighted centre by matrix product, without a ch x arms weight
-              # matrix (screen 1459, F2)
-              MCMean <- MCMean - ROWS$MEAN[1]
+              # EACH REPLICATE IS TRANSLATED BY ITS OWN FIRST ARM (independent
+              # audit 2026-09-09, F6), which is what the OBSERVED row has always
+              # done: dd <- ROWS$MEAN - ROWS$MEAN[1] a hundred lines above makes
+              # arm 1 exactly zero, so printed means that agree give a
+              # structurally exact zero. Subtracting the OBSERVED constant from
+              # a REPLICATE does not do the same job: when every arm of a
+              # replicate draws the same value the translated values are equal
+              # but their N-weighted centre is not bitwise equal to them, and
+              # the residual dust survives. Screen 1459's own comment says the
+              # translation exists so that identical means are exactly zero "in
+              # the observed row and in every replicate" - one constant only
+              # ever delivered the first half.
+              #
+              # The statistic is translation-invariant, so this is the same
+              # quantity; only the floating point differs. MEASURED on the
+              # audit's construction (two arms of 30, MEAN 2.3, SD 3.007,
+              # ROUND_OBSERVATION 0, ROUND_DISPERSION 3), 400,000 replicates,
+              # comparing integer sample sums so the reference never touches a
+              # floating statistic:
+              #
+              #   ROUND_MEAN  ties   lost before   lost after   reference mid-p
+              #      6        6823    0 (0.00%)     0 (0.00%)      0.008529
+              #     14        6823  1243 (18.22%)   0 (0.00%)      0.008529
+              #
+              # Before, the row read 0.006975 at fourteen decimals against
+              # 0.008529 at six - the same equality event, a different answer,
+              # and the difference was arithmetic rather than data. Nothing
+              # moves at ordinary printed precision, where the tolerance already
+              # sat far above the dust: the loss needs 1e-12 * step^2 to fall
+              # below it, which takes about eleven decimals.
+              #
+              # The N-weighted centre is still a matrix product, without a
+              # ch x arms weight matrix (screen 1459, F2).
+              MCMean <- MCMean - MCMean[, 1]
               MS <- drop(MCMean %*% ROWS$N) / N
               out <- c(out, rowsums((MCMean - MS)^2))
               left <- left - ch
