@@ -1,0 +1,49 @@
+[1] "docs/audits/evidence-2026-09-09/selection-noise.pdf"
+Pre-parse seed: 1 
+             TRIAL    ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  selection-noise    Age 5000 45.3 12.1 NA          1                1
+2  selection-noise    Age 5000 46.1 11.8 NA          1                1
+5  selection-noise Sex, %   NA   NA   NA NA         NA               NA
+51 selection-noise Sex, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Male Female
+1                  2   NA     NA
+2                  2   NA     NA
+5                 NA 2525   2475
+51                NA 2475   2525
+      ROW    COL     KIND
+5  Sex, %   Male failsafe
+51 Sex, % Female failsafe
+                                                                                                                                                                                                                                                                                                                                             NOTE
+5  FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2525 taken; 50% of N=5000 fits 2475..2525; 2475 taken. Of the 2,601 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.681; worst case p ~ 0.00675 - the choice moves this row across p = 0.01
+51 FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2475 taken; 50% of N=5000 fits 2475..2525; 2525 taken. Of the 2,601 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.681; worst case p ~ 0.00675 - the choice moves this row across p = 0.01
+Validation failed: FALSE 
+Trial T: p = 0.6915 (95% Monte Carlo interval 0.65 to 0.73)
+ 
+  TRIAL     ROW      P         CI95    M NOTE     KIND
+1     T  Sex, % 0.6915 0.65 to 0.73 1000      variable
+2  <NA> Summary 0.6915 0.65 to 0.73 <NA>       summary
+3  <NA>    <NA>   <NA>         <NA> <NA> <NA>     <NA>
+Pre-parse seed: 3 
+             TRIAL    ROW    N MEAN   SD SE ROUND_MEAN ROUND_DISPERSION
+1  selection-noise    Age 5000 45.3 12.1 NA          1                1
+2  selection-noise    Age 5000 46.1 11.8 NA          1                1
+5  selection-noise Sex, %   NA   NA   NA NA         NA               NA
+51 selection-noise Sex, %   NA   NA   NA NA         NA               NA
+   ROUND_OBSERVATION Male Female
+1                  2   NA     NA
+2                  2   NA     NA
+5                 NA 2524   2476
+51                NA 2475   2525
+      ROW    COL     KIND
+5  Sex, %   Male failsafe
+51 Sex, % Female failsafe
+                                                                                                                                                                                                                                                                                                                                            NOTE
+5  FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2524 taken; 50% of N=5000 fits 2475..2525; 2475 taken. Of the 2,601 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.679; worst case p ~ 0.0065 - the choice moves this row across p = 0.01
+51 FAIL-SAFE (best case): 50% of N=5000 fits 2475..2525; 2476 taken; 50% of N=5000 fits 2475..2525; 2525 taken. Of the 2,601 readings this page allows, the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.679; worst case p ~ 0.0065 - the choice moves this row across p = 0.01
+Validation failed: FALSE 
+Trial T: p = 0.6825 (95% Monte Carlo interval 0.65 to 0.72)
+ 
+  TRIAL     ROW      P         CI95    M NOTE     KIND
+1     T  Sex, % 0.6825 0.65 to 0.72 1000      variable
+2  <NA> Summary 0.6825 0.65 to 0.72 <NA>       summary
+3  <NA>    <NA>   <NA>         <NA> <NA> <NA>     <NA>

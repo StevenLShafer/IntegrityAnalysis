@@ -1,0 +1,45 @@
+CAP COUNTEREXAMPLE EXACT ANSWERS
+reconstructed 
+ 1.770893e-07 
+          X2         less        equal          mid 
+4.0000000000 0.5935619111 0.0006339414 0.5938788818 
+PARTITION COUNTEREXAMPLE EXACT ANSWERS
+reconstructed 
+ 4.540021e-05 
+          X2         less        equal          mid 
+0.8173076923 0.0636244432 0.0002529314 0.0637509089 
+NONEXHAUSTIVE GROUPING SEARCH
+$cases
+[1] 768
+
+$worst
+$worst$gap
+[1] 0.0002118541
+
+$worst$N
+[1] 500
+
+$worst$pct
+[1]  0  4  2 10
+
+$worst$lo
+[1]  0 18  8 48
+
+$worst$hi
+[1]  2 22 12 52
+
+$worst$trueBest
+    a  b  c  d
+220 0 21 12 50
+
+$worst$trueP
+[1] 0.979785
+
+$worst$groupBest
+   a  b  c  d
+70 0 21 12 48
+
+$worst$groupP
+[1] 0.9795731
+
+
