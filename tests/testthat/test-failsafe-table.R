@@ -90,10 +90,19 @@ test_that("an arm's vectors obey both the brackets and the arm total", {
   expect_equal(nrow(v), nrow(ref))
 })
 
-test_that("without exhaustive levels the arm total only has to fit", {
+test_that("without a partition the cells are independent of each other", {
+  # CHANGED 2026-09-09. This used to assert the counts summed to at most
+  # N, which is itself an exclusivity assumption: overlapping categories
+  # can each run to N. Exhaustivity is now claimed only where this code
+  # builds the complement, so everywhere else the cells are free within
+  # their own brackets.
   v <- .ppArmVectors(c(1L, 1L), c(3L, 3L), 4, FALSE, 1e6)
-  expect_true(all(rowSums(v) <= 4))
-  expect_true(any(rowSums(v) < 4))
+  expect_equal(nrow(v), 9)                 # the full 3 x 3 product
+  expect_true(all(v >= 1 & v <= 3))
+  expect_true(any(rowSums(v) > 4))
+  # ...and with a partition it is exactly the vectors that add up
+  w <- .ppArmVectors(c(1L, 1L), c(3L, 3L), 4, TRUE, 1e6)
+  expect_true(all(rowSums(w) == 4))
 })
 
 # ---- the regression the old rule failed --------------------------------
@@ -204,8 +213,16 @@ test_that("a parsed percent block rebuilds arms that sum to their N", {
   cats <- setdiff(names(x$data), base)
   skip_if(!length(cats), "fixture produced no category columns")
   rowsWithCounts <- which(rowSums(!is.na(x$data[, cats, drop = FALSE])) > 0)
+  # CHANGED 2026-09-09: the arm total is no longer forced to N, because
+  # the page never said these categories were exhaustive (audit F2). What
+  # must hold is that every rebuilt count lies inside the bracket its
+  # printed percentage allows - 32% and 34% of 200 - and that the totals
+  # stay close enough to N to be a reading of the same table.
+  vals <- unlist(x$data[rowsWithCounts, cats, drop = FALSE])
+  vals <- vals[!is.na(vals)]
+  expect_true(all(vals >= 63 & vals <= 69))
   s <- rowSums(x$data[rowsWithCounts, cats, drop = FALSE], na.rm = TRUE)
-  expect_true(all(s == 200))
+  expect_true(all(abs(s - 200) <= 3))
 })
 
 test_that("the fail-safe record survives a hybrid parse", {
@@ -230,44 +247,82 @@ test_that("the fail-safe record survives a hybrid parse", {
 # ---- the difference from the old rule, with no PDF needed --------------
 
 test_that("the old per-level rule really did break the arm total", {
-  # This is the differential test: it runs the PREVIOUS rule the way the
-  # parser used to call it - .ppFailsafeCounts() once per level line,
-  # each level knowing nothing of its siblings - and shows both defects
-  # it produced, then shows the joint fill has neither. Without this the
-  # suite would pass on the old code, which is how the rule was wrong
-  # three times.
-  Ns <- c(200, 200); pcts <- c(33, 33, 34)
-  oldTab <- NULL
-  for (p in pcts) {
-    b <- .ppCountBracket(p, 0, 200)
-    oldTab <- cbind(oldTab, .ppFailsafeCounts(rep(b[1], 2), rep(b[2], 2),
-                                              c(NA_integer_, NA_integer_), Ns))
-  }
-  # defect one: the arms do not add up
-  expect_false(all(rowSums(oldTab) == 200))
+  # The differential test. .ppFailsafeCounts() was deleted on 2026-09-09
+  # because while it existed it could still be reached, so the old
+  # answer is written out here literally instead of computed. For three
+  # levels printed 33/33/34 across two arms of 200 it produced exactly
+  # this, and both of its defects are visible in the numbers: the arms
+  # total 203 and 197 rather than 200, and every level was pushed the
+  # same way in the same arm, so the two arms come out in identical
+  # proportions - the most homogeneous reading of the page, not the
+  # least.
+  oldTab <- rbind(c(67L, 67L, 69L),
+                  c(65L, 65L, 67L))
   expect_equal(unname(rowSums(oldTab)), c(203, 197))
-
-  # defect two, the damaging one: every level was pushed the same way in
-  # the same arm, so the arms came out in identical proportions - the
-  # most homogeneous reading of the page, not the least
-  # 1.8e-5 as measured: not exactly zero only because the bogus arm
-  # totals of 203 and 197 differ, so the two arms' proportions agree to
-  # four figures rather than exactly
   expect_lt(tChi(oldTab), 1e-3)
 
-  # the joint fill has neither property
   set.seed(12)
-  m <- tMatrices(pcts, Ns)
-  new <- .ppFailsafeTableFill(m$lo, m$hi, m$cnt, Ns)
-  expect_equal(unname(rowSums(new$counts)), c(200, 200))
+  m <- tMatrices(c(33, 33, 34), c(200, 200))
+  new <- .ppFailsafeTableFill(m$lo, m$hi, m$cnt, c(200, 200))
+  expect_true(new$resolved)
   expect_gt(tChi(new$counts), 100 * tChi(oldTab))
 
   # and it matters: the old reading is at the alarming end of everything
   # the page allows, the new one at the reassuring end
-  v <- tArmVectors(pcts, 200)
+  v <- tArmVectors(c(33, 33, 34), 200)
   ps <- unlist(lapply(seq_len(nrow(v)), function(i)
     vapply(seq_len(nrow(v)), function(j)
       tExactP(rbind(v[i, ], v[j, ])), numeric(1))))
   expect_lt(tExactP(oldTab), stats::quantile(ps, 0.25))
   expect_gt(tExactP(new$counts), stats::quantile(ps, 0.9))
+})
+
+test_that("a page too large to enumerate is unresolved, not guessed", {
+  # AUDIT 2026-09-09, F1 and F8; Steve Shafer's decision: "Skip".
+  lo <- matrix(780L, 2, 5); hi <- matrix(820L, 2, 5)
+  r <- .ppFailsafeTableFill(lo, hi, matrix(NA_integer_, 2, 5), c(4000, 4000))
+  expect_false(r$resolved)
+  expect_true(all(is.na(r$counts)))
+  expect_true(is.na(r$pBest))
+  expect_false(r$straddles)
+  expect_true(grepl("enumerat", r$reason))
+})
+
+test_that("nothing infers that categories divide the arm", {
+  # AUDIT 2026-09-09, F2. Percentages summing to about 100 is arithmetic,
+  # not a statement about what the categories mean. Without partition
+  # the admissible set is the product of the brackets, and a reading
+  # whose arm totals differ from N is allowed - which is correct when
+  # the page never said the levels were exhaustive.
+  m <- tMatrices(c(24, 24, 24, 26), c(1000, 1000))
+  set.seed(21)
+  r <- .ppFailsafeTableFill(m$lo, m$hi, m$cnt, c(1000, 1000))
+  skip_if(!r$resolved, "space too large in this configuration")
+  # the free search must not be confined to totals of exactly N
+  expect_true(r$nTables > nrow(tArmVectors(c(24, 24, 24, 26), 1000))^2)
+})
+
+test_that("the selector agrees with the engine on a small table", {
+  # AUDIT 2026-09-09, F7. The helper used literal floating equality and
+  # its own floor, and returned 0.0998 on this table where the exact
+  # lower mid-p is 0.35.
+  tab <- rbind(c(1L, 1L), c(1L, 1L), c(1L, 5L))
+  set.seed(42)
+  p <- .ppTableP(tab, 100000)
+  expect_gt(p, 0.25)
+  expect_lt(p, 0.45)
+})
+
+test_that("the same page always yields the same counts", {
+  # AUDIT 2026-09-09, F9: scoring simulates, so without its own seed the
+  # counts depended on whatever random state the caller was in.
+  m <- tMatrices(c(33, 33, 34), c(200, 200))
+  set.seed(1);   a <- .ppFailsafeTableFill(m$lo, m$hi, m$cnt, c(200, 200))
+  set.seed(999); b <- .ppFailsafeTableFill(m$lo, m$hi, m$cnt, c(200, 200))
+  expect_identical(a$counts, b$counts)
+  expect_equal(a$pBest, b$pBest)
+  # ...and it leaves the caller's stream where it found it
+  set.seed(7); before <- runif(1)
+  set.seed(7); invisible(.ppFailsafeTableFill(m$lo, m$hi, m$cnt, c(200, 200)))
+  expect_equal(runif(1), before)
 })

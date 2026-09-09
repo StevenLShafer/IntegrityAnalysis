@@ -238,26 +238,30 @@ app_ui <- function(testNote = NULL)
                                ".jpg", ".jpeg", ".png", ".tif", ".tiff",
                                ".zip")),
           # The fail-safe fill (Steve, 2026-09-07; first an opt-in
-          # approximation, 2026-08-21; rule replaced 2026-09-08). Every
-          # whole arms-by-levels table the printed percentages allow is
-          # enumerated - each cell inside its own bracket, each arm's
-          # counts summing to that arm's N - and scored with the
-          # statistic and null the analysis uses. The reading kept is the
-          # one with the LARGEST p: the best case for the authors, which
-          # is Steve's decision and the only one of the four rules tried
-          # here that is what it claims to be. The three before it each
-          # optimised a proxy, and the last was actively harmful - it
-          # maximised each LEVEL against its own complement, which drove
-          # every level the same way in the same arm and so left the arms
-          # in identical proportions, the most homogeneous reading of the
-          # page rather than the least. See R/failsafeTable.R.
+          # approximation, 2026-08-21; rule replaced 2026-09-08; bounded
+          # search removed 2026-09-09). Every whole arms-by-levels table
+          # the printed percentages allow is enumerated - each cell
+          # inside its own bracket - and scored with the statistic and
+          # null the analysis uses. The reading kept is the one with the
+          # LARGEST p: the best case for the authors, which is Steve's
+          # decision. Where the readings cannot all be enumerated the
+          # cells are left BLANK and the row is not analysed, because a
+          # reading that cannot be shown to be the best case is not one
+          # (Steve, 2026-09-09: "Skip"). No partition is assumed either:
+          # whether a variable's categories divide the arm is a statement
+          # about what they mean, not arithmetic. See R/failsafeTable.R,
+          # which carries the measurements, and the three rules tried
+          # before this one - the last of which was actively harmful,
+          # maximising each LEVEL against its own complement and so
+          # leaving the arms in identical proportions.
           # Such cells paint ORANGE in the grid with the bracket in their
           # hover note; exact conversions still paint green.
           checkboxInput("pctApprox", paste(
             "Fill percent-only cells whose percentage fits several counts",
             "with the reading of the page that gives the authors the",
             "benefit of the doubt (fail-safe, best case; such cells show",
-            "orange in the table below)"), value = TRUE, width = "100%"),
+            "orange in the table below, and are left blank where there",
+            "are too many readings to count)"), value = TRUE, width = "100%"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never
           # goes in a URL, is never stored or logged, and dies with the

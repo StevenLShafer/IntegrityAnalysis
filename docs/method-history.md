@@ -499,6 +499,69 @@ conservative treatment would need a prior on the population's width
 given the printed digits, which is the dispersion-fabrication question
 the screen deliberately leaves alone.
 
+## 2026-09-09 — the fail-safe fill declines rather than guesses
+
+The whole-table reconstruction of the previous day kept its guarantee —
+that the counts analysed are the reading of the page most favourable to
+the authors — by *sampling* when the admissible set grew too large. An
+independent audit measured what that bought, and the answer was three
+separate defects, all in the false-alarm direction.
+
+**It restored the rule it replaced, silently.** When one ARM alone
+allowed more vectors than could be enumerated, the search returned
+"complete" with no p, and the caller kept whatever the old per-level rule
+had already written. On a five-category page with 4,000 per arm that
+produced arm totals of 4,100 and 3,900 against a stated 4,000, and a row
+reading p < 0.0001 where valid counts behind the same percentages give an
+exact 0.594.
+
+**It invented complete partitions.** The test for "do these categories
+divide the arm" was whether the bracket midpoints summed to within 2% of
+N. That treats arithmetic as evidence about what the categories *mean*.
+A page printing 24/24/24/26 with the footnote "Other categories omitted"
+was rebuilt as an exhaustive partition in both arms and read p = 0.00003,
+where the honest reading including the omitted category gives 0.064. The
+reverse error was there too: honest counts summing to N but printing 97%
+were called non-exhaustive.
+
+**Its fallback could not be allocated.** Each arm was capped and the
+arms were then multiplied, so 32 arms proposed 2³² tables despite a
+20,000 sample cap; and where it did run, an eight-arm page missed a valid
+reading worth 0.094 in p.
+
+**What changed** (Steve Shafer's decision, 2026-09-09: "Skip"). The
+search is complete or it does not happen. Beyond `.ppTableEnumMax`
+candidates — or beyond it for a single arm — the block is UNRESOLVED:
+the ambiguous cells go back to blank, the row is named in the flags with
+the reason, and it is not analysed, which the summary's "k of n rows
+analysed" line already reports. The 2% test is gone; no partition is
+assumed except where this code builds the complement itself, so a chosen
+reading may total a little more or less than the arm's N and the cell's
+note says so when it does.
+
+The cost is coverage, and it is small: one manuscript in 558 of the local
+corpus triggers the fill at all, and the rows it now drops are the large
+multi-arm tables where a reconstruction deserves least trust. The
+alternative was to keep analysing them under a weaker claim — "the best
+reading we searched" — which is not a claim an editor can act on.
+
+**Three further repairs in the same commit.** The selector scored
+candidates with its own probability helper, which used literal floating
+equality for ties and a different floor: on one small table it returned
+0.0998 where the exact answer is 0.35. It now shares the engine's
+statistic, its zero-level handling, `.iaTieCounts()` and `.floorP()`.
+Its grouping key now carries **both** margins, since the monotonicity
+that lets a group be represented by its extreme tables holds only within
+one null. And scoring simulates, so the reader now sets and restores its
+own seed: extraction was stochastic, which both guides promise it is not.
+
+**One claim narrowed rather than repaired.** The API guide said the
+trial p is therefore the most favourable reading the page permits. It is
+not: the trial combines rows and does not move monotonically with any one
+of them, and the audit gave an exact counterexample where choosing the
+greatest row p costs 0.142 in trial p. The guarantee is now stated for
+the row, which is what it is.
+
 ## 2026-09-08 — the fail-safe fill chooses a whole table, by p
 
 **What was wrong.** The rule of 2026-09-07 maximised, for each category

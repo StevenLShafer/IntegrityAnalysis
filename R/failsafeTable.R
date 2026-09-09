@@ -76,81 +76,100 @@
 # of tables: 19 rather than 49 for three levels across two arms of 200,
 # 85 rather than 361 for four levels, 381 rather than 2,601 for five.
 
-# The enumeration bound. A hostile document chooses the arm count, the
-# level count and the arm sizes, and the admissible set grows in all
-# three: three levels across two arms of 5,000 admits 3,806,401 tables.
-# Above this many candidates the search is bounded instead of complete,
-# and the caller is told, because a guarantee that quietly stops holding
-# is worse than one that says when it stops.
+# THE ENUMERATION BOUND, and what happens at it (independent audit
+# 2026-09-09, F1 and F8, and Steve Shafer's decision of the same day:
+# "Skip").
+#
+# The guarantee this function exists to keep is that the counts analysed
+# are the reading of the page MOST FAVOURABLE to the authors. That can
+# only be checked by scoring every admissible reading. The first version
+# tried to keep the guarantee everywhere by sampling when the set grew
+# too large, and the audit showed what that bought: a bounded search on
+# an eight-arm page missed a valid reading worth 0.094 in p, the fallback
+# proposed 2^32 tables on a 32-arm page because it capped each arm and
+# then multiplied, and when one ARM alone overflowed the search returned
+# "complete" with no p and the caller silently kept the counts the old
+# per-level rule had written - the very rule this replaced, restored
+# without a flag, on a page that then read p < 0.0001 where a valid
+# reading gives 0.59.
+#
+# So the search is complete or it does not happen. Above this many
+# candidate tables the block is UNRESOLVED: the ambiguous cells go back
+# to blank, the row is named, and an editor supplies the counts. A row
+# the instrument declines to read is honest; a row it reads with a
+# guarantee it cannot keep is not. This is rare - one manuscript in 558
+# of the local corpus triggers the fill at all - and the rows it drops
+# are the large multi-arm tables where a reconstruction deserves least
+# trust.
 .ppTableEnumMax <- 200000L
 
-# Candidates drawn when the enumeration is bounded: every arm's extreme
-# vectors (which is what the old rule considered, and the best case is
-# often among them) plus a random sample of admissible ones.
-.ppTableSampleMax <- 20000L
-
-# Replicates used to CHOOSE between candidates. This is not the p the
-# app reports - once the counts are chosen, P_Calc runs its own staged
-# scheme on them, so there is exactly one source for the reported
-# number. This budget only has to rank candidates.
-#
-# STAGED, for the same reason the engine stages: a first pass at
-# .ppTableSelectReps ranks every distinct null, and only the handful of
-# contenders at each end are re-run at .ppTableRefineReps. Without the
-# second pass the ranking is decided by Monte Carlo noise - at 2,000
-# replicates the standard error of a p near 0.05 is about 0.005, which
-# is larger than the gap between neighbouring candidates - and the
-# "best case" the app promises the authors would be the luckiest draw
-# rather than the largest p.
+# Replicates used to CHOOSE between candidates, staged for the same
+# reason the engine stages: a first pass ranks every distinct margin
+# pair, and only the contenders at each end are re-run. This is not the p
+# the app reports - P_Calc runs its own staged scheme on the chosen
+# counts - it only has to rank.
 .ppTableSelectReps <- 2000L
 .ppTableRefineReps <- 20000L
 .ppTableRefineTop  <- 6L
 
-# The threshold at which the spread between the best and worst readings
-# is worth telling the editor about (Steve, 2026-09-08: "worst case only
-# appearing if it straddles 0.01"). 0.05 is deliberately NOT here: it
-# has no meaning in this instrument.
+# The threshold at which the spread between the best and the worst
+# reading is worth telling the editor about (Steve, 2026-09-08: "worst
+# case only appearing if it straddles 0.01"). 0.05 is deliberately NOT
+# here: it has no meaning in this instrument.
 .ppTableStraddle <- 0.01
+
+# EXTRACTION IS DETERMINISTIC (audit 2026-09-09, F9). Scoring a candidate
+# simulates a null, so without this the counts a document yields would
+# depend on whatever random state the caller happened to be in - and both
+# guides promise the same document gives the same numbers. The analysis
+# seed is set later and separately by the caller; this one belongs to the
+# reader and must not move with it.
+.ppTableSeed <- 20260909L
 
 #' Every count vector for one arm consistent with its brackets
 #'
 #' @param lo,hi integer vectors, one per level, the bracket ends; a
 #'   pinned level has lo == hi.
 #' @param N the arm size, or NA when it is unknown.
-#' @param exhaustive TRUE when the levels partition the arm, so the
-#'   counts must sum to N; FALSE when they need only fit inside it.
+#' @param partition TRUE only when the levels are known to divide the arm
+#'   because this code CONSTRUCTED the complement, so the counts must sum
+#'   to N. It is never inferred from the printed percentages: whether a
+#'   set of categories exhausts an arm is a statement about what the
+#'   categories mean, and arithmetic cannot establish it (audit
+#'   2026-09-09, F2).
 #' @param cap stop and return NULL beyond this many vectors.
 #' @return integer matrix, one row per admissible vector, or NULL.
 #' @noRd
-.ppArmVectors <- function(lo, hi, N, exhaustive, cap) {
+.ppArmVectors <- function(lo, hi, N, partition, cap) {
   L <- length(lo)
   if (L == 0) return(NULL)
   width <- as.numeric(hi) - as.numeric(lo) + 1
   if (any(!is.finite(width) | width < 1)) return(NULL)
-  if (prod(width) > cap && !exhaustive) return(NULL)
+  if (!partition) {
+    # no cross-level constraint at all: the cells are independent, so the
+    # count is known before anything is built
+    if (prod(width) > cap) return(NULL)
+    g <- as.matrix(expand.grid(lapply(seq_len(L), function(j) lo[j]:hi[j])))
+    dimnames(g) <- NULL
+    return(matrix(as.integer(g), ncol = L))
+  }
   out <- vector("list", 0L)
   cur <- integer(L)
-  # depth-first with the sum pruned at both ends: without the pruning an
-  # exhaustive block of five levels at N = 5,000 would build the whole
-  # product before discarding almost all of it
   suffixLo <- rev(cumsum(rev(as.numeric(lo))))
   suffixHi <- rev(cumsum(rev(as.numeric(hi))))
-  target <- if (exhaustive) as.numeric(N) else NA_real_
+  target <- as.numeric(N)
+  if (!is.finite(target)) return(NULL)
   rec <- function(j, used) {
     if (length(out) > cap) return(invisible(NULL))
     if (j > L) {
-      if (!exhaustive || isTRUE(all.equal(used, target)))
-        out[[length(out) + 1L]] <<- cur
+      if (isTRUE(all.equal(used, target))) out[[length(out) + 1L]] <<- cur
       return(invisible(NULL))
     }
     restLo <- if (j < L) suffixLo[j + 1L] else 0
     restHi <- if (j < L) suffixHi[j + 1L] else 0
     for (v in lo[j]:hi[j]) {
-      if (exhaustive) {
-        # what is left after this cell must still be reachable
-        left <- target - used - v
-        if (left < restLo || left > restHi) next
-      } else if (is.finite(N) && used + v > N) next
+      left <- target - used - v
+      if (left < restLo || left > restHi) next
       cur[j] <<- v
       rec(j + 1L, used + v)
       if (length(out) > cap) return(invisible(NULL))
@@ -162,26 +181,43 @@
   matrix(unlist(out), ncol = L, byrow = TRUE)
 }
 
-# The engine's own statistic for a candidate table (R/P_Calc.R:1230).
-.ppTableStat <- function(tab) {
-  E <- outer(rowSums(tab), colSums(tab)) / sum(tab)
-  if (any(!is.finite(E)) || any(E <= 0)) return(NA_real_)
-  sum((tab - E)^2 / E)
+# THE ENGINE'S OWN STATISTIC, on the engine's own table. P_Calc drops
+# every level no arm reports before computing anything (R/P_Calc.R, the
+# categorical branch), and refuses a table with fewer than two levels
+# left or an empty arm. A selector that scored a different table from the
+# one the engine will score is choosing against the wrong objective
+# (audit 2026-09-09, F7).
+.ppTableReduce <- function(tab) {
+  keep <- colSums(tab) > 0
+  if (sum(keep) < 2) return(NULL)
+  out <- tab[, keep, drop = FALSE]
+  if (any(rowSums(out) == 0)) return(NULL)
+  out
 }
 
-# The engine's own p for a candidate: the LOWER mid-p tail of that
-# statistic under fixed margins, which is the one-sided direction toward
-# homogeneity the whole instrument is built on (R/P_Calc.R:1217-1219).
+.ppTableStat <- function(tab) {
+  t2 <- .ppTableReduce(tab)
+  if (is.null(t2)) return(NA_real_)
+  E <- outer(rowSums(t2), colSums(t2)) / sum(t2)
+  if (any(!is.finite(E)) || any(E <= 0)) return(NA_real_)
+  sum((t2 - E)^2 / E)
+}
+
+# ...and the engine's own probability. Three things were different and
+# all three are now shared: ties are counted by .iaTieCounts()'s relative
+# criterion rather than by literal floating equality, the mid-p is
+# (kLess + kEq/2)/m, and the floor is .floorP(). On rbind(c(1,1), c(1,1),
+# c(1,5)) the old helper returned 0.0998 where the exact answer is 0.35.
 .ppTableP <- function(tab, reps) {
-  r <- rowSums(tab); cc <- colSums(tab)
-  cc <- cc[cc > 0]
-  if (length(cc) < 2 || any(r == 0)) return(NA_real_)
+  t2 <- .ppTableReduce(tab)
+  if (is.null(t2)) return(NA_real_)
+  r <- rowSums(t2); cc <- colSums(t2)
   E <- outer(r, cc) / sum(r)
-  obs <- sum((tab[, colSums(tab) > 0, drop = FALSE] - E)^2 / E)
-  sims <- vapply(r2dtable(reps, r, cc), function(s) sum((s - E)^2 / E),
+  obs <- sum((t2 - E)^2 / E)
+  sims <- vapply(r2dtable(reps, r, cc), function(x) sum((x - E)^2 / E),
                  numeric(1))
-  # mid-p, and the floor the engine uses everywhere: never zero
-  (sum(sims < obs) + 0.5 * sum(sims == obs) + 0.5) / (reps + 1)
+  kk <- .iaTieCounts(sims, obs)
+  .floorP((kk[["kLess"]] + kk[["kEq"]] / 2) / reps, reps)
 }
 
 #' Choose the counts behind a block of printed percentages
@@ -191,91 +227,105 @@
 #' @param cnt integer matrix, arms x levels, counts already pinned; NA
 #'   where the percentage left more than one possibility.
 #' @param N numeric, one arm size per row of the matrices.
-#' @param exhaustive TRUE when the levels partition the arm.
+#' @param partition TRUE only where this code constructed the complement.
 #' @param reps replicates used to rank candidates.
-#' @return a list: `counts` (the best-case table), `pBest`, `pWorst`,
-#'   `nTables`, `nNulls`, `complete` (FALSE when the search was bounded
-#'   rather than exhaustive), and `straddles` (TRUE when best and worst
-#'   fall on opposite sides of .ppTableStraddle).
+#' @return a list: `resolved` (FALSE when the page could not be read
+#'   completely, in which case `counts` is unchanged and `reason` says
+#'   why), `counts`, `pBest`, `pWorst`, `nTables`, `nNulls` and
+#'   `straddles`.
 #' @noRd
-.ppFailsafeTableFill <- function(lo, hi, cnt, N, exhaustive = TRUE,
+.ppFailsafeTableFill <- function(lo, hi, cnt, N, partition = FALSE,
                                  reps = .ppTableSelectReps) {
-  none <- list(counts = cnt, pBest = NA_real_, pWorst = NA_real_,
-               nTables = 0L, nNulls = 0L, complete = TRUE, straddles = FALSE)
-  if (!is.matrix(cnt) || !nrow(cnt) || ncol(cnt) < 2) return(none)
-  amb <- is.na(cnt) & !is.na(lo) & !is.na(hi)
-  if (!any(amb)) return(none)
-  keep <- which(is.finite(N) & N > 0 & rowSums(!is.na(cnt) | amb) == ncol(cnt))
-  if (length(keep) < 2) return(none)
+  out <- function(resolved, reason, counts = cnt, pBest = NA_real_,
+                  pWorst = NA_real_, nTables = 0L, nNulls = 0L,
+                  straddles = FALSE)
+    list(resolved = resolved, reason = reason, counts = counts,
+         pBest = pBest, pWorst = pWorst, nTables = nTables,
+         nNulls = nNulls, straddles = straddles)
 
-  # per arm, the vectors it could have printed
+  if (!is.matrix(cnt) || !nrow(cnt) || ncol(cnt) < 2)
+    return(out(TRUE, "nothing ambiguous"))
+  amb <- is.na(cnt) & !is.na(lo) & !is.na(hi)
+  if (!any(amb)) return(out(TRUE, "nothing ambiguous"))
+  keep <- which(is.finite(N) & N > 0 & rowSums(!is.na(cnt) | amb) == ncol(cnt))
+  if (length(keep) < 2)
+    return(out(FALSE, "fewer than two arms report this variable"))
+
+  # the reader's own random state, so the same document always yields the
+  # same counts whatever the caller was doing (F9)
+  oldSeed <- if (exists(".Random.seed", envir = globalenv()))
+               get(".Random.seed", envir = globalenv()) else NULL
+  on.exit({
+    if (is.null(oldSeed)) suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    else assign(".Random.seed", oldSeed, envir = globalenv())
+  }, add = TRUE)
+  set.seed(.ppTableSeed)
+
   vecs <- vector("list", length(keep))
   for (k in seq_along(keep)) {
     i <- keep[k]
     l <- ifelse(amb[i, ], lo[i, ], cnt[i, ])
     h <- ifelse(amb[i, ], hi[i, ], cnt[i, ])
-    if (anyNA(l) || anyNA(h)) return(none)
-    v <- .ppArmVectors(as.integer(l), as.integer(h), N[i], exhaustive,
+    if (anyNA(l) || anyNA(h))
+      return(out(FALSE, "a cell has no bracket"))
+    v <- .ppArmVectors(as.integer(l), as.integer(h), N[i], partition,
                        .ppTableEnumMax)
-    if (is.null(v) || !nrow(v)) return(none)
+    if (is.null(v) || !nrow(v))
+      return(out(FALSE, sprintf(
+        "one arm alone allows more readings than can be enumerated (over %s)",
+        format(.ppTableEnumMax, big.mark = ","))))
     vecs[[k]] <- v
   }
   sizes <- vapply(vecs, nrow, integer(1))
   total <- prod(as.numeric(sizes))
-  complete <- TRUE
-  if (total > .ppTableEnumMax) {
-    # BOUNDED, and it says so. Each arm keeps its extreme vectors (the
-    # ones the old rule would have considered) plus a random sample, so
-    # the search still spans the corners it used to reach.
-    complete <- FALSE
-    per <- max(2L, as.integer(floor(.ppTableSampleMax^(1/length(vecs)))))
-    for (k in seq_along(vecs)) {
-      v <- vecs[[k]]
-      if (nrow(v) <= per) next
-      ord <- order(rowSums(abs(v - rep(colMeans(v), each = nrow(v)))),
-                   decreasing = TRUE)
-      pick <- unique(c(ord[seq_len(min(per %/% 2L, nrow(v)))],
-                       sample.int(nrow(v), min(per, nrow(v)))))
-      vecs[[k]] <- v[pick[seq_len(min(per, length(pick)))], , drop = FALSE]
-    }
-    sizes <- vapply(vecs, nrow, integer(1))
-    total <- prod(as.numeric(sizes))
-  }
+  if (!is.finite(total) || total > .ppTableEnumMax)
+    return(out(FALSE, sprintf(
+      "the page allows about %s readings, more than can be enumerated (over %s)",
+      if (!is.finite(total) || total >= 1e7)
+        format(signif(total, 3), scientific = TRUE)
+      else format(signif(total, 3), big.mark = ",", scientific = FALSE),
+      format(.ppTableEnumMax, big.mark = ","))))
 
-  # Group the candidates by their LEVEL TOTALS. Within a group the null
-  # is identical, so the mid-p is monotone in the statistic and only the
-  # extreme-statistic tables can win or lose.
-  idx <- expand.grid(lapply(sizes, seq_len))
+  # Group by BOTH margins (audit 2026-09-09, F7). The monotonicity that
+  # lets a group be represented by its extreme tables - same null, so the
+  # mid-p cannot decrease with the statistic - holds only when the null
+  # is the same, and the null is fixed by both margins. Without the
+  # partition constraint the arm totals vary too, so keying on the level
+  # totals alone would prune across different nulls.
   best <- new.env(hash = TRUE, parent = emptyenv())
-  for (r in seq_len(nrow(idx))) {
-    tab <- do.call(rbind, Map(function(m, i) m[i, ], vecs, as.integer(idx[r, ])))
-    s <- .ppTableStat(tab)
-    if (!is.finite(s)) next
-    key <- paste(colSums(tab), collapse = ",")
+  idx <- integer(length(vecs))
+  for (r in seq_len(as.integer(total))) {
+    # decode r into one choice per arm without materialising the grid
+    rest <- r - 1L
+    for (k in seq_along(vecs)) {
+      idx[k] <- (rest %% sizes[k]) + 1L
+      rest <- rest %/% sizes[k]
+    }
+    tab <- do.call(rbind, Map(function(m, i) m[i, ], vecs, idx))
+    st <- .ppTableStat(tab)
+    if (!is.finite(st)) next
+    key <- paste(c(rowSums(tab), -1L, colSums(tab)), collapse = ",")
     e <- best[[key]]
-    if (is.null(e)) best[[key]] <- list(hiT = tab, hiS = s, loT = tab, loS = s)
+    if (is.null(e)) best[[key]] <- list(hiT = tab, hiS = st, loT = tab, loS = st)
     else {
-      if (s > e$hiS) { e$hiT <- tab; e$hiS <- s }
-      if (s < e$loS) { e$loT <- tab; e$loS <- s }
+      if (st > e$hiS) { e$hiT <- tab; e$hiS <- st }
+      if (st < e$loS) { e$loT <- tab; e$loS <- st }
       best[[key]] <- e
     }
   }
   keys <- ls(best)
-  if (!length(keys)) return(none)
+  if (!length(keys))
+    return(out(FALSE, "no reading of this page gives a table the engine can score"))
 
-  # Pass 1: rank every distinct null cheaply.
   up <- vapply(keys, function(k) .ppTableP(best[[k]]$hiT, reps), numeric(1))
   dn <- vapply(keys, function(k) {
     e <- best[[k]]
     if (identical(e$hiS, e$loS)) NA_real_ else .ppTableP(e$loT, reps)
   }, numeric(1))
   dn[is.na(dn)] <- up[is.na(dn)]
-  if (!any(is.finite(up))) return(none)
+  if (!any(is.finite(up)))
+    return(out(FALSE, "no reading of this page could be scored"))
 
-  # Pass 2: the contenders at each end, re-run with ten times the
-  # replicates. Without this the winner is the luckiest draw rather than
-  # the largest p - the ranking gap between neighbouring candidates is
-  # routinely smaller than pass 1's own standard error.
   topUp <- utils::head(order(up, decreasing = TRUE, na.last = NA),
                        .ppTableRefineTop)
   topDn <- utils::head(order(dn, na.last = NA), .ppTableRefineTop)
@@ -287,16 +337,16 @@
   }
 
   wBest <- which.max(up)
-  pBest <- up[wBest]; chosen <- best[[keys[wBest]]]$hiT
+  chosen <- best[[keys[wBest]]]$hiT
+  pBest <- up[wBest]
   pWorst <- suppressWarnings(min(dn, na.rm = TRUE))
   if (!is.finite(pWorst)) pWorst <- pBest
-  if (is.null(chosen)) return(none)
 
-  out <- cnt
-  for (k in seq_along(keep)) out[keep[k], ] <- chosen[k, ]
-  list(counts = out, pBest = pBest, pWorst = pWorst,
-       nTables = as.integer(min(total, .Machine$integer.max)),
-       nNulls = length(keys), complete = complete,
-       straddles = is.finite(pBest) && is.finite(pWorst) &&
-                   pWorst < .ppTableStraddle && pBest >= .ppTableStraddle)
+  filled <- cnt
+  for (k in seq_along(keep)) filled[keep[k], ] <- chosen[k, ]
+  out(TRUE, "enumerated completely", counts = filled, pBest = pBest,
+      pWorst = pWorst, nTables = as.integer(min(total, .Machine$integer.max)),
+      nNulls = length(keys),
+      straddles = is.finite(pBest) && is.finite(pWorst) &&
+                  pWorst < .ppTableStraddle && pBest >= .ppTableStraddle)
 }

@@ -98,120 +98,23 @@
   c(cLo, cHi)
 }
 
-# SUPERSEDED 2026-09-08, and kept only as the provisional value a line
-# carries until the whole block is known. THE GUARANTEE BELOW IS FALSE
-# AS STATED, which is why it was replaced: this maximises each LEVEL
-# against its own complement, which is not the statistic P_Calc scores,
-# and applying it level by level drives every level the same way in the
-# same arm - leaving the arms in identical proportions, the most
-# homogeneous reading of the page rather than the least. It also lets
-# the levels of one variable disagree about the arm total (200 rebuilt
-# as 203). The counts that survive into the analysis are now chosen for
-# the whole arms-by-levels table at once, by p rather than by proxy, in
-# .ppFailsafeTableFill() - see R/failsafeTable.R, which carries the
-# measurements. Read the rest of this comment as history.
+# THE PERCENTAGE FILL LIVES IN R/failsafeTable.R.
 #
-# THE FAIL-SAFE ASSIGNMENT (Steve's decision, 2026-09-07; rewritten
-# 2026-09-07 after security screen 2026-09-07-1654, finding F1). Given the
-# arms' bracket ends and the counts already pinned exactly, choose one end
-# of each ambiguous arm's bracket so that the ROW'S OWN STATISTIC is as
-# large as it can be - the most heterogeneous reading the printed page
-# permits. Nothing weaker enforces the guarantee the app and the guides
-# state ("the row can look less alike than the truth, never more"): the
-# two heuristics that preceded this one - push each arm away from the
-# pooled proportion, then split the ambiguous arms against each other by
-# rank - each optimised a proxy and each left honest rows more alike than
-# a consistent reading allows (the first identically alike, the second in
-# 58% of rows, with a worst measured p of 0.116 against 0.872).
+# What stood here until 2026-09-09 was .ppFailsafeCounts(), with
+# .ppRowStat(), .ppFailsafeExact and .ppFailsafeSweeps: the rule that
+# chose each category LEVEL on its own table line by maximising that
+# level's statistic against its own complement. It is deleted rather
+# than kept, because while it existed it could still be reached - when
+# the whole-table search could not run, the caller silently fell back to
+# it, and the independent audit of 2026-09-09 (F1) found a page that
+# then read p < 0.0001 where a valid reading of the same percentages
+# gives 0.59.
 #
-# The objective IS what the engine simulates for a categorical row: the
-# fixed-margin Pearson statistic of the level against its complement,
-# sum(N_i (p_i - pbar)^2) / (pbar (1 - pbar)). It is convex in the counts,
-# so its maximum over the box of admissible counts sits at a vertex, and
-# every vertex is one lo/hi choice per ambiguous arm. Up to
-# .ppFailsafeExact ambiguous arms every vertex is enumerated; beyond it -
-# the arm count follows the columns a document declares, so it is not ours
-# to bound - coordinate ascent runs from both all-low and all-high starts,
-# which for this objective reaches the same vertex on every row measured.
-#
-# The bound is 8, not the 12 it started at (security screen
-# 2026-09-07-1758, finding F2). The enumeration is 2^k evaluations of a
-# row whose arm count a hostile document chooses: at twelve arms it
-# measured 59 ms per row, and a 382 KB document of such rows took 56
-# seconds against 19 with the fill off - enough for one request to hold
-# the single-threaded service for its whole timeout. At eight it is 256
-# evaluations, about 4 ms. The screen checked what that costs in answers:
-# coordinate ascent matched the exhaustive optimum on 400 of 400 random
-# rows of 13 to 16 arms.
-#
-# Duplicate rebuilt counts are not avoided: two arms printing the same
-# percentage often DO maximise the statistic at the same end, and the
-# statistic, not the appearance of the counts, is what the editor reads.
-.ppFailsafeExact <- 8L
-# ...and the ascent terminates by construction, not by argument: each
-# sweep either improves the objective or changes nothing (4 to 5 sweeps in
-# every case measured), and the cap makes that a property of the code.
-.ppFailsafeSweeps <- 50L
-
-# the row's statistic for one assignment; 0 when every count is 0 or every
-# count is N, where the level carries no information either way
-.ppRowStat <- function(cnt, N) {
-  tot <- sum(N)
-  pbar <- sum(cnt) / tot
-  if (!is.finite(pbar) || pbar <= 0 || pbar >= 1) return(0)
-  sum(N * (cnt / N - pbar)^2) / (pbar * (1 - pbar))
-}
-
-#' The fail-safe counts for one category row
-#'
-#' @param lo,hi bracket ends, NA for an arm that is pinned or absent
-#' @param cnt the counts already known (NA where ambiguous)
-#' @param N the arm sizes
-#' @return `cnt` with every ambiguous entry filled
-#' @noRd
-.ppFailsafeCounts <- function(lo, hi, cnt, N) {
-  amb <- which(is.na(cnt) & !is.na(lo) & !is.na(hi) & !is.na(N) & N > 0)
-  if (!length(amb)) return(cnt)
-  # the statistic is computed over the arms this row actually reports: the
-  # pinned counts and the ambiguous ones. An arm with no count on this line
-  # is not an arm with a count of zero, and must not enter the sum.
-  keep <- which((!is.na(cnt) | seq_along(cnt) %in% amb) & !is.na(N) & N > 0)
-  Nk <- N[keep]
-  base <- cnt
-  base[amb] <- lo[amb]
-  score <- function(v) .ppRowStat(v[keep], Nk)
-  if (length(amb) <= .ppFailsafeExact) {
-    best <- base; bestS <- -Inf
-    for (v in 0:(2^length(amb) - 1)) {
-      pick <- bitwAnd(bitwShiftR(v, seq_along(amb) - 1L), 1L) == 1L
-      trial <- base
-      trial[amb] <- ifelse(pick, hi[amb], lo[amb])
-      s <- score(trial)
-      if (s > bestS) { bestS <- s; best <- trial }
-    }
-  } else {
-    # coordinate ascent from both corners; each sweep is O(k) evaluations
-    run <- function(startHi) {
-      cur <- base
-      cur[amb] <- if (startHi) hi[amb] else lo[amb]
-      for (sweep in seq_len(.ppFailsafeSweeps)) {
-        moved <- FALSE
-        for (j in amb) {
-          a <- cur; a[j] <- lo[j]
-          b <- cur; b[j] <- hi[j]
-          new <- if (score(b) > score(a)) hi[j] else lo[j]
-          if (!isTRUE(cur[j] == new)) { cur[j] <- new; moved <- TRUE }
-        }
-        if (!moved) break
-      }
-      cur
-    }
-    c1 <- run(FALSE); c2 <- run(TRUE)
-    best <- if (score(c2) > score(c1)) c2 else c1
-  }
-  cnt[amb] <- best[amb]
-  cnt
-}
+# Its three defects are recorded in docs/method-history.md under
+# 2026-09-08, and R/failsafeTable.R carries the measurements. The
+# bracket itself, .ppCountBracket(), is still here and still used: which
+# counts a printed percentage allows is arithmetic, and that part was
+# never in doubt.
 
 # --------------------------------------------------------------------------
 # Source 2: the document text (CONSORT labels, randomization sentences)

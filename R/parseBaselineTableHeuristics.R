@@ -531,7 +531,8 @@
   # was not merely imprecise but backwards.
   pctBrackets  <- list()       # [[blockKey]][[column]] = list(lo, hi, pct)
   pctStraddle  <- character(0) # blocks where the choice crosses p = 0.01
-  pctBounded   <- character(0) # ... and where the search had to be bounded
+  pctUnresolved <- character(0) # ... and where no reading could be certified,
+                                # named by the reason; their cells go blank
   derivedCells <- list()       # (ROW, COL, KIND, NOTE) for the app grid
   addDerived <- function(rowName, colName, kind, note)
     derivedCells[[length(derivedCells) + 1]] <<-
@@ -702,17 +703,18 @@
       # percentages happened to round the same were rebuilt with IDENTICAL
       # proportions, an agreement the real counts never had: by exact
       # enumeration 38% of honest 5,000-per-arm pairs fell below p = 0.01.
-      # An ambiguous cell takes the count that leaves the arms LEAST
-      # alike, chosen by .ppFailsafeCounts() below, which maximises the
-      # row's own statistic over the admissible sets - exhaustively up to
-      # .ppFailsafeExact ambiguous arms, and by two-start coordinate
-      # ascent above that, which is a local maximum (two heuristics
-      # preceded it and neither kept the promise; see that function) - the row can never look more homogeneous than the
-      # page allows, only less - and is painted its own colour with the
-      # note below, so the editor sees a design decision about incomplete
-      # data, not a datum. The same choice is made for the API, whose
-      # response flags name the rows. Exact brackets (one integer) are
-      # untouched.
+      # An ambiguous cell is settled AFTER this loop, for the whole
+      # arms-by-levels block at once, by .ppFailsafeTableFill() in
+      # R/failsafeTable.R: every reading the page allows is enumerated
+      # and scored with the engine's own statistic and null, and the one
+      # with the LARGEST p is analysed - the best case for the authors.
+      # Where the readings cannot all be enumerated the block is left
+      # UNRESOLVED and its cells go blank, because a reading that cannot
+      # be shown to be the best case is not one (Steve Shafer,
+      # 2026-09-09: "Skip"). Either way the cell is painted its own
+      # colour with the note below, so the editor sees a decision about
+      # incomplete data rather than a datum, and the API's response flags
+      # name the rows. Exact brackets (one integer) are untouched.
       lo <- rep(NA_integer_, nArms); hi <- rep(NA_integer_, nArms)
       # the PERCENTAGE each arm printed, kept here because the loop
       # below overwrites armTok[[j]]$num1 with the count it chose, and
@@ -736,20 +738,20 @@
       }
       if (any(approx)) {
         Ns  <- armN[arms]
-        # WHICH END OF EACH BRACKET. Not a heuristic: the assignment that
-        # MAXIMISES the row's own statistic, which is the most
-        # heterogeneous reading the printed page permits and is therefore
-        # the guarantee the app and the guides state, enforced by
-        # construction. Two heuristics preceded it and each left honest
-        # rows more alike than a consistent reading allows - pushing every
-        # arm away from one pooled proportion (identical counts for arms
-        # on the same side; an honest four-arm row read p = 0.0094;
-        # security screen 2026-09-07-1609) and splitting the ambiguous
-        # arms against each other by rank (58% of rows short of the
-        # conservative read, worst measured p 0.116 against 0.872; screen
-        # 2026-09-07-1654). .ppFailsafeCounts() holds the maximisation and
-        # its bound on the enumeration.
-        cnts <- .ppFailsafeCounts(lo, hi, cnts, Ns)
+        amb1 <- which(approx & is.na(cnts))
+        # NOT A CHOICE YET. The counts that reach the analysis are
+        # settled for the whole block after this loop; see the comment
+        # above and R/failsafeTable.R.
+        # A DETERMINISTIC PLACEHOLDER, not a choice. The counts that
+        # reach the analysis are settled for the whole arms-by-levels
+        # block after this loop, where the sibling levels are known;
+        # this only has to be something so the line flows through the
+        # emit below, and it is always either replaced there or blanked.
+        # It used to be .ppFailsafeCounts(), the per-level rule - and
+        # when the joint pass could not run, that rule's answer silently
+        # became the analysis (audit 2026-09-09, F1). The low end of the
+        # bracket carries no claim and cannot be mistaken for one.
+        cnts[amb1] <- lo[amb1]
         for (j in which(approx))
           notes[j] <- sprintf(
             "FAIL-SAFE: %s%% of N=%d fits %d..%d; %d taken - the reading of the page that leaves the arms least alike",
@@ -1122,22 +1124,62 @@
       lo[!amb] <- cnt[!amb]; hi[!amb] <- cnt[!amb]
       usable <- which(is.finite(Ns) & Ns > 0 &
                       rowSums(is.na(lo) | is.na(hi)) == 0)
-      if (length(usable) < 2) next
-      # DO THE LEVELS PARTITION THE ARM? Only then do the counts have to
-      # sum to N. The test is whether N is reachable at all from the
-      # admissible cells, and whether the middle of the brackets lands
-      # near it; a block of overlapping or non-exhaustive levels fails
-      # both and is enumerated under the weaker constraint instead.
-      mid <- (lo + hi) / 2
-      exhaustive <- all(vapply(usable, function(j)
-        sum(lo[j, ]) <= Ns[j] && Ns[j] <= sum(hi[j, ]) &&
-        abs(sum(mid[j, ]) - Ns[j]) <= 0.02 * Ns[j], logical(1)))
-      res <- .ppFailsafeTableFill(lo[usable, , drop = FALSE],
-                                  hi[usable, , drop = FALSE],
-                                  cnt[usable, , drop = FALSE], Ns[usable],
-                                  exhaustive = exhaustive)
-      if (!is.finite(res$pBest)) next
       rowName <- outRows[[e]]$row
+      # DO THE LEVELS DIVIDE THE ARM? Only where this code built the
+      # complement itself - a binary "n (%)" row, whose other column IS
+      # the arm N minus the count. It is never inferred from the printed
+      # percentages (independent audit 2026-09-09, F2). The old test
+      # asked whether the bracket midpoints summed to within 2% of N,
+      # which treats arithmetic as evidence about what the categories
+      # MEAN: a page printing 24/24/24/26 and the footnote "Other
+      # categories omitted" was rebuilt as a complete partition summing
+      # to N in both arms, and read p = 0.00003 where the honest reading
+      # with the omitted category gives 0.064. The reverse error was
+      # there too - honest counts summing to N but printing 97% were
+      # called non-exhaustive. Without the constraint the admissible set
+      # is larger and more rows go unresolved, which is the trade Steve
+      # Shafer chose: a reading we cannot certify is worse than no
+      # reading.
+      partition <- startsWith(bk, "__npct__")
+      res <- if (length(usable) < 2)
+               list(resolved = FALSE,
+                    reason = "fewer than two arms report this variable")
+             else .ppFailsafeTableFill(lo[usable, , drop = FALSE],
+                                       hi[usable, , drop = FALSE],
+                                       cnt[usable, , drop = FALSE],
+                                       Ns[usable], partition = partition)
+      if (!isTRUE(res$resolved)) {
+        # UNRESOLVED: put the ambiguous cells back to blank rather than
+        # leave a count nothing stands behind. The engine refuses a
+        # category row with a missing cell by name, and every refusal is
+        # counted on the Summary's "k of n rows analysed" line, so the
+        # editor sees the gap and can type the counts in.
+        for (j in seq_len(nArms))
+          for (k in seq_along(cols))
+            if (amb[j, k] && !is.null(outRows[[e]]$perArm[[j]]) &&
+                !is.null(outRows[[e]]$perArm[[j]][[cols[k]]]))
+              outRows[[e]]$perArm[[j]][[cols[k]]] <- NA_integer_
+        pctUnresolved <- c(pctUnresolved,
+                           stats::setNames(res$reason, rowName))
+        addSkip(rowName, paste("percentages could not be read as counts -",
+                               res$reason,
+                               "- enter the printed counts by hand"), "")
+        for (k in seq_along(cols)) {
+          hit <- vapply(derivedCells, function(d)
+            isTRUE(unname(d$ROW) == unname(rowName)) &&
+            isTRUE(unname(d$COL) == unname(cols[k])) &&
+            isTRUE(unname(d$KIND) == "failsafe"), logical(1))
+          for (h in which(hit)) derivedCells[[h]]$NOTE <- sprintf(
+            paste("UNRESOLVED: %s. The printed percentages fit several",
+                  "counts here, and %s, so no reading can be shown to be",
+                  "the best case for the authors. The cell is left blank",
+                  "and the row is not analysed; enter the printed counts",
+                  "to analyse it."),
+            "the page allows more readings than can be enumerated",
+            res$reason)
+        }
+        next
+      }
       for (u in seq_along(usable)) {
         j <- usable[u]
         for (k in seq_along(cols)) {
@@ -1146,7 +1188,24 @@
         }
       }
       if (isTRUE(res$straddles)) pctStraddle <- c(pctStraddle, rowName)
-      if (!isTRUE(res$complete))  pctBounded <- c(pctBounded, rowName)
+      # WHERE THE CHOSEN COUNTS DO NOT ADD UP TO THE ARM, say so. Since
+      # exhaustivity is no longer inferred (audit 2026-09-09, F2), the
+      # search is free to take a reading whose levels total more or less
+      # than N - which is right when the page never said the categories
+      # were exhaustive, and wrong if they were. The editor is the one
+      # who can tell by looking at the table, so the totals are put in
+      # front of them rather than silently accepted or silently refused.
+      armTotal <- rowSums(res$counts, na.rm = TRUE)
+      offBy <- which(abs(armTotal - Ns[usable]) > 0.5)
+      totalNote <- if (length(offBy))
+        sprintf(paste(". These counts total %s for arm(s) of N = %s: the",
+                      "page does not say whether these categories are",
+                      "exhaustive, so readings that do not add up to the",
+                      "arm are admitted. If they ARE exhaustive, the",
+                      "printed counts settle it"),
+                paste(armTotal[offBy], collapse = "/"),
+                paste(as.integer(Ns[usable][offBy]), collapse = "/"))
+      else ""
       # the hover note now says what was actually done
       for (k in seq_along(cols)) {
         bb <- b[[cols[k]]]
@@ -1163,14 +1222,16 @@
         }
         if (!length(txtNote)) next
         tail <- sprintf(
-          paste("FAIL-SAFE (best case): %s. Of the %s readings this page",
-                "allows, the one analysed is the one with the LARGEST p,",
-                "so the arms are given every benefit of the doubt.",
+          paste("FAIL-SAFE (best case): %s. All %s readings this page",
+                "allows were enumerated and scored; the one analysed is",
+                "the one with the LARGEST p, so the arms are given every",
+                "benefit of the doubt.",
                 "Best case p ~ %.3g; worst case p ~ %.3g%s"),
           paste(txtNote, collapse = "; "),
           format(res$nTables, big.mark = ","), res$pBest, res$pWorst,
-          if (isTRUE(res$straddles))
-            " - the choice moves this row across p = 0.01" else "")
+          paste0(if (isTRUE(res$straddles))
+                   " - the choice moves this row across p = 0.01" else "",
+                 totalNote))
         # compared by VALUE, not identical(): .ppUniqueName() returns a
         # named character, and identical() counts the name, so the
         # match silently found nothing and the hover note kept
@@ -1242,7 +1303,7 @@
        # opposite sides of p = 0.01, and rows whose admissible set was
        # too large to enumerate completely (2026-09-08)
        approxStraddle = unique(pctStraddle),
-       approxBounded  = unique(pctBounded),
+       approxUnresolved = pctUnresolved,
        derivedCells  = if (length(derivedCells)) do.call(rbind, derivedCells)
                        else NULL,
        clusters   = nArms,
@@ -1713,7 +1774,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
          derivedCounts = best$derivedCounts,
          approxCounts  = best$approxCounts,
          approxStraddle = best$approxStraddle,
-         approxBounded  = best$approxBounded,
+         approxUnresolved = best$approxUnresolved,
          derivedCells  = best$derivedCells,
          engine     = eng),
     class = "ParsePDFTable")
