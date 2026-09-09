@@ -65,17 +65,22 @@ reviewFlags <- function(x) {
   # FAIL-SAFE conversions (pctApprox = TRUE; Steve, 2026-09-07, rule
   # replaced 2026-09-08). The printed percentage fit several counts for
   # the arm size. Every whole arms-by-levels table the page allows is
-  # enumerated and scored with the engine's own statistic, and the one
-  # analysed is the BEST CASE - the largest p, the reading most
-  # favourable to the authors. A design decision for incomplete data,
-  # not a datum: the printed counts would settle it.
+  # enumerated, the least alike of them are scored with the engine's own
+  # statistic, and the one analysed is the BEST CASE - the largest p, the
+  # reading most favourable to the authors. A design decision for
+  # incomplete data, not a datum: the printed counts would settle it.
+  #
+  # "of the readings scored", not "of every reading" (security screens
+  # 2026-09-08-2100 and 2026-09-09-0721, F1): scoring every reading is
+  # what made an ordinary Table 1 unparseable, and a flag is not the
+  # place to keep a guarantee the engine no longer gives.
   if (!is.null(x$approxCounts) && length(x$approxCounts) > 0)
     flags <- c(flags, paste0(length(x$approxCounts), " category row(s) use ",
                              "FAIL-SAFE counts - the printed percentage fit ",
-                             "several counts for the arm size, so of every ",
-                             "reading the page allows the one with the ",
-                             "LARGEST p was taken, giving the authors the ",
-                             "benefit of the doubt: ",
+                             "several counts for the arm size, so of the ",
+                             "readings the page allows that were scored, ",
+                             "the one with the LARGEST p was taken, giving ",
+                             "the authors the benefit of the doubt: ",
                              paste(x$approxCounts, collapse = ", "),
                              ". Check these against the paper before ",
                              "analyzing."))

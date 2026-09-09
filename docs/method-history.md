@@ -624,6 +624,47 @@ of p = 0.01 the row is named in the flags and in its hover note, because
 for those rows the printed counts decide the answer and the percentages
 do not. `R/failsafeTable.R` holds it.
 
+**Scoring every candidate was wrong twice over** (security screens
+2026-09-08-2100 and 2026-09-09-0721, both finding F1; Steve Shafer's
+decision, 2026-09-09). It was, first, unaffordable, and the cost was
+attacker-chosen. An entirely ordinary Table 1 — two arms of 700, a
+three-level "ASA physical status, %" row printing 25/42/33 and 28/39/33
+— allows 117,649 readings falling into 20,449 distinct nulls, each of
+which was simulated separately: 190 s end to end, against a 60 s
+subprocess timeout, so the manuscript did not parse slowly, it **failed
+to parse at all**. The author of the paper under investigation decided
+that, by printing a category as percentages.
+
+It was also, and less obviously, **less accurate than ranking**. Ranking
+20,449 noisy 2,000-replicate estimates and refining the best six selects
+on upward noise, and the refinement then takes it back — the winner's
+curse — so the reported best case was biased low, which in this
+instrument is the accusing direction and the one the whole fail-safe
+exists to avoid. Measured against the ranked selection on nine shapes:
+every `partition = TRUE` shape chose identical counts, and every
+disagreement was a `partition = FALSE` shape where the exhaustive pass
+returned the *smaller* p — 0.09517 against 0.1013, 0.1331 against
+0.1363, 0.03583 against 0.03617, and on a three-arm row near the alarm
+threshold 0.00135 against 0.001575.
+
+So the candidates are now **ordered by the statistic and only the
+extremes are scored**. The ordering is free, deterministic, and not a
+heuristic: this p is the probability that a replicate is at least as
+homogeneous as the printed table, so within one null it rises with the
+statistic, and `pchisq(stat, df)` — the asymptotic form of the same
+quantity — orders the groups by the statistic itself when the degrees of
+freedom are shared. Every reading is still enumerated; the user-facing
+sentences now say "enumerated, and the least alike scored", because
+"enumerated and scored" had become a guarantee the engine no longer
+gives. Two further costs went with it: the admissible vectors for an arm
+are **counted** before any is built (a closed-form convolution, so a
+block past the bound declines in milliseconds instead of the 153 s it
+took to discover the same thing by enumerating), and the statistic is
+computed for every candidate in whole columns through the identity
+`sum (T − E)²/E = n (sum T²/(r c) − 1)`, which is exact and is pinned
+against `.ppTableStat()` candidate by candidate. The same ordinary Table
+1 now takes 1.6 s.
+
 **What makes it affordable.** The null depends only on the margins.
 Constraining each arm to its N pins the arm margin, so only the level
 totals vary, and within one level-total group the mid-p is
