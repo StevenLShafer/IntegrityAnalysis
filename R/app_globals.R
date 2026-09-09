@@ -268,7 +268,17 @@ m <- 100000
   # spreadsheet export with an unnamed index column into "could not read
   # this as a template or journal-style table". By position it is also
   # correct for duplicated headers.
-  nms <- toupper(trimws(names(d)))
+  # A SANITISED COPY IS FOLDED, NOT THE RAW BYTES (security screen
+  # 2026-09-09-1532, F4). With check.names = FALSE - the API's spelling -
+  # the raw header bytes survive read.csv(), and both toupper() and
+  # trimws() raise "invalid multibyte string" on them in a UTF-8 locale.
+  # A Latin-1 or Windows-1252 export, the ordinary output of a non-English
+  # Excel, was then refused by the API with the wrong reason. Substituting
+  # the undecodable bytes means such a header simply never matches
+  # keepText, which is the right answer: it is not one of the value
+  # columns. Availability only, and only for honest users - which is
+  # exactly what the F5 fixed on the line above was.
+  nms <- toupper(trimws(iconv(names(d), from = "", to = "UTF-8", sub = "byte")))
   for (j in seq_along(d)) {
     if (nms[j] %in% keepText) next
     v <- trimws(d[[j]])

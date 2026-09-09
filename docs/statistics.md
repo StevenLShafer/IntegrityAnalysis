@@ -380,7 +380,14 @@ makes a number reproducible; it does not make it more precise.
   every candidate instead - which is what this did until 2026-09-09 -
   was both far slower and, measurably, worse: ranking thousands of noisy
   estimates and refining the best few selects on upward noise, which
-  biased the reported best case low, toward the accusation. The
+  biased the reported best case low, toward the accusation.
+
+  Three bounds decide whether the reconstruction happens at all, and all
+  three end in the row being left blank rather than guessed: the number
+  of readings the page allows, the size of the working set needed to
+  score them, and the arm size itself - an arm larger than the analysis
+  will accept (5,000) is not reconstructed, because the trial would be
+  refused anyway. The
   reading analysed is the one most favourable to the authors, and the
   smallest p over the same candidates is reported beside it whenever the
   two fall on opposite sides of p = 0.01.

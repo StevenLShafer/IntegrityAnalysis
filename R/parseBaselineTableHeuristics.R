@@ -531,8 +531,10 @@
   # was not merely imprecise but backwards.
   pctBrackets  <- list()       # [[blockKey]][[column]] = list(lo, hi, pct)
   # the row names the per-line pass claimed for each block, so that a
-  # block the joint pass declines can take its own claim back (F2)
+  # block the joint pass declines can take its own claim back (F2), and
+  # which blocks did decline (screen 2026-09-09-1532, F3)
   pctApproxByBlock <- list()   # [[blockKey]] = character vector of names
+  pctDeclinedBlocks <- character(0)
   pctStraddle  <- character(0) # blocks where the choice crosses p = 0.01
   pctUnresolved <- character(0) # ... and where no reading could be certified,
                                 # named by the reason; their cells go blank
@@ -1186,7 +1188,19 @@
         # a setdiff on rowName would have removed nothing and left the
         # false flag standing. The names are therefore carried per block,
         # beside the brackets that key it.
-        pctApproxRows <- setdiff(pctApproxRows, pctApproxByBlock[[bk]])
+        #
+        # AND THE RETRACTION IS RECORDED, NOT APPLIED HERE (security
+        # screen 2026-09-09-1532, F3). Subtracting this block's labels
+        # from the shared list removed them WHEREVER THEY CAME FROM, and
+        # two blocks in one table share labels as a matter of course -
+        # an ASA class and an NYHA class both print I / II / III. One
+        # block declining then silently cancelled the other block's
+        # fail-safe warning while its reconstructed counts were still
+        # analysed: the false claim this branch exists to retract, turned
+        # into a false NEGATIVE in the same direction that favours the
+        # author. Which blocks declined is remembered, and the surviving
+        # claims are worked out once, at the end.
+        pctDeclinedBlocks <- c(pctDeclinedBlocks, bk)
         addSkip(rowName, paste("percentages could not be read as counts -",
                                res$reason,
                                "- enter the printed counts by hand"), "")
@@ -1265,13 +1279,16 @@
         # 2026-09-09 audit removed from the trial-p claim.
         tail <- sprintf(
           paste("FAIL-SAFE (best case): %s. All %s readings this page",
-                "allows were enumerated, and the %s least alike were",
+                "allows were enumerated, and the %s at each extreme were",
                 "scored; the one analysed is the one with the LARGEST p,",
                 "so the arms are given every benefit of the doubt.",
                 "Best case p ~ %.3g; worst case p %s%s"),
           paste(txtNote, collapse = "; "),
           format(res$nTables, big.mark = ","),
-          format(min(res$nNulls, .ppTableRankMax), big.mark = ","),
+          # the number actually scored, which the fill computes and this
+          # sentence used to recompute - and got wrong, because groups are
+          # scored at BOTH ends (screen 2026-09-09-1532, observation 1)
+          format(res$nScored, big.mark = ","),
           res$pBest,
           # an inequality when the worst case is the Monte Carlo floor
           # rather than an estimate (security screen 2026-09-08-2100, F5)
@@ -1346,7 +1363,18 @@
                                stringsAsFactors = FALSE),
        armNSource = armNSource[arms][keep],
        derivedCounts = unique(pctDerived),
-       approxCounts  = unique(pctApproxRows),
+       # A NAME SURVIVES IF ANY BLOCK STILL CLAIMS IT (screen
+       # 2026-09-09-1532, F3): the labels of blocks that declined are
+       # dropped only where no surviving block, and no line that never
+       # entered the joint pass, claims the same label.
+       approxCounts  = local({
+         claimed  <- unique(unlist(pctApproxByBlock, use.names = FALSE))
+         surviving <- unique(unlist(
+           pctApproxByBlock[setdiff(names(pctApproxByBlock), pctDeclinedBlocks)],
+           use.names = FALSE))
+         outside  <- setdiff(pctApproxRows, claimed)
+         unique(c(outside, surviving))
+       }),
        # rows where the best and the worst admissible readings fall on
        # opposite sides of p = 0.01, and rows whose admissible set was
        # too large to enumerate completely (2026-09-08)

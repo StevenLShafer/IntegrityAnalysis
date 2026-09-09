@@ -211,6 +211,18 @@
 # convolution of the levels' indicator polynomials, done with a running
 # sum in O(levels x N) arithmetic. Doubles overflow to Inf on the huge
 # cases, which is the correct comparison against any finite cap.
+# HOW MUCH THE COUNT ITSELF MAY ALLOCATE (security screen 2026-09-09-1532,
+# F1). The convolution below is O(levels x M) in TIME and allocates M + 1
+# doubles, where M is the slack the brackets leave - about 1% of the arm N
+# for a printed percentage. The parser applies no plausibility ceiling to
+# an arm N it reads off a page, so a header reading "(n = 2000000000)" put
+# 1 GB through this function to produce a number that was then compared
+# against a 200,000 cap and thrown away. The fix for the previous screen's
+# F1 had converted an O(search space) CPU burn into an O(arm N)
+# allocation; the decline path was still the most expensive thing here.
+# A million coefficients is about 8 MB and is far past any real table.
+.ppArmVectorDpMax <- 1e6
+
 .ppArmVectorCount <- function(lo, hi, N, partition) {
   L <- length(lo)
   if (L == 0) return(0)
@@ -221,6 +233,21 @@
   if (!is.finite(target)) return(0)
   M <- target - sum(as.numeric(lo))
   if (M < 0 || M > sum(w - 1)) return(0)
+  # TWO LEVELS NEED NO CONVOLUTION AT ALL, and two levels is every
+  # partition block the parser can currently build: a binary "n (%)" row,
+  # whose complement column this code constructs itself. The admissible
+  # first-level counts are the overlap of its own bracket with what the
+  # second level's bracket leaves of N, so the count is the length of an
+  # interval. Exact, constant time, no allocation.
+  if (L == 2L) {
+    loEnd <- max(as.numeric(lo[1]), target - as.numeric(hi[2]))
+    hiEnd <- min(as.numeric(hi[1]), target - as.numeric(lo[2]))
+    return(max(0, hiEnd - loEnd + 1))
+  }
+  # Past two levels the convolution is the honest way to count, but it is
+  # bounded: over the ceiling this returns Inf, which the caller reads as
+  # "more than any cap" and declines, rather than allocating to find out.
+  if (M > .ppArmVectorDpMax) return(Inf)
   M <- as.integer(M)
   f <- c(1, numeric(M))                    # coefficients of z^0 .. z^M
   for (j in seq_len(L)) {
@@ -245,6 +272,23 @@
     # no cross-level constraint at all: the cells are independent, so the
     # count is known before anything is built
     if (prod(width) > cap) return(NULL)
+    # ...but the GRID is prod(width) x L, and L - the number of lines in
+    # the category block - is bounded only by the uploaded table (security
+    # screen 2026-09-09-1532, F2). A level printed as an explicit count has
+    # width 1 and does not raise the product, so levels come free: measured
+    # at prod(width) = 200,000, 10 levels cost 154 MB and 300 levels 1,096
+    # MB, all of it spent to answer "no". expand.grid() + as.matrix() +
+    # matrix() makes about three copies, so the budget is charged here
+    # rather than at the candidate grid, which is checked much later.
+    # The budget is the CELLS, and .ppTableCellMax is 5 million of them -
+    # about 40 MB, or 120 MB across the three copies expand.grid(),
+    # as.matrix() and matrix() make. Charging the copies to the cap as
+    # well was the first thing written here and it was too strict: it
+    # declined a ten-level category at 200,000 readings, which is 2
+    # million cells and 16 MB, and a ten-level category on a few hundred
+    # patients is an ordinary table. The rule is a memory bound, not a
+    # dislike of long blocks.
+    if (prod(width) * L > .ppTableCellMax) return(NULL)
     g <- as.matrix(expand.grid(lapply(seq_len(L), function(j) lo[j]:hi[j])))
     dimnames(g) <- NULL
     return(matrix(as.integer(g), ncol = L))
@@ -373,6 +417,18 @@
   keep <- which(is.finite(N) & N > 0 & rowSums(!is.na(cnt) | amb) == ncol(cnt))
   if (length(keep) < 2)
     return(out(FALSE, "fewer than two arms report this variable"))
+  # DEFENCE IN DEPTH: an arm the analysis will never accept is not worth
+  # reconstructing (security screen 2026-09-09-1532, F1). .iaMaxArmN is
+  # the app's own editorial ceiling and validateData() rejects the trial
+  # above it, so every byte spent rebuilding counts for an arm of two
+  # billion was spent before the row could possibly be analysed. The
+  # parser applies no ceiling of its own to an arm N read off a page, so
+  # this is where the two meet.
+  if (any(N[keep] > .iaMaxArmN))
+    return(out(FALSE, sprintf(
+      "an arm of %s is above the %s the analysis accepts",
+      format(max(N[keep]), big.mark = ", ", scientific = FALSE, trim = TRUE),
+      format(.iaMaxArmN, big.mark = ","))))
 
   # the reader's own random state, so the same document always yields the
   # same counts whatever the caller was doing (F9)
