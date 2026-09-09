@@ -350,6 +350,15 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
          armNSource = best$armNSource,
          derivedCounts = best$derivedCounts,
          approxCounts  = best$approxCounts,
+         # CARRIED OUT OF THE BLOCK PARSER (security screen 2026-09-09-0721,
+         # F2). These two never crossed this seam, so on this route
+         # reviewFlags() saw no unresolved rows and no straddle - and the
+         # fail-safe flag, which DOES cross, then told the editor that a
+         # best-case reconstruction had been applied to rows that hold no
+         # data and were never analysed. The straddle flag had been
+         # silently missing here since it was introduced.
+         approxStraddle = best$approxStraddle,
+         approxUnresolved = best$approxUnresolved,
          derivedCells  = best$derivedCells,
          engine     = if (bestCand$ocr) "heuristic-tatr-ocr" else "heuristic-tatr"),
     class = "ParsePDFTable")

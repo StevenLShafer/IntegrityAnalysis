@@ -174,8 +174,11 @@ has 100 or fewer patients (1,000 at one printed decimal); above that,
 several counts fit the printed percentage. The service fills such cells
 with the **best case for the authors**: it enumerates every whole
 arms-by-levels table the printed percentages allow — each cell inside
-its own bracket — scores each with the statistic and null the analysis
-itself uses, and keeps the one with the largest p. That is the most
+its own bracket — scores the least alike of them with the statistic and
+null the analysis itself uses, and keeps the one with the largest p.
+Only the extremes are scored, because only they can win: the p rises
+with how unlike the arms are, so a middling reading can be neither the
+best case nor the worst. That is the most
 favourable reading of **that row**; it is not a claim about the trial p,
 which combines rows and does not move monotonically with any one of
 them. The effect is still large: a two-arm row of 5,000 per arm
@@ -200,9 +203,9 @@ reconstructed at all**. Its cells come back empty, the row is named in
 `flags` ("… category row(s) could NOT be read as counts and are left
 blank …") with the reason, and the row is not analysed — the trial's
 summary reports how many of its rows were. Submit the printed counts to
-analyse such a row. The largest-p guarantee can only be kept by scoring
-every reading, so where every reading cannot be scored the service
-declines rather than estimating. This is a design decision for incomplete data, not a
+analyse such a row. The guarantee can only be kept over readings the
+service has actually enumerated, so where they cannot all be enumerated
+it declines rather than estimating. This is a design decision for incomplete data, not a
 reading of the page: if the author supplies the printed counts, resubmit
 with them. Cells whose percentage fits exactly one count are converted
 exactly and flagged as such.

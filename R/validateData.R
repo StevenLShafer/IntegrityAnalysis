@@ -323,10 +323,19 @@ validateData <- function(DATA) {
     }
   # the decimals to credit a cell with: what its text showed, or what the
   # stored number shows, whichever is larger
+  # CAPPED AT THE CLAMP'S RANGE (security screen 2026-09-08-2100, F6).
+  # .iaDecimals() caps itself at 20 because the ROUND_MEAN bump it feeds
+  # runs after the |precision| > 20 clamp below, and screen 2026-09-06-0703
+  # I1 found an inferred 300 decimals sailing over that clamp. .ppDecimals()
+  # has no such cap, and is right not to: it also feeds the document
+  # tokenizer, where the count printed on a page is the count. Taking the
+  # larger of the two therefore re-opened the hole the cap exists to close -
+  # a text cell holding "50." and forty zeros parses as 50 and reports 40
+  # decimals. The cap belongs here, where the two meet.
   decShown <- function(col, i) {
     n <- .iaDecimals(DATA[[col]][i])
     t <- if (!is.null(textDec[[col]])) textDec[[col]][i] else NA_integer_
-    if (is.na(t)) n else max(n, t)
+    min(20L, if (is.na(t)) n else max(n, t))
   }
   for (col in c("N", "MEAN", "SD", "SE", "Q1", "Q3"))
   {

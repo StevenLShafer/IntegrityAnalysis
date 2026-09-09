@@ -530,6 +530,9 @@
   # scores. See R/failsafeTable.R for why the per-line rule it replaced
   # was not merely imprecise but backwards.
   pctBrackets  <- list()       # [[blockKey]][[column]] = list(lo, hi, pct)
+  # the row names the per-line pass claimed for each block, so that a
+  # block the joint pass declines can take its own claim back (F2)
+  pctApproxByBlock <- list()   # [[blockKey]] = character vector of names
   pctStraddle  <- character(0) # blocks where the choice crosses p = 0.01
   pctUnresolved <- character(0) # ... and where no reading could be certified,
                                 # named by the reason; their cells go blank
@@ -775,6 +778,8 @@
         # created; consumed there into $derivedCells for the app grid.
         pendingDerive <- list(
           kind = if (any(approx[present])) "failsafe" else "unique",
+          # the name this line contributed to pctApproxRows above (F2)
+          shown = shown,
           note = paste(notes[present][!is.na(notes[present])],
                        collapse = "; "),
           # the bracket ends and the printed percentage, per arm, NA
@@ -994,6 +999,8 @@
             !is.null(pendingDerive$lo)) {
           armSize <- armN[arms]
           pctBrackets[[npctKey]] <- list()
+          pctApproxByBlock[[npctKey]] <-
+            unique(c(pctApproxByBlock[[npctKey]], pendingDerive$shown))
           pctBrackets[[npctKey]][[catName]] <-
             list(lo = pendingDerive$lo, hi = pendingDerive$hi,
                  pct = pendingDerive$pct)
@@ -1059,6 +1066,8 @@
           if (identical(pendingDerive$kind, "failsafe") &&
               !is.null(pendingDerive$lo)) {
             if (is.null(pctBrackets[[key]])) pctBrackets[[key]] <- list()
+            pctApproxByBlock[[key]] <-
+              unique(c(pctApproxByBlock[[key]], pendingDerive$shown))
             pctBrackets[[key]][[catName]] <-
               list(lo = pendingDerive$lo, hi = pendingDerive$hi,
                    pct = pendingDerive$pct)
@@ -1161,6 +1170,23 @@
               outRows[[e]]$perArm[[j]][[cols[k]]] <- NA_integer_
         pctUnresolved <- c(pctUnresolved,
                            stats::setNames(res$reason, rowName))
+        # AND THE FAIL-SAFE CLAIM IS RETRACTED (security screen
+        # 2026-09-09-0721, F2). The per-line pass records every ambiguous
+        # row in pctApproxRows before this joint pass runs, and nothing
+        # took it back out - so a document whose block could not be
+        # enumerated produced BOTH "the reading with the LARGEST p was
+        # taken, giving the authors the benefit of the doubt" and "could
+        # NOT be read as counts and are left blank", about the same block,
+        # in the same response. The first is false: those cells are NA and
+        # the row is not analysed.
+        #
+        # It is NOT `rowName` that has to be removed. The per-line pass
+        # appends the LEVEL's own label - "I", "II", "III" - while this
+        # pass names the block by its header, "ASA physical status", so
+        # a setdiff on rowName would have removed nothing and left the
+        # false flag standing. The names are therefore carried per block,
+        # beside the brackets that key it.
+        pctApproxRows <- setdiff(pctApproxRows, pctApproxByBlock[[bk]])
         addSkip(rowName, paste("percentages could not be read as counts -",
                                res$reason,
                                "- enter the printed counts by hand"), "")
@@ -1169,13 +1195,21 @@
             isTRUE(unname(d$ROW) == unname(rowName)) &&
             isTRUE(unname(d$COL) == unname(cols[k])) &&
             isTRUE(unname(d$KIND) == "failsafe"), logical(1))
+          # ONE REASON, THE REAL ONE (security screen 2026-09-09-0721, F6).
+          # The first %s was the literal "the page allows more readings
+          # than can be enumerated", and .ppFailsafeTableFill() returns
+          # five other reasons - a cell with no bracket, one arm alone
+          # over the bound, fewer than two arms reporting, more distinct
+          # nulls than can be scored, no scorable reading at all. For
+          # every one of those the editor's note asserted an enumeration
+          # overflow that had not happened and then contradicted itself
+          # with the true reason in the same sentence.
           for (h in which(hit)) derivedCells[[h]]$NOTE <- sprintf(
             paste("UNRESOLVED: %s. The printed percentages fit several",
-                  "counts here, and %s, so no reading can be shown to be",
-                  "the best case for the authors. The cell is left blank",
-                  "and the row is not analysed; enter the printed counts",
-                  "to analyse it."),
-            "the page allows more readings than can be enumerated",
+                  "counts here, so no reading can be shown to be the best",
+                  "case for the authors. The cell is left blank and the",
+                  "row is not analysed; enter the printed counts to",
+                  "analyse it."),
             res$reason)
         }
         next
@@ -1221,14 +1255,28 @@
             as.integer(res$counts[u, k])))
         }
         if (!length(txtNote)) next
+        # WHAT THIS SENTENCE MAY CLAIM (security screens 2026-09-08-2100
+        # and 2026-09-09-0721, F1). Every reading is still ENUMERATED -
+        # that half is exact - but they are no longer all SCORED: the
+        # readings are ordered by how alike the arms are, and the
+        # simulation is spent at the two ends, because a middling reading
+        # can be neither the best case nor the worst. Saying "scored"
+        # of all of them would be the same kind of false guarantee the
+        # 2026-09-09 audit removed from the trial-p claim.
         tail <- sprintf(
           paste("FAIL-SAFE (best case): %s. All %s readings this page",
-                "allows were enumerated and scored; the one analysed is",
-                "the one with the LARGEST p, so the arms are given every",
-                "benefit of the doubt.",
-                "Best case p ~ %.3g; worst case p ~ %.3g%s"),
+                "allows were enumerated, and the %s least alike were",
+                "scored; the one analysed is the one with the LARGEST p,",
+                "so the arms are given every benefit of the doubt.",
+                "Best case p ~ %.3g; worst case p %s%s"),
           paste(txtNote, collapse = "; "),
-          format(res$nTables, big.mark = ","), res$pBest, res$pWorst,
+          format(res$nTables, big.mark = ","),
+          format(min(res$nNulls, .ppTableRankMax), big.mark = ","),
+          res$pBest,
+          # an inequality when the worst case is the Monte Carlo floor
+          # rather than an estimate (security screen 2026-09-08-2100, F5)
+          sprintf(if (isTRUE(res$worstAtFloor)) "< %.3g" else "~ %.3g",
+                  res$pWorst),
           paste0(if (isTRUE(res$straddles))
                    " - the choice moves this row across p = 0.01" else "",
                  totalNote))

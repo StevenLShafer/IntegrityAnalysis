@@ -369,9 +369,18 @@ makes a number reproducible; it does not make it more precise.
   bracket, the exactly pinned arms held fixed - the row is built from the
   whole TABLE with the largest p. The candidates are every
   arms-by-levels table in which each cell lies inside the bracket its
-  printed percentage allows and each arm's counts sum to that arm's N;
-  each is scored with the fixed-margin Pearson statistic against its own
-  simulated null, which is what the screen goes on to compute. The
+  printed percentage allows and each arm's counts sum to that arm's N.
+  They are ordered by the Pearson statistic, and the candidates at each
+  end are scored with that statistic against their own simulated null,
+  which is what the screen goes on to compute. Ordering them costs
+  nothing and is not an approximation of the scoring: this p is the
+  probability that a replicate is *at least as homogeneous* as the
+  printed table, so within one null it rises with the statistic, and the
+  reading with the largest p can only be among the least alike. Scoring
+  every candidate instead - which is what this did until 2026-09-09 -
+  was both far slower and, measurably, worse: ranking thousands of noisy
+  estimates and refining the best few selects on upward noise, which
+  biased the reported best case low, toward the accusation. The
   reading analysed is the one most favourable to the authors, and the
   smallest p over the same candidates is reported beside it whenever the
   two fall on opposite sides of p = 0.01.

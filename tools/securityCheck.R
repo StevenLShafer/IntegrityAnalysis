@@ -660,6 +660,44 @@ if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
              "1e-26 * (1 + centre^2) is back in code (screen",
              "2026-09-08-1048 F1)"))
 
+## 8 - the fail-safe fill spends simulation only on ranked candidates ----
+# Security screens 2026-09-08-2100 (F1) and 2026-09-09-0721 (F1). Scoring
+# every distinct null was the dominant cost of parsing: an ordinary Table
+# 1 - two arms of 700, a three-level percentage block - produced 20,449
+# nulls and took 190 s end to end, past the 60 s subprocess timeout, so
+# the manuscript did not parse at all. The fix ranks the groups by their
+# statistic and simulates only the extremes.
+#
+# This cannot be measured statically, but the SHAPE that made it slow
+# can be pinned, and that shape is a simulation call ranging over every
+# group. The property: .ppTableRankMax is defined once and used, and
+# .ppTableP() is never called from a vapply/sapply/lapply over `keys`.
+# The wall-clock budget itself is asserted at runtime in
+# tests/testthat/test-screen-2026-09-09.R, which fails without the bound.
+fsCode <- sub("#.*$", "", srcOf("R/failsafeTable.R"))
+rankDef <- grep("^\\s*\\.ppTableRankMax\\s*<-", fsCode)
+if (length(rankDef) != 1L)
+  note(paste("R/failsafeTable.R: .ppTableRankMax must be defined exactly",
+             "once, found", length(rankDef)))
+if (!length(setdiff(grep("\\.ppTableRankMax", fsCode), rankDef)))
+  note(paste("R/failsafeTable.R: .ppTableRankMax is defined but never used -",
+             "the bound on how many nulls are simulated is not in force",
+             "(screens 2026-09-08-2100 F1, 2026-09-09-0721 F1)"))
+sweep <- grep("(vapply|sapply|lapply)\\s*\\(\\s*keys", fsCode, value = TRUE)
+if (any(grepl("\\.ppTableP", sweep)))
+  note(paste("R/failsafeTable.R: .ppTableP() is called across every group",
+             "again - that is the 190 s parse the ranking replaced",
+             "(screen 2026-09-09-0721 F1) -",
+             paste(trimws(sweep), collapse = " | ")))
+# and the enumeration must still count before it builds (2100 F1)
+avDef  <- grep("^\\s*\\.ppArmVectorCount\\s*<-", fsCode)
+avCall <- setdiff(grep("\\.ppArmVectorCount\\s*\\(", fsCode), avDef)
+if (length(avDef) != 1L || !length(avCall))
+  note(paste("R/failsafeTable.R: .ppArmVectorCount() must be defined and",
+             "called from .ppArmVectors() before any vector is built -",
+             "without it a block declines by enumerating itself (153 s at",
+             "an arm of 500,000; screen 2026-09-08-2100 F1)"))
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -669,5 +707,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "7 property groups.
+    "8 property groups.
 ")

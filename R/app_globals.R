@@ -249,17 +249,37 @@ m <- 100000
 .iaReadCsvKeepingText <- function(path, ...) {
   d <- utils::read.csv(path, colClasses = "character", ...)
   keepText <- c("MEAN", "SD", "SE", "Q1", "Q3")
-  for (nm in names(d)) {
-    if (nm %in% keepText) next
-    v <- trimws(d[[nm]])
+  # THE NAME IS NORMALISED HERE, AND THE COLUMNS ARE TAKEN BY POSITION
+  # (security screen 2026-09-09-0721, F3 and F5). Two defects, one line.
+  #
+  # F3: the test was exact and case-sensitive, while .iaNormalizeNames()
+  # upper-cases the headers AFTERWARDS - so a file headed "Mean", the
+  # natural spelling and an accepted alias, was coerced to numeric on the
+  # way in and its trailing zeros were gone before validateData() could
+  # count them. Measured on one file with only the header varied:
+  # "MEAN" gave ROUND_MEAN 3, "Mean" gave 0 - and a coarser grid is the
+  # direction that RAISES p, which is the direction an author benefits
+  # from. The .xlsx route was never affected, so the guarantee held on one
+  # route and not the other while the guide promised both.
+  #
+  # F5: iterating by name broke on a blank header, which read.csv keeps as
+  # "" under check.names = FALSE - the API's spelling. d[[""]] is NULL, so
+  # the assignment failed and the caller's tryCatch turned a routine
+  # spreadsheet export with an unnamed index column into "could not read
+  # this as a template or journal-style table". By position it is also
+  # correct for duplicated headers.
+  nms <- toupper(trimws(names(d)))
+  for (j in seq_along(d)) {
+    if (nms[j] %in% keepText) next
+    v <- trimws(d[[j]])
     blank <- is.na(v) | v == ""
     num <- suppressWarnings(as.numeric(v))
     # a column is numeric only if every non-blank cell reads as a number;
     # one stray word and it stays text, exactly as read.csv would have
     # left it, so the validator still paints that cell unreadable
-    if (!all(blank | !is.na(num))) next
+    if (!length(v) || !all(blank | !is.na(num))) next
     num[blank] <- NA_real_
-    d[[nm]] <- num
+    d[[j]] <- num
   }
   d
 }

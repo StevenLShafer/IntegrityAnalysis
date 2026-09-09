@@ -405,8 +405,11 @@ specific cell:
   percentages, above 1,000 at one decimal). The app then reads the page in the way most
   favourable to the authors. Every whole table the printed percentages
   allow is built — each cell inside the bracket its percentage permits,
-  and each arm's counts adding up to that arm's N — and each is scored
-  with the same statistic and the same null the analysis itself uses.
+  and each arm's counts adding up to that arm's N — and the readings
+  that leave the arms least alike are scored with the same statistic and
+  the same null the analysis itself uses. Only those can win: the p is
+  larger the less alike the arms are, so a middling reading is neither
+  the best case nor the worst.
   The one **analysed is the one with the largest p**: the authors get
   every benefit of the doubt the page allows. Hover the cell for the
   bracket of counts the percentage allows and for the best and worst p
@@ -418,8 +421,9 @@ specific cell:
   before acting on such a trial.
 
   **When the page allows more readings than can be counted, the app
-  does not guess.** The largest-p promise can only be kept by scoring
-  every reading, so where there are too many the cells are left
+  does not guess.** The largest-p promise can only be kept over readings
+  the app has actually listed, so where there are too many to list the
+  cells are left
   **blank**, the row is named, and it is not analysed. The summary line
   says how many of the trial's rows were analysed, so the gap is
   visible. Type the printed counts in and the row analyses normally.
