@@ -45,7 +45,10 @@ test_that("the largest block the gate admits scores in seconds, not fifty", {
   # gate - 100 cells, and a grand total of 125,000 - each with fourteen
   # ambiguous cells, 16,384 candidates. Measured 7.6 s and 6.9 s here;
   # the budget leaves room for a slower machine.
-  for (d in list(shape(4, 25, 5000, 14), shape(25, 2, 5000, 14))) {
+  # N = 4,900, not 5,000: an ambiguous cell's bracket top adds one to the
+  # arm's row total, and since screen 0815 a row total over .iaMaxArmN is
+  # refused before scoring - exactly as the validator would refuse it
+  for (d in list(shape(4, 25, 4900, 14), shape(25, 2, 4900, 14))) {
     r <- peak(res <- fill(d))
     expect_true(isTRUE(res$resolved))
     expect_equal(res$nTables, 16384L)
@@ -62,7 +65,7 @@ test_that("the shapes that took 24 to 56 seconds now decline, and at once", {
                  shape(10, 25, 5000, 14), shape(125, 2, 5000, 1))) {
     r <- peak(res <- fill(d))
     expect_false(isTRUE(res$resolved))
-    expect_match(res$reason, "too large to score")
+    expect_match(res$reason, "too large to score|total more than")
     expect_lt(r$t, 1)
   }
 })
