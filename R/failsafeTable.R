@@ -372,14 +372,33 @@
 # criterion rather than by literal floating equality, the mid-p is
 # (kLess + kEq/2)/m, and the floor is .floorP(). On rbind(c(1,1), c(1,1),
 # c(1,5)) the old helper returned 0.0998 where the exact answer is 0.35.
+# THE NULL IS DRAWN IN CHUNKS (security screen 2026-09-10-0633, F1).
+# r2dtable() returns a LIST of reps integer matrices, arms x levels, all
+# at once: 20,000 x 200 x 37 x 4 bytes is about 590 MB in a single call,
+# and the table's dimensions are whatever the page has. Drawing in
+# chunks of .ppTableDrawChunk makes the peak chunk x cells whatever the
+# shape. The result is RNG-identical: r2dtable draws one table at a time
+# from the stream, so k chunks of c tables give the same tables as one
+# call of k*c - the engine's categorical branch verified exactly that in
+# the 2026-08-28 screen and relies on it. This bounds MEMORY only; the
+# TIME is bounded by the dimension gate in .ppFailsafeTableFill().
+.ppTableDrawChunk <- 500L
+
 .ppTableP <- function(tab, reps) {
   t2 <- .ppTableReduce(tab)
   if (is.null(t2)) return(NA_real_)
   r <- rowSums(t2); cc <- colSums(t2)
   E <- outer(r, cc) / sum(r)
   obs <- sum((t2 - E)^2 / E)
-  sims <- vapply(r2dtable(reps, r, cc), function(x) sum((x - E)^2 / E),
-                 numeric(1))
+  sims <- numeric(reps)
+  done <- 0L
+  while (done < reps) {
+    ch <- min(.ppTableDrawChunk, reps - done)
+    sims[done + seq_len(ch)] <- vapply(r2dtable(ch, r, cc),
+                                       function(x) sum((x - E)^2 / E),
+                                       numeric(1))
+    done <- done + ch
+  }
   kk <- .iaTieCounts(sims, obs)
   .floorP((kk[["kLess"]] + kk[["kEq"]] / 2) / reps, reps)
 }
@@ -597,6 +616,29 @@
                           function(k) vecs[[k]][pick[cand, k], ]))
   if (!length(keys))
     return(out(FALSE, "no reading of this page gives a table the engine can score"))
+
+  # THE SCORING COST IS CHARGED BEFORE SCORING (security screen
+  # 2026-09-10-0633, F1). Every gate above bounds how many candidate
+  # tables EXIST. A block with every level printed as a count has width 1
+  # everywhere, so one percentage cell admitting two counts gives exactly
+  # two candidates at any size - and passes every one of those gates at
+  # 200 arms by 37 levels. The scoring then simulates each candidate's
+  # null with r2dtable over the whole arms-by-levels table, so its cost is
+  # the table's DIMENSIONS times the replicates, which nothing had
+  # charged. Measured on 2260045 with two candidates: 60 x 37 took 41 s
+  # and 491 MB, 200 x 37 took 148 s and 1,008 MB - inside the 60 s child
+  # timeout for the first refinement call, so the timeout did not stop the
+  # allocation, and the child has no memory ceiling (ISSUES 32).
+  #
+  # The bound is cells x refine replicates against the cell budget: 250
+  # cells per table at 20,000 replicates, which admits any block an RCT
+  # baseline table prints (ten arms by twenty levels is 200) and refuses
+  # the shape above. Chunked drawing in .ppTableP() bounds the memory
+  # independently; this bounds the time.
+  if (as.numeric(nrow(cnt)) * ncol(cnt) * .ppTableRefineReps > .ppTableCellMax)
+    return(out(FALSE, sprintf(paste(
+      "this block is too large to score: %d arms by %d levels is more than",
+      "the simulation can carry"), nrow(cnt), ncol(cnt))))
 
   # ONLY THE EXTREMES ARE SCORED (.ppTableRankMax, above). The best case
   # can only be the least alike readings and the worst case only the most
