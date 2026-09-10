@@ -1,0 +1,5 @@
+DONE ordinary-N100-J9-bad3 HTTP 200 
+DONE ordinary-N100-J14-bad7 HTTP 200 
+DONE all-excluded-trial HTTP 200 
+DONE http-duplicate HTTP 422 
+DONE http-partial-trial HTTP 422 

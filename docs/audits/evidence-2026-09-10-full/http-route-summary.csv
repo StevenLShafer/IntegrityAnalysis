@@ -1,0 +1,6 @@
+"case","status","ok","trials","overallP"
+"ordinary-N100-J9-bad3",200,TRUE,1,"0.0033"
+"ordinary-N100-J14-bad7",200,TRUE,1,"1e-04"
+"all-excluded-trial",200,TRUE,1,"0.0582"
+"http-duplicate",422,FALSE,NA,NA
+"http-partial-trial",422,FALSE,NA,NA

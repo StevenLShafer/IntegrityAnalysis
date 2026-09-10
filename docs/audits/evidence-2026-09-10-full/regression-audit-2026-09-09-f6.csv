@@ -1,0 +1,7 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-09-f6.R","equal arms in a replicate give a structurally exact zero",8,0,0,0,0,""
+"test-audit-2026-09-09-f6.R","the printed precision does not move the continuous answer",6,0,0,0,0,""
+"test-audit-2026-09-09-f6.R","the same holds on the median branch, which the audit did not test",6,0,0,0,0,""
+"test-audit-2026-09-09-f6.R","an EVEN median row is still allowed to move with the precision",1,0,0,0,0,""
+"test-audit-2026-09-09-f6.R","ordinary printed precision is untouched",6,0,0,0,0,""
+"test-audit-2026-09-09-f6.R","the earlier audits' units and origin invariance still holds",2,0,0,0,0,""

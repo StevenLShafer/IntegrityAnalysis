@@ -1,0 +1,7 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-app-pipeline.R","bundled assets install with the package",4,0,0,0,0,""
+"test-app-pipeline.R","app_ui() builds and points at the www/ resource prefix",7,0,0,0,0,""
+"test-app-pipeline.R","drag and drop forwards to the one upload input, with the picker's own type list",15,0,0,0,0,""
+"test-app-pipeline.R","Example.xlsx runs the full pipeline; re-run does not append",5,0,0,0,0,""
+"test-app-pipeline.R","uploads are purged from disk when the session ends",4,0,0,0,0,""
+"test-app-pipeline.R","a parsed PDF lands in the grid, edits revalidate and analyze",6,0,0,0,0,""

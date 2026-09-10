@@ -1,0 +1,48 @@
+Trial Audit: p = 0.3375 (95% Monte Carlo interval 0 to 0.7)
+ 
+two_equal p 0.3375 CI 0 to 0.7 reference 0.3333333 
+Trial Audit: p = 0.2775 (95% Monte Carlo interval 0 to 0.59)
+ 
+two_unequal p 0.2775 CI 0 to 0.59 reference 0.2625 
+Trial Audit: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+three_tie p 0.346 CI 0 to 0.72 reference 0.35 
+Trial Audit: p = 0.4885 (95% Monte Carlo interval 0.38 to 0.6)
+ 
+three_off p 0.4885 CI 0.38 to 0.6 reference 0.4949495 
+Trial Audit: p = 0.214 (95% Monte Carlo interval 0.088 to 0.35)
+ 
+four_arms p 0.214 CI 0.088 to 0.35 reference 0.2157842 
+Trial Audit: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+two_by_three p 0.346 CI 0 to 0.72 reference 0.35 
+Trial Audit: p = 0.181 (95% Monte Carlo interval 0.16 to 0.21)
+ 
+F-small p 0.181 CI 0.16 to 0.21 reference 0.1814509 
+Trial Audit: p = 0.0136 (95% Monte Carlo interval 0.011 to 0.016)
+ 
+F-unequal p 0.0136 CI 0.011 to 0.016 reference 0.01679839 
+Trial Audit: p = 0.004645 (95% Monte Carlo interval 0.0042 to 0.0051)
+ 
+F-direct p 0.004645 CI 0.0042 to 0.0051 reference 0.004752305 
+Trial Audit: p = 0.004 (95% Monte Carlo interval 0.0036 to 0.0044)
+ 
+F-three p 0.004 CI 0.0036 to 0.0044 reference 0.003991421 
+Trial Audit: p = 0.06425
+ 
+combination-5-0 p 0.06425 CI  reference 0.06584362 
+Trial Audit: p = 0.407
+ 
+combination-5-1 p 0.407 CI  reference 0.2962963 
+Trial Audit: p = 0.001225
+ 
+combination-15-0 p 0.001225 CI  reference 0.001141829 
+Trial Audit: p = 0.0143
+ 
+combination-15-1 p 0.0143 CI  reference 0.01084738 
+Trial Audit: p = 0.00082 (95% Monte Carlo interval 0 to 0.0019)
+ 
+combination-16-0 p 0.00082 CI 0 to 0.0019 reference 0.0007612194 
+Trial Audit: p = 0.00889
+ 
+combination-16-1 p 0.00889 CI  reference 0.007612194 

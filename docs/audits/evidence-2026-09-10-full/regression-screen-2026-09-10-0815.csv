@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-0815.R","printed counts above the arm ceiling are refused before r2dtable sees them",4,0,0,0,0,""
+"test-screen-2026-09-10-0815.R","the fill refuses a row whose counts total more than the arm ceiling",7,0,0,0,0,""
+"test-screen-2026-09-10-0815.R","a partitioned row at exactly the arm ceiling is still read",3,0,0,0,0,""
+"test-screen-2026-09-10-0815.R","a percentage block whose levels each sit at N is bounded by its table sum",4,0,0,0,0,""
+"test-screen-2026-09-10-0815.R","the grand total the gate measures is the table's, so the two sums can diverge",6,0,0,0,0,""

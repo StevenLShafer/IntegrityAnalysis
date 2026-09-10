@@ -1,0 +1,6 @@
+All evidence scripts parse; report and evidence README local links resolve.
+No machine-local paths or serialized R environments found in evidence.
+Regression totals agree with the report.
+Same-draw reference counts reconcile.
+Both numerical fixtures reproduce in actual HTTP resultsCsv.
+Entirely excluded trial and structural JSON defect reproduce in HTTP.

@@ -1,0 +1,52 @@
+Trial Audit: p = 0.0136 (95% Monte Carlo interval 0.011 to 0.016)
+ 
+Trial Audit: p = 0.0165 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.0168 (95% Monte Carlo interval 0.014 to 0.02)
+ 
+Trial Audit: p = 0.016 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.0157 (95% Monte Carlo interval 0.013 to 0.018)
+ 
+Trial Audit: p = 0.0177 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.0162 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.0175 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.01825 (95% Monte Carlo interval 0.016 to 0.021)
+ 
+Trial Audit: p = 0.0151 (95% Monte Carlo interval 0.013 to 0.018)
+ 
+Trial Audit: p = 0.0171 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.0171 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.0161 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.0138 (95% Monte Carlo interval 0.012 to 0.016)
+ 
+Trial Audit: p = 0.0157 (95% Monte Carlo interval 0.013 to 0.018)
+ 
+Trial Audit: p = 0.0164 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.015 (95% Monte Carlo interval 0.013 to 0.018)
+ 
+Trial Audit: p = 0.0176 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.017 (95% Monte Carlo interval 0.015 to 0.02)
+ 
+Trial Audit: p = 0.0167 (95% Monte Carlo interval 0.014 to 0.019)
+ 
+Trial Audit: p = 0.1065 (95% Monte Carlo interval 0.034 to 0.19)
+ 
+Trial Audit: p = 0.1065 (95% Monte Carlo interval 0.034 to 0.19)
+ 
+Trial Audit: p = 0.106 (95% Monte Carlo interval 0.035 to 0.19)
+ 
+Trial Audit: p = 0.1105 (95% Monte Carlo interval 0.041 to 0.19)
+ 
+Trial Audit: p = 0.115 (95% Monte Carlo interval 0.045 to 0.2)
+ 
+Trial Audit: p = 0.108 (95% Monte Carlo interval 0.04 to 0.19)
+ 

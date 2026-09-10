@@ -1,0 +1,8 @@
+Regression files: 39
+Test blocks: 250
+Passed assertions: 1631
+Failures: 0
+Errors: 0
+Skips: 11
+Locked dependencies compared: 121
+Version mismatches: 0
