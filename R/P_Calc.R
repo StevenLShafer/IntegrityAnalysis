@@ -1537,7 +1537,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                             collapse = "; "),
                KIND = "variable", .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
   }))
-  x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
+  # A TRIAL WITH NOTHING TO SIMULATE (full independent audit 2026-09-10,
+  # F2): every row left out by the validator. rows is empty, so x is
+  # NULL here; it becomes an empty frame of the right shape, the excluded
+  # lines are appended below, and the Summary says "No values" with the
+  # coverage count - the trial is reported, not dropped.
+  if (is.null(x))
+    x <- data.frame(ROW = character(0), P = character(0), CI95 = character(0),
+                    M = character(0), NOTE = character(0), KIND = character(0),
+                    .PNUM = numeric(0), .KLE = numeric(0), stringsAsFactors = FALSE)
+  x <- cbind(TRIAL = if (nrow(x)) c(TRIAL, rep(NA, nrow(x) - 1L)) else character(0),
+             x, stringsAsFactors = FALSE)
 
   # ROWS THE VALIDATOR LEFT OUT ARE COUNTED HERE (independent audit
   # 2026-09-10, F3). A category block whose every cell the parser left
@@ -1568,6 +1578,8 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
           "a categorical line with no matching line in another arm"),
         KIND = "variable", .PNUM = NA_real_, .KLE = NA_real_,
         stringsAsFactors = FALSE))
+    # the trial's name prints on its first line, whichever line that is
+    if (nrow(x) && is.na(x$TRIAL[1])) x$TRIAL[1] <- TRIAL
   }
 
   Pv   <- x$.PNUM
