@@ -770,11 +770,25 @@ for (set in c("candUp", "candDn", "topUp", "topDn")) {
   const <- if (set %in% c("candUp", "candDn")) ".ppTableRankMax" else ".ppTableRefineTop"
   # counted as MATCHES, not lines: a second assignment on the pinned
   # definition's own line (`candDn <- head(...); candDn <<- seq_along(keys)`)
-  # is one line and two assignments, and the first harness run let it by
-  pat <- paste0("(^|[^A-Za-z0-9._])", set, "\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]")
-  hits <- regmatches(fsCode, gregexpr(pat, fsCode))
-  nAssign <- sum(lengths(hits))
-  assigns <- which(lengths(hits) > 0)
+  # is one line and two assignments, and the first harness run let it by.
+  # AND EVERY SPELLING OF ASSIGNMENT (screen 2026-09-10-0734, F2): the
+  # left-arrow forms alone missed `-> candDn`, `->> candDn`,
+  # `assign("candDn", ...)` and `for (candDn in ...)`, each of which puts
+  # the sweep back with the pinned line untouched. Left and right arrows
+  # are counted; assign() and a for-rebinding of any of the four names
+  # fail the check outright wherever they appear.
+  left  <- paste0("(^|[^A-Za-z0-9._])", set, "\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]")
+  right <- paste0("(->>|->)\\s*", set, "([^A-Za-z0-9._]|$)")
+  nAssign <- sum(lengths(regmatches(fsCode, gregexpr(left, fsCode)))) +
+             sum(lengths(regmatches(fsCode, gregexpr(right, fsCode))))
+  assigns <- which(grepl(left, fsCode) | grepl(right, fsCode))
+  other <- grep(paste0("assign\\s*\\(\\s*[\"']", set, "[\"']|for\\s*\\(\\s*", set, "\\s+in\\s"),
+                fsCode, value = TRUE)
+  if (length(other))
+    note(paste0("R/failsafeTable.R: ", set, " is rebound by assign() or a for() ",
+                "header, which is the sweep over every group coming back through ",
+                "a spelling the arrow pins do not see (screen 2026-09-10-0734 F2) - ",
+                paste(trimws(other), collapse = " | ")))
   defn <- if (nAssign == 1L)
     paste(fsCode[assigns:min(assigns + 1L, length(fsCode))], collapse = " ") else ""
   exact <- paste0("utils::head\\s*\\(.*,\\s*", gsub(".", "\\.", const, fixed = TRUE),
@@ -820,7 +834,14 @@ if (length(fillAt) == 1L) {
                "decline of screen 2026-09-10-0536 F1"))
   # ...and the scoring-cost gate must precede the first scoring loop
   # (screen 2026-09-10-0633 F1): the dimension check, then candUp.
+  # both terms of the gate must be on it (screen 2026-09-10-0734 F1): the
+  # cells and the grand total, since the cells alone did not bound the time
   gateAt <- body[grep("\\.ppTableRefineReps\\s*>\\s*\\.ppTableCellMax", fsCode[body])]
+  gateTot <- body[grep("\\.ppTableScoreTotal", fsCode[body])]
+  if (!length(gateTot) || !any(abs(gateTot - min(gateAt)) <= 2L))
+    note(paste("R/failsafeTable.R: the scoring-cost gate must bound the GRAND",
+               "TOTAL (.ppTableScoreTotal) beside the cells - the cells alone",
+               "admitted a 54 s block (screen 2026-09-10-0734 F1)"))
   candAt <- body[grep("(^|[^A-Za-z0-9._])candUp\\s*<-", fsCode[body])]
   if (!length(gateAt) || !length(candAt) || min(gateAt) >= min(candAt))
     note(paste("R/failsafeTable.R: the scoring-cost gate (arms x levels x",
