@@ -803,6 +803,33 @@ test_that("an ordinary table still gets its journal tables", {
   expect_null(a$journalTablesOmitted)
 })
 
+# A multipart request whose part is NOT named `file` is a 422, not a 500
+# (private security audit 2026-09-10, S4): the handlers' `file` argument
+# had no default, so R raised on the missing argument before the guard
+# for an empty or dropped part could answer. Read over real HTTP, because
+# only the running service binds the part name to the argument.
+test_that("a multipart part not named file is a 422 request error, not a 500 (security audit 2026-09-10, S4)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  f <- file.path(tempdir(), "misnamed-part.csv")
+  writeLines(c('"TRIAL","ROW","N","MEAN","SD"', '"A","X",100,"50.0","3.0"', '"A","X",100,"50.2","3.1"'), f)
+  for (path in c("/analyze?seed=42", "/parse")) {
+    r <- apiReq(api$base, path) |>
+      httr2::req_body_multipart(somethingElse = curl::form_file(f)) |>
+      httr2::req_perform()
+    expect_equal(httr2::resp_status(r), 422, info = path)
+    b <- httr2::resp_body_json(r)
+    expect_false(isTRUE(b$ok))
+    expect_equal(b$stage, "request")
+    expect_match(b$reasons, "empty or its file part could not be read")
+    expect_true(isTRUE(b$deleted))
+  }
+  # and the service is still there
+  h <- httr2::request(paste0(api$base, "/health")) |> httr2::req_perform()
+  expect_equal(httr2::resp_status(h), 200)
+})
+
 # A whole-table issue's row is JSON null ON THE WIRE (full independent audit
 # 2026-09-10, F3). The structural-issue tests call the handler directly and
 # assert is.na() on the R value; over real HTTP jsonlite rendered the
