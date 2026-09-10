@@ -711,6 +711,23 @@
                                    "not read."),
                   data = NULL, skipped = NULL, flags = character(0),
                   engine = NA_character_))
+    # THE SHEET-COUNT REFUSAL HOLDS ON EVERY ROUTE (security audit
+    # 2026-09-10, S5). The wide reader refuses a workbook of more than
+    # .iaSheetCountCap sheets before reading one (screen 2026-09-05-2117
+    # F2) - but its error was caught below and the template fallback then
+    # read the first sheet anyway, so an eleven-sheet workbook came back
+    # 200 through /parse. The count is checked here, once, before either
+    # reader; a workbook that cannot even be opened falls through to the
+    # readers' own "could not read".
+    if (ext == "xlsx") {
+      nSheets <- tryCatch(length(openxlsx::getSheetNames(path)), error = function(e) NA_integer_)
+      if (!is.na(nSheets) && nSheets > .iaSheetCountCap)
+        return(list(ok = FALSE,
+                    reasons = paste0(name, " has more than ", .iaSheetCountCap,
+                                     " sheets and was not read"),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
+    }
     wide <- tryCatch(parseWideTable(path, ext), error = function(e) NULL)
     if (!is.null(wide)) {
       d <- do.call(.ppRbindFill, lapply(wide, function(b) {
