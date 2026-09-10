@@ -635,6 +635,13 @@ subprocess timeout, so the manuscript did not parse slowly, it **failed
 to parse at all**. The author of the paper under investigation decided
 that, by printing a category as percentages.
 
+*(The two paragraphs that follow are the reasoning as it stood on
+2026-09-09. They were superseded on 2026-09-10 by the entry "the ranked
+selection is a heuristic, and is described as one": the ordering across
+margin groups is a heuristic, and the winner's-curse explanation of the
+measured direction did not hold in general. They are kept because this
+document records what was believed and when.)*
+
 It was also, and less obviously, **less accurate than ranking**. Ranking
 20,449 noisy 2,000-replicate estimates and refining the best six selects
 on upward noise, and the refinement then takes it back — the winner's

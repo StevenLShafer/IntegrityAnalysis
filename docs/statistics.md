@@ -389,8 +389,8 @@ makes a number reproducible; it does not make it more precise.
   had (by exact enumeration, 38% of honest 5,000-per-arm pairs would
   fall below p = 0.01). So the choice is made by
   **maximisation**, not by a rule of thumb: of every set of counts the
-  row's printed percentages allow - one end of each ambiguous arm's
-  bracket, the exactly pinned arms held fixed - the row is built from the
+  row's printed percentages allow - every count inside each ambiguous
+  arm's bracket, the exactly pinned arms held fixed - the row is built from the
   whole TABLE with the largest p among those scored. The candidates are every
   arms-by-levels table in which each cell lies inside the bracket its
   printed percentage allows — and, only where the levels are known to
