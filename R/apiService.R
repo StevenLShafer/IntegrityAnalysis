@@ -239,8 +239,21 @@
     data <- as.data.frame(setNames(
       rep(list(character(0)), length(.ppBaseColumns())), .ppBaseColumns()))
   }
-  base <- intersect(.ppBaseColumns(), names(data))
-  data <- data[, c(base, setdiff(names(data), base)), drop = FALSE]
+  # COLUMNS BY POSITION, NOT BY NAME (outside security audit 2026-09-10,
+  # S1). A sheet carrying the SAME header twice - N and N - passed the
+  # reader (check.names = FALSE) and was rightly refused by the validator
+  # as ambiguous; but this serializer, choosing columns with intersect()
+  # and setdiff() on names, kept one of the pair, so the 422's own
+  # template had resolved the ambiguity the caller was asked to resolve,
+  # and an unchanged resubmission analysed the FIRST N with a 200. Every
+  # column and every header survive now, base columns first in their
+  # order and everything else in the order received; an ambiguous sheet
+  # stays ambiguous on the way back.
+  nm <- names(data)
+  basePos <- unlist(lapply(.ppBaseColumns(), function(b) which(nm == b)), use.names = FALSE)
+  pos <- c(basePos, setdiff(seq_along(nm), basePos))
+  data <- data[, pos, drop = FALSE]
+  names(data) <- nm[pos]            # `[.data.frame` would have made the pair N and N.1
   # The value columns carry their declared precision as text
   # (.iaValueColumnsAsText, 2026-09-08). This payload is the round trip -
   # a caller POSTs it straight back - so a mean of 50.0 must not come
