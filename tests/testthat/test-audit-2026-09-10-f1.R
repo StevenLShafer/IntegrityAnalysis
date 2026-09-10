@@ -72,7 +72,8 @@ test_that("the tolerance is the printed grid's alone - the observed arms cannot 
   # statistic two distinct readings on that grid can produce is at least
   # step^2 / 2 = 5e-9, eleven orders above it.
   expect_false("dd" %in% names(formals(.iaZeroSnapTol)))
-  expect_equal(.iaZeroSnapTol(.iaMeanStep(4)), 1e-20)
+  # as a ratio: testthat's tolerance is absolute this close to zero
+  expect_equal(.iaZeroSnapTol(.iaMeanStep(4)) / 1e-20, 1)
   expect_lt(.iaZeroSnapTol(.iaMeanStep(4)) * 1e10, (1e-4)^2 / 2)
   # and the 3ac3568 quantity, for the record: 1e-12 * (1e7)^2 = 100
   expect_lt(.iaZeroSnapTol(.iaMeanStep(4)), 0.19)   # the null's whole range

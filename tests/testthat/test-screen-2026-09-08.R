@@ -36,7 +36,10 @@ test_that("the zero-snap tolerance is translation-invariant", {
   # 2026-09-10 audit's F1; the old expression was 1e-26 * (1 + centre^2),
   # quadratic in the origin)
   expect_false("dd" %in% names(formals(.iaZeroSnapTol)))
-  expect_equal(.iaZeroSnapTol(h), 1e-12 * 1e-10)
+  # compared as a RATIO: for values this small testthat's tolerance is
+  # absolute, so expect_equal(x, 1e-22) accepts any small positive x
+  # (CodeRabbit on PR #246)
+  expect_equal(.iaZeroSnapTol(h) / (1e-12 * 1e-10), 1)
   expect_gt(.iaZeroSnapTol(h), 0)
   # the OLD expression, for contrast: the same row at two origins gave
   # tolerances eighteen orders of magnitude apart
@@ -47,9 +50,11 @@ test_that("the zero-snap tolerance is translation-invariant", {
 test_that("the zero-snap tolerance scales with the units, as the statistic does", {
   h <- .iaMeanStep(1)
   for (k in c(1e-3, 1e3)) {
-    # statistic scales by k^2, so the tolerance must too
-    expect_equal(.iaZeroSnapTol(h * k),
-                 .iaZeroSnapTol(h) * k^2, tolerance = 1e-9)
+    # statistic scales by k^2, so the tolerance must too - checked as a
+    # relative error, since at k = 1e-3 the expected value is 1e-20 and
+    # an absolute tolerance would accept anything (CodeRabbit on #246)
+    ratio <- .iaZeroSnapTol(h * k) / .iaZeroSnapTol(h)
+    expect_lt(abs(ratio / k^2 - 1), 1e-9)
   }
 })
 
@@ -62,8 +67,8 @@ test_that("the tolerance is the printed grid's alone, and zero without one", {
   # audit's F1 the observed term is gone: the floor is the finest printed
   # step squared, times 1e-12, and nothing else.
   expect_gt(.iaZeroSnapTol(.iaMeanStep(1)), 0)
-  expect_equal(.iaZeroSnapTol(.iaMeanStep(c(1, 3, 2))), 1e-12 * 1e-6)
-  expect_equal(.iaZeroSnapTol(numeric(0)), 0)
+  expect_equal(.iaZeroSnapTol(.iaMeanStep(c(1, 3, 2))) / (1e-12 * 1e-6), 1)
+  expect_identical(.iaZeroSnapTol(numeric(0)), 0)
 })
 
 test_that("an arbitrary origin no longer decides the p", {
