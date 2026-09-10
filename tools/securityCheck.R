@@ -862,22 +862,54 @@ if (length(fillAt) == 1L) {
   # 24a8177 quantity the 0815 fix replaced.
   selAt <- body[grep("ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)", fsCode[body])]
   defAt <- body[grep("rowTotal\\s*<-", fsCode[body])]
-  # ...and it must be INSIDE the rowTotal statement, not merely near it
-  # (screen 2026-09-10-0923, observation): a dead vapply holding the
-  # expression beside `rowTotal <- as.numeric(N[keep])` satisfied the
-  # three-line window. No other top-level assignment may begin between
-  # the rowTotal line and the ifelse line.
-  inStmt <- length(selAt) && length(defAt) && {
-    d0 <- min(defAt); s0 <- min(selAt[selAt >= d0])
-    is.finite(s0) && s0 <= d0 + 3L &&
-      !any(grepl("^\\s*[A-Za-z._][A-Za-z0-9._]*\\s*<-", fsCode[setdiff(seq(d0, s0), d0)]))
-  }
-  if (!length(selAt) || !length(defAt) || !length(candAt) ||
-      !isTRUE(inStmt) || min(defAt) >= min(candAt))
-    note(paste("R/failsafeTable.R: rowTotal must be built from ifelse(amb, hi, cnt)",
-               "- the cells as they will be scored - within three lines of its",
-               "assignment and before candUp; a rowTotal taken from N is the",
-               "24a8177 quantity the 0815 fix replaced (screen 2026-09-10-0858 F2)"))
+  # ...and it must be INSIDE the rowTotal statement - by STRUCTURE, not
+  # by a line window (screen 2026-09-10-0955, F1). The window pin of
+  # screen 0923 refused exactly the shape it named (a dead `x <- vapply`
+  # on the next line) and passed five near-neighbours with the N-based
+  # rowTotal still in force: a non-assignment dead statement, the
+  # expression on the same line after `;`, a reassignment guarded by
+  # `if (FALSE)`, an `=` assignment, and an indexed target. So the file
+  # is PARSED: within the fill's body there must be exactly one
+  # assignment whose left-hand side is the symbol rowTotal (by `<-`,
+  # `<<-`, `=` or `->`), and the text of that assignment's right-hand
+  # side must hold the ifelse(amb[i, ], hi[i, ], cnt[i, ]) call and the
+  # isTRUE(partition) branch that chooses N only where the levels are
+  # known to partition the arm. A dead statement beside it, guarded or
+  # not, is not the right-hand side; a second assignment is one too
+  # many; assign("rowTotal", ...) is refused by name below.
+  rowTotalRhs <- tryCatch({
+    pd <- utils::getParseData(parse("R/failsafeTable.R", keep.source = TRUE))
+    lhs <- pd[pd$token == "SYMBOL" & pd$text == "rowTotal" &
+              pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
+    out <- character(0)
+    for (k in seq_len(nrow(lhs))) {
+      p1 <- lhs$parent[k]                              # the expr wrapping the symbol
+      p2 <- pd$parent[pd$id == p1]                     # the statement it sits in
+      kids <- pd[pd$parent == p2, , drop = FALSE]
+      kids <- kids[order(kids$line1, kids$col1), , drop = FALSE]
+      i <- match(p1, kids$id)
+      rhsId <- if (!is.na(i) && i + 2L <= nrow(kids) &&
+                   kids$token[i + 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN")) kids$id[i + 2L]
+               else if (!is.na(i) && i >= 3L && kids$token[i - 1L] == "RIGHT_ASSIGN") kids$id[i - 2L]
+               else NA_integer_
+      if (!is.na(rhsId))
+        out <- c(out, gsub("\\s+", " ", utils::getParseText(pd, rhsId)))
+    }
+    out
+  }, error = function(e) character(0))
+  ifelseRe <- "ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)"
+  byName <- body[grep("assign\\s*\\(\\s*[\"']rowTotal", fsCode[body])]
+  if (length(rowTotalRhs) != 1L || !grepl(ifelseRe, rowTotalRhs) ||
+      !grepl("isTRUE\\(\\s*partition\\s*\\)", rowTotalRhs) || length(byName) ||
+      !length(selAt) || !length(defAt) || !length(candAt) || min(defAt) >= min(candAt))
+    note(paste("R/failsafeTable.R: rowTotal must be assigned exactly once in the",
+               "fill, and the right-hand side of THAT assignment must hold",
+               "ifelse(amb, hi, cnt) - the cells as they will be scored - under",
+               "isTRUE(partition), before candUp; a rowTotal taken from N is the",
+               "24a8177 quantity the 0815 fix replaced (screen 2026-09-10-0858 F2),",
+               "and a dead statement holding the expression beside it is not the",
+               "right-hand side (screens 2026-09-10-0923 and -0955 F1); found",
+               length(rowTotalRhs), "assignment(s)"))
   if (!length(rowAt) || !length(totAt) || !length(candAt) ||
       min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
     note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",
