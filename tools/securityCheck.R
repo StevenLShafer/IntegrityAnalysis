@@ -848,6 +848,19 @@ if (length(fillAt) == 1L) {
                ".ppTableRefineReps against .ppTableCellMax) must precede the",
                "candUp loop - without it a two-candidate block of 200 arms by",
                "37 levels costs 1,008 MB (screen 2026-09-10-0633 F1)"))
+  # ...and the grand total must be the ROW TOTALS of the scored cells
+  # checked against .iaMaxArmN, before candUp - not sum(N), which a
+  # printed count or a non-partitioning block exceeds without limit
+  # (screen 2026-09-10-0815 F1/F2). The previous pin was satisfied by a
+  # gate bounding the wrong sum; this one names the quantity.
+  rowAt <- body[grep("rowTotal\\s*>\\s*\\.iaMaxArmN", fsCode[body])]
+  totAt <- body[grep("grandTotal\\s*<-\\s*sum\\(\\s*rowTotal\\s*\\)", fsCode[body])]
+  if (!length(rowAt) || !length(totAt) || !length(candAt) ||
+      min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
+    note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",
+               "the scored cells must be checked against .iaMaxArmN and the",
+               "grand total taken from those row totals - measuring sum(N)",
+               "instead admitted a 95 s / 892 MB block (screen 2026-09-10-0815 F1)"))
 } else {
   note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must be defined",
              "exactly once, found", length(fillAt)))

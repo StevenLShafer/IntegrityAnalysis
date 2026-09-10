@@ -505,13 +505,47 @@
   # it sits before the enumeration rather than after it: a block it refuses
   # used to spend up to 3 s enumerating and scoring candidates first
   # (screen 2026-09-10-0734).
+  # THE QUANTITY r2dtable() PAYS FOR IS THE SUM OF THE TABLE, NOT THE SUM
+  # OF THE ARM SIZES (security screen 2026-09-10-0815, F1 and F2). The
+  # gate below measured sum(N[keep]) and called it the grand total. Two
+  # things reach the scored table that N does not bound: a level printed
+  # as a COUNT arrives from the page with no ceiling at all, and on the
+  # percentage route the levels need not sum to N, so a block of 25
+  # levels each printing "100.00" has a table sum of 25 x N. Measured
+  # through the JATS reader on 24a8177: two arms of 5,000 with two count
+  # levels printing 25,000,000 and one ambiguous percentage - six cells,
+  # a "grand total" of 10,000, admitted - took 95 s and 892 MB and was
+  # killed at the child's timeout; four arms by 25 levels pinned at N took
+  # 27 s where this file claimed under ten.
+  #
+  # The analysis engine already refuses exactly this, one function later:
+  # validateData() rejects a category line whose counts total more than
+  # .iaMaxArmN, "because r2dtable on a billion patients asked for 134
+  # million TB". Every cost above was spent on a row that would then have
+  # been refused. So the same rule is applied HERE, before anything is
+  # built, on the cells AS THEY WILL BE SCORED - the bracket's top where a
+  # cell is ambiguous, the printed count where it is pinned - and the
+  # grand total the time bound uses is the sum of those row totals.
+  # ...except where the levels PARTITION the arm. There the scored table's
+  # row total is exactly N by construction, and summing the bracket TOPS
+  # overstates it: a binary "n (%)" row at the arm ceiling has tops of
+  # 2,375 and 2,675 against an N of 5,000, and the first form of this
+  # rule refused it - an honest row thrown out, which is the failure the
+  # full suite caught before it shipped (test-screen-2026-09-09-1532.R).
+  rowTotal <- if (isTRUE(partition)) as.numeric(N[keep]) else
+    vapply(keep, function(i)
+      sum(as.numeric(ifelse(amb[i, ], hi[i, ], cnt[i, ])), na.rm = TRUE), numeric(1))
+  if (any(!is.finite(rowTotal)) || any(rowTotal > .iaMaxArmN))
+    return(out(FALSE, sprintf(paste(
+      "the counts total more than %s in at least one arm, which the",
+      "analysis would refuse"), format(.iaMaxArmN, big.mark = ","))))
   cells <- as.numeric(length(keep)) * ncol(cnt)
-  grandTotal <- sum(as.numeric(N[keep]))
+  grandTotal <- sum(rowTotal)
   if (cells * .ppTableRefineReps > .ppTableCellMax || cells > .ppTableScoreCells ||
       grandTotal > .ppTableScoreTotal)
     return(out(FALSE, sprintf(paste(
-      "this block is too large to score: %d arms by %d levels over %s",
-      "patients is more than the simulation can carry in the time it has"),
+      "this block is too large to score: %d arms by %d levels over a table",
+      "total of %s is more than the simulation can carry in the time it has"),
       nrow(cnt), ncol(cnt), format(grandTotal, big.mark = ","))))
 
 
