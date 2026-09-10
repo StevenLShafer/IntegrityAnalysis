@@ -56,6 +56,11 @@ test_that("the cell budget bounds the block, not each arm on its own", {
   # 1,636 MB and 9.4 s on 1b7f626, every byte of it to compute a product
   # that is Inf. The decline itself was always correct; its cost was not.
   expect_lt(r$t, 2)
+  # and the MEMORY, which this test measured and then did not assert
+  # (screen 2026-09-10-0611): 83 MB here against 1,430 MB before, so a
+  # regression that is slow in memory but fast in time would have passed.
+  # The budget leaves room for the process baseline on another machine.
+  expect_lt(r$mb, 400)
 })
 
 test_that("a block that fits is still read, and the answer is unchanged", {
