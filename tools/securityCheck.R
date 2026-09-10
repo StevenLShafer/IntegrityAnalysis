@@ -855,6 +855,19 @@ if (length(fillAt) == 1L) {
   # gate bounding the wrong sum; this one names the quantity.
   rowAt <- body[grep("rowTotal\\s*>\\s*\\.iaMaxArmN", fsCode[body])]
   totAt <- body[grep("grandTotal\\s*<-\\s*sum\\(\\s*rowTotal\\s*\\)", fsCode[body])]
+  # ...and rowTotal must be built from the cells AS SCORED - the bracket
+  # top where ambiguous, the printed count where pinned - not from N
+  # (screen 2026-09-10-0858, F2): a pin that named only the variable was
+  # satisfied by `rowTotal <- as.numeric(N[keep])`, which is exactly the
+  # 24a8177 quantity the 0815 fix replaced.
+  selAt <- body[grep("ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)", fsCode[body])]
+  defAt <- body[grep("rowTotal\\s*<-", fsCode[body])]
+  if (!length(selAt) || !length(defAt) || !length(candAt) ||
+      !any(selAt >= min(defAt) & selAt <= min(defAt) + 3L) || min(defAt) >= min(candAt))
+    note(paste("R/failsafeTable.R: rowTotal must be built from ifelse(amb, hi, cnt)",
+               "- the cells as they will be scored - within three lines of its",
+               "assignment and before candUp; a rowTotal taken from N is the",
+               "24a8177 quantity the 0815 fix replaced (screen 2026-09-10-0858 F2)"))
   if (!length(rowAt) || !length(totAt) || !length(candAt) ||
       min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
     note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",
