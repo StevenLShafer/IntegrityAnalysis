@@ -596,7 +596,10 @@
 # legitimate baseline-table workbook is well under the cap.
 .apiMaxUncompressed <- 104857600   # 100 MiB declared, total
 .apiMaxZipEntries   <- 512L        # a workbook has tens, not thousands
-.apiMaxZipRatio     <- 200         # per-entry compression ratio ceiling
+.apiMaxZipRatio     <- 200         # compression ratio ceiling: AGGREGATE declared
+                                   # uncompressed bytes over the archive's size, not
+                                   # per entry (the comment said per-entry; the code
+                                   # never was - security audit 2026-09-10)
 
 .apiZipInflationOK <- function(path, ext = tools::file_ext(path)) {
   ext <- tolower(ext)
