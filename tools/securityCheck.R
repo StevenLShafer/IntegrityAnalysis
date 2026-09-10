@@ -877,39 +877,77 @@ if (length(fillAt) == 1L) {
   # known to partition the arm. A dead statement beside it, guarded or
   # not, is not the right-hand side; a second assignment is one too
   # many; assign("rowTotal", ...) is refused by name below.
-  rowTotalRhs <- tryCatch({
+  # ...and by structure ALL THE WAY DOWN (screen 2026-09-10-1031, F1).
+  # The parse-tree pin of screen 0955 counted arrow and `=` assignments
+  # only, so six rebinding shapes passed it with the N-based total in
+  # force - `rowTotal[] <-`, `rowTotal[seq_along(rowTotal)] <-`,
+  # `for (rowTotal in ...)`, `assign(x = "rowTotal", ...)`, assign()
+  # through a variable, and list2env() - and its right-hand-side check
+  # was textual, so `if (!isTRUE(partition))` and a braced right-hand
+  # side mentioning both required strings in dead statements passed
+  # too. So, three things. FIRST, every spelling of assignment to
+  # rowTotal is counted by the same regexes the candidate-set pin above
+  # uses (arrows, `=`, indexed targets), and any assign(), a for()
+  # rebinding of rowTotal, list2env() or makeActiveBinding() anywhere
+  # in the fill body is refused by name. SECOND, exactly one assignment
+  # may exist. THIRD, that assignment's right-hand side is read as a
+  # parse tree, not as text: an IF whose condition is exactly
+  # `isTRUE(partition)`, whose TRUE branch holds N[keep] and no
+  # ifelse(), and whose ELSE branch holds the
+  # ifelse(amb[i, ], hi[i, ], cnt[i, ]) call and no N[keep].
+  ifelseRe <- "ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)"
+  rtLeft  <- "(^|[^A-Za-z0-9._])rowTotal\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]"
+  rtRight <- "(->>|->)\\s*rowTotal([^A-Za-z0-9._]|$)"
+  rtAssign <- sum(lengths(regmatches(fsCode[body], gregexpr(rtLeft, fsCode[body])))) +
+              sum(lengths(regmatches(fsCode[body], gregexpr(rtRight, fsCode[body]))))
+  rtOther <- body[grep(paste0("assign\\s*\\(|for\\s*\\(\\s*rowTotal\\s+in\\s|",
+                              "list2env\\s*\\(|makeActiveBinding\\s*\\("), fsCode[body])]
+  # the one assign() the fill legitimately makes restores .Random.seed
+  rtOther <- rtOther[!grepl("assign\\s*\\(\\s*[\"']\\.Random\\.seed[\"']", fsCode[rtOther])]
+  rowTotalOK <- tryCatch({
     pd <- utils::getParseData(parse("R/failsafeTable.R", keep.source = TRUE))
+    txt <- function(id) gsub("\\s+", " ", utils::getParseText(pd, id))
+    kidsOf <- function(id) {
+      k <- pd[pd$parent == id, , drop = FALSE]
+      k[order(k$line1, k$col1), , drop = FALSE]
+    }
     lhs <- pd[pd$token == "SYMBOL" & pd$text == "rowTotal" &
               pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
-    out <- character(0)
+    rhs <- integer(0)
     for (k in seq_len(nrow(lhs))) {
       p1 <- lhs$parent[k]                              # the expr wrapping the symbol
       p2 <- pd$parent[pd$id == p1]                     # the statement it sits in
-      kids <- pd[pd$parent == p2, , drop = FALSE]
-      kids <- kids[order(kids$line1, kids$col1), , drop = FALSE]
+      kids <- kidsOf(p2)
       i <- match(p1, kids$id)
-      rhsId <- if (!is.na(i) && i + 2L <= nrow(kids) &&
-                   kids$token[i + 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN")) kids$id[i + 2L]
-               else if (!is.na(i) && i >= 3L && kids$token[i - 1L] == "RIGHT_ASSIGN") kids$id[i - 2L]
-               else NA_integer_
-      if (!is.na(rhsId))
-        out <- c(out, gsub("\\s+", " ", utils::getParseText(pd, rhsId)))
+      if (!is.na(i) && i + 2L <= nrow(kids) &&
+          kids$token[i + 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN"))
+        rhs <- c(rhs, kids$id[i + 2L])
+      else if (!is.na(i) && i >= 3L && kids$token[i - 1L] == "RIGHT_ASSIGN")
+        rhs <- c(rhs, kids$id[i - 2L])
     }
-    out
-  }, error = function(e) character(0))
-  ifelseRe <- "ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)"
-  byName <- body[grep("assign\\s*\\(\\s*[\"']rowTotal", fsCode[body])]
-  if (length(rowTotalRhs) != 1L || !grepl(ifelseRe, rowTotalRhs) ||
-      !grepl("isTRUE\\(\\s*partition\\s*\\)", rowTotalRhs) || length(byName) ||
+    if (length(rhs) != 1L) FALSE else {
+      k <- kidsOf(rhs)                                 # IF ( cond ) yes ELSE no
+      isIf <- nrow(k) == 7L && k$token[1L] == "IF" && k$token[6L] == "ELSE"
+      cond <- if (isIf) txt(k$id[3L]) else ""
+      yes  <- if (isIf) txt(k$id[5L]) else ""
+      no   <- if (isIf) txt(k$id[7L]) else ""
+      isIf && cond == "isTRUE(partition)" &&
+        grepl("N\\[keep\\]", yes) && !grepl("ifelse", yes) &&
+        grepl(ifelseRe, no) && !grepl("N\\[keep\\]", no)
+    }
+  }, error = function(e) FALSE)
+  if (rtAssign != 1L || length(rtOther) || !isTRUE(rowTotalOK) ||
       !length(selAt) || !length(defAt) || !length(candAt) || min(defAt) >= min(candAt))
     note(paste("R/failsafeTable.R: rowTotal must be assigned exactly once in the",
-               "fill, and the right-hand side of THAT assignment must hold",
-               "ifelse(amb, hi, cnt) - the cells as they will be scored - under",
-               "isTRUE(partition), before candUp; a rowTotal taken from N is the",
-               "24a8177 quantity the 0815 fix replaced (screen 2026-09-10-0858 F2),",
-               "and a dead statement holding the expression beside it is not the",
-               "right-hand side (screens 2026-09-10-0923 and -0955 F1); found",
-               length(rowTotalRhs), "assignment(s)"))
+               "fill, by any spelling, with no assign()/for()/list2env()/",
+               "makeActiveBinding() in the body, and the right-hand side of THAT",
+               "assignment must be `if (isTRUE(partition)) <N[keep]> else",
+               "<ifelse(amb, hi, cnt)>` as a parse tree, before candUp; a rowTotal",
+               "taken from N is the 24a8177 quantity the 0815 fix replaced (screen",
+               "2026-09-10-0858 F2), and a dead statement holding the expression",
+               "beside it is not the right-hand side (screens 2026-09-10-0923,",
+               "-0955 F1 and -1031 F1); found", rtAssign, "assignment(s),",
+               length(rtOther), "rebinding line(s), RHS ok:", isTRUE(rowTotalOK)))
   if (!length(rowAt) || !length(totAt) || !length(candAt) ||
       min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
     note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",
