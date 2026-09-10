@@ -925,10 +925,15 @@ if (length(fillAt) == 1L) {
   # ifelse(), and whose ELSE branch holds the
   # ifelse(amb[i, ], hi[i, ], cnt[i, ]) call and no N[keep].
   ifelseRe <- "ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)"
-  rtLeft  <- "(^|[^A-Za-z0-9._])rowTotal\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]"
-  rtRight <- "(->>|->)\\s*rowTotal([^A-Za-z0-9._]|$)"
-  rtAssign <- sum(lengths(regmatches(fsCode[body], gregexpr(rtLeft, fsCode[body])))) +
-              sum(lengths(regmatches(fsCode[body], gregexpr(rtRight, fsCode[body]))))
+  # COUNTED FROM THE PARSE TREE, not by regex (CodeRabbit on #248): the
+  # regex count missed `rowTotal[[1L]] <-`, and would miss `names(rowTotal)
+  # <-`, `rowTotal$x <-` and `attr(rowTotal, ...) <-` for the same reason -
+  # it looked for the symbol immediately left of the arrow. An assignment
+  # counts when the symbol rowTotal appears ANYWHERE inside its left-hand
+  # side (the target expression of `<-`, `<<-`, `=` or `->`), whatever
+  # wraps it. rtAssign is set below, beside the branch check, from the
+  # same parse data.
+  rtAssign <- NA_integer_
   rtOther <- body[grep(paste0("assign\\s*\\(|for\\s*\\(\\s*rowTotal\\s+in\\s|",
                               "list2env\\s*\\(|makeActiveBinding\\s*\\("), fsCode[body])]
   # the one assign() the fill legitimately makes restores .Random.seed
@@ -940,31 +945,50 @@ if (length(fillAt) == 1L) {
       k <- pd[pd$parent == id, , drop = FALSE]
       k[order(k$line1, k$col1), , drop = FALSE]
     }
-    lhs <- pd[pd$token == "SYMBOL" & pd$text == "rowTotal" &
-              pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
-    rhs <- integer(0)
-    for (k in seq_len(nrow(lhs))) {
-      p1 <- lhs$parent[k]                              # the expr wrapping the symbol
-      p2 <- pd$parent[pd$id == p1]                     # the statement it sits in
-      kids <- kidsOf(p2)
-      i <- match(p1, kids$id)
-      if (!is.na(i) && i + 2L <= nrow(kids) &&
-          kids$token[i + 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN"))
-        rhs <- c(rhs, kids$id[i + 2L])
-      else if (!is.na(i) && i >= 3L && kids$token[i - 1L] == "RIGHT_ASSIGN")
-        rhs <- c(rhs, kids$id[i - 2L])
+    inFill <- pd$line1 >= fillAt & pd$line1 <= endAt
+    # every assignment statement in the fill: an expr whose children hold
+    # an assignment token; its target is the child before a left arrow or
+    # `=`, or the child after a right arrow
+    assignTok <- pd[inFill & pd$token %in% c("LEFT_ASSIGN", "EQ_ASSIGN", "RIGHT_ASSIGN"), , drop = FALSE]
+    symIds <- pd$id[pd$token == "SYMBOL" & pd$text == "rowTotal"]
+    ancestors <- function(id) {
+      out <- integer(0)
+      while (!is.na(id) && id > 0) { id <- pd$parent[match(id, pd$id)]; if (is.na(id) || id <= 0) break; out <- c(out, id) }
+      out
     }
+    symAnc <- lapply(symIds, ancestors)
+    rhs <- integer(0)
+    for (k in seq_len(nrow(assignTok))) {
+      kids <- kidsOf(assignTok$parent[k])
+      i <- match(assignTok$id[k], kids$id)
+      if (is.na(i)) next
+      target <- if (assignTok$token[k] == "RIGHT_ASSIGN") kids$id[i + 1L] else kids$id[i - 1L]
+      value  <- if (assignTok$token[k] == "RIGHT_ASSIGN") kids$id[i - 1L] else kids$id[i + 1L]
+      if (is.na(target) || is.na(value)) next
+      # the symbol rowTotal anywhere inside the target expression
+      hit <- any(vapply(seq_along(symIds), function(j)
+        target %in% symAnc[[j]] || target == pd$parent[match(symIds[j], pd$id)], logical(1)))
+      if (hit) rhs <- c(rhs, value)
+    }
+    rtAssign <- length(rhs)                            # tryCatch evaluates this here
     if (length(rhs) != 1L) FALSE else {
       k <- kidsOf(rhs)                                 # IF ( cond ) yes ELSE no
       isIf <- nrow(k) == 7L && k$token[1L] == "IF" && k$token[6L] == "ELSE"
       cond <- if (isIf) txt(k$id[3L]) else ""
       yes  <- if (isIf) txt(k$id[5L]) else ""
       no   <- if (isIf) txt(k$id[7L]) else ""
+      # THE EXPRESSION EACH BRANCH RETURNS, exactly (CodeRabbit on #248):
+      # a branch that mentioned the required text in a dead statement and
+      # returned something else - `{ N[keep]; rep(0, length(keep)) }` -
+      # satisfied a contains-check. A change to either expression is a
+      # deliberate edit of this pin, made together with the code.
       isIf && cond == "isTRUE(partition)" &&
-        grepl("N\\[keep\\]", yes) && !grepl("ifelse", yes) &&
-        grepl(ifelseRe, no) && !grepl("N\\[keep\\]", no)
+        yes == "as.numeric(N[keep])" &&
+        no == paste("vapply(keep, function(i) sum(as.numeric(ifelse(amb[i, ], hi[i, ],",
+                    "cnt[i, ])), na.rm = TRUE), numeric(1))")
     }
   }, error = function(e) FALSE)
+  if (is.na(rtAssign)) rtAssign <- 0L
   if (rtAssign != 1L || length(rtOther) || !isTRUE(rowTotalOK) ||
       !length(selAt) || !length(defAt) || !length(candAt) || min(defAt) >= min(candAt))
     note(paste("R/failsafeTable.R: rowTotal must be assigned exactly once in the",
