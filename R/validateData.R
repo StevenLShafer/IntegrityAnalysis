@@ -836,14 +836,24 @@ validateData <- function(DATA) {
   # excludes them; the excluded rows themselves, with the reason, are
   # returned beside it so the engine can count them and the API can
   # give them back.
+  # Two elements, deliberately: ExcludedRows is the rows themselves,
+  # every column as uploaded and untouched, for the template and the
+  # journal table; Excluded is a small frame of this function's own -
+  # TRIAL, ROW, REASON - for the engine's count. The reason is NOT
+  # written into the rows, because an uploaded column called REASON is
+  # a legitimate extra column (MiscNames) and would have been
+  # overwritten and then dropped (CodeRabbit on #250).
   Excluded <- NULL
+  ExcludedRows <- NULL
   if (any(excluded))
   {
     if (all(excluded))
       return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))
-    Excluded <- DATA[excluded, , drop = FALSE]
-    Excluded$REASON <- ifelse(labelOnly[excluded], "label only",
-                              "single-line categorical")
+    ExcludedRows <- DATA[excluded, , drop = FALSE]
+    Excluded <- data.frame(
+      TRIAL = DATA$TRIAL[excluded], ROW = as.character(DATA$ROW[excluded]),
+      REASON = ifelse(labelOnly[excluded], "label only", "single-line categorical"),
+      stringsAsFactors = FALSE)
     DATA <- DATA[!excluded, , drop = FALSE]
   }
   # Carry SE, Q1/Q3, and ROUND_DISPERSION through when the input supplies
@@ -860,5 +870,6 @@ validateData <- function(DATA) {
   # not blocking.
   list(FAIL = FALSE, DATA = DATA, TRIALS = TRIALS,
        ColumnNames = ColumnNames, CategoryNames = CategoryNames,
-       MiscNames = MiscNames, Excluded = Excluded, issues = issueFrame())
+       MiscNames = MiscNames, Excluded = Excluded, ExcludedRows = ExcludedRows,
+       issues = issueFrame())
 }

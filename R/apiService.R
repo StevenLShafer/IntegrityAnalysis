@@ -883,7 +883,7 @@
   # to the caller in the template and the journal table, not only in the
   # Summary's count (audit 2026-09-10 F3): the template is the round
   # trip, and a row that vanished from it could not be corrected
-  shown <- .apiWithExcluded(v)
+  shown <- .iaWithExcluded(v$DATA, v$ExcludedRows)
   journalCells <- .apiJournalCells(shown, v$CategoryNames)
   journalSkipped <- journalCells > .apiMaxJournalCells
 
@@ -910,17 +910,6 @@
          "the ", format(.apiMaxJournalCells, big.mark = ","),
          "-cell limit. The analysis itself is unaffected.") else NULL,
        templateCsv = .apiTemplateCsv(shown))
-}
-
-# The validated frame with the rows validateData() left out put back, in
-# the validator's order (trial, then row), for the template and the
-# journal table - never for the engine (audit 2026-09-10 F3).
-.apiWithExcluded <- function(v) {
-  ex <- v$Excluded
-  if (is.null(ex) || !nrow(ex)) return(v$DATA)
-  ex$REASON <- NULL
-  d <- .ppRbindFill(v$DATA, ex)
-  d[order(d$TRIAL, d$ROW), , drop = FALSE]
 }
 
 #' Run the IntegrityAnalysis REST service

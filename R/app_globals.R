@@ -79,6 +79,17 @@ m <- 100000
 # Two implementations of one rule set is the defect. This is the rule
 # set; both callers use it, so they cannot disagree.
 #
+# The validated frame with the rows validateData() left out put back, in
+# the validator's order (trial, then row), for the template, the results
+# workbook and the journal table - never for the engine (audit 2026-09-10
+# F3). ONE restorer for the API and the app, so the two cannot differ
+# (CodeRabbit on #250).
+.iaWithExcluded <- function(DATA, rows) {
+  if (is.null(rows) || !nrow(rows)) return(DATA)
+  d <- .ppRbindFill(DATA, rows)
+  d[order(d$TRIAL, d$ROW), , drop = FALSE]
+}
+
 # ORDER MATTERS and mirrors validateData's original sequence exactly:
 # uppercase, TRIAL, MEASURE (with its drops), DECM, NUMBER, GROUP->ROW
 # fallback, then the ROW grep. Changing the order changes which column
