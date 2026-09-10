@@ -1553,6 +1553,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
   {
     ex <- excluded[!is.na(excluded$TRIAL) & excluded$TRIAL == TRIAL, , drop = FALSE]
     ex <- ex[!duplicated(as.character(ex$ROW)), , drop = FALSE]
+    # ...and never a label that is ALSO an analysed variable of this trial:
+    # that line already has its own row (screen 2026-09-10-1143, observation)
+    ex <- ex[!(as.character(ex$ROW) %in% as.character(x$ROW)), , drop = FALSE]
     if (nrow(ex))
       x <- rbind(x, data.frame(
         TRIAL = NA, ROW = as.character(ex$ROW), P = "Not analysed", CI95 = "",

@@ -774,20 +774,23 @@ test_that("the journal-size estimate grows with category expansion", {
   plain <- data.frame(TRIAL = "T", ROW = c("Age", "Age"), N = 50L,
                       MEAN = c(60, 61), SD = c(10, 10),
                       stringsAsFactors = FALSE)
-  expect_identical(.apiJournalCells(plain, character(0)), 2)
+  # WIDTH-AWARE since screen 2026-09-10-1143: lines x (1 + the widest
+  # variable's arm count); two lines of one two-arm variable are 2 x 3
+  expect_identical(.apiJournalCells(plain, character(0)), 6)
 
   wide <- plain
   cats <- paste0("C", seq_len(80))
   for (cn in cats) wide[[cn]] <- 1L
-  # 2 rows, each populated across 80 category columns: 2 + 2*80
-  expect_identical(.apiJournalCells(wide, cats), 162)
+  # 2 rows, each populated across 80 category columns: (2 + 2*80) lines,
+  # times (1 + 2) for the width
+  expect_identical(.apiJournalCells(wide, cats), 486)
 
   # the cap is what stands between that growth and the response
   expect_true(.apiMaxJournalCells > 1000)
   big <- wide[rep(1:2, 2000), ]
   expect_gt(.apiJournalCells(big, cats), .apiMaxJournalCells)
   # a category column absent from the frame must not be counted
-  expect_identical(.apiJournalCells(plain, c("Male", "Female")), 2)
+  expect_identical(.apiJournalCells(plain, c("Male", "Female")), 6)
 })
 
 test_that("an ordinary table still gets its journal tables", {

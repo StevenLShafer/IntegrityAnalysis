@@ -252,23 +252,33 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   openxlsx::setColWidths(wb, "Test Results", cols = seq_along(out),
                          widths = "auto")
 
-  ## 2 -- Baseline Tables: journal-style reconstructions, stacked
+  ## 2 -- Baseline Tables: journal-style reconstructions, stacked -
+  ## behind the same size gate as the API's journal tables (screen
+  ## 2026-09-10-1143, F1): the app had none, and a 5,000-line table of
+  ## repeated labels took 145 s and 16 MB on the only R thread
   openxlsx::addWorksheet(wb, "Baseline Tables")
-  tabs <- buildBaselineTables(validated, categoryNames)
-  r <- 1
-  for (nm in names(tabs)) {
+  journalCells <- .iaJournalCells(validated, categoryNames)
+  if (journalCells > .iaMaxJournalCells) {
     openxlsx::writeData(wb, "Baseline Tables",
-                        data.frame(x = paste0("Trial: ", nm)),
-                        startRow = r, colNames = FALSE)
-    openxlsx::addStyle(wb, "Baseline Tables", boldStyle,
-                       rows = r, cols = 1)
-    openxlsx::writeData(wb, "Baseline Tables", tabs[[nm]],
-                        startRow = r + 1, headerStyle = headStyle)
-    r <- r + nrow(tabs[[nm]]) + 3   # header line + column row + gap
+                        data.frame(x = .iaJournalOmittedNote(journalCells)),
+                        colNames = FALSE)
+  } else {
+    tabs <- buildBaselineTables(validated, categoryNames)
+    r <- 1
+    for (nm in names(tabs)) {
+      openxlsx::writeData(wb, "Baseline Tables",
+                          data.frame(x = paste0("Trial: ", nm)),
+                          startRow = r, colNames = FALSE)
+      openxlsx::addStyle(wb, "Baseline Tables", boldStyle,
+                         rows = r, cols = 1)
+      openxlsx::writeData(wb, "Baseline Tables", tabs[[nm]],
+                          startRow = r + 1, headerStyle = headStyle)
+      r <- r + nrow(tabs[[nm]]) + 3   # header line + column row + gap
+    }
+    openxlsx::setColWidths(
+      wb, "Baseline Tables",
+      cols = seq_len(max(vapply(tabs, ncol, integer(1)))), widths = "auto")
   }
-  openxlsx::setColWidths(
-    wb, "Baseline Tables",
-    cols = seq_len(max(vapply(tabs, ncol, integer(1)))), widths = "auto")
 
   ## 3 -- Summary: one line per study
   # P_Calc leaves TRIAL empty on its Summary line (it prints under the
