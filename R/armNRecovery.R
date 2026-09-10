@@ -42,10 +42,25 @@
   lo <- (pct - half) / 100
   hi <- (pct + half) / 100
   if (lo <= 0) return(integer(0))
-  nLo <- as.integer(ceiling(count / hi - 1e-9))
-  nHi <- as.integer(floor(count / lo + 1e-9))
-  if (nHi < nLo) return(integer(0))
-  seq.int(max(nLo, count), nHi)
+  # IN DOUBLES, AND REFUSED BEFORE as.integer() (security screen
+  # 2026-09-10-0858, F1). A cell printing "25000000 (0.01%)" implies an arm
+  # of about 1.7e11; as.integer() of that is NA with a warning, and the
+  # comparison below then raised "missing value where TRUE/FALSE needed".
+  # On the JATS route the block parser's tryCatch swallowed the error and
+  # the WHOLE document failed to parse with a message naming no cell; on
+  # the PDF route the child returned the raw R error. Verified end to end
+  # on ae37f0e with "30000 (0.001%)" as well. An implied arm size above
+  # .iaMaxArmN can never be analysed - validateData() refuses the trial -
+  # so the same rule applies here: the cell yields no arm size, the arm's
+  # N stays unknown, and the rest of the table is read as it always was.
+  nLoD <- ceiling(count / hi - 1e-9)
+  nHiD <- floor(count / lo + 1e-9)
+  if (!is.finite(nLoD) || !is.finite(nHiD) || nHiD < nLoD ||
+      nLoD > .iaMaxArmN)
+    return(integer(0))
+  nLo <- as.integer(nLoD)
+  nHi <- as.integer(min(nHiD, .iaMaxArmN))
+  seq.int(max(nLo, as.integer(count)), nHi)
 }
 
 # Intersect the feasible sets of several cells belonging to one arm.
