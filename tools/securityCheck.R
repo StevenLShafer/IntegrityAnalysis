@@ -755,16 +755,36 @@ if (!length(ppCalls) || !all(bounded))
              "bounded sets is a sweep over every group, which is the 190 s",
              "parse the ranking replaced (screens 2026-09-09-0721 F1 and",
              "-1532) -", paste(trimws(ppCalls[!bounded]), collapse = " | ")))
+# WHAT THIS PIN MUST SAY, AND WHY IT SAYS IT THIS WAY (screens
+# 2026-09-10-0611 F1 and -0633 F2). The first spelling required only that
+# the definition contain `utils::head(` and the constant SOMEWHERE on its
+# two lines. The next screen defeated it five ways without touching the
+# call sites: a NEGATIVE n (`head(x, -.ppTableRankMax)` returns all but
+# the last 50 - the full sweep, constant present), `.ppTableRankMax *
+# length(keys)`, the constant parked in a second statement on the same
+# line, and a second assignment after the pinned one by `<<-`, `=` or
+# `set[] <-`, none of which `^name <-` counted. So: the constant must be
+# the WHOLE final argument of head(), and every assignment form to the
+# four names is counted, not only `<-`.
 for (set in c("candUp", "candDn", "topUp", "topDn")) {
-  at <- grep(paste0("^\\s*", set, "\\s*<-"), fsCode)
-  bound <- if (set %in% c("candUp", "candDn")) "\\.ppTableRankMax" else "\\.ppTableRefineTop"
-  defn <- if (length(at) == 1L) paste(fsCode[at:min(at + 1L, length(fsCode))], collapse = " ") else ""
-  if (length(at) != 1L || !grepl("utils::head\\s*\\(", defn) || !grepl(bound, defn))
-    note(paste0("R/failsafeTable.R: ", set, " must be defined exactly once as a ",
-                "utils::head() bounded by ", sub("^\\\\", "", bound),
-                " - redefining a candidate set is the sweep over every group ",
-                "coming back through the definition rather than the call ",
-                "(screen 2026-09-10-0611 F1)"))
+  const <- if (set %in% c("candUp", "candDn")) ".ppTableRankMax" else ".ppTableRefineTop"
+  # counted as MATCHES, not lines: a second assignment on the pinned
+  # definition's own line (`candDn <- head(...); candDn <<- seq_along(keys)`)
+  # is one line and two assignments, and the first harness run let it by
+  pat <- paste0("(^|[^A-Za-z0-9._])", set, "\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]")
+  hits <- regmatches(fsCode, gregexpr(pat, fsCode))
+  nAssign <- sum(lengths(hits))
+  assigns <- which(lengths(hits) > 0)
+  defn <- if (nAssign == 1L)
+    paste(fsCode[assigns:min(assigns + 1L, length(fsCode))], collapse = " ") else ""
+  exact <- paste0("utils::head\\s*\\(.*,\\s*", gsub(".", "\\.", const, fixed = TRUE),
+                  "\\s*\\)")
+  if (nAssign != 1L || !grepl(exact, defn))
+    note(paste0("R/failsafeTable.R: ", set, " must be assigned exactly once, as ",
+                "utils::head(<order>, ", const, ") with the constant as the whole ",
+                "final argument - anything else is the sweep over every group ",
+                "coming back through the definition (screens 2026-09-10-0611 F1, ",
+                "-0633 F2); found ", nAssign, " assignment(s)"))
 }
 # and the enumeration must still count before it builds (2100 F1)
 avDef  <- grep("^\\s*\\.ppArmVectorCount\\s*<-", fsCode)
@@ -777,17 +797,36 @@ avCall <- setdiff(grep("\\.ppArmVectorCount\\s*\\(", fsCode), avDef)
 # group 7's translation-before-centre ordering.
 fillAt <- grep("^\\s*\\.ppFailsafeTableFill\\s*<-\\s*function", fsCode)
 if (length(fillAt) == 1L) {
-  body <- seq(fillAt, length(fsCode))
-  cnt1 <- body[grep("\\.ppArmVectorCount\\s*\\(", fsCode[body])][1]
-  bld1 <- body[grep("\\.ppArmVectors\\s*\\(", fsCode[body])][1]
-  # STRICTLY before: the first harness mutation put the counter call on the
-  # builder's own line, and `>` let it through (same line number). Nothing
-  # legitimate needs both calls on one line.
-  if (is.na(cnt1) || is.na(bld1) || cnt1 >= bld1)
-    note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must count every arm",
-               "(.ppArmVectorCount) before it builds any (.ppArmVectors) -",
-               "building first is the 1,636 MB decline of screen",
-               "2026-09-10-0536 F1"))
+  # the body runs to the next top-level definition, not to the end of the
+  # file - it is the last function today, and that is not a property to
+  # lean on (screen 2026-09-10-0633 F2)
+  nextDef <- grep("^[A-Za-z._][A-Za-z0-9._]*\\s*<-\\s*function", fsCode)
+  endAt <- min(c(nextDef[nextDef > fillAt], length(fsCode)))
+  body <- seq(fillAt, endAt)
+  cntAll <- body[grep("\\.ppArmVectorCount\\s*\\(", fsCode[body])]
+  bldAll <- body[grep("\\.ppArmVectors\\s*\\(", fsCode[body])]
+  prodAt <- body[grep("prod\\s*\\(\\s*counts\\s*\\)", fsCode[body])]
+  # EVERY count before ANY build, with the product taken in between: the
+  # previous spelling compared only the FIRST of each, so moving the
+  # per-arm count inside the build loop - precisely the shape it claimed
+  # to pin - passed (screen 2026-09-10-0633 F2). Strict inequalities, since
+  # nothing legitimate puts two of these on one line.
+  if (!length(cntAll) || !length(bldAll) || !length(prodAt) ||
+      max(cntAll) >= min(bldAll) || max(cntAll) >= min(prodAt) ||
+      max(prodAt) >= min(bldAll))
+    note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must count EVERY arm",
+               "(.ppArmVectorCount), take prod(counts), and only then build ANY",
+               "(.ppArmVectors) - a count inside the build loop is the 1,636 MB",
+               "decline of screen 2026-09-10-0536 F1"))
+  # ...and the scoring-cost gate must precede the first scoring loop
+  # (screen 2026-09-10-0633 F1): the dimension check, then candUp.
+  gateAt <- body[grep("\\.ppTableRefineReps\\s*>\\s*\\.ppTableCellMax", fsCode[body])]
+  candAt <- body[grep("(^|[^A-Za-z0-9._])candUp\\s*<-", fsCode[body])]
+  if (!length(gateAt) || !length(candAt) || min(gateAt) >= min(candAt))
+    note(paste("R/failsafeTable.R: the scoring-cost gate (arms x levels x",
+               ".ppTableRefineReps against .ppTableCellMax) must precede the",
+               "candUp loop - without it a two-candidate block of 200 arms by",
+               "37 levels costs 1,008 MB (screen 2026-09-10-0633 F1)"))
 } else {
   note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must be defined",
              "exactly once, found", length(fillAt)))
