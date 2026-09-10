@@ -909,7 +909,15 @@ validateData <- function(DATA) {
                                names(DATA))
   DATA <- DATA[,c("TRIAL", "ROW", "N", "MEAN", "SD",  "ROUND_MEAN", "ROUND_OBSERVATION", OptionalColumns, CategoryNames, MiscNames)]
   DATA <- DATA[order(DATA$TRIAL, DATA$ROW),]
-  TRIALS <- unique(DATA$TRIAL)
+  # EVERY TRIAL OFFERED, not only those with an analysable row (full
+  # independent audit 2026-09-10, F2): a trial whose every row the
+  # validator left out vanished from the results - no variable, no
+  # Summary, no warning - while another trial in the same file analysed
+  # normally, because this list was built after the exclusion. The engine
+  # is called for such a trial too, finds nothing to simulate, and
+  # reports "No values" with "0 of n rows analysed" and the rows listed.
+  TRIALS <- unique(c(DATA$TRIAL, if (!is.null(Excluded)) Excluded$TRIAL))
+  TRIALS <- TRIALS[order(TRIALS)]
 
   # issues can be non-empty on success (e.g. non-integer values in a
   # would-be category column, filed as Misc): soft warnings, painted but
