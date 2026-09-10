@@ -83,6 +83,24 @@ m <- 100000
 # uppercase, TRIAL, MEASURE (with its drops), DECM, NUMBER, GROUP->ROW
 # fallback, then the ROW grep. Changing the order changes which column
 # wins when several match.
+# THE TRIAL COLUMN, BY THE NORMALISER'S OWN RULE - any name containing
+# TRIAL once upper-cased and trimmed - or NA when there is none. The
+# API's upload reader used to test for the exact spelling "TRIAL" BEFORE
+# normalising, so a lower-case `trial` header, which the user guide
+# promises is accepted, got a SECOND trial column from the file name;
+# the two then collapsed onto one name in validation and the file was
+# refused with the duplicate-name message (independent audit
+# 2026-09-10, F4 - reproduced through the actual /parse and /analyze
+# handlers). One rule, used by the reader and by the normaliser below,
+# so the two cannot disagree; the same lesson as the normaliser itself
+# (two implementations of one rule set is the defect).
+.iaTrialColumn <- function(DATA) {
+  if (is.null(DATA) || is.null(names(DATA)) || !length(names(DATA)))
+    return(NA_character_)
+  i <- grep("TRIAL", toupper(trimws(names(DATA))))
+  if (length(i)) names(DATA)[i[1]] else NA_character_
+}
+
 .iaNormalizeNames <- function(DATA) {
   if (is.null(DATA) || is.null(names(DATA)) || !length(names(DATA)))
     return(DATA)
