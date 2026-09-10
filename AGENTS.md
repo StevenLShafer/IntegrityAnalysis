@@ -210,9 +210,12 @@ replacing the property:
 
 - **Request size**: the app's `shiny.maxRequestSize` does not apply to
   plumber, which buffers a whole multipart body in memory before any
-  handler runs. `inst/api/plumber.R`'s `sizelimit` filter rejects
-  oversized bodies 413 by header, *before* auth, because the body
-  arrives before the handler does.
+  handler runs. The pre-buffer limit is the native
+  `plumber.maxRequestSize` option, which answers an over-declared body
+  413 from the header alone, before auth and before a byte of body is
+  read (verified by an outside audit on 2026-09-10 with a 26 MB
+  declaration and no body); the R-level `sizelimit` filter in
+  `inst/api/plumber.R` is the second line, not the first.
 - **Compute**: `/analyze` refuses a table above `.apiMaxRows` /
   `.apiMaxTrials` before simulating. plumber is single-threaded and the
   Monte Carlo escalates precisely on homogeneous-looking rows, so a
@@ -245,12 +248,23 @@ The standing conclusions of the 2026-08-20 full-repository review:
 - **A malicious document cannot execute code here.** PDFs are parsed by
   poppler (via pdftools), which reads them as data and never runs their
   embedded JavaScript; in the app every parse runs in a subprocess with
-  a 60-second OS timeout, so a crafted PDF can at worst crash or stall
-  its own subprocess. Spreadsheet readers (read.csv, openxlsx, readxl)
+  a 60-second OS timeout (300 seconds when the API call carries an AI
+  key, since the model round trip is inside it), so a crafted PDF can at
+  worst crash or stall its own subprocess. Spreadsheet readers (read.csv, openxlsx, readxl)
   parse data, not code. Nothing in `R/` evaluates constructed code
-  (`eval`, `parse(text=)`, `system`, shell) - the one subprocess
-  launcher (`parseBaselineTableFiles.R`) shQuote()s every argument and
-  runs `Rscript --vanilla`.
+  (`eval`, `parse(text=)`, `system`, shell) - the two subprocess
+  launchers (`parseBaselineTableFiles.R` for the parse child,
+  `parseTatr.R` for the TATR model) shQuote() every argument and run
+  `Rscript --vanilla` / a fixed interpreter on a fixed script.
+- **The console is not a record either** (security audit 2026-09-10,
+  S3). The comments log used to echo every message to stdout by
+  default, so an uploaded file's name and a trial's p survived in the
+  host's captured console after the session that purged everything else
+  had closed. The default is now `interactive()`: a deployed app or
+  service writes nothing to its console; a developer's session still
+  does. The privacy notice's "No record of the analysis is kept here"
+  describes this process; what the hosting platform logs of its own
+  traffic is the platform's.
 - **User text is escaped before it reaches HTML.** The comments log is
   rendered with `HTML()`; every message is escaped at the single entry
   point (`outputComments.R::.escapeHtml`) because uploaded file names
