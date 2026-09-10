@@ -750,7 +750,17 @@
     # `trial` column a second one from the file name, and validation
     # then refused the pair as duplicates. The rule is the normaliser's
     # own, .iaTrialColumn(), so the reader and the gate cannot disagree.
-    if (is.na(.iaTrialColumn(d))) d$TRIAL <- stem
+    # ...and a trial column that is present but BLANK in every cell is
+    # filled the same way, exactly as the wide path above does (screen
+    # 2026-09-10-1119, F1): the two readers written in one commit
+    # disagreed on an empty column, and an all-blank lower-case `trial`
+    # header - which used to be refused as a duplicate - became a trial
+    # called NA whose every row the engine reported as "No values" inside
+    # an ok = TRUE response with no p at all.
+    tr <- .iaTrialColumn(d)
+    if (is.na(tr)) d$TRIAL <- stem
+    else if (all(is.na(d[[tr]]) | !nzchar(trimws(as.character(d[[tr]])))))
+      d[[tr]] <- stem
     list(ok = TRUE, data = d, skipped = NULL, flags = character(0),
          engine = "template")
   } else {
