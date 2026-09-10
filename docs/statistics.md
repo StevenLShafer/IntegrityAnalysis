@@ -71,7 +71,12 @@ themselves alike (the trial-level combination compares its Stouffer sums
 with exact equality instead, since the observed sum and a tied
 replicate's accumulate the same row values in the same order and come
 out bit-identical), and a statistic that is zero up to floating-point
-dust is zero.
+dust is zero. What counts as dust is a property of the printed grid
+alone: 10⁻¹² of the square of the finest printed step of the row's
+means. Nothing about the observed arms enters it — the smallest
+statistic two distinct readings on that grid can produce is at least
+half the step squared, eleven orders above it, so distinct attainable
+values are never merged however far apart the printed arms are.
 
 The equality that matters most does not rely on that tolerance at all.
 A replicate whose arms all drew the same value is translated by its own

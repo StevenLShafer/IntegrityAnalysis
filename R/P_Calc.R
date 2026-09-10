@@ -530,46 +530,50 @@
 # Nothing refused those rows: the resolution refusal, the stated-grid
 # check and the validator's ceiling all pass.
 #
-# Scaling the tolerance to the TRANSLATED deviations fixes both
-# directions at once. dd is already measured from the first arm's printed
-# value, so the tolerance inherits the statistic's own invariances: add a
-# constant and dd does not move, scale by k and both sides move by k^2.
-# When every mean agrees, dd is all zeros and the tolerance is exactly
-# zero - which is right, because since the translation of screen
-# 2026-09-07-1459 identical means give exactly zero anyway and the snap
-# is a guard, not the mechanism. 1e-12 sits far above the float dust in
-# these sums and far below a grid step squared.
-# The screen proposed 1e-12 * max(dd^2) alone. That is invariant, but it
-# collapses to EXACTLY ZERO when the arms agree - which is the one case
-# the snap exists for. Measured: it moved a pinned value in
-# test-sd-rounding-draw.R (two arms of 30, means tied at 2.3, SD printed
-# "1") by 0.013, because with the tolerance at zero the replicates whose
-# arms all drew the same mean stopped counting as ties.
+# The 1048 fix scaled the tolerance to the TRANSLATED deviations of the
+# observed row, 1e-12 * max(dd^2), floored at 1e-12 * step^2 so that it
+# did not collapse to exactly zero when the arms agree - which, until the
+# 2026-09-09 audit's F6, was the one case the snap existed for.
 #
-# THAT REASON NO LONGER APPLIES TO TIED ARMS (security screen
-# 2026-09-09-1614, F2). It read: "the observed row is exactly zero after
-# translation, but a REPLICATE is translated by the OBSERVED first arm,
-# so its N-weighted centre of equal drawn values is not bitwise equal to
-# them and leaves dust." Since the 2026-09-09 audit's F6 each replicate
-# is translated by ITS OWN first arm, so that case is structurally zero
-# and produces no dust to forgive. The floor STAYS: it now guards dust
-# from every other source - arms that differ, and the median branch's
-# metalog draw - and the measurement above that motivated it was taken
-# under the old arithmetic, so removing it would need its own
-# measurement, not an inference from this one.
+# THE OBSERVED TERM IS GONE (independent audit 2026-09-10, F1). It made
+# what counts as zero in an ordinary SIMULATED null depend on how far
+# apart the OBSERVED arms are: a row printing 0 and 10,000,000 (four
+# decimals, arms of 100) set the tolerance to 100, every one of its
+# 100,000 replicate statistics (range 0 to 0.19, 4,292 distinct integer
+# distances, 31 genuine zeros) snapped to zero, and the row's null
+# contributed a constant z where it should have contributed its rank.
+# The observed row itself was nowhere near zero, so its own contribution
+# stayed - the observed combination and its null no longer described
+# the same calculation, and the trial p read 0.00609 where an
+# integer-distance reference on the same draws gives 0.01979: an
+# accusing-direction crossing of 0.01 manufactured by the guard. The
+# audit's repair target is followed: the observed range must not erase
+# simulated variation, and any residual guard must be bounded by the
+# arithmetic of the statistic and preserve distinct attainable values.
 #
-# The printed grid step is the floor, and it has the invariances the
-# origin did not: it does not move when a constant is added to every arm,
-# and it scales with the units exactly as the statistic does. The finest
-# step is used, so the tolerance is the smallest one that still catches
-# dust: at one printed decimal it is 1e-14, some fourteen orders below a
-# real statistic on that grid and some fourteen above the dust.
-.iaZeroSnapTol <- function(dd, h = numeric(0)) {
-  d2 <- dd[is.finite(dd)]^2
+# WHAT REMAINS is the printed grid alone: 1e-12 times the square of the
+# finest printed step of the row's means. Since F6 every replicate is
+# translated by its own first arm, so arms that drew the same rounded
+# mean are the same double and their statistic is structurally zero -
+# no dust arises to be forgiven, and the audit measured the p bit-
+# identical with the snap removed entirely (continuous, median, unequal
+# N). The floor is kept as the guard it was always meant to be, and it
+# is inert by construction: the statistic is a sum of squared deviations
+# from the N-weighted centre of means on the printed grid, and the
+# smallest value two DISTINCT readings on that grid can produce is at
+# least half the step squared (one arm a step from the rest: the two
+# deviations are step*(1 - w) and step*w with w its share of N, whose
+# squares sum to at least step^2/2) - eleven orders above the tolerance
+# - while the floating error in these sums is many orders below it. So
+# mathematically equal statistics are not split and distinct ones are
+# never merged, at any origin, in any units, whatever the observed arms
+# say. The step has the invariances an origin did not: it does not move
+# when a constant is added to every arm, and it scales with the units
+# exactly as the statistic does.
+.iaZeroSnapTol <- function(h = numeric(0)) {
   hh <- h[is.finite(h) & h > 0]
-  parts <- c(if (length(d2)) max(d2) else 0,
-             if (length(hh)) min(hh)^2 else 0)
-  1e-12 * max(c(parts, 0))
+  if (!length(hh)) return(0)
+  1e-12 * min(hh)^2
 }
 
 # the finest printed step among the arms' stated mean precisions, which is
@@ -1130,8 +1134,9 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          zt <- .iaZeroSnapTol(dd, .iaMeanStep(ROWS$ROUND_MEAN))     # ONE binding: the note and the
-                                       # engine cannot drift apart
+          zt <- .iaZeroSnapTol(.iaMeanStep(ROWS$ROUND_MEAN))         # ONE binding: the note and the
+                                       # engine cannot drift apart; the
+                                       # printed step only (audit 2026-09-10 F1)
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "median",
                          note = { same <- isTRUE(DiffSample <= zt)
                                   nt <- c(skewNote,
@@ -1340,7 +1345,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
             }
             out
           }
-          zt <- .iaZeroSnapTol(dd, .iaMeanStep(ROWS$ROUND_MEAN))     # ONE binding, see the median branch
+          zt <- .iaZeroSnapTol(.iaMeanStep(ROWS$ROUND_MEAN))         # ONE binding, see the median branch
           simRow <- list(simulate = simulate, obs = DiffSample, kind = "continuous",
                          note = { same <- isTRUE(DiffSample <= zt)
                                   nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),

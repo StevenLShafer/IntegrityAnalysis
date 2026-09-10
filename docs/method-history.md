@@ -1013,6 +1013,57 @@ place: **an exact property should be arranged structurally, not defended
 with a tolerance.** A tolerance has to be tuned against two moving
 quantities, and here one of them was under the manuscript's control.
 
+## 2026-09-10 — the zero-snap floor is the printed grid's alone
+
+Independent audit 2026-09-10, finding F1 (P1). The one moving quantity
+the entry above left in the tolerance was the observed row itself, and
+the audit showed a manuscript moving a trial p across 0.01 with it.
+
+**What was wrong.** The tolerance was `1e-12 × max(largest observed
+translated arm difference², finest printed step²)`, applied to every
+simulated statistic before ranking. An unusually large *observed* arm
+difference therefore decided what counted as zero in an otherwise
+ordinary *simulated* null. The audit's construction is three rows of two
+arms of 100, SD 1, four printed decimals: row X prints means 0 and
+10,000,000, rows Y and Z print 0 and 0. Row X's tolerance came out at
+100; its 100,000 replicate statistics range from 0 to 0.19 (4,292
+distinct integer arm distances, 31 genuine zeros) and every one of them
+snapped to zero, so X's null contributed a constant z to the
+combination where it should have contributed its rank. The observed
+statistic of X was nowhere near zero, so its own contribution stayed —
+the observed combination and its null no longer described the same
+calculation.
+
+**Measured.** Through CSV upload, the API's analysis route, validation
+and the engine, seed 42, 100,000 replicates: trial p **0.00609**. An
+integer-distance reference on the *same draws* — the statistic is
+`(mean₁ − mean₂)²/2` for equal arms, and the printed means sit on the
+0.0001 grid, so `round(sqrt(2·stat)/0.0001)` recovers an exact integer
+distance that ordinary integer ranking then combines without any
+tolerance — gives **0.01979** (1,979 of 100,000 strictly beyond, no
+ties). Collapsing only row X reproduces the production 609. Setting the
+tolerance to zero in a diagnostic copy gave 0.01978. Reducing X's
+difference to 1,000 gave 0.0196 in production: the alarm was caused by
+making X *more* heterogeneous, which is the accusing direction, and it
+was manufactured by the guard.
+
+**What changed.** `.iaZeroSnapTol()` takes only the printed step:
+`1e-12 × min(step)²`, and zero when no precision is stated. The
+observed deviations no longer enter it. Since the entry above, a
+replicate whose arms drew the same rounded mean is structurally zero, so
+no dust arises to be forgiven; the audit measured the repaired
+continuous, median and unequal-N cases bit-identical with the snap
+removed entirely. The floor is kept as the guard it was always meant to
+be, and it is inert by construction: the smallest statistic two distinct
+readings on the printed grid can produce is at least half the step
+squared (one arm a step from the rest gives deviations `step·(1 − w)`
+and `step·w`, whose squares sum to at least `step²/2`), eleven orders
+above the tolerance, while the floating error in the sums is many orders
+below it. The audit's three-row CSV, run through the same route with the
+same seed, now reads inside the reference's interval
+(`tests/testthat/test-audit-2026-09-10-f1.R`), and the ordinary pinned
+rows are unchanged.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
