@@ -1159,6 +1159,16 @@ adequate computing horsepower — can directly implement `P_Calc.R` to
 perform the Monte Carlo analysis:
 <https://github.com/StevenLShafer/IntegrityAnalysis/blob/main/R/P_Calc.R>
 
+One more shape is refused: a trial in which many rows repeat identical
+inputs (the same N, mean, SD and precision, or the same category
+counts). Rows whose simulated null is the same distribution share one
+mapping from statistic to p (see [statistics.md](statistics.md)), and a
+trial whose such rows would together need more than 10,000,000 held
+draws at the final stage - a hundred identical rows at 100,000
+replicates - is refused before any simulation, with the reason. A real
+baseline table never has that shape; split the table or remove the
+repeated rows.
+
 The limit applies wherever IntegrityAnalysis runs: the web app flags the
 offending arm (the N cell, or the category counts whose total exceeds
 the ceiling) and declines to analyze, and the REST service refuses the

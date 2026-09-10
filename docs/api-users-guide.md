@@ -382,6 +382,7 @@ whichever it sent.
 | parse time | 60 s per document (300 s with the AI assist) | 422 (`stage: "parse"` from `/analyze`) |
 | table | 5,000 rows, 200 columns, 200 trials, arm N up to 5,000 | 422, `stage: "too_large"` |
 | compute | 12 billion simulated values per request (the worst case of every row escalating to 100,000 replicates, times the subjects each row draws); precision is never reduced to fit | 422, `stage: "too_large"`, code `too_much_compute`, with the arithmetic and the advice (one trial per request; or the web app, which has no request timeout) in `detail` |
+| rows sharing one null law | 10,000,000 held draws at the final stage for the rows of a trial whose simulated null is the same distribution as another row's (identical inputs, or the same category margins) — a hundred such rows at 100,000 replicates; a table of that shape is not a baseline table | 422, `stage: "analysis"`, code `error`, the reason in `note` — refused before a draw is made |
 | journal tables | 200,000 cells across the reply | omitted, with `journalTablesOmitted` set |
 | `flags` | 50 entries, each 2 KiB | truncated, with `...N further flag(s) truncated` as the last entry and ` ...truncated` ending a cut string |
 | `skipped` (`/parse`) | 200 entries, each field 2 KiB | truncated, with a final entry whose `label` reads `...N further line(s) omitted` |
