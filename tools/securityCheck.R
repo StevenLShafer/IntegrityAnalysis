@@ -720,15 +720,29 @@ if (!length(setdiff(grep("\\.ppTableRankMax", fsCode), rankDef)))
   note(paste("R/failsafeTable.R: .ppTableRankMax is defined but never used -",
              "the bound on how many nulls are simulated is not in force",
              "(screens 2026-09-08-2100 F1, 2026-09-09-0721 F1)"))
-# a `for (k in keys)` regression would have walked past the apply-only
-# form this used to look for (screen 2026-09-09-1532, observation 2)
-sweep <- grep("((vapply|sapply|lapply)\\s*\\(\\s*keys|for\\s*\\(\\s*[A-Za-z._]+\\s+in\\s+(keys|seq_along\\s*\\(\\s*keys))",
-              fsCode, value = TRUE)
-if (any(grepl("\\.ppTableP", sweep)))
-  note(paste("R/failsafeTable.R: .ppTableP() is called across every group",
-             "again - that is the 190 s parse the ranking replaced",
-             "(screen 2026-09-09-0721 F1) -",
-             paste(trimws(sweep), collapse = " | ")))
+# THE POSITIVE PROPERTY, because matching the bad shapes did not work
+# (security screen 2026-09-10-0536, F4). The previous spelling matched the
+# LOOP HEADER line and then looked for .ppTableP on that same line, so it
+# caught only a one-line regression: `for (k in keys) {` with the call in
+# a braced body - the way anyone would actually write it back in - walked
+# straight past, and so did a multi-line vapply. An assertion whose
+# comment claims coverage it does not have is the shape AGENTS.md records
+# as one of this project's worst defects.
+#
+# So instead of enumerating what is forbidden, this pins what is required:
+# every .ppTableP() call in the file sits on a line that iterates one of
+# the four bounded candidate sets. Any sweep over `keys`, in any spelling,
+# fails it. Mutation-verified against the four shapes the screen listed.
+ppLines <- grep("\\.ppTableP\\s*\\(", fsCode, value = TRUE)
+ppDef   <- grep("^\\s*\\.ppTableP\\s*<-", fsCode, value = TRUE)
+ppCalls <- setdiff(ppLines, ppDef)
+bounded <- grepl("for\\s*\\(\\s*i\\s+in\\s+(candUp|candDn|topUp|topDn)\\s*\\)", ppCalls)
+if (!length(ppCalls) || !all(bounded))
+  note(paste("R/failsafeTable.R: every .ppTableP() call must sit on a line",
+             "that iterates candUp/candDn/topUp/topDn - a call outside those",
+             "bounded sets is a sweep over every group, which is the 190 s",
+             "parse the ranking replaced (screens 2026-09-09-0721 F1 and",
+             "-1532) -", paste(trimws(ppCalls[!bounded]), collapse = " | ")))
 # and the enumeration must still count before it builds (2100 F1)
 avDef  <- grep("^\\s*\\.ppArmVectorCount\\s*<-", fsCode)
 avCall <- setdiff(grep("\\.ppArmVectorCount\\s*\\(", fsCode), avDef)

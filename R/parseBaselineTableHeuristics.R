@@ -1285,10 +1285,17 @@
                 "Best case p ~ %.3g; worst case p %s%s"),
           paste(txtNote, collapse = "; "),
           format(res$nTables, big.mark = ","),
-          # the number actually scored, which the fill computes and this
-          # sentence used to recompute - and got wrong, because groups are
-          # scored at BOTH ends (screen 2026-09-09-1532, observation 1)
-          format(res$nScored, big.mark = ","),
+          # PER END, because that is what "at each extreme" says (security
+          # screen 2026-09-10-0536, F3). The previous screen's observation
+          # was that this number was recomputed here rather than taken from
+          # the fill; taking res$nScored instead was wrong in the other
+          # direction, because nScored counts the union of BOTH ends - 51,
+          # 68, 81, even 100 where 50 are scored at each - so the sentence
+          # overstated how much of the page had been searched, by up to
+          # twice. The engine spends min(nNulls, .ppTableRankMax) at each
+          # end, and that expression is right in both regimes: below the
+          # cap the two ends are the same full set.
+          format(min(res$nNulls, .ppTableRankMax), big.mark = ","),
           res$pBest,
           # an inequality when the worst case is the Monte Carlo floor
           # rather than an estimate (security screen 2026-09-08-2100, F5)

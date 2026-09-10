@@ -247,7 +247,38 @@ m <- 100000
 # is_category() stops seeing a count column. Reading them as text also
 # stops a trial named "T" becoming the logical TRUE.
 .iaReadCsvKeepingText <- function(path, ...) {
-  d <- utils::read.csv(path, colClasses = "character", ...)
+  # THE FILE IS DECODED BEFORE ANYTHING TOUCHES IT (security screen
+  # 2026-09-10-0536, F2). The previous attempt at this substituted the
+  # undecodable bytes into a LOCAL copy used only for the keepText test,
+  # and left the frame carrying the raw bytes - so the very next call,
+  # .iaNormalizeNames(), ran toupper() on them and raised exactly the
+  # error the fix was written to avoid. The reported symptom - a
+  # non-English Excel export refused with the wrong reason - still
+  # reproduced, and the test could not see it because it stopped at this
+  # function. Three routes had to be covered, not one:
+  #
+  #   * the HEADER, which .iaNormalizeNames() folds one call later;
+  #   * the VALUES, which trimws() below folds - a trial named "Größe"
+  #     raised there and the earlier fix did not touch the value path;
+  #   * the Shiny route, which calls this WITHOUT check.names = FALSE, so
+  #     read.csv()'s own make.names() raised before any of our code ran.
+  #
+  # So the read is always check.names = FALSE - the only spelling that
+  # lets the raw bytes reach us intact - everything is decoded with
+  # sub = "byte", and make.names() is applied afterwards when the caller
+  # wanted it. Undecodable bytes become printable escapes, which means
+  # such a column simply never matches a value-column name: the right
+  # answer, since it is not one of them.
+  dots <- list(...)
+  wantCheckNames <- !identical(dots[["check.names"]], FALSE)
+  dots[["check.names"]] <- FALSE
+  d <- do.call(utils::read.csv,
+               c(list(path, colClasses = "character"), dots))
+  san <- function(x) iconv(x, from = "", to = "UTF-8", sub = "byte")
+  names(d) <- san(names(d))
+  for (j in seq_along(d)) if (is.character(d[[j]])) d[[j]] <- san(d[[j]])
+  if (wantCheckNames && ncol(d))
+    names(d) <- make.names(names(d), unique = TRUE)
   keepText <- c("MEAN", "SD", "SE", "Q1", "Q3")
   # THE NAME IS NORMALISED HERE, AND THE COLUMNS ARE TAKEN BY POSITION
   # (security screen 2026-09-09-0721, F3 and F5). Two defects, one line.
@@ -268,17 +299,9 @@ m <- 100000
   # spreadsheet export with an unnamed index column into "could not read
   # this as a template or journal-style table". By position it is also
   # correct for duplicated headers.
-  # A SANITISED COPY IS FOLDED, NOT THE RAW BYTES (security screen
-  # 2026-09-09-1532, F4). With check.names = FALSE - the API's spelling -
-  # the raw header bytes survive read.csv(), and both toupper() and
-  # trimws() raise "invalid multibyte string" on them in a UTF-8 locale.
-  # A Latin-1 or Windows-1252 export, the ordinary output of a non-English
-  # Excel, was then refused by the API with the wrong reason. Substituting
-  # the undecodable bytes means such a header simply never matches
-  # keepText, which is the right answer: it is not one of the value
-  # columns. Availability only, and only for honest users - which is
-  # exactly what the F5 fixed on the line above was.
-  nms <- toupper(trimws(iconv(names(d), from = "", to = "UTF-8", sub = "byte")))
+  # the names are already decoded on the frame above, so this fold is
+  # safe (screen 2026-09-09-1532 F4, completed by 2026-09-10-0536 F2)
+  nms <- toupper(trimws(names(d)))
   for (j in seq_along(d)) {
     if (nms[j] %in% keepText) next
     v <- trimws(d[[j]])

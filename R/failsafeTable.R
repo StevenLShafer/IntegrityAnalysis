@@ -440,23 +440,50 @@
   }, add = TRUE)
   set.seed(.ppTableSeed)
 
-  vecs <- vector("list", length(keep))
+  # COUNT EVERY ARM BEFORE BUILDING ANY (security screen 2026-09-10-0536,
+  # F1) - the same "count first, build second" move .ppArmVectors() already
+  # makes one level down, which this loop was defeating one level up.
+  #
+  # The cell budget added by screen 1532 bounds ONE arm's enumeration. This
+  # loop built an arm at a time and RETAINED each in `vecs`, and only then
+  # computed prod(sizes) and declined, so nothing charged the sum. The arm
+  # count is the number of numeric columns the uploaded table has, and the
+  # readers admit up to .ppMaxTableCols (200). A JATS table of arms at
+  # exactly .iaMaxArmN, with three integer-percentage levels and 34 more
+  # pinned at two decimals - width 1, free under a product cap - puts each
+  # arm at 132,651 x 37 = 4.9M cells, just inside the per-arm budget, and
+  # then multiplies it by the arm count:
+  #
+  #    30 arm columns (46 KB of XML)     855 MB    4.8 s   then declined
+  #    60 arm columns (91 KB of XML)   1,636 MB    9.4 s   then declined
+  #
+  # Every byte of it to compute prod(sizes), which is Inf past a couple of
+  # arms and is thrown away. The subprocess timeout does not stop it: the
+  # 200-column ceiling the readers already allow extrapolates to about 5 GB
+  # peak in roughly 31 s, and the parse child still has no memory ceiling
+  # (ISSUES 32), so on a 1 GB instance that is the container's OOM rather
+  # than a decline.
+  #
+  # The counts are cheap: a product of widths without the partition
+  # constraint, constant time for the two-level partition case, and bounded
+  # by .ppArmVectorDpMax past that. On the 60-arm case prod() is Inf and the
+  # block declines in microseconds.
+  bracket <- vector("list", length(keep))
+  counts  <- numeric(length(keep))
   for (k in seq_along(keep)) {
     i <- keep[k]
     l <- ifelse(amb[i, ], lo[i, ], cnt[i, ])
     h <- ifelse(amb[i, ], hi[i, ], cnt[i, ])
     if (anyNA(l) || anyNA(h))
       return(out(FALSE, "a cell has no bracket"))
-    v <- .ppArmVectors(as.integer(l), as.integer(h), N[i], partition,
-                       .ppTableEnumMax)
-    if (is.null(v) || !nrow(v))
+    bracket[[k]] <- list(l = as.integer(l), h = as.integer(h), N = N[i])
+    counts[k] <- .ppArmVectorCount(as.integer(l), as.integer(h), N[i], partition)
+    if (!is.finite(counts[k]) || counts[k] <= 0 || counts[k] > .ppTableEnumMax)
       return(out(FALSE, sprintf(
         "one arm alone allows more readings than can be enumerated (over %s)",
         format(.ppTableEnumMax, big.mark = ","))))
-    vecs[[k]] <- v
   }
-  sizes <- vapply(vecs, nrow, integer(1))
-  total <- prod(as.numeric(sizes))
+  total <- prod(counts)
   if (!is.finite(total) || total > .ppTableEnumMax)
     return(out(FALSE, sprintf(
       "the page allows about %s readings, more than can be enumerated (over %s)",
@@ -464,6 +491,24 @@
         format(signif(total, 3), scientific = TRUE)
       else format(signif(total, 3), big.mark = ",", scientific = FALSE),
       format(.ppTableEnumMax, big.mark = ","))))
+  # ...and the cell budget bounds the BLOCK, not each arm on its own. The
+  # per-arm check inside .ppArmVectors() stays as defence in depth.
+  if (sum(counts) * ncol(cnt) > .ppTableCellMax)
+    return(out(FALSE, sprintf(
+      "this block is too wide to read: %s arm(s) of readings across %d levels is more than can be held at once",
+      format(length(keep), big.mark = ","), ncol(cnt))))
+
+  vecs <- vector("list", length(keep))
+  for (k in seq_along(keep)) {
+    b <- bracket[[k]]
+    v <- .ppArmVectors(b$l, b$h, b$N, partition, .ppTableEnumMax)
+    if (is.null(v) || !nrow(v))
+      return(out(FALSE, sprintf(
+        "one arm alone allows more readings than can be enumerated (over %s)",
+        format(.ppTableEnumMax, big.mark = ","))))
+    vecs[[k]] <- v
+  }
+  sizes <- vapply(vecs, nrow, integer(1))
 
   # Group by BOTH margins (audit 2026-09-09, F7). The monotonicity that
   # lets a group be represented by its extreme tables - same null, so the
