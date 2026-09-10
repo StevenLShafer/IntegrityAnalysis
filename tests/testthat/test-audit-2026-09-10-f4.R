@@ -29,7 +29,11 @@ writeCsv <- function(lines, name) {
 # the endpoint functions, from the audited file, without HTTP transport,
 # authentication or multipart decoding (the audit's own harness)
 handlers <- local({
-  ast <- parse(test_path("..", "..", "inst", "api", "plumber.R"), keep.source = FALSE)
+  # the installed package under R CMD check has api/plumber.R; a source
+  # checkout under load_all resolves the same path through inst/
+  plumberFile <- system.file("api", "plumber.R", package = "IntegrityAnalysis")
+  if (!nzchar(plumberFile)) plumberFile <- test_path("..", "..", "inst", "api", "plumber.R")
+  ast <- parse(plumberFile, keep.source = FALSE)
   funs <- lapply(Filter(function(x) is.call(x) && identical(x[[1]], as.name("function")),
                         as.list(ast)), eval)
   upload <- Filter(function(f) "file" %in% names(formals(f)), funs)
