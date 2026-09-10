@@ -173,6 +173,27 @@ validateData <- function(DATA) {
   # shared function stays a pure renaming and the API gates cannot
   # acquire a hidden column as a side effect of being gated.
   if (!("TRIAL" %in% names(DATA))) DATA$TRIAL <- 1
+  # A TRIAL column that is present but blank in EVERY cell is the same as
+  # an absent one - a header the file spelled and never filled - and
+  # defaults the same way. A column blank in SOME cells is refused, cell
+  # by cell: an NA identifier made a trial called NA whose every row the
+  # engine reported as "No values", and the API wrapped that in an
+  # ok = TRUE response with overallP null - a submission with a success
+  # envelope and no verdict (screen 2026-09-10-1119, F1). The rows are
+  # indexed on the frame as given, before the long layout is converted,
+  # which is the frame the grid and the API's template show.
+  trialBlank <- is.na(DATA$TRIAL) | !nzchar(trimws(as.character(DATA$TRIAL)))
+  if (length(trialBlank) && all(trialBlank)) {
+    DATA$TRIAL <- 1
+  } else if (any(trialBlank)) {
+    for (i in which(trialBlank))
+      addIssue(i, "TRIAL", "missing",
+               paste("the TRIAL cell is blank: every line names its trial, or the",
+                     "column is left out and the file name (or 1) is used"))
+    outputComments(paste0("The TRIAL column is blank on ", sum(trialBlank),
+                          " line(s). Fill it in, or remove the column."))
+    FAIL <- TRUE
+  }
   # The long categorical layout (one line per level, count in N) becomes
   # the wide one here, so every check below sees one layout. Both are
   # accepted; the grid, the workbook and the API emit the wide one.
@@ -292,7 +313,7 @@ validateData <- function(DATA) {
   # instead of reporting the structural failure. This is the bare-FAIL
   # return shape the server already guards for (is.null(v$DATA)).
   if (FAIL)
-    return(list(FAIL = TRUE))
+    return(list(FAIL = TRUE, issues = issueFrame()))   # the cell issues, if any (1119)
 
   # FIX: force N, MEAN, and SD to numeric. Excel/CSV files with a stray
   # text cell make the whole column character, and character data in the
