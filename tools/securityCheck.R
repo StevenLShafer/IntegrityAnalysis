@@ -26,6 +26,29 @@ note <- function(msg) fail <<- c(fail, msg)
 
 rFiles <- list.files("R", pattern = "[.]R$", full.names = TRUE)
 srcOf <- function(f) readLines(f, warn = FALSE)
+# Comments removed by the TOKENIZER, not by a regex (screen 2026-09-10-1050,
+# F2): sub("#.*$", "") blinded every pattern on the rest of a line after a
+# `#` inside a string literal - forty-two such lines exist in R/ today (CSS
+# colours, HTML entities) - so a banned primitive after a colour string on
+# the same line was invisible to group 1, and a rebinding after one was
+# invisible to the pins below. Each COMMENT token's span is blanked in
+# place, so line numbers are unchanged. A file that does not parse falls
+# back to the regex AND is reported, so the check fails closed.
+codeLinesOf <- function(f) {
+  src <- readLines(f, warn = FALSE, encoding = "UTF-8")
+  pd <- tryCatch(utils::getParseData(parse(f, keep.source = TRUE, encoding = "UTF-8")),
+                 error = function(e) NULL)
+  if (is.null(pd)) {
+    note(sprintf("%s: does not parse, so its comments were stripped by regex", f))
+    return(sub("#.*$", "", src))
+  }
+  cm <- pd[pd$token == "COMMENT", , drop = FALSE]
+  for (k in seq_len(nrow(cm))) {
+    l <- cm$line1[k]
+    substr(src[l], cm$col1[k], cm$col2[k]) <- strrep(" ", cm$col2[k] - cm$col1[k] + 1L)
+  }
+  src
+}
 
 ## 1 - code execution primitives -----------------------------------------
 # system2 is allowed ONLY in the reviewed subprocess launcher; everything
@@ -59,8 +82,7 @@ banned <- c("\\bsystem\\s*\\(",
             "[\"']DTDATTR[\"']",
             "[\"']XINCLUDE[\"']")
 for (f in rFiles) {
-  src <- srcOf(f)
-  code <- sub("#.*$", "", src)          # comments may NAME the patterns
+  code <- codeLinesOf(f)                     # comments may NAME the patterns
   for (pat in banned) {
     hit <- grep(pat, code)
     if (length(hit))
@@ -96,7 +118,7 @@ for (f in rFiles) {
   }
 }
 if (file.exists("R/parseTatr.R")) {
-  tr  <- sub("#.*$", "", srcOf("R/parseTatr.R"))
+  tr  <- codeLinesOf("R/parseTatr.R")
   run <- grep("^\\.ppTatrRun\\s*<-\\s*function", tr)
   body <- if (length(run)) tr[run[1]:min(run[1] + 40, length(tr))] else character(0)
   if (!any(grepl("timeout\\s*=\\s*timeout", body)))
@@ -118,10 +140,10 @@ if (file.exists("R/parseTatr.R")) {
   dbody <- if (length(disc)) tr[min(disc):min(max(disc) + 12, length(tr))] else character(0)
   if (any(grepl("tatrenv|path\\.expand|getwd\\(", dbody)))
     note("R/parseTatr.R: the model is discovered from the home directory or cwd, not configuration (screen F2)")
-  pf <- sub("#.*$", "", srcOf("R/parseBaselineTableFiles.R"))
+  pf <- codeLinesOf("R/parseBaselineTableFiles.R")
   if (!any(grepl("TMPDIR = childTmp", pf, fixed = TRUE)) || !any(grepl("unlink(childTmp", pf, fixed = TRUE)))
     note("R/parseBaselineTableFiles.R: the parent no longer owns and removes the child's tempdir (screen F4)")
-  ut <- sub("#.*$", "", srcOf("R/utils.R"))
+  ut <- codeLinesOf("R/utils.R")
   # Since 2026-09-06 (repeat outside screen, F3) the page-size cap lives in
   # ONE gate, .ppRenderablePages(), which every rasteriser must call: local
   # OCR in utils.R and the AI route's .ppPageImagesB64() in aiFallback.R.
@@ -134,7 +156,7 @@ if (file.exists("R/parseTatr.R")) {
   if (!any(grepl("\\.ppRenderablePages\\(", obody)))
     note("R/utils.R: .ppOcrPages() rasterises pages without .ppRenderablePages() (screen F1)")
   if (file.exists("R/aiFallback.R")) {
-    af <- sub("#.*$", "", srcOf("R/aiFallback.R"))
+    af <- codeLinesOf("R/aiFallback.R")
     ap <- grep("^\\.ppPageImagesB64\\s*<-\\s*function", af)
     abody <- if (length(ap)) af[ap[1]:min(ap[1] + 12, length(af))] else character(0)
     if (!any(grepl("\\.ppRenderablePages\\(", abody)))
@@ -150,7 +172,7 @@ if (file.exists("R/parseTatr.R")) {
 # BYTES with NOBLANKS alone; the bytes are read only after .ppJatsOK()
 # has judged size and gzip magic; and both cell parsers clamp spans.
 if (file.exists("R/parseJats.R")) {
-  js <- sub("#.*$", "", srcOf("R/parseJats.R"))
+  js <- codeLinesOf("R/parseJats.R")
   calls <- grep("read_xml\\s*\\(", js)
   if (length(calls) != 1L ||
       !grepl("read_xml\\(bytes,\\s*options\\s*=\\s*\"NOBLANKS\"\\)", js[calls[1]]))
@@ -211,12 +233,12 @@ if (file.exists("R/parseJats.R")) {
     note("R/parseJats.R: .ppDocxLines() runs for every table before ranking - it must run once, inside the candidate loop")
 }
 if (file.exists("R/parseDocx.R")) {
-  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  dx <- codeLinesOf("R/parseDocx.R")
   if (!any(grepl("\\.ppClip\\(txt,\\s*\\.ppMaxCellChars\\)", dx)))
     note("R/parseDocx.R: .ppDocxTextLine() no longer clips a cell to .ppMaxCellChars")
 }
 if (file.exists("R/parseDocx.R")) {
-  dx <- sub("#.*$", "", srcOf("R/parseDocx.R"))
+  dx <- codeLinesOf("R/parseDocx.R")
   if (!any(grepl("pmin\\(span,\\s*\\.ppMaxCellSpan\\)", dx)))
     note("R/parseDocx.R: gridSpan is no longer clamped to .ppMaxCellSpan (screen F2)")
 }
@@ -240,7 +262,7 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
   # comments stripped first: a commented-out copy of the condition must
   # not satisfy the check (screen 2026-09-07-0702, I2 - the failure mode
   # AGENTS.md records for an earlier pin)
-  src <- sub("#.*$", "", srcOf(wf))
+  src <- sub("#.*$", "", srcOf(wf))   # YAML, not R: the regex is right here
   if (any(grepl("^\\s*workflow_run:", src)) &&
       !any(grepl("workflow_run\\.event\\s*==\\s*'push'", src) &
            grepl("head_repository\\.full_name\\s*==\\s*github\\.repository", src)))
@@ -255,7 +277,7 @@ for (wf in list.files(".github/workflows", pattern = "[.]ya?ml$",
 # -1907 F1/F2, both rated high). P_Calc's gate must test all three columns
 # and the degenerate all-zero row; comments are stripped first, so a
 # commented-out call does not satisfy the check.
-pc <- sub("#.*$", "", srcOf("R/P_Calc.R"))
+pc <- codeLinesOf("R/P_Calc.R")
 for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
              "\\.iaZeroRowGridOK\\s*\\(", "\\.iaSdReachesGrid\\s*\\("))
   # the pattern matches CALLS only ("name(" ), never the definition
@@ -277,7 +299,7 @@ for (fn in c("\\.iaOnStatedGrid\\s*\\(", "\\.iaObservationGridOK\\s*\\(",
 # thousands of "Trial:" blocks and a per-block cap bounds nothing
 # (screen 2026-09-07-2101, F4 - which also predicted that this pin would
 # trip on the correct fix, as it did).
-as_ <- sub("#.*$", "", srcOf("R/app_server.R"))
+as_ <- codeLinesOf("R/app_server.R")
 if (!any(grepl(".iaCapSkippedFile(", as_, fixed = TRUE)) ||
     !any(grepl("r$skipped <- .iaCapSkipped(", as_, fixed = TRUE)))
   note(paste("R/app_server.R: one of the two skipped-line producers no longer",
@@ -637,7 +659,7 @@ if (file.exists("R/utils.R")) {
 # come back. The categorical branch is the one legitimate literal - a
 # contingency-table statistic has no floating-point dust to snap, so it
 # passes zeroTol = 0 and is allowed by name.
-pcCode <- sub("#.*$", "", srcOf("R/P_Calc.R"))
+pcCode <- codeLinesOf("R/P_Calc.R")
 zeroTolLines <- grep("zeroTol\\s*=", pcCode, value = TRUE)
 badLit <- grep("zeroTol\\s*=\\s*0\\s*\\)", zeroTolLines,
                value = TRUE, invert = TRUE)
@@ -740,7 +762,7 @@ for (nm in c("MCMean", "MCMed")) {
 # .ppTableP() is never called from a vapply/sapply/lapply over `keys`.
 # The wall-clock budget itself is asserted at runtime in
 # tests/testthat/test-screen-2026-09-09.R, which fails without the bound.
-fsCode <- sub("#.*$", "", srcOf("R/failsafeTable.R"))
+fsCode <- codeLinesOf("R/failsafeTable.R")
 rankDef <- grep("^\\s*\\.ppTableRankMax\\s*<-", fsCode)
 if (length(rankDef) != 1L)
   note(paste("R/failsafeTable.R: .ppTableRankMax must be defined exactly",
@@ -906,77 +928,82 @@ if (length(fillAt) == 1L) {
   # known to partition the arm. A dead statement beside it, guarded or
   # not, is not the right-hand side; a second assignment is one too
   # many; assign("rowTotal", ...) is refused by name below.
-  # ...and by structure ALL THE WAY DOWN (screen 2026-09-10-1031, F1).
-  # The parse-tree pin of screen 0955 counted arrow and `=` assignments
-  # only, so six rebinding shapes passed it with the N-based total in
-  # force - `rowTotal[] <-`, `rowTotal[seq_along(rowTotal)] <-`,
-  # `for (rowTotal in ...)`, `assign(x = "rowTotal", ...)`, assign()
-  # through a variable, and list2env() - and its right-hand-side check
-  # was textual, so `if (!isTRUE(partition))` and a braced right-hand
-  # side mentioning both required strings in dead statements passed
-  # too. So, three things. FIRST, every spelling of assignment to
-  # rowTotal is counted by the same regexes the candidate-set pin above
-  # uses (arrows, `=`, indexed targets), and any assign(), a for()
-  # rebinding of rowTotal, list2env() or makeActiveBinding() anywhere
-  # in the fill body is refused by name. SECOND, exactly one assignment
-  # may exist. THIRD, that assignment's right-hand side is read as a
-  # parse tree, not as text: an IF whose condition is exactly
-  # `isTRUE(partition)`, whose TRUE branch holds N[keep] and no
-  # ifelse(), and whose ELSE branch holds the
-  # ifelse(amb[i, ], hi[i, ], cnt[i, ]) call and no N[keep].
-  ifelseRe <- "ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)"
-  rtLeft  <- "(^|[^A-Za-z0-9._])rowTotal\\s*(\\[[^]]*\\])?\\s*(<<-|<-|=)[^=]"
-  rtRight <- "(->>|->)\\s*rowTotal([^A-Za-z0-9._]|$)"
-  rtAssign <- sum(lengths(regmatches(fsCode[body], gregexpr(rtLeft, fsCode[body])))) +
-              sum(lengths(regmatches(fsCode[body], gregexpr(rtRight, fsCode[body]))))
-  rtOther <- body[grep(paste0("assign\\s*\\(|for\\s*\\(\\s*rowTotal\\s+in\\s|",
-                              "list2env\\s*\\(|makeActiveBinding\\s*\\("), fsCode[body])]
-  # the one assign() the fill legitimately makes restores .Random.seed
-  rtOther <- rtOther[!grepl("assign\\s*\\(\\s*[\"']\\.Random\\.seed[\"']", fsCode[rtOther])]
-  rowTotalOK <- tryCatch({
-    pd <- utils::getParseData(parse("R/failsafeTable.R", keep.source = TRUE))
-    txt <- function(id) gsub("\\s+", " ", utils::getParseText(pd, id))
+  # THE PIN, IN ITS FINAL FORM (screen 2026-09-10-1050 F1-F3, after screens
+  # 0858, 0923, 0955 and 1031 each found a spelling the previous pin did
+  # not see, and CodeRabbit on #248 two more). Nothing is DESCRIBED any
+  # more; the statement is compared WHOLE, over the parse data of
+  # R/failsafeTable.R with comments removed by the tokenizer:
+  #   - the symbol rowTotal (backticks stripped) occurs only inside the
+  #     fill's body, as the target of exactly ONE assignment - by `<-`,
+  #     `<<-`, `=`, `->` or `->>`, whatever wraps the symbol in the target:
+  #     `rowTotal[[1L]]`, `names(rowTotal)`, `environment()$rowTotal` -
+  #     and as the reads that assignment feeds, whose number is pinned; an
+  #     argument name (`list2env(list(rowTotal = ...))`) is an occurrence
+  #     too;
+  #   - no string literal anywhere in the file spells rowTotal, which
+  #     closes assign(), delayedAssign(), e[["rowTotal"]] <-, the
+  #     split-line forms and a helper defined outside the body;
+  #   - no for() loop binds it, read from the tree (a forcond's SYMBOL);
+  #   - the assignment's right-hand side, re-parsed and deparsed, is
+  #     IDENTICAL to the reference expression written here, so any edit at
+  #     all - a dead statement in a branch, `* 0`, a re-spelled index -
+  #     fires and is re-adjudicated together with this reference;
+  #   - the assignment comes before candUp.
+  # The mutation set that verifies all of this is checked in as
+  # tools/securityCheckMutations.R; run it by hand after any edit here.
+  rowTotalRef <- quote(if (isTRUE(partition)) as.numeric(N[keep]) else
+    vapply(keep, function(i)
+      sum(as.numeric(ifelse(amb[i, ], hi[i, ], cnt[i, ])), na.rm = TRUE),
+      numeric(1)))
+  rowTotalReads <- 3L    # any(!is.finite(rowTotal)), any(rowTotal > ...), sum(rowTotal)
+  rt <- tryCatch({
+    pd <- utils::getParseData(parse("R/failsafeTable.R", keep.source = TRUE, encoding = "UTF-8"))
     kidsOf <- function(id) {
       k <- pd[pd$parent == id, , drop = FALSE]
       k[order(k$line1, k$col1), , drop = FALSE]
     }
-    lhs <- pd[pd$token == "SYMBOL" & pd$text == "rowTotal" &
-              pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
-    rhs <- integer(0)
-    for (k in seq_len(nrow(lhs))) {
-      p1 <- lhs$parent[k]                              # the expr wrapping the symbol
-      p2 <- pd$parent[pd$id == p1]                     # the statement it sits in
-      kids <- kidsOf(p2)
-      i <- match(p1, kids$id)
-      if (!is.na(i) && i + 2L <= nrow(kids) &&
-          kids$token[i + 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN"))
-        rhs <- c(rhs, kids$id[i + 2L])
-      else if (!is.na(i) && i >= 3L && kids$token[i - 1L] == "RIGHT_ASSIGN")
-        rhs <- c(rhs, kids$id[i - 2L])
+    ancestors <- function(id) {
+      out <- integer(0)
+      repeat { id <- pd$parent[match(id, pd$id)]; if (is.na(id) || id <= 0L) break; out <- c(out, id) }
+      out
     }
-    if (length(rhs) != 1L) FALSE else {
-      k <- kidsOf(rhs)                                 # IF ( cond ) yes ELSE no
-      isIf <- nrow(k) == 7L && k$token[1L] == "IF" && k$token[6L] == "ELSE"
-      cond <- if (isIf) txt(k$id[3L]) else ""
-      yes  <- if (isIf) txt(k$id[5L]) else ""
-      no   <- if (isIf) txt(k$id[7L]) else ""
-      isIf && cond == "isTRUE(partition)" &&
-        grepl("N\\[keep\\]", yes) && !grepl("ifelse", yes) &&
-        grepl(ifelseRe, no) && !grepl("N\\[keep\\]", no)
+    bare <- gsub("`", "", pd$text, fixed = TRUE)
+    syms <- pd[pd$token %in% c("SYMBOL", "SYMBOL_SUB", "SYMBOL_FUNCTION_CALL", "SLOT") &
+               bare == "rowTotal", , drop = FALSE]
+    strs <- sum(pd$token == "STR_CONST" & grepl("rowTotal", pd$text, fixed = TRUE))
+    forVars <- pd$token == "SYMBOL" & pd$parent %in% pd$id[pd$token == "forcond"]
+    forBad <- sum(bare[forVars] == "rowTotal")
+    inBody <- syms$line1 >= fillAt & syms$line1 <= endAt
+    assignTok <- pd[pd$token %in% c("LEFT_ASSIGN", "EQ_ASSIGN", "RIGHT_ASSIGN") &
+                    pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
+    symAnc <- lapply(syms$id, ancestors)
+    rhs <- integer(0); at <- integer(0); targeted <- logical(nrow(syms))
+    for (k in seq_len(nrow(assignTok))) {
+      kids <- kidsOf(assignTok$parent[k])
+      i <- match(assignTok$id[k], kids$id)
+      if (is.na(i)) next
+      target <- if (assignTok$token[k] == "RIGHT_ASSIGN") kids$id[i + 1L] else kids$id[i - 1L]
+      value  <- if (assignTok$token[k] == "RIGHT_ASSIGN") kids$id[i - 1L] else kids$id[i + 1L]
+      if (is.na(target) || is.na(value)) next
+      hit <- vapply(seq_along(symAnc), function(j) target %in% symAnc[[j]], logical(1))
+      if (any(hit)) { rhs <- c(rhs, value); at <- c(at, assignTok$line1[k]); targeted <- targeted | hit }
     }
-  }, error = function(e) FALSE)
-  if (rtAssign != 1L || length(rtOther) || !isTRUE(rowTotalOK) ||
-      !length(selAt) || !length(defAt) || !length(candAt) || min(defAt) >= min(candAt))
-    note(paste("R/failsafeTable.R: rowTotal must be assigned exactly once in the",
-               "fill, by any spelling, with no assign()/for()/list2env()/",
-               "makeActiveBinding() in the body, and the right-hand side of THAT",
-               "assignment must be `if (isTRUE(partition)) <N[keep]> else",
-               "<ifelse(amb, hi, cnt)>` as a parse tree, before candUp; a rowTotal",
-               "taken from N is the 24a8177 quantity the 0815 fix replaced (screen",
-               "2026-09-10-0858 F2), and a dead statement holding the expression",
-               "beside it is not the right-hand side (screens 2026-09-10-0923,",
-               "-0955 F1 and -1031 F1); found", rtAssign, "assignment(s),",
-               length(rtOther), "rebinding line(s), RHS ok:", isTRUE(rowTotalOK)))
+    same <- length(rhs) == 1L && identical(
+      deparse(parse(text = utils::getParseText(pd, rhs), keep.source = FALSE)[[1]], width.cutoff = 500L),
+      deparse(rowTotalRef, width.cutoff = 500L))
+    reads <- sum(inBody & !targeted)
+    list(ok = all(inBody) && strs == 0L && forBad == 0L && length(rhs) == 1L &&
+           reads == rowTotalReads && same && length(candAt) && at[1] < min(candAt),
+         why = sprintf(paste("%d assignment(s), %d read(s) (%d pinned), %d outside the",
+                             "body, %d string literal(s), %d for() binding(s), rhs identical: %s"),
+                       length(rhs), reads, rowTotalReads, sum(!inBody), strs, forBad, same))
+  }, error = function(e) list(ok = FALSE, why = conditionMessage(e)))
+  if (!isTRUE(rt$ok))
+    note(paste("R/failsafeTable.R: the rowTotal statement must be the reference",
+               "expression, whole, assigned once in the fill before candUp, with the",
+               "symbol nowhere else but its pinned reads and never in a string or a",
+               "for() (screens 2026-09-10-0858 F2, -0923, -0955 F1, -1031 F1, -1050",
+               "F1-F3; CodeRabbit on #248) -", rt$why))
   if (!length(rowAt) || !length(totAt) || !length(candAt) ||
       min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
     note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",
