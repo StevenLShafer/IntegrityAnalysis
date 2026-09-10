@@ -1063,6 +1063,33 @@ below it. The audit's three-row CSV, run through the same route with the
 same seed, now reads inside the reference's interval
 (`tests/testthat/test-audit-2026-09-10-f1.R`), and the ordinary pinned
 rows are unchanged.
+## 2026-09-10 — rows the validator leaves out are counted
+
+Independent audit 2026-09-10, finding F3 (P2). The method document
+promises that every reconstruction refusal is counted on the Summary's
+"k of n rows analysed" line. It was not met when all cells of the
+refused block became blank.
+
+**What was wrong.** A category block the parser could not reconstruct
+(the audit's ASA status, 33/33/34% of 1,200 per arm, about 4.8 million
+readings) reaches the validator as label-only lines — every cell blank.
+The validator soft-flags such lines and removes them from the analysed
+frame, which is right for the engine, but the engine was then handed
+three variables and had no way to count the fourth: the Summary's note
+was blank instead of "3 of 4 rows analysed", and the row was absent
+from the results, the journal-style table and the API's returned
+template, where a caller could have typed the counts in.
+
+**What changed.** `validateData()` returns the rows it left out, with
+the reason, beside the analysed frame; `P_Calc()` lists each such
+variable once, with P "Not analysed" and the reason in its note, so the
+coverage count includes it — it never enters the combination. The API
+puts those rows back into `templateCsv` and the journal table (a blank
+line under the variable's label). The audit's JATS and Word fixtures now
+read "3 of 4 rows analysed" through the API's analysis route and through
+the actual `/analyze` handler, with the ASA row in the returned template
+(`tests/testthat/test-audit-2026-09-10-f3.R`). The trial p is unchanged:
+it is the same three rows' combination, now labelled as such.
 
 ## Ideas noted for later
 

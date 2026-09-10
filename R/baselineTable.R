@@ -86,6 +86,13 @@ buildBaselineTables <- function(DATA, CategoryNames = NULL) {
 
     for (v in vars) {
       g <- groups[[v]]
+      # a variable with no value in any cell - a label the validator left
+      # out of the analysis, put back for this table by the API (audit
+      # 2026-09-10 F3) - keeps its line, blank, so the table shows the
+      # page's every row rather than silently one fewer
+      blank <- all(is.na(d$MEAN[g])) && (is.null(CategoryNames) ||
+                 all(is.na(d[g, CategoryNames, drop = FALSE])))
+      if (blank) { addRow(v, character(0)); next }
       isCat <- !is.null(CategoryNames) &&
         all(is.na(d$MEAN[g])) &&
         any(!is.na(d[g, CategoryNames, drop = FALSE]))

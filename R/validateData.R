@@ -825,10 +825,25 @@ validateData <- function(DATA) {
   # frame the caller displays). If NOTHING analyzable remains, that is a
   # failure after all.
   excluded <- labelOnly | singleCat
+  # THE ROWS LEFT OUT TRAVEL WITH THE RESULT (independent audit
+  # 2026-09-10, F3). A category block the document parser could not
+  # reconstruct arrives here as label-only lines - every cell blank -
+  # and was dropped from the analysed frame before P_Calc() could count
+  # it, so the Summary's "k of n rows analysed" never said 3 of 4, the
+  # row vanished from the results, the journal table and the API's
+  # returned template, and an editor could read a partial-table screen
+  # as covering the whole table. The frame P_Calc() simulates still
+  # excludes them; the excluded rows themselves, with the reason, are
+  # returned beside it so the engine can count them and the API can
+  # give them back.
+  Excluded <- NULL
   if (any(excluded))
   {
     if (all(excluded))
       return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))
+    Excluded <- DATA[excluded, , drop = FALSE]
+    Excluded$REASON <- ifelse(labelOnly[excluded], "label only",
+                              "single-line categorical")
     DATA <- DATA[!excluded, , drop = FALSE]
   }
   # Carry SE, Q1/Q3, and ROUND_DISPERSION through when the input supplies
@@ -845,5 +860,5 @@ validateData <- function(DATA) {
   # not blocking.
   list(FAIL = FALSE, DATA = DATA, TRIALS = TRIALS,
        ColumnNames = ColumnNames, CategoryNames = CategoryNames,
-       MiscNames = MiscNames, issues = issueFrame())
+       MiscNames = MiscNames, Excluded = Excluded, issues = issueFrame())
 }

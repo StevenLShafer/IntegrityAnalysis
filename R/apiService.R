@@ -834,7 +834,8 @@
   if (!is.null(seed)) .iaSetSeed(seed)
   OUTPUT <- NULL
   for (TRIAL in v$TRIALS) {
-    one <- tryCatch(P_Calc(TRIAL, v$DATA, v$CategoryNames, m), error = function(e) e)
+    one <- tryCatch(P_Calc(TRIAL, v$DATA, v$CategoryNames, m, excluded = v$Excluded),
+                    error = function(e) e)
     if (inherits(one, "error"))
       return(list(ok = FALSE, stage = "analysis",
                   issues = data.frame(row = NA_integer_, col = NA_character_, code = "error",
@@ -878,11 +879,16 @@
   # anything, and omit the tables (with a reason the caller can read)
   # rather than attempt them. Everything else in the response is O(input)
   # and unaffected.
-  journalCells <- .apiJournalCells(v$DATA, v$CategoryNames)
+  # the rows the validator left out (a label with no values) go back
+  # to the caller in the template and the journal table, not only in the
+  # Summary's count (audit 2026-09-10 F3): the template is the round
+  # trip, and a row that vanished from it could not be corrected
+  shown <- .apiWithExcluded(v)
+  journalCells <- .apiJournalCells(shown, v$CategoryNames)
   journalSkipped <- journalCells > .apiMaxJournalCells
 
   journal <- if (journalSkipped) NULL else tryCatch({
-    tabs <- buildBaselineTables(v$DATA, v$CategoryNames)
+    tabs <- buildBaselineTables(shown, v$CategoryNames)
     lapply(tabs, function(tb) {
       con <- textConnection("jout", "w", local = TRUE)
       utils::write.csv(.apiCsvSafe(as.data.frame(tb, stringsAsFactors = FALSE)),
@@ -903,7 +909,18 @@
          "about ", format(journalCells, big.mark = ","), " cells, above ",
          "the ", format(.apiMaxJournalCells, big.mark = ","),
          "-cell limit. The analysis itself is unaffected.") else NULL,
-       templateCsv = .apiTemplateCsv(v$DATA))
+       templateCsv = .apiTemplateCsv(shown))
+}
+
+# The validated frame with the rows validateData() left out put back, in
+# the validator's order (trial, then row), for the template and the
+# journal table - never for the engine (audit 2026-09-10 F3).
+.apiWithExcluded <- function(v) {
+  ex <- v$Excluded
+  if (is.null(ex) || !nrow(ex)) return(v$DATA)
+  ex$REASON <- NULL
+  d <- .ppRbindFill(v$DATA, ex)
+  d[order(d$TRIAL, d$ROW), , drop = FALSE]
 }
 
 #' Run the IntegrityAnalysis REST service
