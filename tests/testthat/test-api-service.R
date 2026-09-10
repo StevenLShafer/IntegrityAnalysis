@@ -831,3 +831,32 @@ test_that("a structural issue's row serialises as JSON null, not the string NA (
   expect_equal(s[[1]]$col, "N")
   expect_match(s[[1]]$note, "'NUMBER'")
 })
+
+# THE POOL CEILING AT THE /analyze BOUNDARY (screen 2026-09-10-1523; CodeRabbit
+# on PR #269): the refusal a trial earns before any draw when its rows sharing
+# one null law would need more than .iaMaxPoolDraws held draws must reach the
+# caller as a 422 at the analysis stage with the reason - not a 500, not a
+# hang. The handler test in test-screen-2026-09-10-1523.R is one step short
+# of the wire; this reads the response through the running service.
+test_that("a trial past the pool ceiling is a 422 at the analysis stage on the wire (screen 1523)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  G <- ceiling(.iaMaxPoolDraws / 100000) + 1L        # one row past the ceiling at m = 100,000
+  d <- data.frame(TRIAL = "T", ROW = rep(sprintf("V%04d", seq_len(G)), each = 2),
+                  N = 2, MEAN = c(50, 50), SD = 10, ROUND_MEAN = 0, ROUND_OBSERVATION = 0,
+                  ROUND_DISPERSION = 0, stringsAsFactors = FALSE)
+  f <- file.path(tempdir(), "identical-rows.csv")
+  utils::write.csv(d, f, row.names = FALSE)
+  t0 <- Sys.time()
+  r <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_lt(as.numeric(difftime(Sys.time(), t0, units = "secs")), 30)   # refused before a draw
+  expect_equal(httr2::resp_status(r), 422)
+  b <- httr2::resp_body_json(r)
+  expect_false(isTRUE(b$ok))
+  expect_equal(b$stage, "analysis")
+  expect_equal(b$issues[[1]]$code, "error")
+  expect_match(b$issues[[1]]$note, "share a null law")
+})
