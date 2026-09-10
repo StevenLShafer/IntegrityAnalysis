@@ -32,7 +32,7 @@ test_that("levels named after reserved fields become category columns, not conti
   testthat::local_mocked_bindings(
     .ppClaudePost = function(body, apiKey, timeout = 300) cannedResponse(c("N", "MEAN", "SD")),
     .package = "IntegrityAnalysis")
-  r <- parseBaselineTableAI(pdf, trial = "T", apiKey = "sk-ant-synthetic-audit-only", quiet = TRUE)
+  r <- parseBaselineTableAI(pdf, trial = "T", apiKey = "sk-ant-test", quiet = TRUE)
   d <- r$data
   cat <- d[d$ROW == "Category", , drop = FALSE]
   expect_equal(nrow(cat), 2L)
