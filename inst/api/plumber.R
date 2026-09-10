@@ -239,10 +239,21 @@ function(req, res, file, seed = NULL) {
     # the round-trip contract: the failure payload IS the next call's
     # input - fix the flagged cells in templateCsv and POST it back
     res$status <- 422
+    # A missing cell coordinate is JSON null ON THE WIRE, as the API guide
+    # promises for a whole-table issue (full audit 2026-09-10, F3). An
+    # NA_integer_ in a list serialises through jsonlite's unboxed JSON as
+    # the STRING "NA" - only a logical NA becomes null - and the tests
+    # that called this handler directly asserted is.na() on the R value,
+    # one step short of the wire. Every NA in an issue entry, of any
+    # type, becomes a logical NA here; the real-HTTP test reads the bytes.
     return(list(ok = FALSE, stage = a$stage, file = name,
                 issues = if (!is.null(a$issues))
-                  lapply(seq_len(nrow(a$issues)), function(i)
-                    as.list(a$issues[i, ])) else list(),
+                  lapply(seq_len(nrow(a$issues)), function(i) {
+                    entry <- as.list(a$issues[i, ])
+                    for (k in names(entry))
+                      if (length(entry[[k]]) == 1L && is.na(entry[[k]])) entry[[k]] <- NA
+                    entry
+                  }) else list(),
                 templateCsv = a$templateCsv,
                 deleted = TRUE))
   }
