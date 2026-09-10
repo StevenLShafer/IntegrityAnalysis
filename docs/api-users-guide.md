@@ -345,7 +345,7 @@ arm:
 
 | column | meaning |
 |---|---|
-| `TRIAL` | the trial the line belongs to: the file name without its extension, unless a spreadsheet carries its own `TRIAL` column or trial identifiers |
+| `TRIAL` | the trial the line belongs to: the file name without its extension, unless a spreadsheet carries its own `TRIAL` column (any case, like every column name) or trial identifiers |
 | `ROW` | the variable, as printed |
 | `N` | that arm's size for the variable |
 | `MEAN`, `SD`, `SE` | the printed mean and its dispersion (SD, or SE when the table says so) |

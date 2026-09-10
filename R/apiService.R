@@ -704,8 +704,13 @@
     if (!is.null(wide)) {
       d <- do.call(.ppRbindFill, lapply(wide, function(b) {
         bd <- b$data
-        if (!"TRIAL" %in% names(bd) || all(is.na(bd$TRIAL)))
-          bd$TRIAL <- if (is.null(b$trial) || is.na(b$trial)) stem else b$trial
+        # the trial column by the normaliser's rule, whatever its case
+        # (audit 2026-09-10 F4); filled from the file name only when the
+        # block carries none, or an empty one
+        tr <- .iaTrialColumn(bd)
+        if (is.na(tr)) tr <- "TRIAL"
+        if (is.null(bd[[tr]]) || all(is.na(bd[[tr]])))
+          bd[[tr]] <- if (is.null(b$trial) || is.na(b$trial)) stem else b$trial
         bd
       }))
       return(list(ok = TRUE, data = d, skipped = NULL,
@@ -739,7 +744,13 @@
                                    " as a template or journal-style table"),
                   data = NULL, skipped = NULL, flags = character(0),
                   engine = NA_character_))
-    if (!"TRIAL" %in% names(d)) d$TRIAL <- stem
+    # A trial column of ANY case counts (independent audit 2026-09-10,
+    # F4): testing for the exact spelling "TRIAL" here, before the
+    # normaliser upper-cases the names, gave a file with a lower-case
+    # `trial` column a second one from the file name, and validation
+    # then refused the pair as duplicates. The rule is the normaliser's
+    # own, .iaTrialColumn(), so the reader and the gate cannot disagree.
+    if (is.na(.iaTrialColumn(d))) d$TRIAL <- stem
     list(ok = TRUE, data = d, skipped = NULL, flags = character(0),
          engine = "template")
   } else {
