@@ -973,6 +973,39 @@ if (length(fillAt) == 1L) {
     strs <- sum(pd$token == "STR_CONST" & grepl("rowTotal", pd$text, fixed = TRUE))
     forVars <- pd$token == "SYMBOL" & pd$parent %in% pd$id[pd$token == "forcond"]
     forBad <- sum(bare[forVars] == "rowTotal")
+    # ...AND NO CALL THAT CAN BIND A NAME BUILT AT RUNTIME (screen
+    # 2026-09-10-1222, F1): assign(paste0("row", "Total"), ...) has neither
+    # the symbol nor a literal spelling it, and the whole-statement pin let
+    # it through. Every SYMBOL_FUNCTION_CALL in the fill body that can
+    # bind, evaluate or reach into an environment is refused by token -
+    # except the fill's own seed bookkeeping, whose one argument is the
+    # literal ".Random.seed", and do.call() of a named ordinary function
+    # (the fill's two: paste and rbind).
+    binders <- c("assign", "delayedAssign", "list2env", "makeActiveBinding",
+                 "environment", "sys.function", "sys.call", "parent.frame",
+                 "local", "eval", "evalq", "eval.parent", "get", "get0", "mget",
+                 "exists", "rm", "do.call", "Recall", "as.environment")
+    calls <- pd[pd$token == "SYMBOL_FUNCTION_CALL" & pd$text %in% binders &
+                pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
+    firstArg <- function(callSym) {
+      # SYMBOL_FUNCTION_CALL -> its expr -> the call expr; its children are
+      # expr '(' expr ... so the third child is the first argument
+      callExpr <- pd$parent[match(pd$parent[match(callSym, pd$id)], pd$id)]
+      k <- kidsOf(callExpr)
+      if (nrow(k) < 3L) return(list(token = "", text = ""))
+      a <- kidsOf(k$id[3L])
+      if (!nrow(a)) return(list(token = "", text = ""))
+      list(token = a$token[1L], text = a$text[1L])
+    }
+    rebound <- 0L
+    for (k in seq_len(nrow(calls))) {
+      fa <- firstArg(calls$id[k])
+      allowed <- (calls$text[k] %in% c("assign", "get", "exists", "rm") &&
+                  fa$token == "STR_CONST" && fa$text == '".Random.seed"') ||
+                 (calls$text[k] == "do.call" && fa$token == "SYMBOL" &&
+                  !(fa$text %in% binders))
+      if (!allowed) rebound <- rebound + 1L
+    }
     inBody <- syms$line1 >= fillAt & syms$line1 <= endAt
     assignTok <- pd[pd$token %in% c("LEFT_ASSIGN", "EQ_ASSIGN", "RIGHT_ASSIGN") &
                     pd$line1 >= fillAt & pd$line1 <= endAt, , drop = FALSE]
@@ -992,18 +1025,22 @@ if (length(fillAt) == 1L) {
       deparse(parse(text = utils::getParseText(pd, rhs), keep.source = FALSE)[[1]], width.cutoff = 500L),
       deparse(rowTotalRef, width.cutoff = 500L))
     reads <- sum(inBody & !targeted)
-    list(ok = all(inBody) && strs == 0L && forBad == 0L && length(rhs) == 1L &&
-           reads == rowTotalReads && same && length(candAt) && at[1] < min(candAt),
+    list(ok = all(inBody) && strs == 0L && forBad == 0L && rebound == 0L &&
+           length(rhs) == 1L && reads == rowTotalReads && same &&
+           length(candAt) && at[1] < min(candAt),
          why = sprintf(paste("%d assignment(s), %d read(s) (%d pinned), %d outside the",
-                             "body, %d string literal(s), %d for() binding(s), rhs identical: %s"),
-                       length(rhs), reads, rowTotalReads, sum(!inBody), strs, forBad, same))
+                             "body, %d string literal(s), %d for() binding(s),",
+                             "%d binding/evaluating call(s), rhs identical: %s"),
+                       length(rhs), reads, rowTotalReads, sum(!inBody), strs, forBad,
+                       rebound, same))
   }, error = function(e) list(ok = FALSE, why = conditionMessage(e)))
   if (!isTRUE(rt$ok))
     note(paste("R/failsafeTable.R: the rowTotal statement must be the reference",
                "expression, whole, assigned once in the fill before candUp, with the",
                "symbol nowhere else but its pinned reads and never in a string or a",
-               "for() (screens 2026-09-10-0858 F2, -0923, -0955 F1, -1031 F1, -1050",
-               "F1-F3; CodeRabbit on #248) -", rt$why))
+               "for(), and no call in the body that can bind a name built at",
+               "runtime (screens 2026-09-10-0858 F2, -0923, -0955 F1, -1031 F1,",
+               "-1050 F1-F3, -1222 F1; CodeRabbit on #248) -", rt$why))
   if (!length(rowAt) || !length(totAt) || !length(candAt) ||
       min(rowAt) >= min(candAt) || min(totAt) >= min(candAt))
     note(paste("R/failsafeTable.R: before candUp, every kept arm's ROW TOTAL of",

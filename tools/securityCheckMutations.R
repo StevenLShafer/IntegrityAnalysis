@@ -154,7 +154,15 @@ cases <- list(
     i <- fillLine(l)
     append(l, c(".ppRebind <- function(v) assign(\"rowTotal\", v, envir = parent.frame())", ""), after = i - 1L) },
   "1050-F3g: environment()$rowTotal <- ..." = function(l)
-    after(l, "  environment()$rowTotal <- as.numeric(N[keep])")
+    after(l, "  environment()$rowTotal <- as.numeric(N[keep])"),
+  "1222-F1a: assign(paste0(\"row\", \"Total\"), ...) - a name built at runtime" = function(l)
+    after(l, "  assign(paste0(\"row\", \"Total\"), as.numeric(N[keep]))"),
+  "1222-F1b: environment()[[paste0(\"row\", \"Total\")]] <- ..." = function(l)
+    after(l, "  environment()[[paste0(\"row\", \"Total\")]] <- as.numeric(N[keep])"),
+  "1222-F1c: do.call(\"assign\", list(paste0(\"row\", \"Total\"), ...))" = function(l)
+    after(l, "  do.call(\"assign\", list(paste0(\"row\", \"Total\"), as.numeric(N[keep])))"),
+  "1222-F1d: eval(parse(text = paste0(\"rowTotal <- as.numeric(N[keep])\")))" = function(l)
+    after(l, "  eval(parse(text = paste0(\"row\", \"Total <- as.numeric(N[keep])\")))")
 )
 
 res <- character(0)
