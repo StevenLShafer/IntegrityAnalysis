@@ -119,7 +119,12 @@ function() {
 #* @serializer unboxedJSON
 #* @post /parse
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
-function(req, res, file) {
+function(req, res, file = NULL) {
+  # `file = NULL`: a multipart request whose part is not named `file` -
+  # `somethingElse`, say - left the argument MISSING, and R raised on it
+  # before the empty-part guard below could answer 422, so the caller got
+  # the fixed 500 (security audit 2026-09-10, S4). With a default, the
+  # guard sees NULL and says what to send.
   # Every upload lives in its own tempdir and dies with the request -
   # the retention contract (issue 1). The response confirms it.
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
@@ -171,7 +176,8 @@ function(req, res, file) {
 #* @post /analyze
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
 #* @param seed:int Optional Monte Carlo seed, 1 to 2147483647, sent as ?seed=N on the URL: the same document, seed and build give the same numbers. Echoed in the reply.
-function(req, res, file, seed = NULL) {
+function(req, res, file = NULL, seed = NULL) {
+  # `file = NULL`: see /parse (security audit 2026-09-10, S4)
   # the seed is judged before the upload is read: a bad one is a 422
   # that costs nothing.
   #
