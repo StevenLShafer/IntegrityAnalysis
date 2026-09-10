@@ -385,7 +385,11 @@ makes a number reproducible; it does not make it more precise.
   bracket, the exactly pinned arms held fixed - the row is built from the
   whole TABLE with the largest p. The candidates are every
   arms-by-levels table in which each cell lies inside the bracket its
-  printed percentage allows and each arm's counts sum to that arm's N.
+  printed percentage allows — and, only where the levels are known to
+  partition the arm (a binary "n (%)" row whose other column this code
+  builds itself), in which each arm's counts sum to that arm's N; every
+  other row is constrained by its brackets alone, as the paragraph on
+  partition below says.
   They are ordered by the Pearson statistic, and the candidates at each
   end are scored with that statistic against their own simulated null,
   which is what the screen goes on to compute. Ordering them costs
@@ -398,12 +402,16 @@ makes a number reproducible; it does not make it more precise.
   estimates and refining the best few selects on upward noise, which
   biased the reported best case low, toward the accusation.
 
-  Three bounds decide whether the reconstruction happens at all, and all
-  three end in the row being left blank rather than guessed: the number
-  of readings the page allows, the size of the working set needed to
-  score them, and the arm size itself - an arm larger than the analysis
-  will accept (5,000) is not reconstructed, because the trial would be
-  refused anyway. The
+  Five bounds decide whether the reconstruction happens at all, and
+  every one ends in the row being left blank rather than guessed, with
+  the reason in the row's note: the number of readings the page allows
+  (200,000); the working set needed to build them (five million cells);
+  the arm size — an arm larger than the analysis will accept (5,000) is
+  not reconstructed, because the trial would be refused anyway, and a
+  row whose cells as they would be scored total more than 5,000 is
+  refused for the same reason; the number of cells scored (100, arms
+  times levels); and the table's grand total, the sum of those row
+  totals (125,000), which bounds the cost of drawing its null. The
   reading analysed is the one most favourable to the authors, and the
   smallest p over the same candidates is reported beside it whenever the
   two fall on opposite sides of p = 0.01.
