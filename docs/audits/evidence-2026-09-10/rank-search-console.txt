@@ -1,0 +1,230 @@
+1 elapsed 0.07 maxRank 1 gap 0 minGap 0 
+2 elapsed 0.01 maxRank 10 gap 0 minGap 0 
+3 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+4 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+5 elapsed 0.02 maxRank 9 gap 0 minGap 0 
+6 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+7 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+8 elapsed 0.02 maxRank 9 gap 0 minGap 0 
+9 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+10 elapsed 0.01 maxRank 4 gap 0 minGap 0 
+11 elapsed 0.02 maxRank 8 gap 0 minGap 0 
+12 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+13 elapsed 0.02 maxRank 8 gap 0 minGap 0 
+14 elapsed 0.02 maxRank 6 gap 0 minGap 0 
+15 elapsed 0 maxRank 3 gap 0 minGap 0 
+16 elapsed 0.03 maxRank 11 gap 0 minGap 0 
+17 elapsed 0.02 maxRank 5 gap 0 minGap 0 
+18 elapsed 0.01 maxRank 4 gap 0 minGap 0 
+19 elapsed 0.04 maxRank 11 gap 0 minGap 0 
+20 elapsed 0.01 maxRank 4 gap 0 minGap 0 
+21 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+22 elapsed 0 maxRank 5 gap 0 minGap 0 
+23 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+24 elapsed 0 maxRank 1 gap 0 minGap 0 
+25 elapsed 0 maxRank 4 gap 0 minGap 0 
+26 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+27 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+28 elapsed 0.02 maxRank 4 gap 0 minGap 0 
+29 elapsed 0 maxRank 1 gap 0 minGap 0 
+30 elapsed 0.04 maxRank 2 gap 0 minGap 0 
+31 elapsed 0.02 maxRank 4 gap 0 minGap 0 
+32 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+33 elapsed 0.03 maxRank 2 gap 0 minGap 0 
+34 elapsed 0.02 maxRank 2 gap 0 minGap 0 
+35 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+36 elapsed 0.03 maxRank 5 gap 0 minGap 0 
+37 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+38 elapsed 0.04 maxRank 1 gap 0 minGap 0 
+39 elapsed 0.03 maxRank 5 gap 0 minGap 3.09249240282652e-06 
+40 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+41 elapsed 0 maxRank 1 gap 0 minGap 0 
+42 elapsed 0.02 maxRank 4 gap 0 minGap 0 
+43 elapsed 0 maxRank 1 gap 0 minGap 0 
+44 elapsed 0 maxRank 1 gap 0 minGap 0 
+45 elapsed 0.02 maxRank 2 gap 0 minGap 0 
+46 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+47 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+48 elapsed 0 maxRank 2 gap 0 minGap 0 
+49 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+50 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+51 elapsed 0.03 maxRank 2 gap 0 minGap 0 
+52 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+53 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+54 elapsed 0.05 maxRank 2 gap 0 minGap 0 
+55 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+56 elapsed 0.04 maxRank 1 gap 0 minGap 0 
+57 elapsed 0.05 maxRank 1 gap 0 minGap 0 
+58 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+59 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+60 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+61 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+62 elapsed 0.01 maxRank 3 gap 0 minGap 0 
+63 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+64 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+65 elapsed 0 maxRank 1 gap 0 minGap 0 
+66 elapsed 0 maxRank 1 gap 0 minGap 0 
+67 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+68 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+69 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+70 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+71 elapsed 0.05 maxRank 1 gap 0 minGap 0 
+72 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+73 elapsed 0.06 maxRank 1 gap 0 minGap 0 
+74 elapsed 0.05 maxRank 1 gap 0 minGap 0 
+75 elapsed 0.11 maxRank 1 gap 0 minGap 0 
+76 elapsed 0.08 maxRank 1 gap 0 minGap 0 
+77 elapsed 0.07 maxRank 1 gap 0 minGap 0 
+78 elapsed 0.08 maxRank 1 gap 0 minGap 0 
+79 elapsed 0.1 maxRank 3 gap 0 minGap 0 
+80 elapsed 0.07 maxRank 1 gap 0 minGap 0 
+81 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+82 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+83 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+84 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+85 elapsed 0.04 maxRank 1 gap 0 minGap 0 
+86 elapsed 0.04 maxRank 1 gap 0 minGap 0 
+87 elapsed 0.06 maxRank 1 gap 0 minGap 9.98907257073502e-05 
+88 elapsed 0.05 maxRank 1 gap 0 minGap 0 
+89 elapsed 0.08 maxRank 1 gap 0 minGap 0 
+90 elapsed 0.09 maxRank 1 gap 0 minGap 3.00058760531047e-05 
+91 elapsed 0.1 maxRank 1 gap 0 minGap 0 
+92 elapsed 0.14 maxRank 1 gap 0 minGap 0 
+93 elapsed 0.14 maxRank 1 gap 0 minGap 0 
+94 elapsed 0.15 maxRank 1 gap 0 minGap 0 
+95 elapsed 0.35 maxRank 1 gap 0 minGap 0 
+96 elapsed 0.31 maxRank 1 gap 0 minGap 2.36181659767597e-06 
+97 elapsed 0.34 maxRank 1 gap 0 minGap 0 
+98 elapsed 0.61 maxRank 1 gap 0 minGap 0 
+99 elapsed 0.64 maxRank 1 gap 0 minGap 0 
+100 elapsed 0.66 maxRank 1 gap 0 minGap 0 
+101 elapsed 0 
+102 elapsed 0 
+103 elapsed 0 
+104 elapsed 0 
+105 elapsed 0 
+106 elapsed 0 
+107 elapsed 0 
+108 elapsed 0 
+109 elapsed 0.02 
+110 elapsed 0.01 
+111 elapsed 0 
+112 elapsed 0 
+113 elapsed 0 
+114 elapsed 0 
+115 elapsed 0 
+116 elapsed 0 
+117 elapsed 0 
+118 elapsed 0 
+119 elapsed 0 
+120 elapsed 0 
+121 elapsed 0 
+122 elapsed 0.02 
+123 elapsed 0 
+124 elapsed 0 
+125 elapsed 0 
+126 elapsed 0 
+127 elapsed 0 
+128 elapsed 0 
+129 elapsed 0 
+130 elapsed 0 
+131 elapsed 0 
+132 elapsed 0.02 
+133 elapsed 0 
+134 elapsed 0 
+135 elapsed 0 
+136 elapsed 0 
+137 elapsed 0 
+138 elapsed 0.02 
+139 elapsed 0 
+140 elapsed 0 
+141 elapsed 0.04 maxRank 2 gap 0 minGap 0 
+142 elapsed 0 
+143 elapsed 0 
+144 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+145 elapsed 0.02 maxRank 7 gap 0 minGap 0 
+146 elapsed 0.08 maxRank 6 gap 0 minGap 0 
+147 elapsed 0 maxRank 1 gap 0 minGap 0.203309904778203 
+148 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+149 elapsed 0 maxRank 1 gap 0 minGap 0 
+150 elapsed 0.33 maxRank 1 gap 0 minGap 0.00427718079183462 
+151 elapsed 0.01 maxRank 25 gap 0 minGap 0 
+152 elapsed 0.21 maxRank 7 gap 0 minGap 0 
+153 elapsed 0.09 maxRank 117 gap 0.00201672147459242 minGap 0.020769813124278 
+154 elapsed 0.2 maxRank 1 gap 0 minGap 0.00420735253571286 
+155 elapsed 0.33 maxRank 3 gap 0 minGap 0.000446558751885331 
+156 elapsed 0.15 maxRank 1 gap 0 minGap 0 
+157 elapsed 0.03 maxRank 1 gap 0 minGap 0.0193063422233199 
+158 elapsed 0 
+159 elapsed 0.21 maxRank 1 gap 0 minGap 0 
+160 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+161 elapsed 0 maxRank 1 gap 0 minGap 0 
+162 elapsed 0.25 maxRank 1 gap 0 minGap 0.0313599346258505 
+163 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+164 elapsed 0 
+165 elapsed 0 
+166 elapsed 0 
+167 elapsed 0.08 maxRank 73 gap 0.00103607451459897 minGap 0.0210553901210342 
+168 elapsed 0.05 maxRank 7 gap 0 minGap 0 
+169 elapsed 0.45 maxRank 1 gap 0 minGap 0.00519545771250884 
+170 elapsed 0 
+171 elapsed 0 
+172 elapsed 0.14 maxRank 11 gap 0 minGap 0 
+173 elapsed 1.06 maxRank 20 gap 0 minGap 0 
+174 elapsed 0 
+175 elapsed 0 
+176 elapsed 0.02 maxRank 4 gap 0 minGap 0 
+177 elapsed 0.18 maxRank 39 gap 0 minGap 0.0113703387311312 
+178 elapsed 0.02 maxRank 1 gap 0 minGap 0.0174150791999763 
+179 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+180 elapsed 0 
+181 elapsed 2.27 maxRank 161 gap 0.000107162072197131 minGap 0.00078627730909446 
+182 elapsed 0.64 maxRank 1 gap 0 minGap 0 
+183 elapsed 0.04 maxRank 85 gap 0.00270063623308336 minGap 0.00325589798583184 
+184 elapsed 0 maxRank 1 gap 0 minGap 0 
+185 elapsed 0.02 maxRank 1 gap 0 minGap 0.0097716925952912 
+186 elapsed 0.44 maxRank 1 gap 0 minGap 0 
+187 elapsed 0.44 maxRank 1 gap 0 minGap 0.000303891938433526 
+188 elapsed 0.8 maxRank 5 gap 0 minGap 0.000313167054555245 
+189 elapsed 0 maxRank 1 gap 0 minGap 0 
+190 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+191 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+192 elapsed 3.05 maxRank 2 gap 0 minGap 7.94715839955475e-05 
+193 elapsed 0 
+194 elapsed 0.5 maxRank 3 gap 0 minGap 0 
+195 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+196 elapsed 0.05 maxRank 20 gap 0 minGap 0 
+197 elapsed 0.06 maxRank 7 gap 0 minGap 0.000335977807996504 
+198 elapsed 0 maxRank 1 gap 0 minGap 0 
+199 elapsed 0.03 maxRank 1 gap 0 minGap 0 
+200 elapsed 0.28 maxRank 19 gap 0 minGap 0.000520734315529167 
+201 elapsed 0 maxRank 1 gap 0 minGap 0 
+202 elapsed 0 
+203 elapsed 0.02 maxRank 1 gap 0 minGap 0.012807103669151 
+204 elapsed 0.18 maxRank 1 gap 0 minGap 0.0341176944362607 
+205 elapsed 0.02 maxRank 42 gap 0 minGap 0 
+206 elapsed 0.23 maxRank 4 gap 0 minGap 0 
+207 elapsed 0 
+208 elapsed 0 maxRank 1 gap 0 minGap 0 
+209 elapsed 0.02 maxRank 9 gap 0 minGap 0 
+210 elapsed 0 
+211 elapsed 0.57 maxRank 11 gap 0 minGap 0.000251130685580497 
+212 elapsed 0.55 maxRank 1 gap 0 minGap 0.003082375974598 
+213 elapsed 0.22 maxRank 1 gap 0 minGap 2.47583212509665e-05 
+214 elapsed 0 
+215 elapsed 0 
+216 elapsed 0 
+217 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+218 elapsed 0 
+219 elapsed 0.01 maxRank 1 gap 0 minGap 0 
+220 elapsed 0.08 maxRank 6 gap 0 minGap 0.000533820238500307 
+221 elapsed 0.53 maxRank 1 gap 0 minGap 0 
+222 elapsed 0.02 maxRank 1 gap 0 minGap 0 
+223 elapsed 0.31 maxRank 60 gap 7.91971616245224e-05 minGap 0.00199646539330944 
+224 elapsed 0.17 maxRank 1 gap 0 minGap 0 
+225 elapsed 0.08 maxRank 15 gap 0 minGap 0 
+226 elapsed 0.11 maxRank 1 gap 0 minGap 0 
+227 elapsed 0.23 maxRank 1 gap 0 minGap 0.0313612638769796 
+228 elapsed 0.94 maxRank 1 gap 0 minGap 0 
+229 elapsed 2.13 maxRank 1 gap 0 minGap 0.00243568511936271 
+230 elapsed 1.11 maxRank 1 gap 0 minGap 0.00132011427987928 

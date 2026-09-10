@@ -1,0 +1,69 @@
+gates-and-chunks 2026-09-10 09:55:47 
+arms 4 
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$nTables
+[1] 2
+
+$nNulls
+[1] 2
+
+$nScored
+[1] 2
+
+arms 5 
+$resolved
+[1] FALSE
+
+$reason
+[1] "this block is too large to score: 5 arms by 25 levels over a table total of 2,376 is more than the simulation can carry in the time it has"
+
+$nTables
+[1] 0
+
+$nNulls
+[1] 0
+
+$nScored
+[1] 0
+
+chunked tables and RNG state identical: TRUE TRUE 
+chunked tables and RNG state identical: TRUE TRUE 
+N=5000, one-decimal percentages 25.0/42.0/33.0; upper totals 5006 5006 
+$resolved
+[1] FALSE
+
+$reason
+[1] "the counts total more than 5,000 in at least one arm, which the analysis would refuse"
+
+$counts
+     [,1] [,2] [,3]
+[1,]   NA   NA   NA
+[2,]   NA   NA   NA
+
+$pBest
+[1] NA
+
+$pWorst
+[1] NA
+
+$nTables
+[1] 0
+
+$nNulls
+[1] 0
+
+$nScored
+[1] 0
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+elapsed 1.1 seconds

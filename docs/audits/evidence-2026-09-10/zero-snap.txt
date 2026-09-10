@@ -1,0 +1,156 @@
+zero-snap 2026-09-10 09:39:11 
+continuous 
+Trial Audit: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial Audit: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+  TRIAL     ROW       P       CI95     M
+1 Audit       X 0.00816 0 to 0.017 1e+05
+2  <NA> Summary 0.00816 0 to 0.017  <NA>
+3  <NA>    <NA>    <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+bit-identical without snap: TRUE 
+median 
+Trial Audit: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial Audit: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+  TRIAL     ROW       P       CI95     M
+1 Audit       X 0.01995 0 to 0.044 10000
+2  <NA> Summary 0.01995 0 to 0.044  <NA>
+3  <NA>    <NA>    <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+bit-identical without snap: TRUE 
+unequal 
+Trial Audit: p = 0.001045 (95% Monte Carlo interval 0.00074 to 0.0014)
+ 
+Trial Audit: p = 0.001045 (95% Monte Carlo interval 0.00074 to 0.0014)
+ 
+  TRIAL     ROW        P              CI95     M NOTE     KIND
+1 Audit       X 0.001045 0.00074 to 0.0014 1e+05      variable
+2  <NA> Summary 0.001045 0.00074 to 0.0014  <NA>       summary
+3  <NA>    <NA>     <NA>              <NA>  <NA> <NA>     <NA>
+bit-identical without snap: TRUE 
+delta 1000 
+Trial Audit: p = 0.5174
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+delta 1e+05 
+Trial Audit: p = 0.5189
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5189               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+delta 1e+07 
+Trial Audit: p = 0.5226
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5226               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+elapsed 3.52 seconds

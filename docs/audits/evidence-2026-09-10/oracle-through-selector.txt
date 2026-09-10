@@ -1,0 +1,132 @@
+oracle-through-selector 2026-09-10 09:50:42 
+CASE 183 ranked exact / exhaustive exact
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   24  245
+[2,]    1   53
+
+$pBest
+[1] 0.9293438
+
+$pWorst
+[1] 0.1223405
+
+$nTables
+[1] 1089
+
+$nNulls
+[1] 689
+
+$nScored
+[1] 100
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   23  246
+[2,]    1   53
+
+$pBest
+[1] 0.9320444
+
+$pWorst
+[1] 0.1190846
+
+$nTables
+[1] 1089
+
+$nNulls
+[1] 689
+
+$nScored
+[1] 689
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+CASE 153 ranked exact / exhaustive exact
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   30  190
+[2,]    0   21
+
+$pBest
+[1] 0.9416869
+
+$pWorst
+[1] 0.1952735
+
+$nTables
+[1] 2646
+
+$nNulls
+[1] 1846
+
+$nScored
+[1] 100
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   29  193
+[2,]    0   21
+
+$pBest
+[1] 0.9437036
+
+$pWorst
+[1] 0.1745037
+
+$nTables
+[1] 2646
+
+$nNulls
+[1] 1846
+
+$nScored
+[1] 1846
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+elapsed 0.44 seconds

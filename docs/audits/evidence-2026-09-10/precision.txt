@@ -1,0 +1,315 @@
+precision 2026-09-10 09:39:14 
+
+ mixed read TRUE 
+  TRIAL ROW   N   MEAN   SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100 50.000 3.00         NA                 0               NA
+2 Audit   X 100 50.000 3.00          2                 0                1
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ lowercase read TRUE 
+  trial row   n   mean   sd round_mean round_observation round_dispersion
+1 Audit   X 100 50.000 3.00         NA                 0               NA
+2 Audit   X 100 50.000 3.00          2                 0                1
+                TRIAL
+1 precision-lowercase
+2 precision-lowercase
+Two columns normalize to the same name: TRIAL from 'TRIAL' and 'TRIAL'. Rename or remove one - which column is meant is ambiguous. 
+$ok
+[1] FALSE
+
+$stage
+[1] "validation"
+
+$issues
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",,,0\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",2,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: FALSE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ scientific read TRUE 
+  TRIAL ROW   N     MEAN     SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100 5.0000e1 3.00e0         NA                 0               NA
+2 Audit   X 100 5.0000e1 3.00e0          2                 0                1
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ coarse read TRUE 
+  TRIAL ROW   N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100   50 30         -1                 0                0
+2 Audit   X 100   50 30         NA                 0                0
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW      P       CI95     M
+1 Audit       X 0.0416 0 to 0.089 10000
+2  <NA> Summary 0.0416 0 to 0.089  <NA>
+3  <NA>    <NA>   <NA>       <NA>  <NA>
+                                                                                                                                                                                                                          NOTE
+1 attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page
+2                                                                                                                                                                                                                             
+3                                                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.0416
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW      P       CI95     M
+1 Audit       X 0.0416 0 to 0.089 10000
+2  <NA> Summary 0.0416 0 to 0.089  <NA>
+3  <NA>    <NA>   <NA>       <NA>  <NA>
+                                                                                                                                                                                                                          NOTE
+1 attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page
+2                                                                                                                                                                                                                             
+3                                                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.0416
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+elapsed 0.85 seconds

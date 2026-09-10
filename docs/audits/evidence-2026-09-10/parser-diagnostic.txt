@@ -1,0 +1,59 @@
+parser-diagnostic 2026-09-10 09:44:09 
+$pct
+[1] 2
+
+$dec
+[1] 0
+
+$N
+[1] NA
+
+$out
+[1] NA NA
+
+$pct
+[1] 1
+
+$dec
+[1] 0
+
+$N
+[1] NA
+
+$out
+[1] NA NA
+
+$pct
+[1] 25
+
+$dec
+[1] 0
+
+$N
+[1] NA
+
+$out
+[1] NA NA
+
+$pct
+[1] 27
+
+$dec
+[1] 0
+
+$N
+[1] NA
+
+$out
+[1] NA NA
+
+  label
+1 White
+2 Black
+                                                                                                                reason
+1 percent only - needs the arm N, and the printed percent must pin a unique count (or pctApprox = TRUE); enter by hand
+2 percent only - needs the arm N, and the printed percent must pin a unique count (or pctApprox = TRUE); enter by hand
+         text
+1   White 2 1
+2 Black 25 27
+elapsed 0.16 seconds

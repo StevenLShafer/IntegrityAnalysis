@@ -1,0 +1,119 @@
+parser-cases 2026-09-10 09:45:20 
+CASE 183 JATS
+  TRIAL     ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 1000 50.1 10 NA          1                1                 2
+2 Audit     Age  200 50.2 10 NA          1                1                 2
+3 Audit Race, %   NA   NA NA NA         NA               NA                NA
+4 Audit Race, %   NA   NA NA NA         NA               NA                NA
+  White Black
+1    NA    NA
+2    NA    NA
+3    24   245
+4     1    53
+[1] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White, Black. Check these against the paper before analyzing."
+      ROW   COL     KIND
+1 Race, % White failsafe
+2 Race, % Black failsafe
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            NOTE
+1         FAIL-SAFE (best case): 2% of N=1000 fits 15..25; 24 taken; 1% of N=200 fits 1..3; 1 taken. All 1,089 readings this page allows were enumerated, and the 50 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.929; worst case p ~ 0.121. These counts total 269/54 for arm(s) of N = 1000/200: the page does not say whether these categories are exhaustive, so readings that do not add up to the arm are admitted. If they ARE exhaustive, the printed counts settle it
+2 FAIL-SAFE (best case): 25% of N=1000 fits 245..255; 245 taken; 27% of N=200 fits 53..55; 53 taken. All 1,089 readings this page allows were enumerated, and the 50 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.929; worst case p ~ 0.121. These counts total 269/54 for arm(s) of N = 1000/200: the page does not say whether these categories are exhaustive, so readings that do not add up to the arm are admitted. If they ARE exhaustive, the printed counts settle it
+DOCX
+  TRIAL     ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 1000 50.1 10 NA          1                1                 2
+2 Audit     Age  200 50.2 10 NA          1                1                 2
+3 Audit Race, %   NA   NA NA NA         NA               NA                NA
+4 Audit Race, %   NA   NA NA NA         NA               NA                NA
+  White Black
+1    NA    NA
+2    NA    NA
+3    24   245
+4     1    53
+[1] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White, Black. Check these against the paper before analyzing."
+validation failed: FALSE 
+Trial Audit: p = 0.944 (95% Monte Carlo interval 0.91 to 0.97)
+ 
+  TRIAL     ROW     P         CI95    M NOTE     KIND
+1 Audit Race, % 0.944 0.91 to 0.97 1000      variable
+2  <NA> Summary 0.944 0.91 to 0.97 <NA>       summary
+3  <NA>    <NA>  <NA>         <NA> <NA> <NA>     <NA>
+CASE 147 JATS
+  TRIAL     ROW   N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 200 50.1 10 NA          1                1                 2
+2 Audit     Age 700 50.2 10 NA          1                1                 2
+3 Audit Race, %  NA   NA NA NA         NA               NA                NA
+4 Audit Race, %  NA   NA NA NA         NA               NA                NA
+  White
+1    NA
+2    NA
+3     1
+4    18
+[1] "1 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White. Check these against the paper before analyzing."
+      ROW   COL     KIND
+1 Race, % White failsafe
+                                                                                                                                                                                                           NOTE
+1 FAIL-SAFE: 1% of N=200 fits 1..3; 1 taken - the reading of the page that leaves the arms least alike; FAIL-SAFE: 3% of N=700 fits 18..24; 18 taken - the reading of the page that leaves the arms least alike
+DOCX
+  TRIAL     ROW   N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 200 50.1 10 NA          1                1                 2
+2 Audit     Age 700 50.2 10 NA          1                1                 2
+3 Audit Race, %  NA   NA NA NA         NA               NA                NA
+4 Audit Race, %  NA   NA NA NA         NA               NA                NA
+  White
+1    NA
+2    NA
+3     1
+4    18
+[1] "1 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White. Check these against the paper before analyzing."
+validation failed: FALSE 
+Trial Audit: p = No values
+ 
+  TRIAL     ROW
+1 Audit Race, %
+2  <NA> Summary
+3  <NA>    <NA>
+                                                                        P CI95
+1 Degenerate category table (an arm or every remaining category is empty)     
+2                                                               No values     
+3                                                                    <NA> <NA>
+     M                                                            NOTE     KIND
+1 <NA>                                                                 variable
+2 <NA> 0 of 1 rows analysed; the rest were refused - see their P cells  summary
+3 <NA>                                                            <NA>     <NA>
+CASE 153 JATS
+  TRIAL     ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 2000 50.1 10 NA          1                1                 2
+2 Audit     Age  200 50.2 10 NA          1                1                 2
+3 Audit Race, %   NA   NA NA NA         NA               NA                NA
+4 Audit Race, %   NA   NA NA NA         NA               NA                NA
+  White Black
+1    NA    NA
+2    NA    NA
+3    30   197
+4     0    22
+[1] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White, Black. Check these against the paper before analyzing."
+      ROW   COL     KIND
+1 Race, % White failsafe
+2 Race, % Black failsafe
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            NOTE
+1         FAIL-SAFE (best case): 1% of N=2000 fits 10..30; 30 taken; 0% of N=200 fits 0..1; 0 taken. All 2,646 readings this page allows were enumerated, and the 50 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.942; worst case p ~ 0.194. These counts total 227/22 for arm(s) of N = 2000/200: the page does not say whether these categories are exhaustive, so readings that do not add up to the arm are admitted. If they ARE exhaustive, the printed counts settle it
+2 FAIL-SAFE (best case): 10% of N=2000 fits 190..210; 197 taken; 11% of N=200 fits 21..23; 22 taken. All 2,646 readings this page allows were enumerated, and the 50 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.942; worst case p ~ 0.194. These counts total 227/22 for arm(s) of N = 2000/200: the page does not say whether these categories are exhaustive, so readings that do not add up to the arm are admitted. If they ARE exhaustive, the printed counts settle it
+DOCX
+  TRIAL     ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit     Age 2000 50.1 10 NA          1                1                 2
+2 Audit     Age  200 50.2 10 NA          1                1                 2
+3 Audit Race, %   NA   NA NA NA         NA               NA                NA
+4 Audit Race, %   NA   NA NA NA         NA               NA                NA
+  White Black
+1    NA    NA
+2    NA    NA
+3    30   197
+4     0    22
+[1] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: White, Black. Check these against the paper before analyzing."
+validation failed: FALSE 
+Trial Audit: p = 0.9415 (95% Monte Carlo interval 0.89 to 0.98)
+ 
+  TRIAL     ROW      P         CI95    M NOTE     KIND
+1 Audit Race, % 0.9415 0.89 to 0.98 1000      variable
+2  <NA> Summary 0.9415 0.89 to 0.98 <NA>       summary
+3  <NA>    <NA>   <NA>         <NA> <NA> <NA>     <NA>
+elapsed 7.53 seconds

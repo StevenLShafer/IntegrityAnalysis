@@ -1,0 +1,66 @@
+baseline-checks 2026-09-10 09:46:29 
+FILE test-audit-2026-09-09-f6.R 
+audit-2026-09-09-f6: ........Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.02165 (95% Monte Carlo interval 0 to 0.047)
+ 
+Trial T: p = 0.01008 (95% Monte Carlo interval 0 to 0.021)
+ 
+.Trial T: p = 0.015 (95% Monte Carlo interval 0.012 to 0.019)
+ 
+.Trial T: p = 0.0162 (95% Monte Carlo interval 0.012 to 0.02)
+ 
+.Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+.Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+.Trial T: p = 0.000205 (95% Monte Carlo interval 0 to 0.00056)
+ 
+.Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 5.6e-05)
+ 
+.Trial T: p = 0.163 (95% Monte Carlo interval 0.069 to 0.27)
+ 
+Trial T: p = 0.1645 (95% Monte Carlo interval 0.073 to 0.27)
+ 
+Trial T: p = 0.164 (95% Monte Carlo interval 0.068 to 0.27)
+ 
+..
+
+== DONE ========================================================================
+FILE test-failsafe-table.R 
+failsafe-table: .......................S...........S.....
+
+== Skipped =====================================================================
+1. the fail-safe record survives a hybrid parse ('test-failsafe-table.R:238:3') - Reason: fixture did not take the hybrid route
+
+2. nothing infers that categories divide the arm ('test-failsafe-table.R:300:3') - Reason: space too large in this configuration
+
+== DONE ========================================================================
+FILE test-text-precision.R 
+text-precision: .....................................................
+
+== DONE ========================================================================
+Security check passed: 30 R/ files, 8 property groups.
+elapsed 84.36 seconds

@@ -1,0 +1,356 @@
+actual-api-handlers 2026-09-10 09:42:00 
+
+PARSE mixed 
+$ok
+[1] TRUE
+
+$file
+[1] "precision-mixed.csv"
+
+$engine
+[1] "template"
+
+$flags
+list()
+
+$rows
+[1] 2
+
+$skipped
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",,,0\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",2,1,0\n"
+
+$deleted
+[1] TRUE
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+direct analyze
+$ok
+[1] TRUE
+
+$file
+[1] "precision-mixed.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.004805
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.004805\",\"0 to 0.01\",\"1e+05\",\"attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page\",\"variable\"\n,\"Summary\",\"0.004805\",\"0 to 0.01\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+parse -> templateCsv -> analyze
+$ok
+[1] TRUE
+
+$file
+[1] "handler-roundtrip-mixed.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.004805
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.004805\",\"0 to 0.01\",\"1e+05\",\"attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page\",\"variable\"\n,\"Summary\",\"0.004805\",\"0 to 0.01\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+
+PARSE lowercase 
+$ok
+[1] TRUE
+
+$file
+[1] "precision-lowercase.csv"
+
+$engine
+[1] "template"
+
+$flags
+list()
+
+$rows
+[1] 2
+
+$skipped
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"trial\",\"row\",\"n\",\"mean\",\"sd\",\"round_mean\",\"round_observation\",\"round_dispersion\"\n\"precision-lowercase\",\"Audit\",\"X\",100,\"50.000\",\"3.00\",,0,\n\"precision-lowercase\",\"Audit\",\"X\",100,\"50.000\",\"3.00\",2,0,1\n"
+
+$deleted
+[1] TRUE
+
+Two columns normalize to the same name: TRIAL from 'TRIAL' and 'TRIAL'. Rename or remove one - which column is meant is ambiguous. 
+Two columns normalize to the same name: TRIAL from 'TRIAL' and 'TRIAL'. Rename or remove one - which column is meant is ambiguous. 
+direct analyze
+$ok
+[1] FALSE
+
+$stage
+[1] "validation"
+
+$file
+[1] "precision-lowercase.csv"
+
+$issues
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",,,0\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",2,1,0\n"
+
+$deleted
+[1] TRUE
+
+parse -> templateCsv -> analyze
+$ok
+[1] FALSE
+
+$stage
+[1] "validation"
+
+$file
+[1] "handler-roundtrip-lowercase.csv"
+
+$issues
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"precision-lowercase\",\"X\",100,\"50.000\",\"3.00\",,,0\n\"precision-lowercase\",\"X\",100,\"50.000\",\"3.00\",2,1,0\n"
+
+$deleted
+[1] TRUE
+
+
+PARSE scientific 
+$ok
+[1] TRUE
+
+$file
+[1] "precision-scientific.csv"
+
+$engine
+[1] "template"
+
+$flags
+list()
+
+$rows
+[1] 2
+
+$skipped
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"5.0000e1\",\"3.00e0\",,,0\n\"Audit\",\"X\",100,\"5.0000e1\",\"3.00e0\",2,1,0\n"
+
+$deleted
+[1] TRUE
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+direct analyze
+$ok
+[1] TRUE
+
+$file
+[1] "precision-scientific.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.004805
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.004805\",\"0 to 0.01\",\"1e+05\",\"attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page\",\"variable\"\n,\"Summary\",\"0.004805\",\"0 to 0.01\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+parse -> templateCsv -> analyze
+$ok
+[1] TRUE
+
+$file
+[1] "handler-roundtrip-scientific.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.004805
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.004805\",\"0 to 0.01\",\"1e+05\",\"attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page\",\"variable\"\n,\"Summary\",\"0.004805\",\"0 to 0.01\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+
+PARSE coarse 
+$ok
+[1] TRUE
+
+$file
+[1] "precision-coarse.csv"
+
+$engine
+[1] "template"
+
+$flags
+list()
+
+$rows
+[1] 2
+
+$skipped
+list()
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",,0,0\n"
+
+$deleted
+[1] TRUE
+
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+direct analyze
+$ok
+[1] TRUE
+
+$file
+[1] "precision-coarse.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.0416
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.0416\",\"0 to 0.089\",\"10000\",\"attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page\",\"variable\"\n,\"Summary\",\"0.0416\",\"0 to 0.089\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+parse -> templateCsv -> analyze
+$ok
+[1] TRUE
+
+$file
+[1] "handler-roundtrip-coarse.csv"
+
+$trials
+[1] 1
+
+$overallP
+[1] 0.0416
+
+$resultsCsv
+[1] "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Audit\",\"X\",\"0.0416\",\"0 to 0.089\",\"10000\",\"attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page\",\"variable\"\n,\"Summary\",\"0.0416\",\"0 to 0.089\",,\"\",\"summary\"\n,,,,,,\n"
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+$deleted
+[1] TRUE
+
+$seed
+[1] 42
+
+elapsed 1.14 seconds

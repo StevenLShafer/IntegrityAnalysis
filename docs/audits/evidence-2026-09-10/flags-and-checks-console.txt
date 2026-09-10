@@ -1,0 +1,344 @@
+flags-routes 2026-09-10 09:46:23 
+xml 
+  TRIAL           ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION
+1 Audit           Age 1200 50.1 10 NA          1                1
+2 Audit           Age 1200 50.2 10 NA          1                1
+3 Audit ASA status, %   NA   NA NA NA         NA               NA
+4 Audit ASA status, %   NA   NA NA NA         NA               NA
+5 Audit        Weight 1200 70.1 10 NA          1                1
+6 Audit        Weight 1200 70.2 10 NA          1                1
+7 Audit NYHA class, %   NA   NA NA NA         NA               NA
+8 Audit NYHA class, %   NA   NA NA NA         NA               NA
+  ROUND_OBSERVATION  I II III I 2 II 2 III 2
+1                 2 NA NA  NA  NA   NA    NA
+2                 2 NA NA  NA  NA   NA    NA
+3                NA NA NA  NA  NA   NA    NA
+4                NA NA NA  NA  NA   NA    NA
+5                 2 NA NA  NA  NA   NA    NA
+6                 2 NA NA  NA  NA   NA    NA
+7                NA NA NA  NA 400  399   401
+8                NA NA NA  NA 399  400   401
+$approxCounts
+[1] "I"  "II"
+
+$approxStraddle
+character(0)
+
+$approxUnresolved
+                                                                         ASA status, % 
+"the page allows about 4,830,000 readings, more than can be enumerated (over 200,000)" 
+
+[1] "1 table line(s) could not be used: ASA status, %"                                                                                                                                                                                                                                                   
+[2] "1 category row(s) converted from printed percentages via the arm N (unique-count bracket): III"                                                                                                                                                                                                     
+[3] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: I, II. Check these against the paper before analyzing."
+[4] "1 category row(s) could NOT be read as counts and are left blank, so they are not analysed: ASA status, % (the page allows about 4,830,000 readings, more than can be enumerated (over 200,000)). Enter the printed counts to analyse them."                                                        
+            ROW   COL     KIND
+1 ASA status, %     I failsafe
+2 ASA status, %    II failsafe
+3 ASA status, %   III failsafe
+4 NYHA class, %   I 2 failsafe
+5 NYHA class, %  II 2 failsafe
+6 NYHA class, % III 2   unique
+                                                                                                                                                                                                                                                                                                                                                 NOTE
+1                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+2                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+3                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+4 FAIL-SAFE (best case): 33.3% of N=1200 fits 399..400; 400 taken; 33.3% of N=1200 fits 399..400; 399 taken. All 16 readings this page allows were enumerated, and the 15 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.0013; worst case p ~ 0.00045
+5 FAIL-SAFE (best case): 33.3% of N=1200 fits 399..400; 399 taken; 33.3% of N=1200 fits 399..400; 400 taken. All 16 readings this page allows were enumerated, and the 15 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.0013; worst case p ~ 0.00045
+6                                                                                                                                                                                                                                                                  33.4% of N=1200 -> 401 (uniquely pinned); 33.4% of N=1200 -> 401 (uniquely pinned)
+Trial Audit: p = 0.001355
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL           ROW        P          CI95     M NOTE     KIND
+1 Audit           Age   0.1907 0.095 to 0.29 1e+05      variable
+2  <NA> NYHA class, %  0.00152   0 to 0.0034 1e+05      variable
+3  <NA>        Weight    0.191 0.095 to 0.29 1e+05      variable
+4  <NA>       Summary 0.001355                <NA>       summary
+5  <NA>          <NA>     <NA>          <NA>  <NA> <NA>     <NA>
+
+$overallP
+[1] 0.001355
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 1200)\",\"Arm 2 (n = 1200)\"\n\"Age, mean (SD)\",\"50.1 (10.0)\",\"50.2 (10.0)\"\n\"NYHA class, %, n\",\"\",\"\"\n\"    I 2\",\"400\",\"399\"\n\"    II 2\",\"399\",\"400\"\n\"    III 2\",\"401\",\"401\"\n\"Weight, mean (SD)\",\"70.1 (10.0)\",\"70.2 (10.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\",\"I 2\",\"II 2\",\"III 2\",\"I\",\"II\",\"III\"\n\"Audit\",\"Age\",1200,\"50.1\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"Age\",1200,\"50.2\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"NYHA class, %\",,,,,,,,400,399,401,,,\n\"Audit\",\"NYHA class, %\",,,,,,,,399,400,401,,,\n\"Audit\",\"Weight\",1200,\"70.1\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"Weight\",1200,\"70.2\",\"10.0\",,1,1,2,,,,,,\n"
+
+docx 
+  TRIAL           ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION
+1 Audit           Age 1200 50.1 10 NA          1                1
+2 Audit           Age 1200 50.2 10 NA          1                1
+3 Audit ASA status, %   NA   NA NA NA         NA               NA
+4 Audit ASA status, %   NA   NA NA NA         NA               NA
+5 Audit        Weight 1200 70.1 10 NA          1                1
+6 Audit        Weight 1200 70.2 10 NA          1                1
+7 Audit NYHA class, %   NA   NA NA NA         NA               NA
+8 Audit NYHA class, %   NA   NA NA NA         NA               NA
+  ROUND_OBSERVATION  I II III I 2 II 2 III 2
+1                 2 NA NA  NA  NA   NA    NA
+2                 2 NA NA  NA  NA   NA    NA
+3                NA NA NA  NA  NA   NA    NA
+4                NA NA NA  NA  NA   NA    NA
+5                 2 NA NA  NA  NA   NA    NA
+6                 2 NA NA  NA  NA   NA    NA
+7                NA NA NA  NA 400  399   401
+8                NA NA NA  NA 399  400   401
+$approxCounts
+[1] "I"  "II"
+
+$approxStraddle
+character(0)
+
+$approxUnresolved
+                                                                         ASA status, % 
+"the page allows about 4,830,000 readings, more than can be enumerated (over 200,000)" 
+
+[1] "1 table line(s) could not be used: ASA status, %"                                                                                                                                                                                                                                                   
+[2] "1 category row(s) converted from printed percentages via the arm N (unique-count bracket): III"                                                                                                                                                                                                     
+[3] "2 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: I, II. Check these against the paper before analyzing."
+[4] "1 category row(s) could NOT be read as counts and are left blank, so they are not analysed: ASA status, % (the page allows about 4,830,000 readings, more than can be enumerated (over 200,000)). Enter the printed counts to analyse them."                                                        
+            ROW   COL     KIND
+1 ASA status, %     I failsafe
+2 ASA status, %    II failsafe
+3 ASA status, %   III failsafe
+4 NYHA class, %   I 2 failsafe
+5 NYHA class, %  II 2 failsafe
+6 NYHA class, % III 2   unique
+                                                                                                                                                                                                                                                                                                                                                 NOTE
+1                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+2                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+3                                      UNRESOLVED: the page allows about 4,830,000 readings, more than can be enumerated (over 200,000). The printed percentages fit several counts here, so no reading can be shown to be the best case for the authors. The cell is left blank and the row is not analysed; enter the printed counts to analyse it.
+4 FAIL-SAFE (best case): 33.3% of N=1200 fits 399..400; 400 taken; 33.3% of N=1200 fits 399..400; 399 taken. All 16 readings this page allows were enumerated, and the 15 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.0013; worst case p ~ 0.00045
+5 FAIL-SAFE (best case): 33.3% of N=1200 fits 399..400; 399 taken; 33.3% of N=1200 fits 399..400; 400 taken. All 16 readings this page allows were enumerated, and the 15 at each extreme were scored; the one analysed is the one with the LARGEST p, so the arms are given every benefit of the doubt. Best case p ~ 0.0013; worst case p ~ 0.00045
+6                                                                                                                                                                                                                                                                  33.4% of N=1200 -> 401 (uniquely pinned); 33.4% of N=1200 -> 401 (uniquely pinned)
+Trial Audit: p = 0.001355
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL           ROW        P          CI95     M NOTE     KIND
+1 Audit           Age   0.1907 0.095 to 0.29 1e+05      variable
+2  <NA> NYHA class, %  0.00152   0 to 0.0034 1e+05      variable
+3  <NA>        Weight    0.191 0.095 to 0.29 1e+05      variable
+4  <NA>       Summary 0.001355                <NA>       summary
+5  <NA>          <NA>     <NA>          <NA>  <NA> <NA>     <NA>
+
+$overallP
+[1] 0.001355
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 1200)\",\"Arm 2 (n = 1200)\"\n\"Age, mean (SD)\",\"50.1 (10.0)\",\"50.2 (10.0)\"\n\"NYHA class, %, n\",\"\",\"\"\n\"    I 2\",\"400\",\"399\"\n\"    II 2\",\"399\",\"400\"\n\"    III 2\",\"401\",\"401\"\n\"Weight, mean (SD)\",\"70.1 (10.0)\",\"70.2 (10.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\",\"I 2\",\"II 2\",\"III 2\",\"I\",\"II\",\"III\"\n\"Audit\",\"Age\",1200,\"50.1\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"Age\",1200,\"50.2\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"NYHA class, %\",,,,,,,,400,399,401,,,\n\"Audit\",\"NYHA class, %\",,,,,,,,399,400,401,,,\n\"Audit\",\"Weight\",1200,\"70.1\",\"10.0\",,1,1,2,,,,,,\n\"Audit\",\"Weight\",1200,\"70.2\",\"10.0\",,1,1,2,,,,,,\n"
+
+elapsed 6.05 seconds
+baseline-checks 2026-09-10 09:46:29 
+FILE test-audit-2026-09-09-f6.R 
+audit-2026-09-09-f6: ........Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+.Trial T: p = 0.02165 (95% Monte Carlo interval 0 to 0.047)
+ 
+Trial T: p = 0.01008 (95% Monte Carlo interval 0 to 0.021)
+ 
+.Trial T: p = 0.015 (95% Monte Carlo interval 0.012 to 0.019)
+ 
+.Trial T: p = 0.0162 (95% Monte Carlo interval 0.012 to 0.02)
+ 
+.Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+.Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+.Trial T: p = 0.000205 (95% Monte Carlo interval 0 to 0.00056)
+ 
+.Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 5.6e-05)
+ 
+.Trial T: p = 0.163 (95% Monte Carlo interval 0.069 to 0.27)
+ 
+Trial T: p = 0.1645 (95% Monte Carlo interval 0.073 to 0.27)
+ 
+Trial T: p = 0.164 (95% Monte Carlo interval 0.068 to 0.27)
+ 
+..
+
+== DONE ========================================================================
+FILE test-failsafe-table.R 
+failsafe-table: .......................S...........S.....
+
+== Skipped =====================================================================
+1. the fail-safe record survives a hybrid parse ('test-failsafe-table.R:238:3') - Reason: fixture did not take the hybrid route
+
+2. nothing infers that categories divide the arm ('test-failsafe-table.R:300:3') - Reason: space too large in this configuration
+
+== DONE ========================================================================
+FILE test-text-precision.R 
+text-precision: .....................................................
+
+== DONE ========================================================================
+Security check passed: 30 R/ files, 8 property groups.
+elapsed 84.36 seconds
+version-audit 2026-09-10 09:47:53 
+        package installed locked matches
+9    cellranger      <NA>  1.1.0      NA
+32          hms      <NA>  1.1.4      NA
+69      plumber      <NA>  1.3.3      NA
+71  prettyunits      <NA>  1.2.0      NA
+72     progress      <NA>  1.2.3      NA
+86       readxl      <NA>  1.4.5      NA
+88      rematch      <NA>  2.0.0      NA
+89         renv      <NA>  1.2.0      NA
+104      sodium      <NA>  1.4.0      NA
+109     swagger      <NA> 5.32.1      NA
+121    webutils      <NA>  1.2.3      NA
+Absent packages are outside copied runtime closure; no loaded version differs if all nonmissing matches are TRUE.
+Warning messages:
+1: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFE>' to native encoding
+2: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFD>' to native encoding
+3: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2D1D>' to native encoding
+4: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2B0D>' to native encoding
+5: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2B0E>' to native encoding
+6: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFA>' to native encoding
+7: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AF9>' to native encoding
+8: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2C55>' to native encoding
+9: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2C56>' to native encoding
+10: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFB>' to native encoding
+11: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2D1B>' to native encoding
+12: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+4860>' to native encoding
+13: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+242E>' to native encoding
+14: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2423>' to native encoding
+15: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2424>' to native encoding
+16: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2425>' to native encoding
+17: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2426>' to native encoding
+18: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2440>' to native encoding
+19: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+00BC>' to native encoding
+20: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+00AF>' to native encoding
+21: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0B1>' to native encoding
+22: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F03D>' to native encoding
+23: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0A3>' to native encoding
+24: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0B3>' to native encoding
+25: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F03C>' to native encoding
+26: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F03E>' to native encoding
+27: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F02B>' to native encoding
+28: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F02D>' to native encoding
+29: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0B4>' to native encoding
+30: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0D7>' to native encoding
+31: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F0B0>' to native encoding
+32: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F06D>' to native encoding
+33: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F061>' to native encoding
+34: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F062>' to native encoding
+35: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F063>' to native encoding
+36: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F064>' to native encoding
+37: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F067>' to native encoding
+38: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F06C>' to native encoding
+39: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F070>' to native encoding
+40: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F072>' to native encoding
+41: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+F073>' to native encoding
+42: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFE>' to native encoding
+43: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFD>' to native encoding
+44: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2D1D>' to native encoding
+45: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2B0D>' to native encoding
+46: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2B0E>' to native encoding
+47: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AFA>' to native encoding
+48: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2AF9>' to native encoding
+49: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2C55>' to native encoding
+50: In parse(f, keep.source = TRUE) :
+  unable to translate '<U+2C56>' to native encoding
+elapsed 0.19 seconds
