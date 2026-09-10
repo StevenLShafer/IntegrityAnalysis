@@ -15,13 +15,19 @@
 #'
 #' @param ... message parts, pasted with `sep`; or a single data frame.
 #' @param echo also `cat()` to the console (default from option
-#'   `ECHO_OUTPUT_COMMENTS`, `TRUE` if unset; `NA` suppresses everything).
+#'   `ECHO_OUTPUT_COMMENTS`; when unset, `interactive()` - so a deployed
+#'   app or service, which is never interactive, writes nothing to its
+#'   host's console; `NA` suppresses everything). Security audit
+#'   2026-09-10, S3: with the old default of TRUE the uploaded file's name
+#'   and the trial's p stayed in the captured stdout after the session
+#'   that purged every other trace had closed, which the privacy notice
+#'   ("No record of the analysis is kept here") does not allow.
 #' @param sep separator used when pasting multiple arguments.
 #' @return invisibly `NULL`; called for its side effects.
 #' @noRd
 outputComments <- function(
     ...,
-    echo = getOption("ECHO_OUTPUT_COMMENTS", TRUE),
+    echo = getOption("ECHO_OUTPUT_COMMENTS", interactive()),
     sep = " ")
 {
   isolate({

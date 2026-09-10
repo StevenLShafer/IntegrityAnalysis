@@ -51,6 +51,10 @@ test_that("a name collision after normalizing names the SOURCE column", {
   # had named "Male (number, %)" was folded onto N by the NUMBER alias,
   # and the refusal said only "(N)" - which sent the reader looking for
   # a second N column. The message must name the column to rename.
+  # The message is read off the console: since the S3 fix of the
+  # 2026-09-10 security audit the echo defaults to interactive(), so a
+  # test process (never interactive) turns it on for this test only.
+  withr::local_options(ECHO_OUTPUT_COMMENTS = TRUE)
   d <- data.frame(TRIAL = "T", ROW = c("Age", "Age"), N = c(15, 17),
                   MEAN = c(45.3, 46.1), SD = c(12.1, 11.8),
                   "Male (number, %)" = c(8, 9),
