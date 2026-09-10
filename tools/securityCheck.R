@@ -862,8 +862,18 @@ if (length(fillAt) == 1L) {
   # 24a8177 quantity the 0815 fix replaced.
   selAt <- body[grep("ifelse\\(\\s*amb\\[i,\\s*\\],\\s*hi\\[i,\\s*\\],\\s*cnt\\[i,\\s*\\]\\s*\\)", fsCode[body])]
   defAt <- body[grep("rowTotal\\s*<-", fsCode[body])]
+  # ...and it must be INSIDE the rowTotal statement, not merely near it
+  # (screen 2026-09-10-0923, observation): a dead vapply holding the
+  # expression beside `rowTotal <- as.numeric(N[keep])` satisfied the
+  # three-line window. No other top-level assignment may begin between
+  # the rowTotal line and the ifelse line.
+  inStmt <- length(selAt) && length(defAt) && {
+    d0 <- min(defAt); s0 <- min(selAt[selAt >= d0])
+    is.finite(s0) && s0 <= d0 + 3L &&
+      !any(grepl("^\\s*[A-Za-z._][A-Za-z0-9._]*\\s*<-", fsCode[setdiff(seq(d0, s0), d0)]))
+  }
   if (!length(selAt) || !length(defAt) || !length(candAt) ||
-      !any(selAt >= min(defAt) & selAt <= min(defAt) + 3L) || min(defAt) >= min(candAt))
+      !isTRUE(inStmt) || min(defAt) >= min(candAt))
     note(paste("R/failsafeTable.R: rowTotal must be built from ifelse(amb, hi, cnt)",
                "- the cells as they will be scored - within three lines of its",
                "assignment and before candUp; a rowTotal taken from N is the",

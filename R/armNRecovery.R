@@ -55,12 +55,21 @@
   # N stays unknown, and the rest of the table is read as it always was.
   nLoD <- ceiling(count / hi - 1e-9)
   nHiD <- floor(count / lo + 1e-9)
-  if (!is.finite(nLoD) || !is.finite(nHiD) || nHiD < nLoD ||
-      nLoD > .iaMaxArmN)
+  # THE COUNT ITSELF IS PART OF THE LOWER BOUND (screen 2026-09-10-0923,
+  # F2). The ceiling added by screen 0858 capped the upper bound and gated
+  # only nLoD, so a count of 5,010 at 100% - lower bound 4,985, under the
+  # ceiling - returned the DESCENDING sequence 5,010..5,000, ten of its
+  # eleven values above the ceiling the comment said could never be
+  # returned, and .ppDeriveArmN() then derived N = 5,000 for an arm whose
+  # own printed count is 5,010. A derived arm size is at least the count,
+  # so the count is folded into the lower bound before the gate, and an
+  # empty range is empty rather than reversed.
+  nLoD <- max(nLoD, ceiling(count))
+  if (!is.finite(nLoD) || !is.finite(nHiD) || nLoD > .iaMaxArmN)
     return(integer(0))
-  nLo <- as.integer(nLoD)
-  nHi <- as.integer(min(nHiD, .iaMaxArmN))
-  seq.int(max(nLo, as.integer(count)), nHi)
+  nHiD <- min(nHiD, .iaMaxArmN)
+  if (nHiD < nLoD) return(integer(0))
+  seq.int(as.integer(nLoD), as.integer(nHiD))
 }
 
 # Intersect the feasible sets of several cells belonging to one arm.
@@ -104,13 +113,22 @@
   if (is.na(pct) || is.na(N) || N <= 0 || pct < 0 || pct > 100)
     return(c(NA_integer_, NA_integer_))
   if (is.na(dec)) dec <- 0L
+  # IN DOUBLES, AND REFUSED BEFORE as.integer() - the same cure
+  # .ppNFromCountPct() received from screen 2026-09-10-0858, which the next
+  # screen (0923, F1) found this sibling still needed. A header cell
+  # "(n=2147000000)" arrives intact through as.integer(); a "100%" cell
+  # then made as.integer(floor(N * 1.005)) NA with a warning, the
+  # comparison raised, and on the JATS route the whole document failed
+  # with a message naming no cell. An arm above .iaMaxArmN can never be
+  # analysed, so it yields no bracket at any percentage, and the row is
+  # skipped rather than the document lost.
+  if (!is.finite(N) || N > .iaMaxArmN) return(c(NA_integer_, NA_integer_))
   half <- 0.5 * 10^(-dec)
-  cLo <- as.integer(ceiling(N * (pct - half) / 100 - 1e-9))
-  cHi <- as.integer(floor(N * (pct + half) / 100 + 1e-9))
-  cLo <- max(cLo, 0L)
-  cHi <- min(cHi, as.integer(N))
-  if (cHi < cLo) return(c(NA_integer_, NA_integer_))
-  c(cLo, cHi)
+  cLoD <- max(ceiling(N * (pct - half) / 100 - 1e-9), 0)
+  cHiD <- min(floor(N * (pct + half) / 100 + 1e-9), N)
+  if (!is.finite(cLoD) || !is.finite(cHiD) || cHiD < cLoD)
+    return(c(NA_integer_, NA_integer_))
+  c(as.integer(cLoD), as.integer(cHiD))
 }
 
 # THE PERCENTAGE FILL LIVES IN R/failsafeTable.R.
