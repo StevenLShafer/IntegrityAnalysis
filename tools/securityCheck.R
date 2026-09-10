@@ -655,6 +655,35 @@ if (length(snapCalls) != 2L)
   note(paste("R/P_Calc.R: expected exactly two callers of .iaZeroSnapTol()",
              "- the median and the continuous branch - found",
              length(snapCalls)))
+# ...AND EACH CALLER'S LINE IS NOTHING BUT THE CALL (screen 2026-09-10-1042,
+# observation). The definition and the caller count say nothing about what
+# the caller DOES with the value: the observed term the 2026-09-10 audit's
+# F1 removed - a tolerance scaled by how far apart the printed arms are -
+# could come back at the call site as max(.iaZeroSnapTol(step), <a local
+# term>), or on the next line as `zt <- max(zt, ...)`, or in the simRow
+# as `zeroTol = max(zt, ...)`, with every pin above satisfied. So: the
+# two lines that bind zt in the branches read exactly
+# `zt <- .iaZeroSnapTol(.iaMeanStep(ROWS$ROUND_MEAN))`; the only other
+# assignment to zt is the staging loop's `zt <- rows[[j]]$sim$zeroTol`;
+# nothing right-assigns to zt; and every simRow's zeroTol is `zt` or the
+# categorical branch's `0`, nothing computed.
+snapExact <- paste0("^\\s*zt\\s*<-\\s*\\.iaZeroSnapTol\\(\\s*\\.iaMeanStep\\(",
+                    "\\s*ROWS\\$ROUND_MEAN\\s*\\)\\s*\\)\\s*$")
+ztLines <- grep("(^|[^A-Za-z0-9._])zt\\s*(<<-|<-|=)[^=]", pcCode)
+ztRight <- grep("(->>|->)\\s*zt([^A-Za-z0-9._]|$)", pcCode)
+ztOK <- grepl(snapExact, pcCode[ztLines]) |
+        grepl("^\\s*zt\\s*<-\\s*rows\\[\\[j\\]\\]\\$sim\\$zeroTol\\s*$", pcCode[ztLines])
+zeroTolBad <- zeroTolLines[!grepl("zeroTol\\s*=\\s*(zt|0)\\s*\\)", zeroTolLines)]
+if (!all(grepl(snapExact, pcCode[snapCalls])) || !all(ztOK) || length(ztRight) ||
+    length(zeroTolBad))
+  note(paste("R/P_Calc.R: the zero tolerance must reach the engine untouched -",
+             "each caller's line is exactly `zt <- .iaZeroSnapTol(.iaMeanStep(",
+             "ROWS$ROUND_MEAN))`, zt is rebound only by the staging loop, and",
+             "every simRow's zeroTol is `zt` or the categorical `0` - or the",
+             "observed term the 2026-09-10 audit's F1 removed can come back at",
+             "the call site (screen 2026-09-10-1042, observation) -",
+             paste(trimws(c(pcCode[ztLines][!ztOK], pcCode[ztRight], zeroTolBad)),
+                   collapse = " | ")))
 if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
   note(paste("R/P_Calc.R: the origin-dependent zero tolerance",
              "1e-26 * (1 + centre^2) is back in code (screen",
