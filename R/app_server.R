@@ -360,7 +360,9 @@ app_server <- function(input, output, session) {
     iss <- rIssues()
     if (!is.null(iss)) {
       ci <- match(iss$col, names(d))
-      ok <- !is.na(ci) & iss$row <= nrow(d)
+      # a structural issue has no cell (row NA): it is in the comments,
+      # not on the grid (audit 2026-09-10 F4, Steve's decision)
+      ok <- !is.na(ci) & !is.na(iss$row) & iss$row <= nrow(d)
       if (any(ok)) {
         if (is.null(issPayload)) issPayload <- list()
         addI <- as.list(iss$code[ok])

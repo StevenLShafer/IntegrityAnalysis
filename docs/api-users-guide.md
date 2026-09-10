@@ -311,7 +311,7 @@ The round-trip contract: the failure payload is the next call's input.
 | `too_large` | the table exceeds a size or compute limit (section 7) | `issues`, one entry with `detail` |
 | `analysis` | the Monte Carlo itself failed on a trial | `issues`, one entry, code `error` |
 
-`code` in an `issues` entry takes one of six values:
+`code` in an `issues` entry takes one of seven values:
 
 | code | meaning |
 |---|---|
@@ -321,12 +321,13 @@ The round-trip contract: the failure payload is the next call's input.
 | `too_large` | an N or a count over the arm ceiling (section 7); as the only entry, with `detail`, when the whole table exceeds a limit |
 | `too_much_compute` | the table is within every size limit but the simulation it asks for is not; `detail` carries the arithmetic and the advice |
 | `error` | the validator (stage `validation`) or the analysis (stage `analysis`) failed in a way the service did not foresee; `note` names the trial and the failure, never the document's content |
+| `structural` | the table as a whole cannot be analysed: a required column (`ROW`, `N`, `MEAN`, `SD`) is absent, or two columns normalise to the same name (`Number` and `N`, say; the service refuses to guess which is meant). `row` is null — there is no cell — `col` names the column concerned, and `note` says what to change |
 
-A structural failure — a required column (`ROW`, `N`, `MEAN`, `SD`)
-absent, or two columns that normalise to the same name (`Number` and
-`N`, say; the service refuses to guess which is meant) — arrives as
-stage `validation` with an empty `issues` array and the table as read in
-`templateCsv`.
+A structural failure arrives as stage `validation` with one `structural`
+entry per problem and the table as read in `templateCsv`. The per-cell
+checks do not run on a table whose columns are wrong, so the only cell
+codes that can accompany it are the two found before them: an arm over
+the ceiling (`too_large`) and a blank `TRIAL` cell (`missing`).
 
 ### Other status codes
 

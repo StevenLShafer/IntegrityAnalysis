@@ -206,7 +206,17 @@ validateData <- function(DATA) {
   RowColumn <- grep("ROW", ColumnNames)
   if (length(RowColumn) == 0)
   {
+    # STRUCTURAL FAILURES CARRY AN ISSUE (Steve's decision on the
+    # 2026-09-10 audit's F4): a missing required column or two columns
+    # that collapse onto one name used to be reported only through
+    # outputComments(), which the API does not return, so a caller got
+    # stage "validation" with an EMPTY issues array and had to read the
+    # process log to learn why. Each such failure now files one issue -
+    # code "structural", row NA (it is not a cell), col the column
+    # concerned, note the sentence the app shows - and the grid's painter
+    # skips rows that are NA.
     outputComments("Missing column labeled ROW")
+    addIssue(NA_integer_, "ROW", "structural", "missing column labeled ROW")
     FAIL <- TRUE
   } else {
     names(DATA)[RowColumn[1]] <- "ROW"
@@ -232,6 +242,10 @@ validateData <- function(DATA) {
       "Two columns normalize to the same name: ",
       paste(from, collapse = "; "),
       ". Rename or remove one - which column is meant is ambiguous."))
+    for (k in seq_along(dupNames))
+      addIssue(NA_integer_, dupNames[k], "structural",
+               paste0("two columns normalize to the same name: ", from[k],
+                      "; rename or remove one - which column is meant is ambiguous"))
     FAIL <- TRUE
   }
 
@@ -243,6 +257,7 @@ validateData <- function(DATA) {
   if (is.null(DATA[["N"]]))
   {
     outputComments("Missing column labeled N")
+    addIssue(NA_integer_, "N", "structural", "missing column labeled N")
     FAIL <- TRUE
   }
 
@@ -298,11 +313,13 @@ validateData <- function(DATA) {
   if (is.null(DATA[["MEAN"]]))
   {
     outputComments("Missing column labeled MEAN")
+    addIssue(NA_integer_, "MEAN", "structural", "missing column labeled MEAN")
     FAIL <- TRUE
   }
   if (is.null(DATA[["SD"]]))
   {
     outputComments("Missing column labeled SD")
+    addIssue(NA_integer_, "SD", "structural", "missing column labeled SD")
     FAIL <- TRUE
   }
 
@@ -316,8 +333,9 @@ validateData <- function(DATA) {
     # ...with the NORMALIZED frame, as every later failure returns it, so the
     # grid paints the issues on the frame whose names they index - a
     # lower-case `trial` header would otherwise keep the raw grid while the
-    # issues named TRIAL (CodeRabbit on #254)
-    return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))   # the cell issues, if any (1119)
+    # issues named TRIAL (CodeRabbit on #254); the cell issues (1119) and
+    # the structural issues travel with the refusal
+    return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))
 
   # FIX: force N, MEAN, and SD to numeric. Excel/CSV files with a stray
   # text cell make the whole column character, and character data in the
