@@ -1,0 +1,8 @@
+[1] ".iaTieRank"
+[1] "P_Calc"
+Trial Audit: p = 0.003285
+ 
+DONE ordinary-N100-J9-bad3 
+Trial Audit: p = 0.00013 (95% Monte Carlo interval 2.2e-05 to 0.00031)
+ 
+DONE ordinary-N100-J14-bad7 

@@ -1,0 +1,470 @@
+START pcalc-direct 
+Trial T1: p = 0.052
+ 
+Trial T1: p = 0.052
+ 
+Trial T1: p = 0.1435 (95% Monte Carlo interval 0.085 to 0.21)
+ 
+Trial T1: p = 0.1435 (95% Monte Carlo interval 0.085 to 0.21)
+ 
+Trial T1: p = No values
+ 
+Trial T1: p = No values
+ 
+Trial T1: p = No values
+ 
+Trial T1: p = 0.0715 (95% Monte Carlo interval 0.043 to 0.11)
+ 
+Trial T1: p = 0.0715 (95% Monte Carlo interval 0.043 to 0.11)
+ 
+DONE pcalc-direct seconds 0.94 passed 8 failed 0 errors 0 skipped 0 
+START sd-rounding-draw 
+Trial T: p = 0.07625 (95% Monte Carlo interval 0 to 0.16)
+ 
+Trial T: p = 0.07655 (95% Monte Carlo interval 0 to 0.16)
+ 
+Trial T: p = 0.07105 (95% Monte Carlo interval 0 to 0.15)
+ 
+Trial T: p = 0.07105 (95% Monte Carlo interval 0 to 0.15)
+ 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.6775 (95% Monte Carlo interval 0.4 to 0.94)
+ 
+DONE sd-rounding-draw seconds 0.94 passed 21 failed 0 errors 0 skipped 0 
+START sd-interval-cells 
+DONE sd-interval-cells seconds 0.18 passed 9 failed 0 errors 0 skipped 0 
+START validate-rounding 
+DONE validate-rounding seconds 0.2 passed 9 failed 0 errors 0 skipped 0 
+START known-answer 
+Trial T: p = 0.0462 (95% Monte Carlo interval 0.022 to 0.073)
+ 
+Trial T: p = 0.00015 (95% Monte Carlo interval 0 to 0.00088)
+ 
+Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+Trial T: p = 0.0427 (95% Monte Carlo interval 0.023 to 0.064)
+ 
+Trial T: p = 0.08245 (95% Monte Carlo interval 0 to 0.17)
+ 
+Trial T: p = 0.9999 (95% Monte Carlo interval 1 to 1)
+ 
+DONE known-answer seconds 0.55 passed 10 failed 0 errors 0 skipped 0 
+START tie-criterion 
+Trial T: p = 0.346 (95% Monte Carlo interval 0 to 0.72)
+ 
+Trial T: p = 0.0831
+ 
+Trial T: p = 0.008 (95% Monte Carlo interval 0 to 0.026)
+ 
+Trial T: p = 0.038 (95% Monte Carlo interval 0.0084 to 0.078)
+ 
+DONE tie-criterion seconds 0.38 passed 12 failed 0 errors 0 skipped 0 
+START summary-kind 
+DONE summary-kind seconds 1.14 passed 11 failed 0 errors 0 skipped 0 
+START median-iqr 
+Trial T: p = 0.00025 (95% Monte Carlo interval 0 to 0.0018)
+ 
+Trial T: p = 0.9999 (95% Monte Carlo interval 1 to 1)
+ 
+Trial T: p = 0.0115 (95% Monte Carlo interval 0 to 0.034)
+ 
+Trial T: p = 0.193 (95% Monte Carlo interval 0.15 to 0.24)
+ 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.8945 (95% Monte Carlo interval 0.86 to 0.93)
+ 
+Trial T: p = 0.09925 (95% Monte Carlo interval 0.04 to 0.17)
+ 
+Trial T: p = 0.1925 (95% Monte Carlo interval 0.14 to 0.25)
+ 
+Trial T: p = 0.314 (95% Monte Carlo interval 0.26 to 0.37)
+ 
+Trial T: p = 0.7785 (95% Monte Carlo interval 0.74 to 0.82)
+ 
+Trial T: p = 0.384 (95% Monte Carlo interval 0.33 to 0.44)
+ 
+Trial T: p = 0.4435 (95% Monte Carlo interval 0.39 to 0.5)
+ 
+Trial T: p = 0.996 (95% Monte Carlo interval 0.99 to 1)
+ 
+Trial T: p = 0.6165 (95% Monte Carlo interval 0.55 to 0.68)
+ 
+Trial T: p = 0.808 (95% Monte Carlo interval 0.77 to 0.84)
+ 
+Trial T: p = 0.8485 (95% Monte Carlo interval 0.82 to 0.88)
+ 
+Trial T: p = 0.3975 (95% Monte Carlo interval 0.34 to 0.45)
+ 
+Trial T: p = 0.4645 (95% Monte Carlo interval 0.39 to 0.54)
+ 
+Trial T: p = 0.6195 (95% Monte Carlo interval 0.57 to 0.67)
+ 
+Trial T: p = 0.5165 (95% Monte Carlo interval 0.46 to 0.57)
+ 
+Trial T: p = 0.0245 (95% Monte Carlo interval 0 to 0.059)
+ 
+Trial T: p = 0.956 (95% Monte Carlo interval 0.94 to 0.97)
+ 
+Trial T: p = 0.603 (95% Monte Carlo interval 0.55 to 0.66)
+ 
+Trial T: p = 0.739 (95% Monte Carlo interval 0.7 to 0.78)
+ 
+Trial T: p = 0.414 (95% Monte Carlo interval 0.36 to 0.47)
+ 
+Trial T: p = 0.2565 (95% Monte Carlo interval 0.21 to 0.31)
+ 
+Trial T: p = 0.694 (95% Monte Carlo interval 0.64 to 0.74)
+ 
+Trial T: p = 0.1725 (95% Monte Carlo interval 0.12 to 0.23)
+ 
+Trial T: p = 0.488 (95% Monte Carlo interval 0.43 to 0.55)
+ 
+Trial T: p = 0.171 (95% Monte Carlo interval 0.11 to 0.24)
+ 
+Trial T: p = 0.05625 (95% Monte Carlo interval 0.022 to 0.097)
+ 
+Trial T: p = 0.5345 (95% Monte Carlo interval 0.48 to 0.59)
+ 
+Trial T: p = 0.461 (95% Monte Carlo interval 0.4 to 0.52)
+ 
+Trial T: p = 0.419 (95% Monte Carlo interval 0.36 to 0.48)
+ 
+Trial T: p = 0.504 (95% Monte Carlo interval 0.45 to 0.56)
+ 
+DONE median-iqr seconds 1.64 passed 24 failed 0 errors 0 skipped 0 
+START quartile-draw 
+Trial T: p = 0.805 (95% Monte Carlo interval 0.6 to 0.98)
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.186 (95% Monte Carlo interval 0.12 to 0.26)
+ 
+Trial T: p = 0.108 (95% Monte Carlo interval 0.077 to 0.14)
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.355 (95% Monte Carlo interval 0.3 to 0.41)
+ 
+Trial T: p = 0.355 (95% Monte Carlo interval 0.3 to 0.41)
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.3085 (95% Monte Carlo interval 0.25 to 0.37)
+ 
+Trial T: p = 0.3085 (95% Monte Carlo interval 0.25 to 0.37)
+ 
+Trial T: p = 0.42 (95% Monte Carlo interval 0 to 0.86)
+ 
+Trial T: p = 0.004 (95% Monte Carlo interval 0 to 0.016)
+ 
+Trial T: p = 0.557 (95% Monte Carlo interval 0.49 to 0.62)
+ 
+Trial T: p = 0.5445 (95% Monte Carlo interval 0.48 to 0.6)
+ 
+Trial T: p = 0.5385 (95% Monte Carlo interval 0.48 to 0.6)
+ 
+Trial T: p = 0.543 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+Trial T: p = 0.557 (95% Monte Carlo interval 0.49 to 0.62)
+ 
+Trial T: p = 0.5515 (95% Monte Carlo interval 0.49 to 0.61)
+ 
+Trial T: p = 0.5495 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+Trial T: p = 0.5335 (95% Monte Carlo interval 0.47 to 0.6)
+ 
+Trial T: p = 0.5355 (95% Monte Carlo interval 0.47 to 0.6)
+ 
+Trial T: p = 0.548 (95% Monte Carlo interval 0.48 to 0.61)
+ 
+DONE quartile-draw seconds 0.67 passed 16 failed 0 errors 0 skipped 0 
+START quartile-precision 
+Trial T: p = 0.207 (95% Monte Carlo interval 0.16 to 0.25)
+ 
+Trial T: p = 0.209 (95% Monte Carlo interval 0.17 to 0.25)
+ 
+DONE quartile-precision seconds 0.44 passed 11 failed 0 errors 0 skipped 0 
+START numeric-resolution 
+Trial T: p = No values
+ 
+Trial T: p = 0.000999 (95% Monte Carlo interval 0 to 0.0037)
+ 
+Trial T: p = 0.832 (95% Monte Carlo interval 0.81 to 0.86)
+ 
+Trial T: p = 0.229 (95% Monte Carlo interval 0 to 0.49)
+ 
+Trial T: p = 0.8245 (95% Monte Carlo interval 0.62 to 1)
+ 
+Trial T: p = 0.227 (95% Monte Carlo interval 0 to 0.49)
+ 
+Trial T: p = No values
+ 
+Trial T: p = No values
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.356 (95% Monte Carlo interval 0.29 to 0.42)
+ 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+DONE numeric-resolution seconds 2.47 passed 21 failed 0 errors 0 skipped 0 
+START screen-2026-09-08 
+Trial T: p = 0.3105 (95% Monte Carlo interval 0.26 to 0.36)
+ 
+Trial T: p = 0.312 (95% Monte Carlo interval 0.27 to 0.35)
+ 
+Trial T: p = 0.004 (95% Monte Carlo interval 0.0021 to 0.0065)
+ 
+DONE screen-2026-09-08 seconds 1.03 passed 38 failed 0 errors 0 skipped 0 
+START failsafe-table 
+DONE failsafe-table seconds 58.31 passed 39 failed 0 errors 0 skipped 2 
+START screen-2026-09-09 
+DONE screen-2026-09-09 seconds 9.29 passed 518 failed 0 errors 0 skipped 0 
+START screen-2026-09-09-1532 
+DONE screen-2026-09-09-1532 seconds 5.17 passed 172 failed 0 errors 0 skipped 0 
+START text-precision 
+DONE text-precision seconds 1.12 passed 53 failed 0 errors 0 skipped 0 
+START audit-2026-09-09-f6 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial T: p = 0.02165 (95% Monte Carlo interval 0 to 0.047)
+ 
+Trial T: p = 0.01008 (95% Monte Carlo interval 0 to 0.021)
+ 
+Trial T: p = 0.015 (95% Monte Carlo interval 0.012 to 0.019)
+ 
+Trial T: p = 0.0162 (95% Monte Carlo interval 0.012 to 0.02)
+ 
+Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+Trial T: p = 0.01795 (95% Monte Carlo interval 0.015 to 0.021)
+ 
+Trial T: p = 0.000205 (95% Monte Carlo interval 0 to 0.00056)
+ 
+Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 5.6e-05)
+ 
+Trial T: p = 0.163 (95% Monte Carlo interval 0.069 to 0.27)
+ 
+Trial T: p = 0.1645 (95% Monte Carlo interval 0.073 to 0.27)
+ 
+Trial T: p = 0.164 (95% Monte Carlo interval 0.068 to 0.27)
+ 
+DONE audit-2026-09-09-f6 seconds 13.71 passed 29 failed 0 errors 0 skipped 0 
+START audit-2026-09-10-f1 
+Trial Audit: p = 0.01978
+ 
+Trial Audit: p = 0.0198
+ 
+Trial Audit: p = 0.01978
+ 
+DONE audit-2026-09-10-f1 seconds 1.16 passed 15 failed 0 errors 0 skipped 0 
+START audit-2026-09-10-f3 
+Trial Audit: p = 0.001355
+ 
+Trial Audit: p = 0.001355
+ 
+Trial audit-f3-flags: p = 0.001355
+ 
+Trial T: p = 0.302 (95% Monte Carlo interval 0.13 to 0.49)
+ 
+Trial T: p = 0.302 (95% Monte Carlo interval 0.13 to 0.49)
+ 
+Trial T: p = 0.302 (95% Monte Carlo interval 0.13 to 0.49)
+ 
+DONE audit-2026-09-10-f3 seconds 7.09 passed 46 failed 0 errors 0 skipped 0 
+START screen-2026-09-10-1143 
+Trial T: p = 0.3695 (95% Monte Carlo interval 0.26 to 0.49)
+ 
+Trial T: p = 0.3695 (95% Monte Carlo interval 0.26 to 0.49)
+ 
+Trial T: p = 0.302 (95% Monte Carlo interval 0.13 to 0.49)
+ 
+DONE screen-2026-09-10-1143 seconds 14.17 passed 19 failed 0 errors 0 skipped 0 
+START audit-2026-09-10-f4 
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+DONE audit-2026-09-10-f4 seconds 0.43 passed 19 failed 0 errors 0 skipped 0 
+START screen-2026-09-10-1119 
+Trial blank-trial: p = 0.2745
+ 
+The TRIAL column is blank on 1 line(s). Fill it in, or remove the column. 
+The TRIAL column is blank on 1 line(s). Fill it in, or remove the column. 
+The TRIAL column is blank on 1 line(s). Fill it in, or remove the column. 
+DONE screen-2026-09-10-1119 seconds 0.24 passed 18 failed 0 errors 0 skipped 0 
+START api-structural-issues 
+Two columns normalize to the same name: TRIAL from 'TRIAL' and 'trial'. Rename or remove one - which column is meant is ambiguous. 
+Missing column labeled N 
+Missing column labeled N 
+DONE api-structural-issues seconds 0.21 passed 19 failed 0 errors 0 skipped 0 
+START screen-2026-09-10-1222 
+Two columns normalize to the same name: N from 'NUMBER' and 'N'. Rename or remove one - which column is meant is ambiguous. 
+The TRIAL column is blank on 2 line(s). Fill it in, or remove the column. 
+DONE screen-2026-09-10-1222 seconds 0.15 passed 13 failed 0 errors 0 skipped 0 
+START adaptive-m 
+Trial T: p = 0.874 (95% Monte Carlo interval 0.85 to 0.9)
+ 
+Trial T: p = 0.00023 (95% Monte Carlo interval 0 to 0.00061)
+ 
+Trial T: p = <0.0001 (95% Monte Carlo interval 0 to 3.7e-05)
+ 
+Trial T: p = 0.086
+ 
+Trial T: p = 0.73
+ 
+Trial T: p = 0.00045 (95% Monte Carlo interval 0 to 0.0017)
+ 
+Trial T: p = 0.9999 (95% Monte Carlo interval 1 to 1)
+ 
+Trial T: p = 0.146 (95% Monte Carlo interval 0 to 0.32)
+ 
+Trial T: p = 0.1425 (95% Monte Carlo interval 0 to 0.31)
+ 
+Trial T: p = 0.151 (95% Monte Carlo interval 0 to 0.33)
+ 
+Trial T: p = 0.153 (95% Monte Carlo interval 0 to 0.34)
+ 
+Trial T: p = 0.141 (95% Monte Carlo interval 0 to 0.31)
+ 
+Trial T: p = 0.1485 (95% Monte Carlo interval 0 to 0.33)
+ 
+Trial T: p = 0.154 (95% Monte Carlo interval 0 to 0.34)
+ 
+Trial T: p = 0.1345 (95% Monte Carlo interval 0 to 0.3)
+ 
+Trial T: p = 0.144 (95% Monte Carlo interval 0 to 0.32)
+ 
+Trial T: p = 0.1395 (95% Monte Carlo interval 0 to 0.31)
+ 
+Trial T: p = 0.154 (95% Monte Carlo interval 0 to 0.34)
+ 
+Trial T: p = 0.1565 (95% Monte Carlo interval 0 to 0.34)
+ 
+Trial T: p = 0.148 (95% Monte Carlo interval 0 to 0.33)
+ 
+Trial T: p = 0.143 (95% Monte Carlo interval 0 to 0.32)
+ 
+Trial T: p = 0.138 (95% Monte Carlo interval 0 to 0.3)
+ 
+Trial T: p = 0.145 (95% Monte Carlo interval 0 to 0.32)
+ 
+DONE adaptive-m seconds 6.3 passed 31 failed 0 errors 0 skipped 0 
+START seed-and-ranges 
+Trial T: p = 0.5 (95% Monte Carlo interval 0 to 1)
+ 
+Trial T: p = 0.0447 (95% Monte Carlo interval 0.018 to 0.074)
+ 
+Trial T: p = 0.0447 (95% Monte Carlo interval 0.018 to 0.074)
+ 
+Trial T: p = 0.04535 (95% Monte Carlo interval 0.021 to 0.071)
+ 
+Trial T: p = 0.04355 (95% Monte Carlo interval 0.02 to 0.069)
+ 
+Trial T: p = 0.04355 (95% Monte Carlo interval 0.02 to 0.069)
+ 
+Trial T: p = 0.8705 (95% Monte Carlo interval 0.84 to 0.9)
+ 
+Trial T: p = 0.000215 (95% Monte Carlo interval 0 to 0.00058)
+ 
+Trial T: p = 0.2 (95% Monte Carlo interval 0.16 to 0.24)
+ 
+Missing column labeled MEAN 
+Missing column labeled SD 
+Missing column labeled SD 
+DONE seed-and-ranges seconds 1.7 passed 44 failed 0 errors 0 skipped 0 
+START input-contract 
+Missing column labeled MEAN 
+Missing column labeled SD 
+Missing column labeled N 
+Two columns normalize to the same name: N from 'N' and 'Male (number, %)'. Rename or remove one - which column is meant is ambiguous. 
+$FAIL
+[1] TRUE
+
+$DATA
+  TRIAL ROW  N MEAN   SD N
+1     T Age 15 45.3 12.1 8
+2     T Age 17 46.1 11.8 9
+
+$issues
+  row col       code
+1  NA   N structural
+                                                                                                                                  note
+1 two columns normalize to the same name: N from 'N' and 'Male (number, %)'; rename or remove one - which column is meant is ambiguous
+
+DONE input-contract seconds 0.35 passed 33 failed 0 errors 0 skipped 0 
+START app-pipeline 
+Pasted: table.png - reading it now. 
+Not opened: notes.txt - pasted files must be csv, xlsx, pdf, docx, xml, jpg, png, tif, or zip. 
+Dropped: a.pdf - reading it now. 
+Read Example.xlsx: 28 row(s). 
+Trial Submission 2025-08-01: p = 0.859
+ 
+Trial Submission 2025-08-02: p = 0.794
+ 
+Execution time 0.08 
+Trial Submission 2025-08-01: p = 0.853
+ 
+Trial Submission 2025-08-02: p = 0.781
+ 
+Execution time 0.08 
+Read Example.xlsx: 28 row(s). 
+Extracted the baseline table from meanSD.pdf: table page 1, 2 arm(s) (2 with N), 5 variable(s), 3 with mean and SD. 
+Trial meanSD: p = 0.03765
+ 
+Execution time 0.16 
+DONE app-pipeline seconds 4.61 passed 41 failed 0 errors 0 skipped 0 
+START api-service 
+Two columns normalize to the same name: N from 'NUMBER' and 'N'. Rename or remove one - which column is meant is ambiguous. 
+Missing column labeled N 
+DONE api-service seconds 3.83 passed 119 failed 0 errors 0 skipped 8 
+START api-flags 
+DONE api-flags seconds 0.12 passed 14 failed 0 errors 0 skipped 0 
+START degenerate-categories 
+Trial T: p = No values
+ 
+Trial T: p = No values
+ 
+Trial T: p = 0.409 (95% Monte Carlo interval 0.19 to 0.63)
+ 
+DONE degenerate-categories seconds 0.11 passed 3 failed 0 errors 0 skipped 0 
+START results-workbook 
+Trial A: p = 0.141 (95% Monte Carlo interval 0.11 to 0.17)
+ 
+Trial B: p = 0.4545 (95% Monte Carlo interval 0.41 to 0.5)
+ 
+Trial A: p = 0.126 (95% Monte Carlo interval 0.098 to 0.16)
+ 
+DONE results-workbook seconds 0.7 passed 23 failed 0 errors 0 skipped 0 
+START dispersion 
+DONE dispersion seconds 7.99 passed 62 failed 0 errors 0 skipped 1 

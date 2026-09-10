@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-quartile-precision.R","the audit's example - integer quartiles 5 and 6 beside the median 4.99 - is accepted, and the quartile precision is inferred as 0",3,0,0,0,0,""
+"test-quartile-precision.R","quartiles that cannot bracket the median at any reading of their precision are still refused",3,0,0,0,0,""
+"test-quartile-precision.R","honest samples summarised with integer quartiles and two-decimal medians are no longer refused",1,0,0,0,0,""
+"test-quartile-precision.R","a supplied ROUND_DISPERSION on a median line is kept and reaches the bootstrap's quartile printing",4,0,0,0,0,""

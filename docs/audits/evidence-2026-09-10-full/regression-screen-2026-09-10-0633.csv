@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-0633.R","a block the simulation cannot carry is refused before it is scored",6,0,0,0,0,""
+"test-screen-2026-09-10-0633.R","a block the simulation CAN carry is scored, and reads the same",7,0,0,0,0,""
+"test-screen-2026-09-10-0633.R","drawing the null in chunks is RNG-identical to one call",3,0,0,0,0,""

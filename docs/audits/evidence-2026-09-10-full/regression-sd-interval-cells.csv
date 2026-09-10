@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-sd-interval-cells.R","a supplied precision is kept when another arm's is blank; the blank is inferred",3,0,0,0,0,""
+"test-sd-interval-cells.R","blank cells take the variable's maximum inferred decimals, as the validator does",4,0,0,0,0,""
+"test-sd-interval-cells.R","a direct call with a partly blank ROUND_DISPERSION agrees with the validator's inference",2,0,0,0,0,""

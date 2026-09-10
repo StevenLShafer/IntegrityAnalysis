@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-1143.R","the estimator counts the table's width, not only its lines (screen 1143 F1)",6,0,0,0,0,""
+"test-screen-2026-09-10-1143.R","the probe through /analyze: the journal tables are omitted, the template keeps every row, in bounded time",7,0,0,0,0,""
+"test-screen-2026-09-10-1143.R","the app's workbook is behind the same gate: a one-line note, not a two-minute table",4,0,0,0,0,""
+"test-screen-2026-09-10-1143.R","a label that is also an analysed variable is not listed twice (screen 1143 observation)",2,0,0,0,0,""

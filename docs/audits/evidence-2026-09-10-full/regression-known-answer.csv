@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-known-answer.R","the documentation's worked example: 77 vs 78, SD 30, n = 6",2,0,0,0,0,""
+"test-known-answer.R","three identical arms escalate and alarm",4,0,0,0,0,""
+"test-known-answer.R","identical categorical arms give the pinned lower-tail mid-p",1,0,0,0,0,""
+"test-known-answer.R","a median/IQR pair gives the pinned metalog p",1,0,0,0,0,""
+"test-known-answer.R","categorical direction: homogeneous alarms, heterogeneous does not",2,0,0,0,0,""

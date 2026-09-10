@@ -1,0 +1,54 @@
+Trial Audit: p = 0.0143
+ 
+DONE verified-J15-bad1 p 0.0143 CI  M 10000 
+Trial Audit: p = 0.01016
+ 
+DONE verified-J15-bad2 p 0.01016 CI  M 1e+05 
+Trial Audit: p = 0.0042
+ 
+DONE verified-J15-bad3 p 0.0042 CI  M 1e+05 
+Trial Audit: p = 0.008995
+ 
+DONE verified-J15-bad4 p 0.008995 CI  M 1e+05 
+Trial Audit: p = 0.0154
+ 
+DONE verified-J15-bad5 p 0.0154 CI  M 10000 
+Trial Audit: p = 0.01803
+ 
+DONE verified-J15-bad6 p 0.01803 CI  M 1e+05 
+Trial Audit: p = 0.013
+ 
+DONE verified-J15-bad7 p 0.013 CI  M 10000 
+Trial Audit: p = 0.0102
+ 
+DONE verified-J15-bad8 p 0.0102 CI  M 10000 
+Trial Audit: p = 0.006695
+ 
+DONE verified-J15-bad9 p 0.006695 CI  M 1e+05 
+Trial Audit: p = 0.01464
+ 
+DONE verified-J15-bad10 p 0.01464 CI  M 1e+05 
+Trial Audit: p = 0.01185
+ 
+DONE verified-J15-bad11 p 0.01185 CI  M 10000 
+Trial Audit: p = 0.0166
+ 
+DONE verified-J15-bad12 p 0.0166 CI  M 10000 
+Trial Audit: p = 0.0179
+ 
+DONE verified-J15-bad13 p 0.0179 CI  M 10000 
+Trial Audit: p = 0.01134
+ 
+DONE verified-J15-bad14 p 0.01134 CI  M 1e+05 
+Trial Audit: p = 0.01105
+ 
+DONE verified-J15-bad15 p 0.01105 CI  M 10000 
+Trial Audit: p = 0.00041 (95% Monte Carlo interval 0.00029 to 0.00057)
+ 
+DONE verified-J23-bad1 p 0.00041 CI 0.00029 to 0.00057 M 1e+05 
+Trial Audit: p = 0.00095 (95% Monte Carlo interval 0.00074 to 0.0012)
+ 
+DONE verified-J23-bad4 p 0.00095 CI 0.00074 to 0.0012 M 1e+05 
+Trial Audit: p = 8e-04 (95% Monte Carlo interval 0.00061 to 0.001)
+ 
+DONE verified-J23-bad15 p 8e-04 CI 0.00061 to 0.001 M 1e+05 

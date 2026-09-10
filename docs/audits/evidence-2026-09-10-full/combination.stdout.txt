@@ -1,0 +1,19 @@
+[1] "P_Calc"
+Trial Audit: p = 0.0143
+ 
+DONE J 15 seed 42 M 10000 reported 0.0143 CI  
+Trial Audit: p = 0.02035
+ 
+DONE J 15 seed 43 M 10000 reported 0.02035 CI  
+Trial Audit: p = 0.01575
+ 
+DONE J 15 seed 44 M 10000 reported 0.01575 CI  
+Trial Audit: p = 0.00041 (95% Monte Carlo interval 0.00029 to 0.00057)
+ 
+DONE J 23 seed 42 M 1e+05 reported 0.00041 CI 0.00029 to 0.00057 
+Trial Audit: p = 0.00023 (95% Monte Carlo interval 0.00013 to 0.00037)
+ 
+DONE J 23 seed 43 M 1e+05 reported 0.00023 CI 0.00013 to 0.00037 
+Trial Audit: p = 0.00052 (95% Monte Carlo interval 0.00035 to 0.00073)
+ 
+DONE J 23 seed 44 M 1e+05 reported 0.00052 CI 0.00035 to 0.00073 

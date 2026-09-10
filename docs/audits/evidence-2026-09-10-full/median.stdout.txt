@@ -1,0 +1,9 @@
+Trial Audit: p = 0.02285 (95% Monte Carlo interval 0.018 to 0.029)
+ 
+DONE symmetric engine 0.02285 CI 0.018 to 0.029 ref 0.02223 
+Trial Audit: p = 0.06185 (95% Monte Carlo interval 0.056 to 0.069)
+ 
+DONE asymmetric engine 0.06185 CI 0.056 to 0.069 ref 0.061615 
+Trial Audit: p = 0.0436 (95% Monte Carlo interval 0.021 to 0.069)
+ 
+DONE clipped engine 0.0436 CI 0.021 to 0.069 ref 0.04019 

@@ -1,0 +1,16 @@
+{
+    "ok": false,
+    "stage": "validation",
+    "file": "fixture-http-duplicate.csv",
+    "issues": [
+        {
+            "row": "NA",
+            "col": "N",
+            "code": "structural",
+            "note": "two columns normalize to the same name: N from 'N' and 'Number'; rename or remove one - which column is meant is ambiguous"
+        }
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"Number\"\n\"Audit\",\"Age\",20,\"50\",\"10\",30\n\"Audit\",\"Age\",20,\"50.2\",\"10\",31\n",
+    "deleted": true
+}
+
