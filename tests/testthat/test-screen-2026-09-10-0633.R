@@ -50,15 +50,20 @@ test_that("a block the simulation cannot carry is refused before it is scored", 
 })
 
 test_that("a block the simulation CAN carry is scored, and reads the same", {
-  # the gate admits 250 cells per table at the refine budget: ten arms by
-  # twenty levels is inside it, and so is every ordinary block
+  # the gate admits 100 cells per table (screen 0734 tightened it from
+  # 250, from a measured cost model): four arms by twenty-five levels is
+  # the edge and is inside it, and so is every ordinary block
   d <- twoCandidate(2, 3)
   res <- .ppFailsafeTableFill(d$lo, d$hi, d$cnt, d$N, partition = FALSE)
   expect_true(isTRUE(res$resolved))
   expect_equal(res$nTables, 2L)
-  d <- twoCandidate(10, 20)
+  d <- twoCandidate(4, 25)
   res <- .ppFailsafeTableFill(d$lo, d$hi, d$cnt, d$N, partition = FALSE)
   expect_true(isTRUE(res$resolved))
+  # ...and ten by twenty, 200 cells, is now refused by name
+  d <- twoCandidate(10, 20)
+  res <- .ppFailsafeTableFill(d$lo, d$hi, d$cnt, d$N, partition = FALSE)
+  expect_false(isTRUE(res$resolved))
   # the ordinary block is bitwise what it was: chunked drawing is
   # RNG-identical to a single call, so nothing pinned may move
   br <- function(pct, N) list(lo = ceiling((pct - 0.5) / 100 * N),
@@ -83,5 +88,7 @@ test_that("drawing the null in chunks is RNG-identical to one call", {
   set.seed(11); p1 <- .ppTableP(tab, 2000L)
   set.seed(11); p2 <- .ppTableP(tab, 2000L)
   expect_identical(p1, p2)
-  expect_lte(.ppTableDrawChunk, 2000L)
+  # the chunk is sized by the table since screen 0734: at 2 x 2 it is far
+  # above any budget, i.e. one call
+  expect_gte(floor(.ppTableDrawCells / 4), 20000L)
 })
