@@ -405,11 +405,12 @@ specific cell:
   percentages, above 1,000 at one decimal). The app then reads the page in the way most
   favourable to the authors. Every whole table the printed percentages
   allow is built — each cell inside the bracket its percentage permits,
-  and each arm's counts adding up to that arm's N — and the readings
-  that leave the arms least alike are scored with the same statistic and
-  the same null the analysis itself uses. Only those can win: the p is
-  larger the less alike the arms are, so a middling reading is neither
-  the best case nor the worst.
+  and each arm's counts adding up to that arm's N — and the readings at
+  each extreme are scored with the same statistic and the same null the
+  analysis itself uses. Only those can win: the p is larger the less
+  alike the arms are, so the best case is among the readings that leave
+  the arms least alike and the worst among those that leave them most
+  alike. A middling reading is neither.
   The one **analysed is the one with the largest p**: the authors get
   every benefit of the doubt the page allows. Hover the cell for the
   bracket of counts the percentage allows and for the best and worst p

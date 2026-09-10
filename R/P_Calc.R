@@ -544,10 +544,19 @@
 # the snap exists for. Measured: it moved a pinned value in
 # test-sd-rounding-draw.R (two arms of 30, means tied at 2.3, SD printed
 # "1") by 0.013, because with the tolerance at zero the replicates whose
-# arms all drew the same mean stopped counting as ties. The observed row
-# is exactly zero after translation, but a REPLICATE is translated by the
-# OBSERVED first arm, so its N-weighted centre of equal drawn values is
-# not bitwise equal to them and leaves dust.
+# arms all drew the same mean stopped counting as ties.
+#
+# THAT REASON NO LONGER APPLIES TO TIED ARMS (security screen
+# 2026-09-09-1614, F2). It read: "the observed row is exactly zero after
+# translation, but a REPLICATE is translated by the OBSERVED first arm,
+# so its N-weighted centre of equal drawn values is not bitwise equal to
+# them and leaves dust." Since the 2026-09-09 audit's F6 each replicate
+# is translated by ITS OWN first arm, so that case is structurally zero
+# and produces no dust to forgive. The floor STAYS: it now guards dust
+# from every other source - arms that differ, and the median branch's
+# metalog draw - and the measurement above that motivated it was taken
+# under the old arithmetic, so removing it would need its own
+# measurement, not an inference from this one.
 #
 # The printed grid step is the floor, and it has the invariances the
 # origin did not: it does not move when a constant is added to every arm,
@@ -1432,11 +1441,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
       sims <- rows[[j]]$sim$simulate(s)
       obs  <- rows[[j]]$sim$obs
       # A statistic that is zero up to floating-point dust IS zero. Since
-      # screen 2026-09-07-1459 the branches translate their means by the
-      # first arm's printed value before the statistic, so identical means
-      # give exactly zero in the observed row and in every replicate at
-      # any magnitude and arm count, and this snap is a guard rather than
-      # the mechanism. (History: identical means left about 1e-28 of dust
+      # screen 2026-09-07-1459 the branches translate their means before
+      # the statistic: the OBSERVED row by the first arm's printed value,
+      # and - since the 2026-09-09 audit's F6 - each REPLICATE by its own
+      # first arm, which is what makes identical means exactly zero in a
+      # replicate too, at any magnitude and arm count. Saying "the first
+      # arm's printed value" of both was right for the observed row and
+      # wrong for replicates (screen 2026-09-09-1614, F2). This snap is a
+      # guard rather than the mechanism. (History: identical means left about 1e-28 of dust
       # in the N-weighted centre, differing between base R's sum() and
       # Rfast's row sums, so the floor's ties were split; a tolerance of
       # 1e-20 of the centre squared outgrew the printed grid at means near

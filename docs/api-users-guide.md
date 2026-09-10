@@ -174,11 +174,12 @@ has 100 or fewer patients (1,000 at one printed decimal); above that,
 several counts fit the printed percentage. The service fills such cells
 with the **best case for the authors**: it enumerates every whole
 arms-by-levels table the printed percentages allow — each cell inside
-its own bracket — scores the least alike of them with the statistic and
-null the analysis itself uses, and keeps the one with the largest p.
+its own bracket — scores the readings at each extreme with the statistic
+and null the analysis itself uses, and keeps the one with the largest p.
 Only the extremes are scored, because only they can win: the p rises
-with how unlike the arms are, so a middling reading can be neither the
-best case nor the worst. That is the most
+with how unlike the arms are, so the largest p is among the least alike
+readings and the smallest among the most alike, and a middling reading
+can be neither. That is the most
 favourable reading of **that row**; it is not a claim about the trial p,
 which combines rows and does not move monotonically with any one of
 them. The effect is still large: a two-arm row of 5,000 per arm

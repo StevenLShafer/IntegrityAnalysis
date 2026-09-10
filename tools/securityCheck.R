@@ -682,6 +682,19 @@ for (nm in c("MCMean", "MCMed")) {
     note(paste0("R/P_Calc.R: ", nm, " is no longer translated by its own first ",
                 "arm; the zero snap goes back to forgiving dust instead of ",
                 "never producing it (audit 2026-09-09 F6)"))
+  # ...AND IT MUST HAPPEN BEFORE THE CENTRE IS TAKEN (security screen
+  # 2026-09-09-1614, F1). Pinning the spelling alone left the ordering
+  # free: moving the translation one statement later computes the
+  # N-weighted centre from UNTRANSLATED means and then measures a
+  # translated matrix against it, which is a large systematic error in
+  # every row p rather than dust - and the screen verified the assertion
+  # stayed silent on exactly that mutation. Same style as the
+  # header-before-readBin ordering check above.
+  ctr <- grep(paste0("<-\\s*drop\\(\\s*", nm, "\\s*%\\*%"), pcCode)
+  if (length(ok) && length(ctr) && min(ok) > min(ctr))
+    note(paste0("R/P_Calc.R: ", nm, " is translated AFTER its weighted centre ",
+                "is taken, so the centre is computed from untranslated means ",
+                "(screen 2026-09-09-1614 F1)"))
 }
 
 ## 8 - the fail-safe fill spends simulation only on ranked candidates ----
@@ -707,7 +720,10 @@ if (!length(setdiff(grep("\\.ppTableRankMax", fsCode), rankDef)))
   note(paste("R/failsafeTable.R: .ppTableRankMax is defined but never used -",
              "the bound on how many nulls are simulated is not in force",
              "(screens 2026-09-08-2100 F1, 2026-09-09-0721 F1)"))
-sweep <- grep("(vapply|sapply|lapply)\\s*\\(\\s*keys", fsCode, value = TRUE)
+# a `for (k in keys)` regression would have walked past the apply-only
+# form this used to look for (screen 2026-09-09-1532, observation 2)
+sweep <- grep("((vapply|sapply|lapply)\\s*\\(\\s*keys|for\\s*\\(\\s*[A-Za-z._]+\\s+in\\s+(keys|seq_along\\s*\\(\\s*keys))",
+              fsCode, value = TRUE)
 if (any(grepl("\\.ppTableP", sweep)))
   note(paste("R/failsafeTable.R: .ppTableP() is called across every group",
              "again - that is the 190 s parse the ranking replaced",
