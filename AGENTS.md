@@ -377,6 +377,26 @@ the assertion or test that would catch its regression, and that
 assertion must be verified to FAIL on a deliberate break before it is
 believed.
 
+**A fix's test reproduces the report through the report's own path
+(standing rule, Steve Shafer, 2026-09-10).** A finding - from an
+independent statistical audit or from a security screen - names an
+input, a route and a symptom. The test that lands with the fix must
+drive that input through that route and assert the symptom is gone. It
+must not exercise the function the fix touched and stop at its boundary.
+The case that made this a rule: the 2026-09-09 Latin-1 fix sanitised a
+local copy of a CSV header, its test called the patched reader and
+passed, and the reported symptom still reproduced one call later in
+`.iaNormalizeNames()` - the finding sat in the log as fixed for a day
+(screen 2026-09-10-0536, F2). The 2026-09-08 fail-safe rule is the same
+lesson from the other side: its first two implementations passed tests
+that reimplemented the rule inside the test file, and a test that copies
+the rule tests nothing. Together they say what a fix's test is FOR: it
+reproduces the report on the pre-fix code, through the path the report
+used, and then reproduces its absence. An audit finding that names a
+fixture, a seed and a p is reproduced with that fixture and that seed,
+and the test asserts the p the audit's reference gives, not the p the
+fix happens to produce.
+
 **A new input format is screened twice.** Every format the app or the
 API reads is a decoder on hostile bytes, so a change that adds one (the
 picture route, PR #145, 2026-09-02) is screened at the feature commit,
