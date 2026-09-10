@@ -189,9 +189,11 @@ named in `flags` ("… category row(s) use FAIL-SAFE counts …") on
 **both** routes, `/parse` and `/analyze`, and the same rule and colour
 apply in the app.
 
-No partition is assumed. Whether a variable's categories divide the arm
-between them is a statement about what the categories mean, so a chosen
-reading may total slightly more or less than the arm's N.
+No partition is assumed — except where the service builds the
+complement itself, a binary "n (%)" row whose other column *is* the arm
+N minus the count. Whether a variable's categories divide the arm
+between them is otherwise a statement about what the categories mean,
+so a chosen reading may total slightly more or less than the arm's N.
 
 Two further flags may follow. When the best and the worst admissible
 readings fall on opposite sides of p = 0.01, the rows are named ("… row(s)
