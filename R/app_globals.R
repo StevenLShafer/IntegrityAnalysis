@@ -135,6 +135,19 @@ m <- 100000
   format(.iaMaxJournalCells, big.mark = ","),
   "-cell limit. The analysis itself is unaffected.")
 
+# A CATEGORY LEVEL'S COLUMN NAME, safe against the normaliser (security
+# audit 2026-09-10, S2; the rule .iaLongToWide has used for a typed long
+# layout since 2026-09-05). A level whose upper-cased name is a base
+# column, or contains a token the normaliser reads as a header, becomes
+# "<variable> <level>" in lower case; any other level keeps its name.
+.iaLevelColumnName <- function(row, level) {
+  base <- c("TRIAL", "ROW", "N", "MEAN", "SD", "SE", "Q1", "Q3", "LEVEL",
+            "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION")
+  tokens <- "TRIAL|MEASURE|DECM|NUMBER|GROUP|ROW|MEAN|OBS|LEVEL|CATEGORY"
+  nm <- toupper(trimws(level))
+  if (nm %in% base || grepl(tokens, nm)) tolower(paste(row, level)) else level
+}
+
 # ORDER MATTERS and mirrors validateData's original sequence exactly:
 # uppercase, TRIAL, MEASURE (with its drops), DECM, NUMBER, GROUP->ROW
 # fallback, then the ROW grep. Changing the order changes which column

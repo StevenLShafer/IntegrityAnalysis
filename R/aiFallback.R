@@ -511,13 +511,27 @@ claudeAvailable <- function() {
   for (v in parsed$categorical) {
     levels <- vapply(v$categories, as.character, character(1))
     if (length(levels) == 0) next
+    rowName <- .ppUniqueName(.ppSquish(v$label), usedRowNames)
+    usedRowNames <- c(usedRowNames, rowName)
+    # A LEVEL NAME IS UNTRUSTED TEXT THAT BECOMES A COLUMN NAME (outside
+    # security audit 2026-09-10, S2). The model's category strings were
+    # assigned as template fields as they came, so a response naming its
+    # levels N, MEAN and SD wrote its counts INTO the reserved fields:
+    # two continuous lines with N = 30 and means 50/51 reached the
+    # validator, and the categorical variable had vanished before any
+    # cell check could see it (p 0.297 for what was, as counts, 0.013).
+    # A level that is a base column, or that contains one of the tokens
+    # the shared normaliser reads as a header ("MEAN", "ROW", ...), takes
+    # the long layout's own spelling - the variable and the level, lower
+    # case - exactly as .iaLongToWide does for a typed sheet; and the
+    # uniqueness check runs against the reserved fields too, before any
+    # count is assigned.
+    levels <- vapply(levels, function(l) .iaLevelColumnName(rowName, l), character(1))
     # Category columns are shared across the whole spreadsheet, so a level
     # named "Other" in two different variables must not collide.
     levels <- vapply(levels, .ppUniqueName, character(1),
-                     existing = catColumns)
+                     existing = c(catColumns, .ppBaseColumns(), "Q1", "Q3", "LEVEL"))
     catColumns <- unique(c(catColumns, levels))
-    rowName <- .ppUniqueName(.ppSquish(v$label), usedRowNames)
-    usedRowNames <- c(usedRowNames, rowName)
     for (val in v$values) {
       counts <- vapply(val$counts,
                        function(x) if (is.null(x)) NA_integer_ else as.integer(x),
