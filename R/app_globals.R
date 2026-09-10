@@ -84,11 +84,56 @@ m <- 100000
 # workbook and the journal table - never for the engine (audit 2026-09-10
 # F3). ONE restorer for the API and the app, so the two cannot differ
 # (CodeRabbit on #250).
-.iaWithExcluded <- function(DATA, rows) {
+.iaWithExcluded <- function(DATA, rows, oneLinePerLabel = FALSE) {
   if (is.null(rows) || !nrow(rows)) return(DATA)
+  # FOR THE JOURNAL TABLE, one blank line per label (screen 2026-09-10-1143,
+  # F1): the table builder groups lines by ROW name, so 2,499 label-only
+  # lines all named "A" became one variable with 2,499 arms and every
+  # other line got 2,499 blank cells - 6.25 million cells, 28 s and 346 MB
+  # through /analyze, 145 s for the app's workbook, from a 90 KB upload
+  # that the engine never simulates. A label-only variable has no arms to
+  # show, so one line per TRIAL and ROW loses nothing; the TEMPLATE keeps
+  # every row, because that is the round trip.
+  if (oneLinePerLabel)
+    rows <- rows[!duplicated(rows[c("TRIAL", "ROW")]), , drop = FALSE]   # a two-column key,
+                                          # not a pasted string (CodeRabbit on #258)
   d <- .ppRbindFill(DATA, rows)
   d[order(d$TRIAL, d$ROW), , drop = FALSE]
 }
+
+# THE JOURNAL TABLE'S SIZE, ESTIMATED BEFORE IT IS BUILT - width included
+# (screen 2026-09-10-1143, F1). The estimate used to be the number of
+# lines, on the argument that nrow(DATA) is variables x arms and so
+# already carries the arm multiplicity. It does for an honest table; it
+# does not for a table whose lines share a ROW name, because the builder
+# makes one COLUMN per line sharing a name, and every other variable
+# pays for that width in blank cells. So, per trial: the emitted lines
+# (rows, plus one per category level that holds a count) times one plus
+# the largest number of lines sharing a ROW name in that trial - which is
+# the table's width. On an ordinary two-arm Table 1 of 40 lines that is
+# 120; on the screen's probe, 12.5 million. Shared by the API's journal
+# tables and the app's two downloads, which had no gate at all.
+.iaMaxJournalCells <- 200000L
+.iaJournalCells <- function(DATA, categoryNames = NULL) {
+  if (is.null(DATA) || !nrow(DATA)) return(0)
+  tr <- as.character(DATA$TRIAL); tr[is.na(tr)] <- ""
+  rw <- as.character(DATA$ROW);   rw[is.na(rw)] <- ""
+  have <- intersect(categoryNames, names(DATA))
+  catRows <- if (length(have)) rowSums(!is.na(DATA[, have, drop = FALSE])) > 0
+             else rep(FALSE, nrow(DATA))
+  total <- 0
+  for (i in split(seq_len(nrow(DATA)), tr)) {
+    lines <- length(i) + sum(catRows[i]) * length(have)
+    width <- max(table(rw[i]))
+    total <- total + lines * (1 + width)
+  }
+  as.numeric(total)
+}
+.iaJournalOmittedNote <- function(cells) paste0(
+  "the journal-style tables were omitted: this table would emit about ",
+  format(cells, big.mark = ","), " cells, above the ",
+  format(.iaMaxJournalCells, big.mark = ","),
+  "-cell limit. The analysis itself is unaffected.")
 
 # ORDER MATTERS and mirrors validateData's original sequence exactly:
 # uppercase, TRIAL, MEASURE (with its drops), DECM, NUMBER, GROUP->ROW

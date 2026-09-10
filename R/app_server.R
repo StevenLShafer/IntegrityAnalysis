@@ -1459,7 +1459,8 @@ app_server <- function(input, output, session) {
         # the rows the validator left out go back for the download, as
         # the API does for its template and journal table (audit
         # 2026-09-10 F3; CodeRabbit on #250)
-        writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
+        writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS,
+                                                     oneLinePerLabel = TRUE),
                              CategoryNames, file, seed = seedUsed)
         return(invisible(NULL))
       }
@@ -1486,7 +1487,8 @@ app_server <- function(input, output, session) {
       on.exit(unlink(stage, recursive = TRUE), add = TRUE)
       xf <- file.path(stage, "Integrity Analysis Results.xlsx")
       pf <- file.path(stage, "Integrity Analysis Graphs.pptx")
-      writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
+      writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS,
+                                                   oneLinePerLabel = TRUE),
                            CategoryNames, seed = seedUsed, xf)
       writeGraphsPptx(OUTPUT, graphsData, pf,
                       progress = function(done, total)
@@ -1539,9 +1541,15 @@ app_server <- function(input, output, session) {
              format(Sys.time(), format = "%y%m%d-%H%M%S"), ".xlsx")
     },
     content = function(file) {
+      # the same size gate as the API's journal tables (screen
+      # 2026-09-10-1143, F1): a table that would explode is a one-line
+      # note in the workbook, not a two-minute build on the only thread
+      shown <- .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS, oneLinePerLabel = TRUE)
+      journalCells <- .iaJournalCells(shown, CategoryNames)
       writeBaselineTablesXlsx(
-        buildBaselineTables(.iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
-                            CategoryNames),
+        if (journalCells > .iaMaxJournalCells)
+          list(Omitted = data.frame(Note = .iaJournalOmittedNote(journalCells)))
+        else buildBaselineTables(shown, CategoryNames),
         file)
     })
 

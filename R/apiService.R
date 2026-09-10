@@ -536,7 +536,7 @@
 # caps the estimated emitted cells; a real baseline table is a few
 # hundred (tens of variables x a handful of arms), so 200,000 is far
 # above any honest document and far below anything that hurts.
-.apiMaxJournalCells <- 200000L
+.apiMaxJournalCells <- .iaMaxJournalCells   # one limit, shared with the app (screen 2026-09-10-1143)
 
 # Estimate the size of the journal-style tables WITHOUT building them -
 # a pure function so the bound is testable directly rather than through
@@ -564,17 +564,15 @@
 # bounded 1.5x against a 200,000 threshold is a few MB, so the estimate
 # is fit for bounding an explosion; it is not, and does not claim to
 # be, an exact cell count.
-.apiJournalCells <- function(DATA, categoryNames) {
-  cells <- nrow(DATA)
-  if (length(categoryNames)) {
-    have <- intersect(categoryNames, names(DATA))
-    if (length(have)) {
-      catRows <- rowSums(!is.na(DATA[, have, drop = FALSE])) > 0
-      cells <- cells + as.integer(sum(catRows)) * length(have)
-    }
-  }
-  as.numeric(cells)
-}
+#
+# SUPERSEDED IN ONE RESPECT (screen 2026-09-10-1143, F1): the argument
+# above holds for a table whose lines belong to distinct variables. Lines
+# that SHARE a ROW name become columns, and every other line pays for
+# that width in blank cells - a 5,000-line upload with 2,499 lines named
+# "A" built 6.25 million cells against an estimate of 5,000. The estimate
+# now multiplies by the width (.iaJournalCells in app_globals.R, shared
+# with the app's downloads); this name stays for the callers and tests.
+.apiJournalCells <- function(DATA, categoryNames) .iaJournalCells(DATA, categoryNames)
 
 # A spreadsheet decompression bomb (security review H3): .xlsx and .xls
 # are zips, so a 25 MB upload (the H1 request cap) can inflate to
@@ -904,12 +902,15 @@
   # to the caller in the template and the journal table, not only in the
   # Summary's count (audit 2026-09-10 F3): the template is the round
   # trip, and a row that vanished from it could not be corrected
-  shown <- .iaWithExcluded(v$DATA, v$ExcludedRows)
-  journalCells <- .apiJournalCells(shown, v$CategoryNames)
+  shown <- .iaWithExcluded(v$DATA, v$ExcludedRows)              # the template: every row
+  # ...the journal table gets one blank line per label, and is estimated
+  # WITH its width before it is built (screen 2026-09-10-1143, F1)
+  shownJournal <- .iaWithExcluded(v$DATA, v$ExcludedRows, oneLinePerLabel = TRUE)
+  journalCells <- .apiJournalCells(shownJournal, v$CategoryNames)
   journalSkipped <- journalCells > .apiMaxJournalCells
 
   journal <- if (journalSkipped) NULL else tryCatch({
-    tabs <- buildBaselineTables(shown, v$CategoryNames)
+    tabs <- buildBaselineTables(shownJournal, v$CategoryNames)
     lapply(tabs, function(tb) {
       con <- textConnection("jout", "w", local = TRUE)
       utils::write.csv(.apiCsvSafe(as.data.frame(tb, stringsAsFactors = FALSE)),
@@ -925,11 +926,7 @@
        journalTables = journal,
        # say WHY they are absent rather than returning a bare null the
        # caller has to guess about
-       journalTablesOmitted = if (journalSkipped) paste0(
-         "the journal-style tables were omitted: this table would emit ",
-         "about ", format(journalCells, big.mark = ","), " cells, above ",
-         "the ", format(.apiMaxJournalCells, big.mark = ","),
-         "-cell limit. The analysis itself is unaffected.") else NULL,
+       journalTablesOmitted = if (journalSkipped) .iaJournalOmittedNote(journalCells) else NULL,
        templateCsv = .apiTemplateCsv(shown))
 }
 
