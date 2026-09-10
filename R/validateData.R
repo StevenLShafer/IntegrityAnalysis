@@ -173,15 +173,23 @@ validateData <- function(DATA) {
   # shared function stays a pure renaming and the API gates cannot
   # acquire a hidden column as a side effect of being gated.
   if (!("TRIAL" %in% names(DATA))) DATA$TRIAL <- 1
+  # The long categorical layout (one line per level, count in N) becomes
+  # the wide one here, so every check below sees one layout. Both are
+  # accepted; the grid, the workbook and the API emit the wide one.
+  DATA <- .iaLongToWide(DATA)
+  ColumnNames <- names(DATA)
+
   # A TRIAL column that is present but blank in EVERY cell is the same as
   # an absent one - a header the file spelled and never filled - and
   # defaults the same way. A column blank in SOME cells is refused, cell
   # by cell: an NA identifier made a trial called NA whose every row the
   # engine reported as "No values", and the API wrapped that in an
   # ok = TRUE response with overallP null - a submission with a success
-  # envelope and no verdict (screen 2026-09-10-1119, F1). The rows are
-  # indexed on the frame as given, before the long layout is converted,
-  # which is the frame the grid and the API's template show.
+  # envelope and no verdict (screen 2026-09-10-1119, F1). Checked AFTER
+  # the long layout is converted, so the rows index the frame this
+  # function returns and the grid and the API's template show (screen
+  # 2026-09-10-1222, F3: before, a long-layout file's issues pointed at
+  # lines that no longer existed once its level lines were collapsed).
   trialBlank <- is.na(DATA$TRIAL) | !nzchar(trimws(as.character(DATA$TRIAL)))
   if (length(trialBlank) && all(trialBlank)) {
     DATA$TRIAL <- 1
@@ -194,11 +202,6 @@ validateData <- function(DATA) {
                           " line(s). Fill it in, or remove the column."))
     FAIL <- TRUE
   }
-  # The long categorical layout (one line per level, count in N) becomes
-  # the wide one here, so every check below sees one layout. Both are
-  # accepted; the grid, the workbook and the API emit the wide one.
-  DATA <- .iaLongToWide(DATA)
-  ColumnNames <- names(DATA)
 
   ##############################################
 
@@ -327,8 +330,8 @@ validateData <- function(DATA) {
   # column must stop here. The per-line checks below index
   # DATA[i, c("N", "MEAN", "SD")], and running them without those columns
   # raised "undefined columns selected" - killing the whole session
-  # instead of reporting the structural failure. This is the bare-FAIL
-  # return shape the server already guards for (is.null(v$DATA)).
+  # instead of reporting the structural failure. Both callers branch on
+  # v$FAIL, never on whether DATA came back (screen 2026-09-10-1222).
   if (FAIL)
     # ...with the NORMALIZED frame, as every later failure returns it, so the
     # grid paints the issues on the frame whose names they index - a

@@ -770,6 +770,17 @@
 
 # The /analyze pipeline after reading: validate, then Monte Carlo.
 .apiAnalyze <- function(DATA, seed = NULL) {
+  # THE FRAME AS RECEIVED is kept (screen 2026-09-10-1222, F2): a sheet
+  # carrying both NUMBER and N collapses onto two columns named N once
+  # normalised, the validator rightly refuses to guess which is meant -
+  # and the 422's templateCsv, built from the normalised frame, silently
+  # kept the FIRST and dropped the other, so a caller who re-posted the
+  # round-trip payload got an analysis in which the service had chosen
+  # for them. The validator now sees the raw headers (it normalises them
+  # itself, by the same rule, so its note can name 'NUMBER' and 'N'
+  # rather than 'N' and 'N'), and a structural refusal returns the frame
+  # as received, both columns intact.
+  received <- DATA
   # Gate a frame whose names mean what they say - see .apiNormalizeNames.
   # The long-layout converter inside it refuses a file whose levels would
   # need more count columns than the API admits (screen 2026-09-06-1749,
@@ -837,16 +848,22 @@
   }
   # Defense in depth (screen 2026-09-06-0514 F1): an error the validator
   # or the engine did not foresee is a 422 naming the stage, never a 500
-  v <- tryCatch(validateData(DATA), error = function(e)
+  v <- tryCatch(validateData(received), error = function(e)
     list(FAIL = TRUE, issues = data.frame(
       row = NA_integer_, col = NA_character_, code = "error",
       note = paste0("the table could not be validated: ", conditionMessage(e)),
       stringsAsFactors = FALSE)))
   if (isTRUE(v$FAIL)) {
+    structural <- !is.null(v$issues) && any(v$issues$code == "structural")
     return(list(ok = FALSE, stage = "validation",
                 issues = if (!is.null(v$issues)) v$issues else NULL,
+                # a structural refusal returns the frame AS RECEIVED - the
+                # normalised one has already chosen between duplicate
+                # columns (screen 2026-09-10-1222, F2); a cell refusal
+                # returns the normalised frame the issues index
                 templateCsv = .apiTemplateCsv(
-                  if (!is.null(v$DATA)) v$DATA else DATA)))
+                  if (structural) received
+                  else if (!is.null(v$DATA)) v$DATA else DATA)))
   }
   # the caller's seed (2026-09-05): set once, before the first trial, so
   # the same file, seed and build give the same numbers on any service
