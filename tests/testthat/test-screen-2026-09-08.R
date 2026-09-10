@@ -30,12 +30,14 @@ cont <- function(means, sd, N, rm, rd = 1) data.frame(
 # statistic it thresholds
 
 test_that("the zero-snap tolerance is translation-invariant", {
-  dd <- c(0, 5e-5, -5e-5)
   h  <- .iaMeanStep(c(5, 5, 5))
-  # dd is measured from the first arm, so an origin cannot enter it; the
-  # old expression was 1e-26 * (1 + centre^2), quadratic in the origin
-  expect_equal(.iaZeroSnapTol(dd, h), .iaZeroSnapTol(dd, h))
-  expect_gt(.iaZeroSnapTol(dd, h), 0)
+  # the tolerance takes only the printed step, so neither an origin nor
+  # the observed arms can enter it (the observed term was removed by the
+  # 2026-09-10 audit's F1; the old expression was 1e-26 * (1 + centre^2),
+  # quadratic in the origin)
+  expect_false("dd" %in% names(formals(.iaZeroSnapTol)))
+  expect_equal(.iaZeroSnapTol(h), 1e-12 * 1e-10)
+  expect_gt(.iaZeroSnapTol(h), 0)
   # the OLD expression, for contrast: the same row at two origins gave
   # tolerances eighteen orders of magnitude apart
   oldTol <- function(centre) 1e-26 * (1 + centre^2)
@@ -43,23 +45,25 @@ test_that("the zero-snap tolerance is translation-invariant", {
 })
 
 test_that("the zero-snap tolerance scales with the units, as the statistic does", {
-  dd <- c(0, 2, -1); h <- .iaMeanStep(1)
+  h <- .iaMeanStep(1)
   for (k in c(1e-3, 1e3)) {
     # statistic scales by k^2, so the tolerance must too
-    expect_equal(.iaZeroSnapTol(dd * k, h * k),
-                 .iaZeroSnapTol(dd, h) * k^2, tolerance = 1e-9)
+    expect_equal(.iaZeroSnapTol(h * k),
+                 .iaZeroSnapTol(h) * k^2, tolerance = 1e-9)
   }
 })
 
-test_that("the tolerance never collapses to zero when the arms agree", {
-  # the screen's own proposal, 1e-12 * max(dd^2) alone, is exactly zero
-  # here - and that removes the dust guard in the one case it exists
-  # for, because a REPLICATE is translated by the OBSERVED first arm and
-  # its weighted centre of equal drawn values is not bitwise equal to
-  # them. Measured: it moved a pinned value in test-sd-rounding-draw.R
-  # by 0.013.
-  expect_gt(.iaZeroSnapTol(c(0, 0, 0), .iaMeanStep(1)), 0)
-  expect_equal(.iaZeroSnapTol(c(0, 0, 0), numeric(0)), 0)
+test_that("the tolerance is the printed grid's alone, and zero without one", {
+  # HISTORY: the screen's proposal, 1e-12 * max(dd^2) alone, was exactly
+  # zero for tied arms, and at the time that mattered (a replicate was
+  # translated by the OBSERVED first arm and left dust; it moved a pinned
+  # value in test-sd-rounding-draw.R by 0.013). Since the 2026-09-09
+  # audit's F6 a tie is structurally zero, and since the 2026-09-10
+  # audit's F1 the observed term is gone: the floor is the finest printed
+  # step squared, times 1e-12, and nothing else.
+  expect_gt(.iaZeroSnapTol(.iaMeanStep(1)), 0)
+  expect_equal(.iaZeroSnapTol(.iaMeanStep(c(1, 3, 2))), 1e-12 * 1e-6)
+  expect_equal(.iaZeroSnapTol(numeric(0)), 0)
 })
 
 test_that("an arbitrary origin no longer decides the p", {
