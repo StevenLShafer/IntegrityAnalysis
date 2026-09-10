@@ -559,6 +559,18 @@ m <- 100000
 .iaLongToWide <- function(DATA) {
   if (is.null(DATA) || !("LEVEL" %in% names(DATA)) || !("ROW" %in% names(DATA)))
     return(DATA)
+  # A FRAME WITH A DUPLICATED HEADER IS RETURNED AS IT CAME (security
+  # screen 2026-09-10-1554, F1). The build below selects columns BY NAME
+  # (W[, names(DATA)]), and R resolves a duplicated name to its first
+  # column, so a long-layout file with the header N twice came out as N
+  # and N.1 - the second N's values dropped from the counts, the frame
+  # passing the duplicate-name refusal that runs after this conversion,
+  # and the sheet analysed with a column silently chosen. Left untouched,
+  # the frame reaches that refusal with both headers in place and is
+  # refused structurally, the template carrying the sheet as received
+  # (the guarantee of the 2026-08-29 F2 fix and of the 2026-09-10 S1
+  # fix: refuse rather than pick).
+  if (length(.iaDuplicateNames(DATA))) return(DATA)
   lv <- trimws(as.character(DATA$LEVEL))
   isLevel <- !is.na(lv) & nzchar(lv)
   if (!any(isLevel)) { DATA$LEVEL <- NULL; return(DATA) }
