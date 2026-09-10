@@ -1185,6 +1185,16 @@ the same z-values in a different row order, and floating addition is not
 associative. The auditor's constructions now read inside the exact
 value's sampling interval, and the two namings read the same.
 
+**Bounded, the same day.** The security screen of the merge (2026-09-10-1523)
+found the first form quadratic in the rows sharing a law — every row's
+draws were held for the stage and each shared row was counted against
+the whole pool — so a 2,500-row table of identical inputs, admitted by
+every API gate, would have run for hours in 2 GB. Now only rows whose
+law is shared are held, each is counted against the sorted pool by two
+binary searches, and a trial whose shared rows would need more than
+10,000,000 held draws at the final stage is refused before a draw is
+made (`.iaMaxPoolDraws`; a hundred identical rows at the ceiling).
+
 **Why this design.** The alternative — an explicitly randomised
 combination with its own stated uncertainty — would be a different test.
 Sharing the mapping keeps the documented exact mid-p and removes the

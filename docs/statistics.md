@@ -79,7 +79,12 @@ independent audit found nine binary rows with one extreme reading
 0.003 or 0.019 depending only on which row carried the name, against an
 exact 0.011; see [method-history.md](method-history.md)). Each row still
 draws its own independent replicates, and its own p and interval come
-from its own draws; only the combination's mapping is shared. What counts as dust is a property of the printed grid
+from its own draws; only the combination's mapping is shared. The
+pooling is bounded: only the rows whose law is shared have their draws
+held, and a trial whose shared rows would together need more than
+10,000,000 held draws at the final stage (a hundred rows of identical
+inputs at 100,000 replicates) is refused before a draw is made, with the
+reason — a table of that shape is not a baseline table. What counts as dust is a property of the printed grid
 alone: 10⁻¹² of the square of the finest printed step of the row's
 means. Nothing about the observed arms enters it — the smallest
 statistic two distinct readings on that grid can produce is at least

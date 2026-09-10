@@ -713,6 +713,49 @@ if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
              "1e-26 * (1 + centre^2) is back in code (screen",
              "2026-09-08-1048 F1)"))
 
+# ...AND THE SHARED MAPPING NEVER PASSES OVER THE POOL PER ROW (security
+# screen 2026-09-10-1523, F1 - HIGH): the first form of the shared score
+# mapping called .iaTieCounts() on the whole pooled vector once per row,
+# quadratic in the rows sharing a law, and every API gate admitted the
+# table. Every .iaTieCounts() call in P_Calc.R takes `sims` (one row's
+# own draws), `-sumZ` (the trial sums) or `sp` (inside .iaPoolCounts,
+# the sorted pool searched by findInterval); the shared groups count
+# through .iaPoolCounts(sp, ...) and nothing else. A call over `pool`,
+# `poolOf[[...]]` or `held[[...]]` is the quadratic pass coming back.
+tcCalls <- grep("\\.iaTieCounts\\s*\\(", pcCode, value = TRUE)
+tcCalls <- tcCalls[!grepl("^\\s*\\.iaTieCounts\\s*<-", tcCalls)]
+tcBad <- tcCalls[!grepl("\\.iaTieCounts\\(\\s*(sims|-sumZ|sp)\\s*,", tcCalls)]
+pcBad <- grep("\\.iaPoolCounts\\(\\s*(pool|poolOf|held)", pcCode, value = TRUE)
+if (length(tcBad) || length(pcBad) || !any(grepl("\\.iaPoolCounts\\(\\s*sp\\s*,", pcCode)))
+  note(paste("R/P_Calc.R: the shared score mapping must count each row against the",
+             "SORTED pool through .iaPoolCounts(sp, ...) and .iaTieCounts() may take only",
+             "sims, -sumZ or sp - a count over the whole pool per row is the quadratic",
+             "pass of screen 2026-09-10-1523 F1 -",
+             paste(trimws(c(tcBad, pcBad)), collapse = " | ")))
+# ...and .iaPoolCounts() ITSELF is the two binary searches (CodeRabbit on
+# PR #269): the call-site pin above would pass a body rewritten as the
+# linear kernel - `.iaPoolCounts <- function(sp, obs) .iaTieCounts(sp, obs)`
+# takes the allowed `sp` and restores the quadratic pass. The function's
+# body, taken from its definition to the closing brace at column 0, must
+# call findInterval() at least twice (the strictly-below and the at-or-
+# below counts), .iaTieCounts() at most once (the fallback for an
+# observed statistic that is not finite or is negative), and contain no
+# vectorised comparison of the pool (`sp <`, `sp <=`, `sum(sp`), which is
+# the scan the searches replace.
+pcDef <- grep("^\\.iaPoolCounts\\s*<-\\s*function", pcCode)
+pcEnd <- if (length(pcDef) == 1) { e <- grep("^\\}", pcCode); e[e > pcDef][1] } else NA
+pcBody <- if (length(pcDef) == 1 && !is.na(pcEnd)) pcCode[pcDef:pcEnd] else character(0)
+nFind <- sum(lengths(regmatches(pcBody, gregexpr("findInterval\\s*\\(", pcBody))))
+nTie  <- sum(lengths(regmatches(pcBody, gregexpr("\\.iaTieCounts\\s*\\(", pcBody))))
+scan  <- grep("\\bsp\\s*(<|<=|>|>=|==)|sum\\s*\\(\\s*sp\\b|which\\s*\\(\\s*sp\\b", pcBody, value = TRUE)
+if (length(pcDef) != 1 || is.na(pcEnd) || nFind < 2 || nTie > 1 || length(scan))
+  note(paste("R/P_Calc.R: .iaPoolCounts() must be the two findInterval() searches over",
+             "the sorted pool (at least two calls) with at most one .iaTieCounts()",
+             "fallback and no scan of the pool - a linear body behind the pinned call",
+             "site is the quadratic pass of screen 2026-09-10-1523 F1 (found", nFind,
+             "findInterval,", nTie, ".iaTieCounts;", length(scan), "scan line(s):",
+             paste(trimws(scan), collapse = " | "), ")"))
+
 # AND THE EQUALITY THAT MATTERS IS STRUCTURAL, NOT FORGIVEN (independent
 # audit 2026-09-09, F6). A replicate must be translated by ITS OWN first
 # arm, so that arms which all drew the same value give a bitwise zero and

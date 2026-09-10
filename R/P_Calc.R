@@ -124,6 +124,30 @@
   c(kLess = sum(sims < obs & !eq, na.rm = TRUE), kEq = sum(eq))
 }
 
+#' The same counts against a SORTED pool of finite non-negative statistics,
+#' by two binary searches (security screen 2026-09-10-1523, F1): the
+#' criterion above, for `obs >= 0`, says a value below `obs` ties when it
+#' is at least `obs * (1 - tol)` and a value above ties when it is at most
+#' `obs / (1 - tol)`, so strictly-below is the count under the first bound
+#' and at-or-below is the count under the second. O(log m) per row where a
+#' pass over the pool was O(m), which made the shared mapping quadratic.
+#' @noRd
+.iaPoolCounts <- function(sp, obs) {
+  if (!is.finite(obs) || obs < 0) return(.iaTieCounts(sp, obs))
+  lo <- obs * (1 - .iaTieTol)
+  hi <- if (obs > 0) obs / (1 - .iaTieTol) else 0
+  kLess <- findInterval(lo, sp, left.open = TRUE)     # sp <  lo
+  kLE   <- findInterval(hi, sp)                       # sp <= hi
+  c(kLess = kLess, kEq = kLE - kLess)
+}
+
+# The most held draws the shared mapping may need at the final stage: rows
+# sharing a law times the replicate ceiling (screen 2026-09-10-1523, F1).
+# A hundred rows of identical inputs at 100,000 replicates is 80 MB of
+# pool; no real baseline table comes near it, and a crafted one is refused
+# before a draw is made.
+.iaMaxPoolDraws <- 1e7
+
 # THE DIRECT DRAW (Steve, 2026-09-05: "Build the direct draw into P_Calc").
 # A continuous row's replicate draws N observations per arm, rounds each
 # to the observation precision, averages, and rounds the mean to the
@@ -1464,48 +1488,53 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
   advanceBelow <- c(0.1, 0.01)
   rowStat <- vector("list", length(rows))
   trialStat <- NULL
+  # ROWS THAT SHARE A NULL LAW SHARE ONE SCORE MAPPING (full independent
+  # audit 2026-09-10, F1). Each row used to map its statistics to a mid-p
+  # through the ranks of its OWN draws - exact within the row, since a
+  # tied replicate gets the observed row's own average rank - but two
+  # rows with the same law carried two different ESTIMATES of the same
+  # mapping. A replicate whose one extreme outcome sat in a different row
+  # from the observed one is a genuine trial tie, yet its Stouffer sum
+  # differed from the observed sum by that estimation noise, and the
+  # exact comparison below split the tie class by the noise's sign: nine
+  # binary rows of (1,99)/(1,99) with one (0,100)/(2,98) - exact trial
+  # mid-p 0.011146 - read 0.003285 with the extreme row named V03 and
+  # 0.0194 with it named V01. So the mapping of rows that share a law is
+  # one pooled empirical distribution over ALL their draws; each row
+  # keeps its own independent replicates, and only the function
+  # statistic -> mid-p is shared. A row with a law of its own is mapped
+  # through its own draws, exactly as before, and its displayed p,
+  # interval and replicate count are unchanged in every case.
+  keyOf <- vapply(usable, function(j) {
+    k <- rows[[j]]$sim$key
+    if (is.null(k) || !nzchar(k)) paste0("row", j) else k
+  }, character(1))
+  dupKeys <- unique(keyOf[duplicated(keyOf)])
+  shared <- keyOf %in% dupKeys
+  # ...AND THE POOL IS BOUNDED BEFORE A DRAW IS MADE (security screen
+  # 2026-09-10-1523, F1 - HIGH). The first form of this held EVERY row's
+  # draws for the stage and counted each shared row against the whole
+  # pool, which was quadratic in the rows sharing a law: a 2,500-row
+  # table of identical inputs - admitted by every API gate, since the
+  # gates measure replicates x N and this cost has no N in it - would
+  # have run for hours at the ceiling in 2 GB. Now only rows whose law is
+  # shared are held, each is counted against the sorted pool in two
+  # binary searches, and the number of held draws at the final stage is
+  # refused above .iaMaxPoolDraws before anything is simulated. No real
+  # baseline table has a hundred rows of identical inputs.
+  if (any(shared) && sum(shared) * max(stages) > .iaMaxPoolDraws)
+    stop(sprintf(paste("%d of this trial's rows share a null law with another row; mapping",
+                       "them through one pooled distribution would need %s draws at the",
+                       "final stage, above the %s this analysis allows. A table of that",
+                       "shape is not a baseline table: split it, or remove the rows that",
+                       "repeat identical inputs"),
+                 sum(shared), format(sum(shared) * max(stages), big.mark = ",", scientific = FALSE),
+                 format(.iaMaxPoolDraws, big.mark = ",", scientific = FALSE)), call. = FALSE)
   for (s in stages) {
     sumZ <- numeric(s); zObs <- 0
-    # EVERY ROW IS DRAWN FIRST, in the same order as before (the RNG stream
-    # is consumed identically, so every pinned value stands), because the
-    # combination's mapping below may need the draws of several rows at
-    # once (full independent audit 2026-09-10, F1).
-    simsAll <- vector("list", length(rows))
-    for (j in usable) simsAll[[j]] <- rows[[j]]$sim$simulate(s)
-    # ROWS THAT SHARE A NULL LAW SHARE ONE SCORE MAPPING. Each row used to
-    # map its statistics to a mid-p through the ranks of its OWN draws -
-    # exact within the row, since a tied replicate gets the observed row's
-    # own average rank - but two rows with the same law carried two
-    # different ESTIMATES of the same mapping. A replicate whose one extreme
-    # outcome sat in a different row from the observed one is a genuine
-    # trial tie, yet its Stouffer sum differed from the observed sum by
-    # that estimation noise, and the exact comparison below split the tie
-    # class by the noise's sign: nine binary rows of (1,99)/(1,99) with one
-    # (0,100)/(2,98) - exact trial mid-p 0.011146 - read 0.003285 with the
-    # extreme row named V03 and 0.0194 with it named V01. The answer
-    # depended on which row carried the name. So the mapping of rows that
-    # share a law is now one pooled empirical distribution over ALL their
-    # draws; each row keeps its own independent replicates, and only the
-    # function statistic -> mid-p is shared. A row with a law of its own
-    # is mapped through its own draws, exactly as before. The row's own
-    # displayed p, interval and replicate count are unchanged; this is the
-    # combination's mapping only.
-    keyOf <- vapply(usable, function(j) {
-      k <- rows[[j]]$sim$key
-      if (is.null(k) || !nzchar(k)) paste0("row", j) else k
-    }, character(1))
-    poolRank <- list(); poolOf <- list()
-    for (k in unique(keyOf[duplicated(keyOf)])) {
-      grp <- usable[keyOf == k]
-      pool <- unlist(simsAll[grp], use.names = FALSE)
-      # the zero snap, exactly as each row applies it to its own draws
-      # below; rows sharing a law share a printed step, so one tolerance
-      pool[pool <= rows[[grp[1]]]$sim$zeroTol] <- 0
-      poolOf[[k]] <- pool
-      poolRank[[k]] <- .iaTieRank(pool)
-    }
+    held <- vector("list", length(rows))     # draws kept ONLY for rows whose law is shared
     for (j in usable) {
-      sims <- simsAll[[j]]
+      sims <- rows[[j]]$sim$simulate(s)      # in the same order as always: the stream is unchanged
       obs  <- rows[[j]]$sim$obs
       # A statistic that is zero up to floating-point dust IS zero. Since
       # screen 2026-09-07-1459 the branches translate their means before
@@ -1550,21 +1579,33 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                            # (obs was snapped to exactly zero above when it
                            # was zero up to floating-point dust)
                            atFloor = kLess == 0 && isTRUE(obs == 0))
-      k <- keyOf[match(j, usable)]
-      if (!is.null(poolOf[[k]])) {
-        # this row's draws sit at a known offset in its group's pool
-        grp <- usable[keyOf == k]
-        off <- sum(lengths(simsAll[grp[seq_len(match(j, grp) - 1L)]]))
-        mP <- length(poolOf[[k]])
-        pRep <- .floorP((poolRank[[k]][off + seq_len(s)] - 0.5) / mP, mP)
-        kp <- .iaTieCounts(poolOf[[k]], obs)
+      if (shared[match(j, usable)]) { held[[j]] <- sims; next }   # mapped below, with its group
+      pRep <- .floorP((.iaTieRank(sims) - 0.5) / s, s)
+      zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
+      sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
+    }
+    # the shared groups: one pool per law, ranked once and sorted once;
+    # each row's observed counts come from two binary searches on the
+    # sorted pool (.iaPoolCounts), never from a pass over the whole pool
+    # per row (screen 2026-09-10-1523, F1)
+    for (k in dupKeys) {
+      grp <- usable[keyOf == k]
+      pool <- unlist(held[grp], use.names = FALSE)
+      mP <- length(pool)
+      rk <- .iaTieRank(pool)
+      sp <- sort(pool[is.finite(pool)])
+      off <- 0L
+      for (j in grp) {
+        obs <- rows[[j]]$sim$obs
+        if (obs <= rows[[j]]$sim$zeroTol) obs <- 0
+        pRep <- .floorP((rk[off + seq_len(s)] - 0.5) / mP, mP)
+        off <- off + s
+        kp <- .iaPoolCounts(sp, obs)
         zObs <- zObs + stats::qnorm(.floorP((kp[["kLess"]] + kp[["kEq"]] / 2) / mP, mP),
                                     lower.tail = FALSE)
-      } else {
-        pRep <- .floorP((.iaTieRank(sims) - 0.5) / s, s)
-        zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
+        sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
       }
-      sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
+      held[grp] <- list(NULL)
     }
     rowMid <- vapply(usable, function(j)
       (rowStat[[j]]$kLess + rowStat[[j]]$kEq / 2) / s, numeric(1))
