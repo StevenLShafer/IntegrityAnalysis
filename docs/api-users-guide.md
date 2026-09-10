@@ -201,7 +201,8 @@ counts before acting.
 
 When a row allows more readings than can be enumerated — or more than
 the service can score within its limits on cells and on the table's
-total — it is **not reconstructed at all**. Its cells come back empty, the row is named in
+total, or when an arm is larger than the 5,000 the analysis accepts — it
+is **not reconstructed at all**. Its cells come back empty, the row is named in
 `flags` ("… category row(s) could NOT be read as counts and are left
 blank …") with the reason, and the row is not analysed — the trial's
 summary reports how many of its rows were. Submit the printed counts to

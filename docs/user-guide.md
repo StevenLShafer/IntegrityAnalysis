@@ -424,7 +424,8 @@ specific cell:
 
   **When the page allows more readings than can be counted — or than
   can be scored within the app's limits on cells and on the table's
-  total — the app does not guess.** The largest-p promise can only be
+  total, or when an arm is larger than the 5,000 the analysis accepts —
+  the app does not guess.** The largest-p promise can only be
   kept over readings the app has actually listed, so where there are
   too many to list the cells are left
   **blank**, the row is named, and it is not analysed. The summary line
