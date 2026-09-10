@@ -790,8 +790,13 @@
 #'   row with the exact-combination trial p and its interval when
 #'   P < 0.001, then a blank spacer row.
 #' @noRd
-P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
+P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
+                   excluded = NULL)
 {
+  # excluded: optional frame of the rows validateData() left out of DATA
+  # (its Excluded element: TRIAL, ROW, REASON, ...), so that they are
+  # counted on the Summary line and listed in the results - independent
+  # audit 2026-09-10, F3; see the note where they are appended below.
   # graphs: optional collector environment from newGraphCollector()
   # (issue 16). When present, each simulated row deposits its observed
   # statistic and the expected distribution's draws for the PowerPoint
@@ -1533,6 +1538,34 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL)
                KIND = "variable", .PNUM = rep$p, .KLE = rep$kLE, stringsAsFactors = FALSE)
   }))
   x <- cbind(TRIAL = c(TRIAL, rep(NA, nrow(x) - 1L)), x, stringsAsFactors = FALSE)
+
+  # ROWS THE VALIDATOR LEFT OUT ARE COUNTED HERE (independent audit
+  # 2026-09-10, F3). A category block whose every cell the parser left
+  # blank - a percentage block it could not reconstruct - reaches
+  # validateData() as label-only lines and is excluded from the analysed
+  # frame; until now that made it invisible to this function, so the
+  # Summary's coverage line, which the method document promises counts
+  # EVERY refusal, said nothing, and the row was absent from the
+  # results. Each such variable is one line: no p, no interval, the
+  # reason in its note, KIND "variable" so the Summary's "k of n" counts
+  # it. It never enters the combination (.PNUM is NA).
+  if (!is.null(excluded) && nrow(excluded))
+  {
+    ex <- excluded[!is.na(excluded$TRIAL) & excluded$TRIAL == TRIAL, , drop = FALSE]
+    ex <- ex[!duplicated(as.character(ex$ROW)), , drop = FALSE]
+    if (nrow(ex))
+      x <- rbind(x, data.frame(
+        TRIAL = NA, ROW = as.character(ex$ROW), P = "Not analysed", CI95 = "",
+        M = NA_character_,
+        NOTE = ifelse(ex$REASON == "label only",
+          paste("no values in any cell of this row - a label without N, mean,",
+                "dispersion or counts. If a document parser left it blank, the",
+                "document's flags say why (a percentage block it could not",
+                "reconstruct, for instance); the counts can be typed in"),
+          "a categorical line with no matching line in another arm"),
+        KIND = "variable", .PNUM = NA_real_, .KLE = NA_real_,
+        stringsAsFactors = FALSE))
+  }
 
   Pv   <- x$.PNUM
   use  <- !is.na(Pv)

@@ -825,10 +825,35 @@ validateData <- function(DATA) {
   # frame the caller displays). If NOTHING analyzable remains, that is a
   # failure after all.
   excluded <- labelOnly | singleCat
+  # THE ROWS LEFT OUT TRAVEL WITH THE RESULT (independent audit
+  # 2026-09-10, F3). A category block the document parser could not
+  # reconstruct arrives here as label-only lines - every cell blank -
+  # and was dropped from the analysed frame before P_Calc() could count
+  # it, so the Summary's "k of n rows analysed" never said 3 of 4, the
+  # row vanished from the results, the journal table and the API's
+  # returned template, and an editor could read a partial-table screen
+  # as covering the whole table. The frame P_Calc() simulates still
+  # excludes them; the excluded rows themselves, with the reason, are
+  # returned beside it so the engine can count them and the API can
+  # give them back.
+  # Two elements, deliberately: ExcludedRows is the rows themselves,
+  # every column as uploaded and untouched, for the template and the
+  # journal table; Excluded is a small frame of this function's own -
+  # TRIAL, ROW, REASON - for the engine's count. The reason is NOT
+  # written into the rows, because an uploaded column called REASON is
+  # a legitimate extra column (MiscNames) and would have been
+  # overwritten and then dropped (CodeRabbit on #250).
+  Excluded <- NULL
+  ExcludedRows <- NULL
   if (any(excluded))
   {
     if (all(excluded))
       return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))
+    ExcludedRows <- DATA[excluded, , drop = FALSE]
+    Excluded <- data.frame(
+      TRIAL = DATA$TRIAL[excluded], ROW = as.character(DATA$ROW[excluded]),
+      REASON = ifelse(labelOnly[excluded], "label only", "single-line categorical"),
+      stringsAsFactors = FALSE)
     DATA <- DATA[!excluded, , drop = FALSE]
   }
   # Carry SE, Q1/Q3, and ROUND_DISPERSION through when the input supplies
@@ -845,5 +870,6 @@ validateData <- function(DATA) {
   # not blocking.
   list(FAIL = FALSE, DATA = DATA, TRIALS = TRIALS,
        ColumnNames = ColumnNames, CategoryNames = CategoryNames,
-       MiscNames = MiscNames, issues = issueFrame())
+       MiscNames = MiscNames, Excluded = Excluded, ExcludedRows = ExcludedRows,
+       issues = issueFrame())
 }

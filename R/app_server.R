@@ -55,6 +55,9 @@ app_server <- function(input, output, session) {
   graphsData <- NULL     # per-row Monte Carlo draws for the issue-16
                          # graphs; refilled by every Analyze run
   DATA <- NULL           # validated data table for the current upload
+  EXCLUDED <- NULL       # what validateData() left out of DATA (TRIAL, ROW, REASON: label-only,
+                         # single-line categorical), counted on the Summary line (audit 2026-09-10 F3)
+  EXCLUDED_ROWS <- NULL  # ...and the rows themselves, put back for the downloads
   TRIALS <- NULL         # unique trial identifiers in DATA
   ColumnNames <- NULL    # cleaned-up column names of DATA
   CategoryNames <- NULL  # columns holding categorical (count) data
@@ -733,7 +736,8 @@ app_server <- function(input, output, session) {
         # Defense in depth (screen 2026-09-06-0514 F1): an engine error
         # the validator did not foresee is a message and a stopped
         # analysis, never a dead session.
-        one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData),
+        one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData,
+                               excluded = EXCLUDED),
                         error = function(e) {
                           outputComments(paste0("Trial ", TRIAL, " could not be analyzed: ",
                                                 conditionMessage(e), "."))   # outputComments escapes
@@ -1371,6 +1375,8 @@ app_server <- function(input, output, session) {
 
       # Assign globally
       DATA <<- v$DATA
+      EXCLUDED <<- v$Excluded
+      EXCLUDED_ROWS <<- v$ExcludedRows
       TRIALS <<- v$TRIALS
       ColumnNames <<- v$ColumnNames
       CategoryNames <<- v$CategoryNames
@@ -1448,7 +1454,10 @@ app_server <- function(input, output, session) {
       # study: name, combined P, Monte Carlo interval). Writer in
       # R/baselineTable.R.
       if (!isTRUE(input$graphResults)) {
-        writeResultsWorkbook(OUTPUT, reactiveDataValidated(),
+        # the rows the validator left out go back for the download, as
+        # the API does for its template and journal table (audit
+        # 2026-09-10 F3; CodeRabbit on #250)
+        writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
                              CategoryNames, file, seed = seedUsed)
         return(invisible(NULL))
       }
@@ -1475,7 +1484,7 @@ app_server <- function(input, output, session) {
       on.exit(unlink(stage, recursive = TRUE), add = TRUE)
       xf <- file.path(stage, "Integrity Analysis Results.xlsx")
       pf <- file.path(stage, "Integrity Analysis Graphs.pptx")
-      writeResultsWorkbook(OUTPUT, reactiveDataValidated(),
+      writeResultsWorkbook(OUTPUT, .iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
                            CategoryNames, seed = seedUsed, xf)
       writeGraphsPptx(OUTPUT, graphsData, pf,
                       progress = function(done, total)
@@ -1529,7 +1538,8 @@ app_server <- function(input, output, session) {
     },
     content = function(file) {
       writeBaselineTablesXlsx(
-        buildBaselineTables(reactiveDataValidated(), CategoryNames),
+        buildBaselineTables(.iaWithExcluded(reactiveDataValidated(), EXCLUDED_ROWS),
+                            CategoryNames),
         file)
     })
 

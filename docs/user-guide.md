@@ -910,7 +910,11 @@ analyzed.
 
 When a row is refused, for any reason, the Summary line for that trial
 says how many of its rows were analysed, so a combined p-value is never
-read as covering a table it did not cover.
+read as covering a table it did not cover. A row the validator leaves
+out before the engine sees it counts too — a label with no values in
+any cell (a percentage block the parser could not reconstruct arrives
+that way), or a categorical line with no partner arm — and appears in
+the results as "Not analysed" with the reason in its Note.
 
 A row is refused when a precision column contradicts the numbers beside
 it. Each of the three says what grid something sits on — the mean's, the
