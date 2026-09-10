@@ -95,7 +95,8 @@ m <- 100000
   # show, so one line per TRIAL and ROW loses nothing; the TEMPLATE keeps
   # every row, because that is the round trip.
   if (oneLinePerLabel)
-    rows <- rows[!duplicated(paste(rows$TRIAL, rows$ROW, sep = "\r")), , drop = FALSE]
+    rows <- rows[!duplicated(rows[c("TRIAL", "ROW")]), , drop = FALSE]   # a two-column key,
+                                          # not a pasted string (CodeRabbit on #258)
   d <- .ppRbindFill(DATA, rows)
   d[order(d$TRIAL, d$ROW), , drop = FALSE]
 }
