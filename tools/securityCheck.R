@@ -713,6 +713,26 @@ if (any(grepl("1e-26\\s*\\*\\s*\\(\\s*1\\s*\\+", pcCode)))
              "1e-26 * (1 + centre^2) is back in code (screen",
              "2026-09-08-1048 F1)"))
 
+# ...AND THE SHARED MAPPING NEVER PASSES OVER THE POOL PER ROW (security
+# screen 2026-09-10-1523, F1 - HIGH): the first form of the shared score
+# mapping called .iaTieCounts() on the whole pooled vector once per row,
+# quadratic in the rows sharing a law, and every API gate admitted the
+# table. Every .iaTieCounts() call in P_Calc.R takes `sims` (one row's
+# own draws), `-sumZ` (the trial sums) or `sp` (inside .iaPoolCounts,
+# the sorted pool searched by findInterval); the shared groups count
+# through .iaPoolCounts(sp, ...) and nothing else. A call over `pool`,
+# `poolOf[[...]]` or `held[[...]]` is the quadratic pass coming back.
+tcCalls <- grep("\\.iaTieCounts\\s*\\(", pcCode, value = TRUE)
+tcCalls <- tcCalls[!grepl("^\\s*\\.iaTieCounts\\s*<-", tcCalls)]
+tcBad <- tcCalls[!grepl("\\.iaTieCounts\\(\\s*(sims|-sumZ|sp)\\s*,", tcCalls)]
+pcBad <- grep("\\.iaPoolCounts\\(\\s*(pool|poolOf|held)", pcCode, value = TRUE)
+if (length(tcBad) || length(pcBad) || !any(grepl("\\.iaPoolCounts\\(\\s*sp\\s*,", pcCode)))
+  note(paste("R/P_Calc.R: the shared score mapping must count each row against the",
+             "SORTED pool through .iaPoolCounts(sp, ...) and .iaTieCounts() may take only",
+             "sims, -sumZ or sp - a count over the whole pool per row is the quadratic",
+             "pass of screen 2026-09-10-1523 F1 -",
+             paste(trimws(c(tcBad, pcBad)), collapse = " | ")))
+
 # AND THE EQUALITY THAT MATTERS IS STRUCTURAL, NOT FORGIVEN (independent
 # audit 2026-09-09, F6). A replicate must be translated by ITS OWN first
 # arm, so that arms which all drew the same value give a bitwise zero and
