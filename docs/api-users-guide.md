@@ -199,8 +199,9 @@ cross p = 0.01 between the best and the worst reading …"): for those the
 printed counts decide the answer and the percentages do not, so get the
 counts before acting.
 
-When a row allows more readings than can be enumerated, it is **not
-reconstructed at all**. Its cells come back empty, the row is named in
+When a row allows more readings than can be enumerated — or more than
+the service can score within its limits on cells and on the table's
+total — it is **not reconstructed at all**. Its cells come back empty, the row is named in
 `flags` ("… category row(s) could NOT be read as counts and are left
 blank …") with the reason, and the row is not analysed — the trial's
 summary reports how many of its rows were. Submit the printed counts to

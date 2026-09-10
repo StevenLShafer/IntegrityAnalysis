@@ -405,9 +405,10 @@ specific cell:
   percentages, above 1,000 at one decimal). The app then reads the page in the way most
   favourable to the authors. Every whole table the printed percentages
   allow is built — each cell inside the bracket its percentage permits,
-  and each arm's counts adding up to that arm's N — and the readings at
-  each extreme are scored with the same statistic and the same null the
-  analysis itself uses. Only those can win: the p is larger the less
+  and, where the categories are known to divide the arm (a yes/no row
+  whose other column the app builds itself), each arm's counts adding up
+  to that arm's N — and the readings at each extreme are scored with the
+  same statistic and the same null the analysis itself uses. Only those can win: the p is larger the less
   alike the arms are, so the best case is among the readings that leave
   the arms least alike and the worst among those that leave them most
   alike. A middling reading is neither.
@@ -421,10 +422,11 @@ specific cell:
   answer and the percentages do not. Ask the authors for the counts
   before acting on such a trial.
 
-  **When the page allows more readings than can be counted, the app
-  does not guess.** The largest-p promise can only be kept over readings
-  the app has actually listed, so where there are too many to list the
-  cells are left
+  **When the page allows more readings than can be counted — or than
+  can be scored within the app's limits on cells and on the table's
+  total — the app does not guess.** The largest-p promise can only be
+  kept over readings the app has actually listed, so where there are
+  too many to list the cells are left
   **blank**, the row is named, and it is not analysed. The summary line
   says how many of the trial's rows were analysed, so the gap is
   visible. Type the printed counts in and the row analyses normally.
