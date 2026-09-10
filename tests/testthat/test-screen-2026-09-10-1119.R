@@ -69,4 +69,13 @@ test_that("the validator: all blank defaults like an absent column; some blank f
   v <- shiny::isolate(validateData(d))
   expect_true(isTRUE(v$FAIL))
   expect_true(!is.null(v$issues) && any(v$issues$col == "TRIAL" & v$issues$row == 2L))
+  # the refusal returns the NORMALIZED frame the issues index (CodeRabbit
+  # on #254): a lower-case `trial` header comes back as TRIAL, so the grid
+  # paints the right column
+  names(d)[names(d) == "TRIAL"] <- "trial"
+  v <- shiny::isolate(validateData(d))
+  expect_true(isTRUE(v$FAIL))
+  expect_true(!is.null(v$DATA) && "TRIAL" %in% names(v$DATA))
+  expect_false("trial" %in% names(v$DATA))
+  expect_true(any(v$issues$col == "TRIAL" & v$issues$row == 2L))
 })

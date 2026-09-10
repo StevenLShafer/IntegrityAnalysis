@@ -313,7 +313,11 @@ validateData <- function(DATA) {
   # instead of reporting the structural failure. This is the bare-FAIL
   # return shape the server already guards for (is.null(v$DATA)).
   if (FAIL)
-    return(list(FAIL = TRUE, issues = issueFrame()))   # the cell issues, if any (1119)
+    # ...with the NORMALIZED frame, as every later failure returns it, so the
+    # grid paints the issues on the frame whose names they index - a
+    # lower-case `trial` header would otherwise keep the raw grid while the
+    # issues named TRIAL (CodeRabbit on #254)
+    return(list(FAIL = TRUE, DATA = DATA, issues = issueFrame()))   # the cell issues, if any (1119)
 
   # FIX: force N, MEAN, and SD to numeric. Excel/CSV files with a stray
   # text cell make the whole column character, and character data in the
