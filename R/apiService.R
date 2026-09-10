@@ -713,7 +713,15 @@
                   engine = NA_character_))
     wide <- tryCatch(parseWideTable(path, ext), error = function(e) NULL)
     if (!is.null(wide)) {
-      d <- do.call(.ppRbindFill, lapply(wide, function(b) {
+      # The blocks are folded pairwise (security screen 2026-09-10-1554,
+      # F2). .ppRbindFill() takes exactly two frames, and do.call() handed
+      # it the whole list as arguments: one block (a one-trial journal-
+      # style sheet, the most ordinary input) raised 'argument "b" is
+      # missing' and three or more raised 'unused argument', neither
+      # caught by the handlers - a 500 for every wide upload but a two-
+      # trial one, since the API's first commit. Reduce() returns a single
+      # block as it is and folds any number.
+      d <- Reduce(.ppRbindFill, lapply(wide, function(b) {
         bd <- b$data
         # the trial column by the normaliser's rule, whatever its case
         # (audit 2026-09-10 F4); filled from the file name only when the
