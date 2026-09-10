@@ -49,7 +49,7 @@ exactly what is sent, what Anthropic keeps, and for how long).
   same analysis for editorial systems: bearer-token auth, round-trip
   failure payloads, per-request AI assist, nothing retained.
 - **The evidence** (`corpus/`, `tests/`) — the regression corpus
-  tooling and a testthat suite of about 1,900 tests (50 files; all
+  tooling and a testthat suite of about 3,000 assertions (74 files; all
   synthetic data, no corpus files needed); every parser change is
   measured against the corpus before it ships.
 

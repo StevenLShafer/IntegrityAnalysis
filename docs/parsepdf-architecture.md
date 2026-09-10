@@ -343,6 +343,7 @@ never produced.
 | `R/parseDocx.R` | *(as built)* the Word route (05a): `officer` cells → the fabricated `lines` structure → `.ppParseBlock()` |
 | `R/parseJats.R` | *(as built)* the JATS XML route: `<table-wrap>` cells through the same `.ppDocxLines()` adapter, with the bounds the security screens set (rows, columns after spans, cells, tables) |
 | `R/parseWideTable.R` | *(as built)* journal-style wide spreadsheets (issue 17): one row per variable, arms across, inverted into the template layout; carries the decompression preflight every spreadsheet read passes through |
+| `R/failsafeTable.R` | *(as built)* the counts behind a printed percentage: enumerates the arms-by-levels tables the brackets allow, ranks them by the engine's own statistic and scores only the extremes, or declines when the page allows more than it can read completely |
 | `R/armNRecovery.R` | *(as built)* arm-N recovery from the running text when the table header prints none; pure text, shared by the PDF, Word, JATS and Table Transformer routes |
 | `R/parseTatr.R` | the Table Transformer seam: XML reader, OCR-word-to-cell assignment, candidate parse through `.ppDocxLines()`, and the model runner |
 | `python/tatr/tatrTables.py` | the model itself (pegged; see its README); `--write-empty` keeps the text-less geometry a scanned page needs |
