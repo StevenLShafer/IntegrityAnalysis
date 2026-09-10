@@ -802,3 +802,32 @@ test_that("an ordinary table still gets its journal tables", {
   expect_true(length(a$journalTables) >= 1)
   expect_null(a$journalTablesOmitted)
 })
+
+# A whole-table issue's row is JSON null ON THE WIRE (full independent audit
+# 2026-09-10, F3). The structural-issue tests call the handler directly and
+# assert is.na() on the R value; over real HTTP jsonlite rendered the
+# NA_integer_ as the string "NA", which the API guide's promise of `null`
+# does not allow. This test reads the response BYTES through the running
+# service, which is the only place the contract exists.
+test_that("a structural issue's row serialises as JSON null, not the string NA (audit 2026-09-10 full, F3)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  f <- file.path(tempdir(), "number-and-n.csv")
+  writeLines(c('"TRIAL","ROW","NUMBER","N","MEAN","SD","ROUND_MEAN","ROUND_OBSERVATION","ROUND_DISPERSION"',
+               '"A","X",100,7,"50.0","3.0",1,0,1', '"A","X",100,7,"50.2","3.1",1,0,1'), f)
+  r <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 422)
+  raw <- httr2::resp_body_string(r)
+  expect_true(grepl('"row":null', raw, fixed = TRUE))
+  expect_false(grepl('"row":"NA"', raw, fixed = TRUE))
+  b <- httr2::resp_body_json(r)
+  expect_equal(b$stage, "validation")
+  s <- Filter(function(i) identical(i$code, "structural"), b$issues)
+  expect_equal(length(s), 1L)
+  expect_null(s[[1]]$row)
+  expect_equal(s[[1]]$col, "N")
+  expect_match(s[[1]]$note, "'NUMBER'")
+})
