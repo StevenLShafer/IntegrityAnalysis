@@ -1,0 +1,26 @@
+straddle-routes 2026-09-10 09:48:53 
+xml 
+$approxCounts
+[1] "I"   "II"  "III"
+
+$approxStraddle
+[1] "ASA status, %"
+
+$approxUnresolved
+character(0)
+
+[1] "3 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: I, II, III. Check these against the paper before analyzing."
+[2] "1 of those row(s) cross p = 0.01 between the best and the worst reading the page allows, so the printed counts decide this row and the percentages do not: ASA status, %. Get the counts from the authors before acting on this trial."                                                                  
+docx 
+$approxCounts
+[1] "I"   "II"  "III"
+
+$approxStraddle
+[1] "ASA status, %"
+
+$approxUnresolved
+character(0)
+
+[1] "3 category row(s) use FAIL-SAFE counts - the printed percentage fit several counts for the arm size, so of the readings the page allows that were scored, the one with the LARGEST p was taken, giving the authors the benefit of the doubt: I, II, III. Check these against the paper before analyzing."
+[2] "1 of those row(s) cross p = 0.01 between the best and the worst reading the page allows, so the printed counts decide this row and the percentages do not: ASA status, %. Get the counts from the authors before acting on this trial."                                                                  
+elapsed 2.87 seconds

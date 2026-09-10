@@ -1,0 +1,196 @@
+metadata 2026-09-10 09:39:05 
+Audited commit: ae37f0ee06d017d742049b7ab56ba79f2e39c99d
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: America/Los_Angeles
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] IntegrityAnalysis_0.2.0 testthat_3.3.2          MBESS_4.9.42           
+ [4] Rfast_2.1.5.2           RcppParallel_5.1.11-2   zigg_0.0.2             
+ [7] Rcpp_1.1.2              foreach_1.5.2           dqrng_0.4.1            
+[10] shiny_1.13.0           
+
+loaded via a namespace (and not attached):
+ [1] bslib_0.10.0            httr2_1.2.2             shinyjs_2.1.1          
+ [4] htmlwidgets_1.6.4       vctrs_0.7.2             tools_4.5.3            
+ [7] generics_0.1.4          tibble_3.3.1            pkgconfig_2.0.3        
+[10] pdftools_3.9.0          rvg_0.4.1               desc_1.4.3             
+[13] uuid_1.2-2              tesseract_5.2.5         lifecycle_1.0.5        
+[16] compiler_4.5.3          brio_1.1.5              textshaping_1.0.5      
+[19] codetools_0.2-20        httpuv_1.6.17           fontquiver_0.2.1       
+[22] fontLiberation_0.1.0    shinyWidgets_0.9.1      htmltools_0.5.9        
+[25] sass_0.4.10             later_1.4.8             pillar_1.11.1          
+[28] jquerylib_0.1.4         tidyr_1.3.2             openssl_2.4.2          
+[31] cachem_1.1.0            iterators_1.0.14        mime_0.13              
+[34] fontBitstreamVera_0.1.1 tidyselect_1.2.1        zip_2.3.3              
+[37] digest_0.6.39           stringi_1.8.9           dplyr_1.2.0            
+[40] purrr_1.2.1             rprojroot_2.1.1         fastmap_1.2.0          
+[43] cli_3.6.6               magrittr_2.0.5          pkgbuild_1.4.8         
+[46] withr_3.0.3             gdtools_0.5.0           promises_1.5.0         
+[49] rappdirs_0.3.4          officer_0.7.3           jpeg_0.1-11            
+[52] otel_0.2.0              qpdf_1.4.1              askpass_1.2.1          
+[55] ragg_1.5.2              png_0.1-9               openxlsx_4.2.8.1       
+[58] rlang_1.3.0             xtable_1.8-8            glue_1.8.1             
+[61] xml2_1.5.2              shinydashboard_0.7.3    pkgload_1.5.3          
+[64] jsonlite_2.0.0          rhandsontable_0.3.8     R6_2.6.1               
+[67] systemfonts_1.3.2      
+[1] "C:/dev/IntegrityAnalysis/.audit-2026-09-10/library"
+[2] "C:/Program Files/R/R-4.5.3/library"                
+[[1]]
+  package installed    locked 
+  "abind"   "1.4.8"   "1.4-8" 
+
+[[2]]
+  package installed    locked 
+    "arm"  "1.15.2"  "1.15-2" 
+
+[[3]]
+    package   installed      locked 
+"base64enc"     "0.1.6"     "0.1-6" 
+
+[[4]]
+   package  installed     locked 
+      "BH" "1.90.0.1" "1.90.0-1" 
+
+[[5]]
+  package installed    locked 
+   "boot"  "1.3.32"  "1.3-32" 
+
+[[6]]
+                 package                installed                   locked 
+            "cellranger" "not in runtime closure"                  "1.1.0" 
+
+[[7]]
+   package  installed     locked 
+    "coda" "0.19.4.1" "0.19-4.1" 
+
+[[8]]
+    package   installed      locked 
+"codetools"    "0.2.20"    "0.2-20" 
+
+[[9]]
+                 package                installed                   locked 
+                   "hms" "not in runtime closure"                  "1.1.4" 
+
+[[10]]
+  package installed    locked 
+   "jpeg"  "0.1.11"  "0.1-11" 
+
+[[11]]
+  package installed    locked 
+"lattice"  "0.22.9"  "0.22-9" 
+
+[[12]]
+  package installed    locked 
+ "lavaan"  "0.6.21"  "0.6-21" 
+
+[[13]]
+  package installed    locked 
+   "lme4"   "2.0.1"   "2.0-1" 
+
+[[14]]
+  package installed    locked 
+   "MASS"  "7.3.65"  "7.3-65" 
+
+[[15]]
+  package installed    locked 
+ "Matrix"   "1.7.4"   "1.7-4" 
+
+[[16]]
+  package installed    locked 
+"mvtnorm"   "1.3.6"   "1.3-6" 
+
+[[17]]
+  package installed    locked 
+   "nlme" "3.1.168" "3.1-168" 
+
+[[18]]
+     package    installed       locked 
+  "numDeriv" "2016.8.1.1" "2016.8-1.1" 
+
+[[19]]
+                 package                installed                   locked 
+               "plumber" "not in runtime closure"                  "1.3.3" 
+
+[[20]]
+  package installed    locked 
+    "png"   "0.1.9"   "0.1-9" 
+
+[[21]]
+                 package                installed                   locked 
+           "prettyunits" "not in runtime closure"                  "1.2.0" 
+
+[[22]]
+                 package                installed                   locked 
+              "progress" "not in runtime closure"                  "1.2.3" 
+
+[[23]]
+   package  installed     locked 
+"quadprog"    "1.5.8"    "1.5-8" 
+
+[[24]]
+        package       installed          locked 
+"RcppArmadillo"      "15.2.4.1"      "15.2.4-1" 
+
+[[25]]
+       package      installed         locked 
+"RcppParallel"     "5.1.11.2"     "5.1.11-2" 
+
+[[26]]
+                 package                installed                   locked 
+                "readxl" "not in runtime closure"                  "1.4.5" 
+
+[[27]]
+                 package                installed                   locked 
+               "rematch" "not in runtime closure"                  "2.0.0" 
+
+[[28]]
+                 package                installed                   locked 
+                  "renv" "not in runtime closure"                  "1.2.0" 
+
+[[29]]
+  package installed    locked 
+    "sem"  "3.1.16"  "3.1-16" 
+
+[[30]]
+   package  installed     locked 
+"semTools"    "0.5.8"    "0.5-8" 
+
+[[31]]
+                 package                installed                   locked 
+                "sodium" "not in runtime closure"                  "1.4.0" 
+
+[[32]]
+      package     installed        locked 
+"sourcetools"     "0.1.7.2"     "0.1.7-2" 
+
+[[33]]
+                 package                installed                   locked 
+               "swagger" "not in runtime closure"                 "5.32.1" 
+
+[[34]]
+  package installed    locked 
+   "uuid"   "1.2.2"   "1.2-2" 
+
+[[35]]
+                 package                installed                   locked 
+              "webutils" "not in runtime closure"                  "1.2.3" 
+
+[[36]]
+  package installed    locked 
+ "xtable"   "1.8.8"   "1.8-8" 
+
+elapsed 0.26 seconds

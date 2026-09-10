@@ -1,0 +1,47 @@
+snap-reference 2026-09-10 09:44:07 
+Trial Audit: p = 0.00609
+ 
+  TRIAL     ROW       P         CI95     M
+1 Audit       X  0.9999       1 to 1 1e+05
+2  <NA>       Y 0.00015 0 to 0.00043 1e+05
+3  <NA>       Z 0.00012 0 to 0.00036 1e+05
+4  <NA> Summary 0.00609               <NA>
+5  <NA>    <NA>    <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+4                                                                                                                                                                                                              
+5                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3 variable
+4  summary
+5     <NA>
+raw first-row range 0 0.1879458 zero count 31 distinct integer distances 4292 snapped count 100000 
+actual M 100000 row mid-p 0.9999 0.00015 0.00012 observed Stouffer 3.568985 
+Integer-distance reference trial p 0.01979 k 1979 ties 0 CP 0.01893571 0.0206723 
+Collapsed-first-row trial p 0.00609 k 609 ties 0 CP 0.005617167 0.006591814 
+These conditional CP intervals describe tail-count precision; the app does not display a trial CI above .001.
+Trial Audit: p = 0.00609
+ 
+  TRIAL     ROW       P         CI95     M
+1 Audit       X  0.9999       1 to 1 1e+05
+2  <NA>       Y 0.00015 0 to 0.00043 1e+05
+3  <NA>       Z 0.00012 0 to 0.00036 1e+05
+4  <NA> Summary 0.00609               <NA>
+5  <NA>    <NA>    <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+4                                                                                                                                                                                                              
+5                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3 variable
+4  summary
+5     <NA>
+elapsed 1.46 seconds

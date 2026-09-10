@@ -1,0 +1,1053 @@
+metadata 2026-09-10 09:39:05 
+Audited commit: ae37f0ee06d017d742049b7ab56ba79f2e39c99d
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: America/Los_Angeles
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] IntegrityAnalysis_0.2.0 testthat_3.3.2          MBESS_4.9.42           
+ [4] Rfast_2.1.5.2           RcppParallel_5.1.11-2   zigg_0.0.2             
+ [7] Rcpp_1.1.2              foreach_1.5.2           dqrng_0.4.1            
+[10] shiny_1.13.0           
+
+loaded via a namespace (and not attached):
+ [1] bslib_0.10.0            httr2_1.2.2             shinyjs_2.1.1          
+ [4] htmlwidgets_1.6.4       vctrs_0.7.2             tools_4.5.3            
+ [7] generics_0.1.4          tibble_3.3.1            pkgconfig_2.0.3        
+[10] pdftools_3.9.0          rvg_0.4.1               desc_1.4.3             
+[13] uuid_1.2-2              tesseract_5.2.5         lifecycle_1.0.5        
+[16] compiler_4.5.3          brio_1.1.5              textshaping_1.0.5      
+[19] codetools_0.2-20        httpuv_1.6.17           fontquiver_0.2.1       
+[22] fontLiberation_0.1.0    shinyWidgets_0.9.1      htmltools_0.5.9        
+[25] sass_0.4.10             later_1.4.8             pillar_1.11.1          
+[28] jquerylib_0.1.4         tidyr_1.3.2             openssl_2.4.2          
+[31] cachem_1.1.0            iterators_1.0.14        mime_0.13              
+[34] fontBitstreamVera_0.1.1 tidyselect_1.2.1        zip_2.3.3              
+[37] digest_0.6.39           stringi_1.8.9           dplyr_1.2.0            
+[40] purrr_1.2.1             rprojroot_2.1.1         fastmap_1.2.0          
+[43] cli_3.6.6               magrittr_2.0.5          pkgbuild_1.4.8         
+[46] withr_3.0.3             gdtools_0.5.0           promises_1.5.0         
+[49] rappdirs_0.3.4          officer_0.7.3           jpeg_0.1-11            
+[52] otel_0.2.0              qpdf_1.4.1              askpass_1.2.1          
+[55] ragg_1.5.2              png_0.1-9               openxlsx_4.2.8.1       
+[58] rlang_1.3.0             xtable_1.8-8            glue_1.8.1             
+[61] xml2_1.5.2              shinydashboard_0.7.3    pkgload_1.5.3          
+[64] jsonlite_2.0.0          rhandsontable_0.3.8     R6_2.6.1               
+[67] systemfonts_1.3.2      
+[1] "C:/dev/IntegrityAnalysis/.audit-2026-09-10/library"
+[2] "C:/Program Files/R/R-4.5.3/library"                
+[[1]]
+  package installed    locked 
+  "abind"   "1.4.8"   "1.4-8" 
+
+[[2]]
+  package installed    locked 
+    "arm"  "1.15.2"  "1.15-2" 
+
+[[3]]
+    package   installed      locked 
+"base64enc"     "0.1.6"     "0.1-6" 
+
+[[4]]
+   package  installed     locked 
+      "BH" "1.90.0.1" "1.90.0-1" 
+
+[[5]]
+  package installed    locked 
+   "boot"  "1.3.32"  "1.3-32" 
+
+[[6]]
+                 package                installed                   locked 
+            "cellranger" "not in runtime closure"                  "1.1.0" 
+
+[[7]]
+   package  installed     locked 
+    "coda" "0.19.4.1" "0.19-4.1" 
+
+[[8]]
+    package   installed      locked 
+"codetools"    "0.2.20"    "0.2-20" 
+
+[[9]]
+                 package                installed                   locked 
+                   "hms" "not in runtime closure"                  "1.1.4" 
+
+[[10]]
+  package installed    locked 
+   "jpeg"  "0.1.11"  "0.1-11" 
+
+[[11]]
+  package installed    locked 
+"lattice"  "0.22.9"  "0.22-9" 
+
+[[12]]
+  package installed    locked 
+ "lavaan"  "0.6.21"  "0.6-21" 
+
+[[13]]
+  package installed    locked 
+   "lme4"   "2.0.1"   "2.0-1" 
+
+[[14]]
+  package installed    locked 
+   "MASS"  "7.3.65"  "7.3-65" 
+
+[[15]]
+  package installed    locked 
+ "Matrix"   "1.7.4"   "1.7-4" 
+
+[[16]]
+  package installed    locked 
+"mvtnorm"   "1.3.6"   "1.3-6" 
+
+[[17]]
+  package installed    locked 
+   "nlme" "3.1.168" "3.1-168" 
+
+[[18]]
+     package    installed       locked 
+  "numDeriv" "2016.8.1.1" "2016.8-1.1" 
+
+[[19]]
+                 package                installed                   locked 
+               "plumber" "not in runtime closure"                  "1.3.3" 
+
+[[20]]
+  package installed    locked 
+    "png"   "0.1.9"   "0.1-9" 
+
+[[21]]
+                 package                installed                   locked 
+           "prettyunits" "not in runtime closure"                  "1.2.0" 
+
+[[22]]
+                 package                installed                   locked 
+              "progress" "not in runtime closure"                  "1.2.3" 
+
+[[23]]
+   package  installed     locked 
+"quadprog"    "1.5.8"    "1.5-8" 
+
+[[24]]
+        package       installed          locked 
+"RcppArmadillo"      "15.2.4.1"      "15.2.4-1" 
+
+[[25]]
+       package      installed         locked 
+"RcppParallel"     "5.1.11.2"     "5.1.11-2" 
+
+[[26]]
+                 package                installed                   locked 
+                "readxl" "not in runtime closure"                  "1.4.5" 
+
+[[27]]
+                 package                installed                   locked 
+               "rematch" "not in runtime closure"                  "2.0.0" 
+
+[[28]]
+                 package                installed                   locked 
+                  "renv" "not in runtime closure"                  "1.2.0" 
+
+[[29]]
+  package installed    locked 
+    "sem"  "3.1.16"  "3.1-16" 
+
+[[30]]
+   package  installed     locked 
+"semTools"    "0.5.8"    "0.5-8" 
+
+[[31]]
+                 package                installed                   locked 
+                "sodium" "not in runtime closure"                  "1.4.0" 
+
+[[32]]
+      package     installed        locked 
+"sourcetools"     "0.1.7.2"     "0.1.7-2" 
+
+[[33]]
+                 package                installed                   locked 
+               "swagger" "not in runtime closure"                 "5.32.1" 
+
+[[34]]
+  package installed    locked 
+   "uuid"   "1.2.2"   "1.2-2" 
+
+[[35]]
+                 package                installed                   locked 
+              "webutils" "not in runtime closure"                  "1.2.3" 
+
+[[36]]
+  package installed    locked 
+ "xtable"   "1.8.8"   "1.8-8" 
+
+elapsed 0.26 seconds
+rank-integration 2026-09-10 09:39:06 
+
+CASE 183 
+    N1  N2 p1 p2 p3 p4 partition    n groups maxRank minRank            best
+1 1000 200  2 25  1 27     FALSE 1089    689      85      78 0.9320444339788
+           best50           worst         worst50
+1 0.9293437977457 0.1190846435747 0.1223405415606
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   24  245
+[2,]    1   53
+
+$pBest
+[1] 0.929275
+
+$pWorst
+[1] 0.1214
+
+$nTables
+[1] 1089
+
+$nNulls
+[1] 689
+
+$nScored
+[1] 100
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+Exact best and best of first 50:
+    a   b c  d           stat           key               p
+20 23 246 1 53 2.933592137713 269,54,24,299 0.9320444339788
+10 24 245 1 53 3.148046197191 269,54,25,298 0.9293437977457
+Exact worst and worst of first 50:
+      a   b c  d             stat           key               p
+685  17 252 3 54 0.09117359328783 269,57,20,306 0.1190846435747
+1080 16 255 3 55 0.04699795914884 271,58,19,310 0.1223405415606
+  TRIAL ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit Age 1000 50.1 10 NA          1                1                 2
+2 Audit Age  200 50.2 10 NA          1                1                 2
+[1] "2 table line(s) could not be used: Level A, Level B"                            
+[2] "the table does not say whether its dispersion is an SD or an SE; recorded as SD"
+NULL
+validation failed: FALSE 
+Trial Audit: p = 0.944 (95% Monte Carlo interval 0.91 to 0.97)
+ 
+  TRIAL      ROW     P         CI95    M NOTE     KIND
+1 Audit Category 0.944 0.91 to 0.97 1000      variable
+2  <NA>  Summary 0.944 0.91 to 0.97 <NA>       summary
+3  <NA>     <NA>  <NA>         <NA> <NA> <NA>     <NA>
+  TRIAL      ROW     P         CI95    M NOTE     KIND
+1 Audit Category 0.944 0.91 to 0.97 1000      variable
+2  <NA>  Summary 0.944 0.91 to 0.97 <NA>       summary
+3  <NA>     <NA>  <NA>         <NA> <NA> <NA>     <NA>
+Exact-max candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.943 (95% Monte Carlo interval 0.9 to 0.98)
+ 
+  TRIAL      ROW     P        CI95    M NOTE     KIND
+1 Audit Category 0.943 0.9 to 0.98 1000      variable
+2  <NA>  Summary 0.943 0.9 to 0.98 <NA>       summary
+3  <NA>     <NA>  <NA>        <NA> <NA> <NA>     <NA>
+Exact-min candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.1285 (95% Monte Carlo interval 0 to 0.29)
+ 
+  TRIAL      ROW      P      CI95    M NOTE     KIND
+1 Audit Category 0.1285 0 to 0.29 1000      variable
+2  <NA>  Summary 0.1285 0 to 0.29 <NA>       summary
+3  <NA>     <NA>   <NA>      <NA> <NA> <NA>     <NA>
+
+CASE 147 
+   N1  N2 p1 p2 p3 p4 partition   n groups maxRank minRank            best
+1 200 700  1  0  3  0     FALSE 147    111       1      70 0.9615384615385
+           best50           worst         worst50
+1 0.9615384615385 0.1859208644526 0.3892307692308
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]    1    1
+[2,]   24    0
+
+$pBest
+[1] 0.960325
+
+$pWorst
+[1] 0.388825
+
+$nTables
+[1] 168
+
+$nNulls
+[1] 111
+
+$nScored
+[1] 76
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+Exact best and best of first 50:
+     a b  c d  stat       key               p
+40   1 1 24 0 12.48 2,24,25,1 0.9615384615385
+40.1 1 1 24 0 12.48 2,24,25,1 0.9615384615385
+Exact worst and worst of first 50:
+    a b  c d            stat       key               p
+168 3 1 24 3 0.5979938271605 4,27,27,4 0.1859208644526
+105 3 0 21 2 0.2826086956522 3,23,24,2 0.3892307692308
+  TRIAL ROW   N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit Age 200 50.1 10 NA          1                1                 2
+2 Audit Age 700 50.2 10 NA          1                1                 2
+[1] "1 table line(s) could not be used: Level A"                                     
+[2] "the table does not say whether its dispersion is an SD or an SE; recorded as SD"
+NULL
+validation failed: FALSE 
+Trial Audit: p = 0.9615 (95% Monte Carlo interval 0.9 to 1)
+ 
+  TRIAL      ROW      P     CI95    M NOTE     KIND
+1 Audit Category 0.9615 0.9 to 1 1000      variable
+2  <NA>  Summary 0.9615 0.9 to 1 <NA>       summary
+3  <NA>     <NA>   <NA>     <NA> <NA> <NA>     <NA>
+  TRIAL      ROW      P     CI95    M NOTE     KIND
+1 Audit Category 0.9615 0.9 to 1 1000      variable
+2  <NA>  Summary 0.9615 0.9 to 1 <NA>       summary
+3  <NA>     <NA>   <NA>     <NA> <NA> <NA>     <NA>
+Exact-max candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.9615 (95% Monte Carlo interval 0.9 to 1)
+ 
+  TRIAL      ROW      P     CI95    M NOTE     KIND
+1 Audit Category 0.9615 0.9 to 1 1000      variable
+2  <NA>  Summary 0.9615 0.9 to 1 <NA>       summary
+3  <NA>     <NA>   <NA>     <NA> <NA> <NA>     <NA>
+Exact-min candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.192 (95% Monte Carlo interval 0 to 0.41)
+ 
+  TRIAL      ROW     P      CI95    M NOTE     KIND
+1 Audit Category 0.192 0 to 0.41 1000      variable
+2  <NA>  Summary 0.192 0 to 0.41 <NA>       summary
+3  <NA>     <NA>  <NA>      <NA> <NA> <NA>     <NA>
+
+CASE 153 
+    N1  N2 p1 p2 p3 p4 partition    n groups maxRank minRank            best
+1 2000 200  1 10  0 11     FALSE 2646   1846     117     313 0.9437036257337
+           best50           worst         worst50
+1 0.9416869042592 0.1745037194288 0.1952735325531
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]   30  197
+[2,]    0   22
+
+$pBest
+[1] 0.941725
+
+$pWorst
+[1] 0.1937
+
+$nTables
+[1] 2646
+
+$nNulls
+[1] 1846
+
+$nScored
+[1] 100
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+Exact best and best of first 50:
+    a   b c  d           stat           key               p
+83 29 193 0 21 3.114991159384 222,21,29,214 0.9437036257337
+21 30 190 0 21 3.270788453253 220,21,30,211 0.9416869042592
+Exact worst and worst of first 50:
+      a   b c  d             stat           key               p
+1707 15 208 1 22 0.19398772538083 223,23,16,230 0.1745037194288
+758  11 205 1 21 0.01248410853868 216,22,12,226 0.1952735325531
+  TRIAL ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit Age 2000 50.1 10 NA          1                1                 2
+2 Audit Age  200 50.2 10 NA          1                1                 2
+[1] "2 table line(s) could not be used: Level A, Level B"                            
+[2] "the table does not say whether its dispersion is an SD or an SE; recorded as SD"
+NULL
+validation failed: FALSE 
+Trial Audit: p = 0.9415 (95% Monte Carlo interval 0.89 to 0.98)
+ 
+  TRIAL      ROW      P         CI95    M NOTE     KIND
+1 Audit Category 0.9415 0.89 to 0.98 1000      variable
+2  <NA>  Summary 0.9415 0.89 to 0.98 <NA>       summary
+3  <NA>     <NA>   <NA>         <NA> <NA> <NA>     <NA>
+  TRIAL      ROW      P         CI95    M NOTE     KIND
+1 Audit Category 0.9415 0.89 to 0.98 1000      variable
+2  <NA>  Summary 0.9415 0.89 to 0.98 <NA>       summary
+3  <NA>     <NA>   <NA>         <NA> <NA> <NA>     <NA>
+Exact-max candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.944 (95% Monte Carlo interval 0.89 to 0.99)
+ 
+  TRIAL      ROW     P         CI95    M NOTE     KIND
+1 Audit Category 0.944 0.89 to 0.99 1000      variable
+2  <NA>  Summary 0.944 0.89 to 0.99 <NA>       summary
+3  <NA>     <NA>  <NA>         <NA> <NA> <NA>     <NA>
+Exact-min candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.183 (95% Monte Carlo interval 0 to 0.4)
+ 
+  TRIAL      ROW     P     CI95    M NOTE     KIND
+1 Audit Category 0.183 0 to 0.4 1000      variable
+2  <NA>  Summary 0.183 0 to 0.4 <NA>       summary
+3  <NA>     <NA>  <NA>     <NA> <NA> <NA>     <NA>
+
+CASE 181 
+    N1  N2 p1 p2 p3 p4 partition     n groups maxRank minRank            best
+1 5000 200  5 50  5 50     FALSE 23409  13409     161    8664 0.4566075442337
+           best50            worst          worst50
+1 0.4565003821615 0.06330799300769 0.06409427031678
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$counts
+     [,1] [,2]
+[1,]  225 2525
+[2,]   11   99
+
+$pBest
+[1] 0.460825
+
+$pWorst
+[1] 0.0619
+
+$nTables
+[1] 23409
+
+$nNulls
+[1] 13409
+
+$nScored
+[1] 100
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+Exact best and best of first 50:
+       a    b  c  d            stat               key               p
+5407 225 2479 11 99 0.3878170341197 2704,110,236,2578 0.4566075442337
+6427 225 2499 11 99 0.4193638217821 2724,110,236,2598 0.4565003821615
+Exact worst and worst of first 50:
+        a    b  c   d             stat               key                p
+23037 260 2518 11 101 0.02706204185987 2778,112,271,2619 0.06330799300769
+23409 275 2525 11 101 0.00000000000000 2800,112,286,2626 0.06409427031678
+  TRIAL ROW    N MEAN SD SE ROUND_MEAN ROUND_DISPERSION ROUND_OBSERVATION
+1 Audit Age 5000 50.1 10 NA          1                1                 2
+2 Audit Age  200 50.2 10 NA          1                1                 2
+[1] "2 table line(s) could not be used: Level A, Level B"                            
+[2] "the table does not say whether its dispersion is an SD or an SE; recorded as SD"
+NULL
+validation failed: FALSE 
+Trial Audit: p = 0.474 (95% Monte Carlo interval 0.4 to 0.55)
+ 
+  TRIAL      ROW     P        CI95    M NOTE     KIND
+1 Audit Category 0.474 0.4 to 0.55 1000      variable
+2  <NA>  Summary 0.474 0.4 to 0.55 <NA>       summary
+3  <NA>     <NA>  <NA>        <NA> <NA> <NA>     <NA>
+  TRIAL      ROW     P        CI95    M NOTE     KIND
+1 Audit Category 0.474 0.4 to 0.55 1000      variable
+2  <NA>  Summary 0.474 0.4 to 0.55 <NA>       summary
+3  <NA>     <NA>  <NA>        <NA> <NA> <NA>     <NA>
+Exact-max candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.4755 (95% Monte Carlo interval 0.39 to 0.56)
+ 
+  TRIAL      ROW      P         CI95    M NOTE     KIND
+1 Audit Category 0.4755 0.39 to 0.56 1000      variable
+2  <NA>  Summary 0.4755 0.39 to 0.56 <NA>       summary
+3  <NA>     <NA>   <NA>         <NA> <NA> <NA>     <NA>
+Exact-min candidate through engine:
+validation failed: FALSE 
+Trial Audit: p = 0.06505 (95% Monte Carlo interval 0 to 0.14)
+ 
+  TRIAL      ROW       P      CI95     M NOTE     KIND
+1 Audit Category 0.06505 0 to 0.14 10000      variable
+2  <NA>  Summary 0.06505 0 to 0.14  <NA>       summary
+3  <NA>     <NA>    <NA>      <NA>  <NA> <NA>     <NA>
+elapsed 5.29 seconds
+zero-snap 2026-09-10 09:39:11 
+continuous 
+Trial Audit: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+Trial Audit: p = 0.00816 (95% Monte Carlo interval 0 to 0.017)
+ 
+  TRIAL     ROW       P       CI95     M
+1 Audit       X 0.00816 0 to 0.017 1e+05
+2  <NA> Summary 0.00816 0 to 0.017  <NA>
+3  <NA>    <NA>    <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+bit-identical without snap: TRUE 
+median 
+Trial Audit: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+Trial Audit: p = 0.01995 (95% Monte Carlo interval 0 to 0.044)
+ 
+  TRIAL     ROW       P       CI95     M
+1 Audit       X 0.01995 0 to 0.044 10000
+2  <NA> Summary 0.01995 0 to 0.044  <NA>
+3  <NA>    <NA>    <NA>       <NA>  <NA>
+                                                                                                                                                                                                            NOTE
+1 attainable floor; the stated mean precision (14 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                               
+3                                                                                                                                                                                                           <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+bit-identical without snap: TRUE 
+unequal 
+Trial Audit: p = 0.001045 (95% Monte Carlo interval 0.00074 to 0.0014)
+ 
+Trial Audit: p = 0.001045 (95% Monte Carlo interval 0.00074 to 0.0014)
+ 
+  TRIAL     ROW        P              CI95     M NOTE     KIND
+1 Audit       X 0.001045 0.00074 to 0.0014 1e+05      variable
+2  <NA> Summary 0.001045 0.00074 to 0.0014  <NA>       summary
+3  <NA>    <NA>     <NA>              <NA>  <NA> <NA>     <NA>
+bit-identical without snap: TRUE 
+delta 1000 
+Trial Audit: p = 0.5174
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+delta 1e+05 
+Trial Audit: p = 0.5189
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5189               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+delta 1e+07 
+Trial Audit: p = 0.5226
+ 
+Trial Audit: p = 0.5174
+ 
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5226               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+No-snap diagnostic:
+  TRIAL            ROW        P         CI95     M
+1 Audit Very different   0.9999       1 to 1 1e+05
+2  <NA>   Very similar 0.000125 0 to 0.00037 1e+05
+3  <NA>        Summary   0.5174               <NA>
+4  <NA>           <NA>     <NA>         <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1                                                                                                                                                                                                              
+2 attainable floor; the stated mean precision (4 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+3                                                                                                                                                                                                              
+4                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2 variable
+3  summary
+4     <NA>
+elapsed 3.52 seconds
+precision 2026-09-10 09:39:14 
+
+ mixed read TRUE 
+  TRIAL ROW   N   MEAN   SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100 50.000 3.00         NA                 0               NA
+2 Audit   X 100 50.000 3.00          2                 0                1
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ lowercase read TRUE 
+  trial row   n   mean   sd round_mean round_observation round_dispersion
+1 Audit   X 100 50.000 3.00         NA                 0               NA
+2 Audit   X 100 50.000 3.00          2                 0                1
+                TRIAL
+1 precision-lowercase
+2 precision-lowercase
+Two columns normalize to the same name: TRIAL from 'TRIAL' and 'TRIAL'. Rename or remove one - which column is meant is ambiguous. 
+$ok
+[1] FALSE
+
+$stage
+[1] "validation"
+
+$issues
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",,,0\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",2,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: FALSE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ scientific read TRUE 
+  TRIAL ROW   N     MEAN     SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100 5.0000e1 3.00e0         NA                 0               NA
+2 Audit   X 100 5.0000e1 3.00e0          2                 0                1
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+Trial Audit: p = 0.004805 (95% Monte Carlo interval 0 to 0.01)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW        P      CI95     M
+1 Audit       X 0.004805 0 to 0.01 1e+05
+2  <NA> Summary 0.004805 0 to 0.01  <NA>
+3  <NA>    <NA>     <NA>      <NA>  <NA>
+                                                                                                                                                                                                           NOTE
+1 attainable floor; the stated mean precision (3 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page
+2                                                                                                                                                                                                              
+3                                                                                                                                                                                                          <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.004805
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50.000 (3.00)\",\"50.000 (3.0)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50.000\",\"3.00\",3,2,0\n\"Audit\",\"X\",100,\"50.000\",\"3.0\",3,1,0\n"
+
+
+ coarse read TRUE 
+  TRIAL ROW   N MEAN SD ROUND_MEAN ROUND_OBSERVATION ROUND_DISPERSION
+1 Audit   X 100   50 30         -1                 0                0
+2 Audit   X 100   50 30         NA                 0                0
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW      P       CI95     M
+1 Audit       X 0.0416 0 to 0.089 10000
+2  <NA> Summary 0.0416 0 to 0.089  <NA>
+3  <NA>    <NA>   <NA>       <NA>  <NA>
+                                                                                                                                                                                                                          NOTE
+1 attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page
+2                                                                                                                                                                                                                             
+3                                                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.0416
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+Trial Audit: p = 0.0416 (95% Monte Carlo interval 0 to 0.089)
+ 
+second analysis identical: TRUE 
+$ok
+[1] TRUE
+
+$stage
+[1] "analysis"
+
+$results
+  TRIAL     ROW      P       CI95     M
+1 Audit       X 0.0416 0 to 0.089 10000
+2  <NA> Summary 0.0416 0 to 0.089  <NA>
+3  <NA>    <NA>   <NA>       <NA>  <NA>
+                                                                                                                                                                                                                          NOTE
+1 attainable floor; the stated mean precision (-1 decimals) is coarser than the digits these values carry, which widens the rounding the arms are judged against; this row's p rests on that claim - check it against the page
+2                                                                                                                                                                                                                             
+3                                                                                                                                                                                                                         <NA>
+      KIND
+1 variable
+2  summary
+3     <NA>
+
+$overallP
+[1] 0.0416
+
+$trials
+[1] 1
+
+$journalTables
+$journalTables$Audit
+[1] "\"Variable\",\"Arm 1 (n = 100)\",\"Arm 2 (n = 100)\"\n\"X, mean (SD)\",\"50 (30)\",\"50 (30)\"\n"
+
+
+$journalTablesOmitted
+NULL
+
+$templateCsv
+[1] "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Audit\",\"X\",100,\"50\",\"30\",-1,0,0\n\"Audit\",\"X\",100,\"50\",\"30\",0,0,0\n"
+
+elapsed 0.85 seconds
+gates-and-chunks 2026-09-10 09:39:15 
+arms 4 
+$resolved
+[1] TRUE
+
+$reason
+[1] "enumerated completely"
+
+$nTables
+[1] 2
+
+$nNulls
+[1] 2
+
+$nScored
+[1] 2
+
+arms 5 
+$resolved
+[1] FALSE
+
+$reason
+[1] "this block is too large to score: 5 arms by 25 levels over a table total of 2,376 is more than the simulation can carry in the time it has"
+
+$nTables
+[1] 0
+
+$nNulls
+[1] 0
+
+$nScored
+[1] 0
+
+chunked tables and RNG state identical: TRUE TRUE 
+chunked tables and RNG state identical: TRUE TRUE 
+$resolved
+[1] FALSE
+
+$reason
+[1] "the counts total more than 5,000 in at least one arm, which the analysis would refuse"
+
+$counts
+     [,1] [,2] [,3]
+[1,]   NA   NA   NA
+[2,]   NA   NA   NA
+
+$pBest
+[1] NA
+
+$pWorst
+[1] NA
+
+$nTables
+[1] 0
+
+$nNulls
+[1] 0
+
+$nScored
+[1] 0
+
+$straddles
+[1] FALSE
+
+$worstAtFloor
+[1] FALSE
+
+elapsed 0.91 seconds
