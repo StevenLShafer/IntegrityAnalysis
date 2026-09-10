@@ -60,6 +60,21 @@
 # both on the same footing).
 .floorP <- function(p, m) pmin(pmax(p, 1 / (m + 1)), 0.9999)
 
+# THE NULL LAW'S KEY (full independent audit 2026-09-10, F1). Two rows
+# whose simulated nulls are the same distribution share ONE score mapping
+# in the exact combination - see the stage loop. A continuous or median
+# row's null is fixed by every numeric input its simulation reads, so the
+# key is all of them, formatted to full precision; the categorical branch
+# keys on its margins (see there). Rows with different inputs get
+# different keys and are mapped, as before, through their own draws.
+.iaNullKey <- function(kind, ROWS) {
+  cols <- intersect(c("N", "MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
+                      "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(ROWS))
+  paste(kind, paste(vapply(cols, function(cn)
+    paste(format(ROWS[[cn]], digits = 17), collapse = ","), character(1)),
+    collapse = ";"))
+}
+
 # TIES BY AN EXPLICITLY BOUNDED NUMERICAL CRITERION (2026-09-07; the GPT-6
 # audit's finding F1, docs/audits/). A tie - a replicate exactly as
 # homogeneous as the printed table - is the heart of the mid-p, and it
@@ -1148,7 +1163,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                                           .iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
                                           .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
-                         zeroTol = zt)
+                         zeroTol = zt, key = .iaNullKey("median", ROWS))
           }
           }
         }
@@ -1356,7 +1371,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                                   nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
                                           .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
-                         zeroTol = zt)
+                         zeroTol = zt, key = .iaNullKey("continuous", ROWS))
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the
@@ -1414,7 +1429,11 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
             }
             out
           }
-          simRow <- list(simulate = simulate, obs = statObs, kind = "category", zeroTol = 0)
+          # the categorical null depends on the MARGINS alone (r2dtable), so
+          # two rows with the same margins share one law whatever their cells
+          simRow <- list(simulate = simulate, obs = statObs, kind = "category", zeroTol = 0,
+                         key = paste("category", paste(rowSums(tab), collapse = ","),
+                                     paste(colSums(tab), collapse = ",")))
           }
           }
         }
@@ -1447,8 +1466,46 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
   trialStat <- NULL
   for (s in stages) {
     sumZ <- numeric(s); zObs <- 0
+    # EVERY ROW IS DRAWN FIRST, in the same order as before (the RNG stream
+    # is consumed identically, so every pinned value stands), because the
+    # combination's mapping below may need the draws of several rows at
+    # once (full independent audit 2026-09-10, F1).
+    simsAll <- vector("list", length(rows))
+    for (j in usable) simsAll[[j]] <- rows[[j]]$sim$simulate(s)
+    # ROWS THAT SHARE A NULL LAW SHARE ONE SCORE MAPPING. Each row used to
+    # map its statistics to a mid-p through the ranks of its OWN draws -
+    # exact within the row, since a tied replicate gets the observed row's
+    # own average rank - but two rows with the same law carried two
+    # different ESTIMATES of the same mapping. A replicate whose one extreme
+    # outcome sat in a different row from the observed one is a genuine
+    # trial tie, yet its Stouffer sum differed from the observed sum by
+    # that estimation noise, and the exact comparison below split the tie
+    # class by the noise's sign: nine binary rows of (1,99)/(1,99) with one
+    # (0,100)/(2,98) - exact trial mid-p 0.011146 - read 0.003285 with the
+    # extreme row named V03 and 0.0194 with it named V01. The answer
+    # depended on which row carried the name. So the mapping of rows that
+    # share a law is now one pooled empirical distribution over ALL their
+    # draws; each row keeps its own independent replicates, and only the
+    # function statistic -> mid-p is shared. A row with a law of its own
+    # is mapped through its own draws, exactly as before. The row's own
+    # displayed p, interval and replicate count are unchanged; this is the
+    # combination's mapping only.
+    keyOf <- vapply(usable, function(j) {
+      k <- rows[[j]]$sim$key
+      if (is.null(k) || !nzchar(k)) paste0("row", j) else k
+    }, character(1))
+    poolRank <- list(); poolOf <- list()
+    for (k in unique(keyOf[duplicated(keyOf)])) {
+      grp <- usable[keyOf == k]
+      pool <- unlist(simsAll[grp], use.names = FALSE)
+      # the zero snap, exactly as each row applies it to its own draws
+      # below; rows sharing a law share a printed step, so one tolerance
+      pool[pool <= rows[[grp[1]]]$sim$zeroTol] <- 0
+      poolOf[[k]] <- pool
+      poolRank[[k]] <- .iaTieRank(pool)
+    }
     for (j in usable) {
-      sims <- rows[[j]]$sim$simulate(s)
+      sims <- simsAll[[j]]
       obs  <- rows[[j]]$sim$obs
       # A statistic that is zero up to floating-point dust IS zero. Since
       # screen 2026-09-07-1459 the branches translate their means before
@@ -1493,14 +1550,34 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                            # (obs was snapped to exactly zero above when it
                            # was zero up to floating-point dust)
                            atFloor = kLess == 0 && isTRUE(obs == 0))
-      pRep <- .floorP((.iaTieRank(sims) - 0.5) / s, s)
+      k <- keyOf[match(j, usable)]
+      if (!is.null(poolOf[[k]])) {
+        # this row's draws sit at a known offset in its group's pool
+        grp <- usable[keyOf == k]
+        off <- sum(lengths(simsAll[grp[seq_len(match(j, grp) - 1L)]]))
+        mP <- length(poolOf[[k]])
+        pRep <- .floorP((poolRank[[k]][off + seq_len(s)] - 0.5) / mP, mP)
+        kp <- .iaTieCounts(poolOf[[k]], obs)
+        zObs <- zObs + stats::qnorm(.floorP((kp[["kLess"]] + kp[["kEq"]] / 2) / mP, mP),
+                                    lower.tail = FALSE)
+      } else {
+        pRep <- .floorP((.iaTieRank(sims) - 0.5) / s, s)
+        zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
+      }
       sumZ <- sumZ + stats::qnorm(pRep, lower.tail = FALSE)
-      zObs <- zObs + stats::qnorm(.floorP((kLess + kEq / 2) / s, s), lower.tail = FALSE)
     }
     rowMid <- vapply(usable, function(j)
       (rowStat[[j]]$kLess + rowStat[[j]]$kEq / 2) / s, numeric(1))
     if (length(usable) > 1) {
-      kG <- sum(sumZ > zObs); kE <- sum(sumZ == zObs)
+      # A TRIAL TIE BY THE SAME BOUNDED CRITERION THE ROWS USE (full
+      # independent audit 2026-09-10, F1). Exact equality was right while
+      # a tied replicate accumulated the same row values in the same
+      # order; with a shared mapping the tied replicate accumulates the
+      # same VALUES in a different order, and floating addition is not
+      # associative. .iaTieTol (one part in 1e10) absorbs that and nothing
+      # else: distinct trial outcomes differ by a whole row's z.
+      kk <- .iaTieCounts(-sumZ, -zObs)         # "less" of the negatives is "greater"
+      kG <- kk[["kLess"]]; kE <- kk[["kEq"]]
       trialStat <- list(kG = kG, kE = kE, m = s)
       trialMid <- (kG + kE / 2) / s
     } else trialMid <- 1

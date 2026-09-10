@@ -1136,6 +1136,56 @@ recorded as measurements. `statistics.md`, the user guide, the API
 guide and the selector's commentary in `R/failsafeTable.R` now say
 exactly that.
 
+## 2026-09-10 — rows that share a null law share one score mapping
+
+Full independent audit 2026-09-10, finding F1 (numerical P2, accusing
+direction); Steve Shafer's decision on the design, 2026-09-10.
+
+**What was wrong.** The exact combination maps each row's replicate
+statistics to a mid-p through the ranks of that row's own draws, and the
+observed row through the same draws. Within a row that is exact: a tied
+replicate receives the observed row's own average rank. But two rows
+whose nulls are the *same distribution* — nine binary variables of
+(1,99)/(1,99) in two arms of 100, say, all with margins (100,100) by
+(2,198) — carried two different *estimates* of the same mapping. A
+replicate whose single extreme outcome sat in row 5 while the observed
+extreme sat in row 3 is a genuine trial tie, but its Stouffer sum
+differed from the observed sum by the estimation noise, and the
+trial-level comparison, which was exact equality, split the whole tie
+class by the sign of that noise. The auditor's construction — eight rows
+(1,99)/(1,99) and one (0,100)/(2,98) — has an exact trial mid-p of
+`q⁹ + ½·9·(1−q)·q⁸` with `q = 100/199`, **0.011146**. The engine read
+**0.003285** with the extreme row named V03 and **0.0194** with it named
+V01: the answer depended on which row carried the name. On the same
+100,000 draws, 1,812 replicates were genuine ties; 203 were counted as
+ties and 1,609 as beyond. A fourteen-row construction put the exact value
+(0.000519) outside the interval the app printed (0.000022–0.00031).
+Raising the replicate count does not help — the noise shrinks but its
+sign still decides — and the row tolerance is the wrong knob.
+
+**What changed.** Rows that share a null law — categorical rows with
+the same margins, continuous or median rows with the same numeric inputs
+— are mapped through **one** empirical distribution pooled over all
+their draws. Every row still draws its own independent replicates (in
+the same order as before, so the random stream and every pinned value
+are unchanged); only the function from statistic to mid-p is shared, and
+the observed row is mapped through the same pool. A row with a law of
+its own is mapped through its own draws, exactly as before, and the
+row's own displayed p, interval and replicate count are unchanged in
+every case. The trial-level tie is now decided by the same bounded
+criterion the rows use (one part in 10¹⁰): a tied replicate accumulates
+the same z-values in a different row order, and floating addition is not
+associative. The auditor's constructions now read inside the exact
+value's sampling interval, and the two namings read the same.
+
+**Why this design.** The alternative — an explicitly randomised
+combination with its own stated uncertainty — would be a different test.
+Sharing the mapping keeps the documented exact mid-p and removes the
+only source of the split; it is exact for the case that produced it and
+inert for every row whose law is unique. Steve's remark, recorded: the
+shape is exceedingly unlikely in an actual trial; the fix is a matter of
+correctness, not frequency.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a
