@@ -731,8 +731,20 @@ if (!length(setdiff(grep("\\.ppTableRankMax", fsCode), rankDef)))
 #
 # So instead of enumerating what is forbidden, this pins what is required:
 # every .ppTableP() call in the file sits on a line that iterates one of
-# the four bounded candidate sets. Any sweep over `keys`, in any spelling,
-# fails it. Mutation-verified against the four shapes the screen listed.
+# the four bounded candidate sets. Mutation-verified against the four
+# shapes the screen listed.
+#
+# THAT ALONE WAS NOT ENOUGH EITHER (security screen 2026-09-10-0611, F1).
+# The call lines can be left exactly as they are while a candidate SET is
+# redefined as `seq_along(keys)` - the most natural place to put the
+# sweep back - and every call still "sits on a bounded line". The screen
+# verified by mutation that this check stayed silent on it, and that the
+# rank constant's "defined but never used" check stayed silent too, since
+# the other set still referenced it. So the DEFINITIONS are pinned as
+# well: candUp and candDn must be a utils::head() bounded by
+# .ppTableRankMax, topUp and topDn a utils::head() bounded by
+# .ppTableRefineTop. A definition spans two lines, so each is read with
+# the line after it.
 ppLines <- grep("\\.ppTableP\\s*\\(", fsCode, value = TRUE)
 ppDef   <- grep("^\\s*\\.ppTableP\\s*<-", fsCode, value = TRUE)
 ppCalls <- setdiff(ppLines, ppDef)
@@ -743,9 +755,43 @@ if (!length(ppCalls) || !all(bounded))
              "bounded sets is a sweep over every group, which is the 190 s",
              "parse the ranking replaced (screens 2026-09-09-0721 F1 and",
              "-1532) -", paste(trimws(ppCalls[!bounded]), collapse = " | ")))
+for (set in c("candUp", "candDn", "topUp", "topDn")) {
+  at <- grep(paste0("^\\s*", set, "\\s*<-"), fsCode)
+  bound <- if (set %in% c("candUp", "candDn")) "\\.ppTableRankMax" else "\\.ppTableRefineTop"
+  defn <- if (length(at) == 1L) paste(fsCode[at:min(at + 1L, length(fsCode))], collapse = " ") else ""
+  if (length(at) != 1L || !grepl("utils::head\\s*\\(", defn) || !grepl(bound, defn))
+    note(paste0("R/failsafeTable.R: ", set, " must be defined exactly once as a ",
+                "utils::head() bounded by ", sub("^\\\\", "", bound),
+                " - redefining a candidate set is the sweep over every group ",
+                "coming back through the definition rather than the call ",
+                "(screen 2026-09-10-0611 F1)"))
+}
 # and the enumeration must still count before it builds (2100 F1)
 avDef  <- grep("^\\s*\\.ppArmVectorCount\\s*<-", fsCode)
 avCall <- setdiff(grep("\\.ppArmVectorCount\\s*\\(", fsCode), avDef)
+# ...and the FILL must count every arm before it builds any (screen
+# 2026-09-10-0536 F1; pinned here after screen 0611 showed the revert of
+# that fix - build every arm, then take the product - passed this group
+# unnoticed). Inside .ppFailsafeTableFill(), the first call to the
+# counter must come before the first call to the builder. Same style as
+# group 7's translation-before-centre ordering.
+fillAt <- grep("^\\s*\\.ppFailsafeTableFill\\s*<-\\s*function", fsCode)
+if (length(fillAt) == 1L) {
+  body <- seq(fillAt, length(fsCode))
+  cnt1 <- body[grep("\\.ppArmVectorCount\\s*\\(", fsCode[body])][1]
+  bld1 <- body[grep("\\.ppArmVectors\\s*\\(", fsCode[body])][1]
+  # STRICTLY before: the first harness mutation put the counter call on the
+  # builder's own line, and `>` let it through (same line number). Nothing
+  # legitimate needs both calls on one line.
+  if (is.na(cnt1) || is.na(bld1) || cnt1 >= bld1)
+    note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must count every arm",
+               "(.ppArmVectorCount) before it builds any (.ppArmVectors) -",
+               "building first is the 1,636 MB decline of screen",
+               "2026-09-10-0536 F1"))
+} else {
+  note(paste("R/failsafeTable.R: .ppFailsafeTableFill() must be defined",
+             "exactly once, found", length(fillAt)))
+}
 if (length(avDef) != 1L || !length(avCall))
   note(paste("R/failsafeTable.R: .ppArmVectorCount() must be defined and",
              "called from .ppArmVectors() before any vector is built -",
