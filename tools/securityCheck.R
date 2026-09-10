@@ -661,7 +661,9 @@ if (file.exists("R/utils.R")) {
 # passes zeroTol = 0 and is allowed by name.
 pcCode <- codeLinesOf("R/P_Calc.R")
 zeroTolLines <- grep("zeroTol\\s*=", pcCode, value = TRUE)
-badLit <- grep("zeroTol\\s*=\\s*0\\s*\\)", zeroTolLines,
+# `zeroTol = zt` or `zeroTol = 0` may be followed by another argument (the
+# null-law key since the full audit 2026-09-10, F1) - `[,)]`, not `\\)`
+badLit <- grep("zeroTol\\s*=\\s*0\\s*[,)]", zeroTolLines,
                value = TRUE, invert = TRUE)
 badLit <- grep("zeroTol\\s*=\\s*[0-9]", badLit, value = TRUE)
 if (length(badLit))
@@ -695,7 +697,7 @@ ztLines <- grep("(^|[^A-Za-z0-9._])zt\\s*(<<-|<-|=)[^=]", pcCode)
 ztRight <- grep("(->>|->)\\s*zt([^A-Za-z0-9._]|$)", pcCode)
 ztOK <- grepl(snapExact, pcCode[ztLines]) |
         grepl("^\\s*zt\\s*<-\\s*rows\\[\\[j\\]\\]\\$sim\\$zeroTol\\s*$", pcCode[ztLines])
-zeroTolBad <- zeroTolLines[!grepl("zeroTol\\s*=\\s*(zt|0)\\s*\\)", zeroTolLines)]
+zeroTolBad <- zeroTolLines[!grepl("zeroTol\\s*=\\s*(zt|0)\\s*[,)]", zeroTolLines)]
 if (!all(grepl(snapExact, pcCode[snapCalls])) || !all(ztOK) || length(ztRight) ||
     length(zeroTolBad))
   note(paste("R/P_Calc.R: the zero tolerance must reach the engine untouched -",

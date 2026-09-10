@@ -66,12 +66,20 @@ or below 5%. (An inclusive-tail p, counting every tie, would be
 conservative instead.) A tie between ROW statistics is decided by a stated
 numerical criterion, not by exact equality of floating-point numbers:
 two statistics within one part in 10¹⁰ of each other are one value, for
-the observed row against its replicates and for the replicates among
-themselves alike (the trial-level combination compares its Stouffer sums
-with exact equality instead, since the observed sum and a tied
-replicate's accumulate the same row values in the same order and come
-out bit-identical), and a statistic that is zero up to floating-point
-dust is zero. What counts as dust is a property of the printed grid
+the observed row against its replicates, for the replicates among
+themselves, and for the trial-level Stouffer sums alike; and a
+statistic that is zero up to floating-point dust is zero. Rows whose
+simulated nulls are the same distribution — categorical rows with the
+same margins, continuous or median rows with the same inputs — are
+mapped from statistic to mid-p through **one** empirical distribution
+pooled over all their draws, so that a replicate whose extreme outcome
+sits in a different row from the observed one is the genuine tie it is,
+rather than a coin toss on two estimates of the same mapping (an
+independent audit found nine binary rows with one extreme reading
+0.003 or 0.019 depending only on which row carried the name, against an
+exact 0.011; see [method-history.md](method-history.md)). Each row still
+draws its own independent replicates, and its own p and interval come
+from its own draws; only the combination's mapping is shared. What counts as dust is a property of the printed grid
 alone: 10⁻¹² of the square of the finest printed step of the row's
 means. Nothing about the observed arms enters it — the smallest
 statistic two distinct readings on that grid can produce is at least
