@@ -408,14 +408,16 @@ specific cell:
   and, where the categories are known to divide the arm (a yes/no row
   whose other column the app builds itself), each arm's counts adding up
   to that arm's N — and the readings at each extreme are scored with the
-  same statistic and the same null the analysis itself uses. Only those can win: the p is larger the less
-  alike the arms are, so the best case is among the readings that leave
-  the arms least alike and the worst among those that leave them most
-  alike. A middling reading is neither.
-  The one **analysed is the one with the largest p**: the authors get
-  every benefit of the doubt the page allows. Hover the cell for the
-  bracket of counts the percentage allows and for the best and worst p
-  the page could have produced.
+  same statistic and the same null the analysis itself uses. The readings
+  are ranked by how unlike they leave the arms, and the fifty at each end
+  are scored: within one null a less-alike reading has the larger p, so
+  this finds the best and worst cases well, but it is a ranking, not a
+  proof — an independent audit built pages on which a better reading sat
+  further down the list. The one **analysed is the one with the largest
+  p among those scored**: the authors get the benefit of the doubt over
+  every reading the app scored. Hover the cell for the bracket of counts
+  the percentage allows and for the best and worst p among the readings
+  scored.
 
   When the best and the worst reading fall on opposite sides of
   p = 0.01, the row says so, because then the printed counts decide the

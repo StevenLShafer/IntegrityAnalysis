@@ -172,15 +172,15 @@ Captured from a real run (the ticagrelor article PDF, a 36-row table):
 percentage for a categorical level gives the count exactly when the arm
 has 100 or fewer patients (1,000 at one printed decimal); above that,
 several counts fit the printed percentage. The service fills such cells
-with the **best case for the authors**: it enumerates every whole
-arms-by-levels table the printed percentages allow — each cell inside
-its own bracket — scores the readings at each extreme with the statistic
-and null the analysis itself uses, and keeps the one with the largest p.
-Only the extremes are scored, because only they can win: the p rises
-with how unlike the arms are, so the largest p is among the least alike
-readings and the smallest among the most alike, and a middling reading
-can be neither. That is the most
-favourable reading of **that row**; it is not a claim about the trial p,
+with the **best case for the authors among the readings scored**: it
+enumerates every whole arms-by-levels table the printed percentages
+allow — each cell inside its own bracket — ranks them by how unlike they
+leave the arms, scores the fifty at each end with the statistic and null
+the analysis itself uses, and keeps the one with the largest p. The
+ranking is a heuristic: within one null a less-alike reading has the
+larger p, but across nulls an independent audit found pages where a
+better reading sat further down the list. That is the most favourable
+reading of **that row among those scored**; it is not a claim about the trial p,
 which combines rows and does not move monotonically with any one of
 them. The effect is still large: a two-arm row of 5,000 per arm
 printed as counts 2,500 and 2,500 reads p = 0.008, and the same row

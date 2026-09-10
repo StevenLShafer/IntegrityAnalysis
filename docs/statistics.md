@@ -383,24 +383,33 @@ makes a number reproducible; it does not make it more precise.
   **maximisation**, not by a rule of thumb: of every set of counts the
   row's printed percentages allow - one end of each ambiguous arm's
   bracket, the exactly pinned arms held fixed - the row is built from the
-  whole TABLE with the largest p. The candidates are every
+  whole TABLE with the largest p among those scored. The candidates are every
   arms-by-levels table in which each cell lies inside the bracket its
   printed percentage allows — and, only where the levels are known to
   partition the arm (a binary "n (%)" row whose other column this code
   builds itself), in which each arm's counts sum to that arm's N; every
   other row is constrained by its brackets alone, as the paragraph on
   partition below says.
-  They are ordered by the Pearson statistic, and the candidates at each
-  end are scored with that statistic against their own simulated null,
-  which is what the screen goes on to compute. Ordering them costs
-  nothing and is not an approximation of the scoring: this p is the
-  probability that a replicate is *at least as homogeneous* as the
-  printed table, so within one null it rises with the statistic, and the
-  reading with the largest p can only be among the least alike. Scoring
-  every candidate instead - which is what this did until 2026-09-09 -
-  was both far slower and, measurably, worse: ranking thousands of noisy
-  estimates and refining the best few selects on upward noise, which
-  biased the reported best case low, toward the accusation.
+  Not every candidate is scored. The candidates are grouped by their
+  margins (tables sharing both margins share a null), the groups are
+  ordered by the Pearson statistic of their extreme tables, and the fifty
+  groups at each end are scored against their own simulated null — the
+  null the screen goes on to use. Within one null the p rises with the
+  statistic, so a group's best and worst tables are its extremes; across
+  groups the ordering is a **heuristic, not a proof**. An independent
+  audit (2026-09-10) built pages by exact enumeration on which the table
+  with the largest exact p sat in the 85th group of 689, 0.0027 in p
+  above the best among the fifty scored, and the smallest in the 313th of
+  1,846, 0.021 below the worst scored. So the reading analysed is the
+  most favourable **among the readings scored**, and the worst case
+  reported beside it the least favourable among them. Scoring every
+  candidate — which is what this did until 2026-09-09 — made an ordinary
+  Table 1 fail to parse (190 s against a 60 s limit); the ranked
+  selection takes under two seconds. On the shapes measured the two
+  agreed exactly wherever the levels partition the arm and disagreed
+  only on non-partitioning rows, in both directions and by less than
+  0.003 in p; those are measurements on particular pages, not a
+  guarantee.
 
   Five bounds decide whether the reconstruction happens at all, and
   every one ends in the row being left blank rather than guessed, with
@@ -412,9 +421,9 @@ makes a number reproducible; it does not make it more precise.
   refused for the same reason; the number of cells scored (100, arms
   times levels); and the table's grand total, the sum of those row
   totals (125,000), which bounds the cost of drawing its null. The
-  reading analysed is the one most favourable to the authors, and the
-  smallest p over the same candidates is reported beside it whenever the
-  two fall on opposite sides of p = 0.01.
+  reading analysed is the most favourable of those scored, and the
+  smallest p among them is reported beside it whenever the two fall on
+  opposite sides of p = 0.01.
 
   The candidates are constrained only by the brackets. Whether a
   variable's categories divide the arm between them is a statement about
@@ -430,15 +439,15 @@ makes a number reproducible; it does not make it more precise.
   group's extreme tables can be its best or its worst.
 
   **Beyond `.ppTableEnumMax` candidates the row is left unresolved.**
-  The guarantee is that the reading analysed is the most favourable one
-  the page allows, and that can only be checked by scoring every
-  reading. Where there are too many, the cells go back to blank, the row
-  is named in the flags, and it is not analysed — every refusal being
-  counted on the summary's "k of n rows analysed" line. Sampling was
-  tried first and removed: an independent audit measured a bounded
-  search missing a valid reading worth 0.094 in p on an eight-arm page,
-  and the same fallback proposing 2³² tables on a 32-arm one. A reading
-  that cannot be shown to be the best case is not one.
+  The promise is that every reading the page allows has been listed and
+  every margin group ranked, and that can only be kept by listing them.
+  Where there are too many, the cells go back to blank, the row is named
+  in the flags, and it is not analysed — every refusal being counted on
+  the summary's "k of n rows analysed" line. Sampling was tried first
+  and removed: an independent audit measured a bounded search missing a
+  valid reading worth 0.094 in p on an eight-arm page, and the same
+  fallback proposing 2³² tables on a 32-arm one. A reading drawn from an
+  unlisted space is not the best case of anything.
 
   (Three rules preceded this one and none kept its promise. Pushing
   every ambiguous arm away from one pooled proportion gave arms on the
