@@ -1091,6 +1091,51 @@ the actual `/analyze` handler, with the ASA row in the returned template
 (`tests/testthat/test-audit-2026-09-10-f3.R`). The trial p is unchanged:
 it is the same three rows' combination, now labelled as such.
 
+## 2026-09-10 — the ranked selection is a heuristic, and is described as one
+
+Independent audit 2026-09-10, findings F2 and F5; Steve Shafer's
+decision, 2026-09-10.
+
+**What was claimed.** Since 2026-09-09 the fail-safe fill ranks the
+candidate tables' margin groups by the Pearson statistic and scores only
+the fifty at each end (the entry above: scoring every group took 190 s
+on an ordinary Table 1 and the document failed to parse). The code and
+the documents said the ranking was "not a heuristic in disguise" —
+within one null the mid-p is monotone in the statistic — and explained
+the measured direction of the disagreements with the exhaustive pass
+(always a larger p) as the exhaustive pass's winner's curse, which a
+noiseless ranking could not have.
+
+**What the audit showed.** Monotonicity holds within one fixed-margin
+null; across margins it need not, because the finite conditional
+distributions differ. By exact enumeration of the 2×2 hypergeometric
+reference: on a 1000/200 page printing (2,25)/(1,27), the group holding
+the table with the largest exact p (0.93204) ranked 85th of 689, and the
+selector — through the JATS and Word routes alike — took a reading with
+exact p 0.92934; on a 2000/200 page printing (1,10)/(0,11), the
+minimising group ranked 313th of 1,846 and the reported worst case was
+0.0208 above the true one. A sweep of 171 configurations found five
+with a better best case omitted and 33 with a lower worst case omitted;
+none crossed 0.01 and no partitioned row was affected. The winner's-
+curse explanation was tested with the exact score sampling distribution
+(2,000 selection repetitions per shape): the ranked selector chose a
+reading with a lower true p on two shapes (by 0.0030 and 0.0024) and a
+higher one on the third (by 0.0003), and both selectors' reported
+estimates sit above the chosen reading's true p because the final
+choice still maximises a noisy refined score. Selection loss and
+estimation bias are different quantities, and neither has a fixed sign.
+
+**What was decided.** The certified optimum — scoring every group, or a
+bound across the omitted groups — is not worth its cost for a screen
+whose purpose is to flag tables for review: the first is what failed to
+parse, and the second has no method on the table. The ranked runtime
+stays. The claim changes: the reading analysed is the most favourable
+**among the readings scored**, and the worst case beside it the least
+favourable among them; the straddle warning stays; the measurements are
+recorded as measurements. `statistics.md`, the user guide, the API
+guide and the selector's commentary in `R/failsafeTable.R` now say
+exactly that.
+
 ## Ideas noted for later
 
 - The interval computed from the batch the staging stopped at is not a

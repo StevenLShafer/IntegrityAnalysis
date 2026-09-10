@@ -121,12 +121,21 @@
 # percentages.
 #
 # The groups are therefore RANKED BY THEIR STATISTIC and only this many
-# scored at each end. The ranking is free, deterministic, and not a
-# heuristic in disguise: the p here is the LEFT tail - the probability a
-# replicate is at least as homogeneous as the printed table - so within
-# one null it increases with the statistic, and pchisq(stat, df) is the
-# asymptotic form of exactly that quantity, which for a shared df orders
-# the groups by the statistic itself.
+# scored at each end. The ranking is free and deterministic, and within
+# ONE null it is exact: the p here is the LEFT tail - the probability a
+# replicate is at least as homogeneous as the printed table - so it
+# increases with the statistic, and a group's best and worst tables are
+# its extremes. ACROSS groups it is a HEURISTIC (independent audit
+# 2026-09-10, F2, by exact enumeration): the finite conditional
+# distributions of different margins are not the same, and on a
+# 1000/200 page printing (2,25)/(1,27) the group holding the table with
+# the largest exact p ranked 85th of 689 - 0.0027 in p above the best
+# among the fifty scored - while on a 2000/200 page printing
+# (1,10)/(0,11) the minimising group ranked 313th of 1,846, 0.021 above
+# the worst scored. The result is the best and worst AMONG THE READINGS
+# SCORED, and every document that describes it says so (Steve Shafer's
+# decision, 2026-09-10; the certified optimum was ruled out on cost -
+# scoring every group is what took 190 s).
 #
 # MEASURED against the exhaustive pass on nine shapes (the evidence sits
 # in the adjudication of these screens). Every partition = TRUE shape
@@ -138,13 +147,19 @@
 #   20/30/50, arms of 300   exhaustive 0.03583   ranked 0.03617
 #   33/33/34, three arms    exhaustive 0.00135   ranked 0.001575
 #
-# That direction is not luck. Ranking thousands of noisy 2,000-replicate
-# estimates and refining the best six selects on upward noise, and the
-# refinement then takes it back - the winner's curse - so the reported
-# best case was biased LOW, which in this instrument is the ACCUSING
-# direction and the one the whole fail-safe exists to avoid. A noiseless
-# ranking cannot have that bias. Fifty is well past the top-six coverage
-# measured over 77 further shapes (rank 1 in 46, within six in 72).
+# Those are measurements on particular pages, not a direction. The
+# explanation first written here - that the exhaustive pass's noisy
+# ranking selected on upward noise and so biased the reported best case
+# LOW, and that a noiseless ranking could not - was tested by the
+# 2026-09-10 audit (F5) with the exact score distribution on three
+# shapes: the ranked selection chose a reading with a LOWER true p on
+# two of them (by 0.003 and 0.002) and a higher one on the third (by
+# 0.0003), and BOTH selectors' reported estimates sit above the chosen
+# reading's true p, because the final choice still maximises a noisy
+# refined score. Selection loss and estimation bias are different
+# quantities, and neither has a fixed sign here. Fifty is well past the
+# top-six coverage measured over 77 further shapes (rank 1 in 46,
+# within six in 72).
 .ppTableRankMax <- 50L
 
 # AND A BOUND ON THE MEMORY THE COLUMN-WISE PASS ASKS FOR. .ppTableEnumMax
