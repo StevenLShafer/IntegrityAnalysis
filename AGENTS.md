@@ -40,7 +40,7 @@ ParsePDF fold-in
 (`R/parseBaselineTable*.R`, `tokenize.R`, `pageLayout.R`, `aiFallback.R`,
 `utils.R`, `writeIntegrityTemplate.R`, all internals `.pp`-prefixed) and
 its testthat suite. Since the issue-4 consolidation (2026-08-19) the
-suite (`tests/testthat/`, 514 assertions) also covers the app side -
+suite (`tests/testthat/`, 3,016 assertions on 2026-09-10) also covers the app side -
 input contract, known-answer Monte Carlo under fixed seeds, the full
 headless pipeline, grid mechanics, round trips - all from synthetic data
 and synthetic PDFs, no corpus or Carlisle files needed. When testing
@@ -483,7 +483,7 @@ exercised. So:
   `deploy-production.yaml` redeploys production after `R-CMD-check`
   SUCCEEDS on a `main` commit (2026-08-20: it triggers on that
   workflow's completion and deploys that exact tested SHA, so the
-  553-assertion suite passing before every deploy is a mechanism, not
+  full testthat suite passing before every deploy is a mechanism, not
   a convention; `workflow_dispatch` remains for manual redeploys);
   `deploy-pr-app.yaml` deploys `IntegrityAnalysis_PR_<n>` for
   every PR — banner auto-generated as "PR #n: <PR title>", link posted

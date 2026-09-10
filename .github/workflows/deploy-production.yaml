@@ -4,7 +4,7 @@
 #
 # GATING (2026-08-20, Steve's request): this workflow triggers on the
 # COMPLETION of R-CMD-check for a main-branch commit, and the job runs
-# only when that check SUCCEEDED - so "the 553-assertion suite passed
+# only when that check SUCCEEDED - so "the full testthat suite passed
 # before every deploy" is a mechanism, not a convention. Previously it
 # triggered on push and ran in parallel with the tests; a direct push
 # to main with failing tests would have deployed. workflow_dispatch

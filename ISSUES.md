@@ -73,9 +73,9 @@ GB and the parse child's tempdir scrubbed from API reasons (#195). The
 screen now watches the engine (`R/P_Calc.R` is on
 `tools/securityScreen.ps1`'s list) as well as the doors.
 
-**Tests:** 50 files, 1,901 passing (45 / 1,453 on 2026-09-03), all from
-synthetic data; the seeded known-answer values were re-pinned with each
-engine change.
+**Tests:** 74 files, 3,016 passing (50 / 1,901 on 2026-09-06; 45 / 1,453
+on 2026-09-03), all from synthetic data; the seeded known-answer values
+were re-pinned with each engine change.
 
 **Citable numbers** (`docs/validation-ledger.md`, the 2026-09-06 sigma-draw
 row): r = 0.9929 against Carlisle 2017 over 5,041 usable trials, median
@@ -132,6 +132,18 @@ fires is the container's out-of-memory, and on a single-threaded host
 that is the worker. The image preflight narrows the window (20 MP cap,
 10 TIFF pages, no GIF); it does not close it, and it does nothing for the
 older routes.
+
+**Fresh evidence, 2026-09-09.** Two HIGH findings in a single screen were
+both allocation, not CPU: `.ppArmVectorCount()` reserved coefficients in
+proportion to an arm N read off the page (1,074 MB for a header reading
+`(n = 2000000000)`), and the candidate grid was `prod(width) x levels`
+with only the product capped (840 MB at 300 levels). Both are fixed in
+the R code — the counting is closed-form for two levels and bounded past
+them, the grid is charged against a cell budget, and an arm above
+`.iaMaxArmN` is refused before any of it — but both were found by a
+reader rather than stopped by a limit, and the next one of this shape
+will be too until the child has a ceiling. See the 2026-09-09-1532 rows
+in `docs/security-screens/log.md`.
 
 Two things, both belonging to the container rather than to R code, and
 neither verifiable from the Windows development machine:

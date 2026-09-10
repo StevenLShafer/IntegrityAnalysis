@@ -43,6 +43,20 @@ had put the median absolute difference from Carlisle's values at 0.076.
 It is quoted in `docs/method-history.md`; it is not a full-corpus run
 and is not comparable row for row with the table.
 
+**The engine has changed since the last row, and the rows still stand.**
+The zero floor was repaired on 2026-09-09 (independent audit F6): each
+simulated replicate is now translated by its own first arm, so arms that
+drew the same value give a structurally exact zero instead of dust a
+tolerance had to forgive. The effect is confined to printed precisions
+of about eleven decimals and finer — below that the tolerance already sat
+far above the floating-point dust — and no row of the Carlisle corpus
+states a precision anywhere near it, so no figure in the table above
+moves. Said here rather than left to be inferred, because a ledger whose
+last row predates the engine is exactly the thing a reader cannot check
+for themselves. The same holds for the percentage reconstruction rewritten
+on 2026-09-08 and 09: it changes which COUNTS a document yields, not how a
+given table is scored, and the corpus is supplied as counts.
+
 Not on this ledger, because they measure something else: the parser's
 yield (`corpus/README.md`), the 61-article end-to-end comparison
 (`corpus/validateEndToEnd.R`; a set selected for successful parsing), the
