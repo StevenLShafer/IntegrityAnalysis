@@ -775,6 +775,13 @@
           bd[[tr]] <- if (is.null(b$trial) || is.na(b$trial)) stem else b$trial
         bd
       }))
+      # the wide branch's frame is bounded before anything is written back,
+      # as the template branch's is (screen 2026-09-10-2149, F1)
+      msg <- .iaTableTextRefusal(d)
+      if (!is.null(msg))
+        return(list(ok = FALSE, reasons = paste0(name, ": ", msg),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
       return(list(ok = TRUE, data = d, skipped = NULL,
                   flags = character(0), engine = "wide"))
     }

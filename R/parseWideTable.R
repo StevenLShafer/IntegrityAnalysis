@@ -341,6 +341,14 @@
 # rather than a fallback (a file the wide reader refuses is not read
 # again as a template: the same sheet would cost the same).
 .iaMaxWideLines <- 5000L   # template lines a journal-style file may become: .apiMaxRows
+# A TRIAL ID IS CLIPPED AT ITS SOURCE (security screen 2026-09-10-2149,
+# F1). The block clip covers the block matrix, not the "Trial:" marker
+# row above it nor a sheet's name, and the id is copied into every line
+# the block becomes: a marker of 99,990 bytes (under the line gate) over
+# 2,500 two-arm rows was 5,000 lines of 100 KB - a 500 MB template from
+# a 215 KB upload, held three times over on the way out. A trial id is
+# tens of characters; 200 is generous.
+.iaMaxTrialIdChars <- 200L
 # THE WORK IS COUNTED, NOT ONLY THE OUTPUT (security screen 2026-09-10-1822,
 # F1 and F2 - both HIGH). Every arm cell of every row goes through the
 # tokenizer (about 1.3 ms a cell, a data frame per token) whether or not
@@ -988,7 +996,8 @@ parseWideTable <- function(path, ext) {
         hdr <- .wideHeaderRow(sub)
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
-                               sub("^Trial:\\s*", "", cells[markers[b], 1]), acc)
+                               .ppClip(sub("^Trial:\\s*", "", cells[markers[b], 1]),
+                                       .iaMaxTrialIdChars), acc)
         if (!is.null(blk)) {
           .wideAddBlock(acc, blk)
           blocks[[length(blocks) + 1]] <- blk
@@ -1002,7 +1011,7 @@ parseWideTable <- function(path, ext) {
       # defaults ("Sheet1"), which the caller replaces with the file stem
       trial <- if (is.null(sheetName) || !nzchar(sheetName) ||
                    grepl("(?i)^sheet ?\\d*$", sheetName))
-        NA_character_ else sheetName
+        NA_character_ else .ppClip(sheetName, .iaMaxTrialIdChars)
       blk <- .wideParseBlock(cells, hdr, trial, acc)
       if (!is.null(blk)) {
         .wideAddBlock(acc, blk)
