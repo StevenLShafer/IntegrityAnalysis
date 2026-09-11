@@ -91,16 +91,47 @@
 # spanning lines cannot hide behind it because count.fields() returns NA
 # for the continuation lines and .iaCsvColumns refuses NA.
 .iaCsvMaxLineBytes <- 100000L
+# EVERY line is measured, not the first five (security screen
+# 2026-09-10-2004, F1): read.table() counts its five sizing lines among
+# the NON-EMPTY ones, so one empty first line put physical line 6 among
+# them and past a five-line gate (400 KB there: 16 s, the quadratic curve
+# intact). readLines() over the whole file is linear (0.02 s a megabyte)
+# and, with the compressed-stream refusal below, bounded in memory by the
+# on-disk cap; the measure also bounds every later line, which nothing
+# bounded before.
 .iaCsvLongLine <- function(path) {
-  first <- readLines(path, n = 5L, warn = FALSE, encoding = "bytes")
-  length(first) && any(nchar(first, type = "bytes") > .iaCsvMaxLineBytes)
+  lines <- readLines(path, warn = FALSE, encoding = "bytes")
+  length(lines) && any(nchar(lines, type = "bytes") > .iaCsvMaxLineBytes)
+}
+# A COMPRESSED STREAM NAMED .csv IS REFUSED BY ITS BYTES (security screen
+# 2026-09-10-2004, F2). R's file() in text mode detects gzip, bzip2 and
+# xz magic and inflates transparently whatever the file is called, so
+# every CSV reader on every route - count.fields(), readLines(),
+# read.csv() - read the DECOMPRESSED stream while the request cap had
+# bounded only the compressed bytes: a 388 KB gzip held a 400 MB line, a
+# 146 KB xz a gigabyte (6,869:1), and a 25 MiB upload would be tens of
+# gigabytes in one readLines() buffer before any gate could answer. The
+# same vector was closed for JATS on 2026-09-03 (.ppJatsOK, libxml2's
+# zlib) with a magic-byte check; this is that check for CSV, read with
+# readBin(), which does not inflate.
+.iaCsvCompressed <- function(path) {
+  b <- readBin(path, "raw", n = 6L)
+  if (length(b) >= 2L && identical(b[1:2], as.raw(c(0x1f, 0x8b)))) return("gzip")
+  if (length(b) >= 3L && identical(b[1:3], as.raw(c(0x42, 0x5a, 0x68)))) return("bzip2")
+  if (length(b) >= 6L && identical(b[1:6], as.raw(c(0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00)))) return("xz")
+  NULL
 }
 # The one reason a CSV is refused before it is read, or NULL: the callers
 # (the wide reader, the API's and the app's template reads) stop with it.
+# The order matters: the bytes are judged before any reader opens the
+# file through file(), which would inflate a compressed stream.
 .iaCsvRefusal <- function(path) {
+  z <- .iaCsvCompressed(path)
+  if (!is.null(z))
+    return(paste0("the file is a ", z, " stream, not a CSV - decompress it first"))
   if (.iaCsvLongLine(path))
     return(paste0("the file has a line over ", round(.iaCsvMaxLineBytes / 1000),
-                  " KB in its first five and was not read"))
+                  " KB and was not read"))
   if (.iaCsvTooWide(path)) return(.iaSheetCapMessage("the file"))
   NULL
 }

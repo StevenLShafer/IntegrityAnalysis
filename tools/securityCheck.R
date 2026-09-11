@@ -243,6 +243,41 @@ if (file.exists("R/parseDocx.R")) {
     note("R/parseDocx.R: gridSpan is no longer clamped to .ppMaxCellSpan (screen F2)")
 }
 
+## 1c - the CSV gate judges the bytes before any reader opens the file -----
+# Security screen 2026-09-10-2004, F2: R's file() inflates gzip, bzip2
+# and xz transparently, so every CSV reader read the decompressed stream
+# while the request cap had bounded only the compressed bytes (a 388 KB
+# gzip, a 400 MB line). Pinned: .iaCsvCompressed() reads with readBin()
+# and names all three magics; .iaCsvRefusal() calls it before
+# .iaCsvLongLine() and .iaCsvTooWide(); and .iaCsvLongLine() measures
+# every line - a five-line measure was bypassed by one empty first line
+# (F1 of the same screen: read.table sizes from the non-empty lines).
+if (file.exists("R/parseWideTable.R")) {
+  pw <- codeLinesOf("R/parseWideTable.R")
+  pwBody <- function(name) {
+    st <- grep(paste0("^\\", name, "\\s*<-\\s*function"), pw)
+    nx <- grep("^[A-Za-z.][A-Za-z0-9._]*\\s*<-", pw); nx <- nx[nx > st[1]]
+    if (length(st)) pw[st[1]:(if (length(nx)) nx[1] - 1L else length(pw))] else character(0)
+  }
+  cz <- pwBody(".iaCsvCompressed")
+  if (!length(cz) || !any(grepl("readBin\\s*\\(", cz)) ||
+      !any(grepl("0x1f,\\s*0x8b", cz)) || !any(grepl("0x42,\\s*0x5a,\\s*0x68", cz)) ||
+      !any(grepl("0xfd,\\s*0x37,\\s*0x7a,\\s*0x58,\\s*0x5a", cz)))
+    note(paste("R/parseWideTable.R: .iaCsvCompressed() must read the bytes with readBin()",
+               "and refuse the gzip, bzip2 and xz magics (screen 2026-09-10-2004 F2)"))
+  rf <- pwBody(".iaCsvRefusal")
+  a <- grep("\\.iaCsvCompressed\\s*\\(", rf)
+  b <- grep("\\.iaCsvLongLine\\s*\\(|\\.iaCsvTooWide\\s*\\(", rf)
+  if (!length(rf) || !length(a) || !length(b) || min(a) > min(b))
+    note(paste("R/parseWideTable.R: .iaCsvRefusal() must judge the compressed-stream",
+               "magic before any reader opens the file (screen 2004 F2)"))
+  ll <- pwBody(".iaCsvLongLine")
+  if (!length(ll) || !any(grepl("readLines\\s*\\(", ll)) ||
+      any(grepl("readLines\\s*\\([^)]*\\bn\\s*=", ll)))
+    note(paste("R/parseWideTable.R: .iaCsvLongLine() must measure every line - a",
+               "five-line measure was bypassed by an empty first line (screen 2004 F1)"))
+}
+
 ## 2 - the comments log stays escaped ------------------------------------
 oc <- srcOf("R/outputComments.R")
 if (!any(grepl("\\.escapeHtml\\(text\\)", oc)) ||
