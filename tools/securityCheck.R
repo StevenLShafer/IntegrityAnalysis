@@ -275,12 +275,19 @@ if (file.exists("R/parseWideTable.R")) {
   if (!length(rf) || !length(a) || !length(b) || min(a) > min(b))
     note(paste("R/parseWideTable.R: .iaCsvRefusal() must judge the compressed-stream",
                "magic before any reader opens the file (screen 2004 F2)"))
-  # ...and a trial id is clipped at both its sources - the "Trial:" marker
-  # and the sheet name - before it is copied into every line (screen 2149 F1)
-  ids <- grep("\\.wideParseBlock\\s*\\(", pw)
-  if (!any(grepl("\\.ppClip\\(sub\\(\"\\^Trial:", pw)) ||
-      !any(grepl("else \\.ppClip\\(sheetName,\\s*\\.iaMaxTrialIdChars\\)", pw)))
-    note("R/parseWideTable.R: the trial id must be clipped at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1)")
+  # ...and a trial id is bounded at both its sources - the "Trial:" marker
+  # and the sheet name - before it is copied into every line (screen 2149
+  # F1), through .wideTrialId(), which clips to .iaMaxTrialIdChars AND
+  # keeps a long id's identity with a digest of the whole (third full-pass
+  # audit 2026-09-11 F2: the bare clip merged two trials into one)
+  if (!any(grepl("\\.wideTrialId\\(sub\\(\"\\^Trial:", pw)) ||
+      !any(grepl("else \\.wideTrialId\\(sheetName\\)", pw)))
+    note("R/parseWideTable.R: the trial id must pass .wideTrialId() at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1)")
+  tb <- pwBody(".wideTrialId")
+  if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||
+      !any(grepl("digest::digest\\(id", tb)) ||
+      !any(grepl("<=\\s*\\.iaMaxTrialIdChars", tb)))
+    note("R/parseWideTable.R: .wideTrialId() must clip a long id to .iaMaxTrialIdChars and keep its identity with digest::digest() of the whole id (screen 2149 F1; audit 2026-09-11 full F2)")
   # ...and every text reader of a CSV opens it through .iaCsvConnection()
   # (raw = TRUE, screen 2026-09-10-2100 F1): a path argument would let
   # file() inflate a format the magic list does not name.
