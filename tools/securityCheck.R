@@ -280,9 +280,18 @@ if (file.exists("R/parseWideTable.R")) {
   # F1), through .wideTrialId(), which clips to .iaMaxTrialIdChars AND
   # keeps a long id's identity with a digest of the whole (third full-pass
   # audit 2026-09-11 F2: the bare clip merged two trials into one)
-  if (!any(grepl("\\.wideTrialId\\(sub\\(\"\\^Trial:", pw)) ||
-      !any(grepl("else \\.wideTrialId\\(sheetName\\)", pw)))
-    note("R/parseWideTable.R: the trial id must pass .wideTrialId() at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1)")
+  # ...through the file's label map (.wideTrialLabels, fourth full-pass
+  # audit 2026-09-11 F2: a literal id equal to a long id's generated
+  # spelling merged two trials), whose every label comes from
+  # .wideTrialId() or a counter-suffixed clip of the same shape
+  if (!any(grepl("\\.wideTrialLabel\\(idMap,\\s*sub\\(\"\\^Trial:", pw)) ||
+      !any(grepl("else \\.wideTrialLabel\\(idMap,\\s*sheetName\\)", pw)))
+    note("R/parseWideTable.R: the trial id must pass the file's label map (.wideTrialLabel(idMap, ...)) at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1; audit 2026-09-11 full2 F2)")
+  tl <- pwBody(".wideTrialLabels")
+  if (!length(tl) || !any(grepl("\\.wideTrialId\\(id\\)", tl)) ||
+      !any(grepl("while\\s*\\(lab %in% taken\\)", tl)) ||
+      !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars\\s*-\\s*24L\\)", tl)))
+    note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId() and resolve a label already taken in the file with a shorter, counter-suffixed clip (audit 2026-09-11 full2 F2)")
   tb <- pwBody(".wideTrialId")
   if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||
       !any(grepl("digest::digest\\(id", tb)) ||

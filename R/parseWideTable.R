@@ -382,6 +382,53 @@
   paste0(.ppClip(id, .iaMaxTrialIdChars - 16L), " #",
          substr(digest::digest(id, algo = "sha1", serialize = FALSE), 1L, 12L))
 }
+# ...AND A GENERATED SPELLING NEVER COLLIDES WITH ANOTHER ID IN THE FILE
+# (fourth full-pass independent statistical audit 2026-09-11, F2 -
+# numerical P2). Any bounded map from unbounded ids has collisions; the
+# audit's is the plain one: a short id supplied LITERALLY as the
+# generated spelling of a long id in the same file - which an author
+# can produce by copying a label out of an earlier result - shortened
+# to the same label and the two trials became one four-arm trial
+# (0.005275 for a file whose two trials combine to 0.07139). So the
+# labels are assigned for the whole file at once, from every original
+# id the file carries (its "Trial:" markers and its sheet names): an id
+# within the bound is its own label, always; a longer id takes its
+# generated spelling unless that spelling is another id's label, in
+# which case it takes a shorter prefix and a counter - " (2)", " (3)"
+# - until the label is free of every other original's. Distinct
+# originals therefore get distinct labels within a file, and the same
+# original still names one trial. The bound holds throughout: at most
+# 176 + 2 + 12 + 6 bytes. The counter depends on the file's contents,
+# so a long id's label is stable across files unless a file also
+# carries the spelling it would take, which is the case being resolved.
+.wideTrialLabels <- function(originals) {
+  originals <- unique(originals[!is.na(originals) & nzchar(originals)])
+  literal <- nchar(originals, type = "bytes") <= .iaMaxTrialIdChars
+  labels <- ifelse(literal, originals, NA_character_)
+  taken <- originals[literal]
+  for (i in which(!literal)) {
+    id <- originals[i]
+    lab <- .wideTrialId(id)
+    k <- 1L
+    while (lab %in% taken) {
+      k <- k + 1L
+      lab <- paste0(.ppClip(id, .iaMaxTrialIdChars - 24L), " #",
+                    substr(digest::digest(id, algo = "sha1", serialize = FALSE), 1L, 12L),
+                    " (", k, ")")
+    }
+    labels[i] <- lab
+    taken <- c(taken, lab)
+  }
+  list(original = originals, label = labels)
+}
+# the label of one original under the file's map; an id absent from the
+# map (never happens: the map is built from the same sources) falls
+# back to the bare generated spelling
+.wideTrialLabel <- function(map, id) {
+  id[is.na(id)] <- ""
+  j <- match(id, map$original)
+  if (is.na(j)) .wideTrialId(id) else map$label[j]
+}
 # THE WORK IS COUNTED, NOT ONLY THE OUTPUT (security screen 2026-09-10-1822,
 # F1 and F2 - both HIGH). Every arm cell of every row goes through the
 # tokenizer (about 1.3 ms a cell, a data frame per token) whether or not
@@ -1013,6 +1060,18 @@ parseWideTable <- function(path, ext) {
   if (is.null(sheetList)) return(NULL)
   blocks <- list()
   acc <- .wideNewTotals()   # the file's running totals: lines, columns, cells
+  # every trial id the file carries, so that the labels can be assigned
+  # together (.wideTrialLabels): the "Trial:" markers of every sheet and
+  # the name of every sheet without markers
+  originals <- character(0)
+  for (s in seq_along(sheetList)) {
+    cells <- sheetList[[s]]
+    if (nrow(cells) == 0) next
+    mk <- which(grepl("^Trial:\\s*\\S", cells[, 1]))
+    originals <- c(originals,
+                   if (length(mk)) sub("^Trial:\\s*", "", cells[mk, 1]) else names(sheetList)[s])
+  }
+  idMap <- .wideTrialLabels(originals)
   for (s in seq_along(sheetList)) {
     cells <- sheetList[[s]]
     if (nrow(cells) == 0) next
@@ -1031,7 +1090,7 @@ parseWideTable <- function(path, ext) {
         hdr <- .wideHeaderRow(sub)
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
-                               .wideTrialId(sub("^Trial:\\s*", "", cells[markers[b], 1])), acc)
+                               .wideTrialLabel(idMap, sub("^Trial:\\s*", "", cells[markers[b], 1])), acc)
         if (!is.null(blk)) {
           .wideAddBlock(acc, blk)
           blocks[[length(blocks) + 1]] <- blk
@@ -1045,7 +1104,7 @@ parseWideTable <- function(path, ext) {
       # defaults ("Sheet1"), which the caller replaces with the file stem
       trial <- if (is.null(sheetName) || !nzchar(sheetName) ||
                    grepl("(?i)^sheet ?\\d*$", sheetName))
-        NA_character_ else .wideTrialId(sheetName)
+        NA_character_ else .wideTrialLabel(idMap, sheetName)
       blk <- .wideParseBlock(cells, hdr, trial, acc)
       if (!is.null(blk)) {
         .wideAddBlock(acc, blk)
