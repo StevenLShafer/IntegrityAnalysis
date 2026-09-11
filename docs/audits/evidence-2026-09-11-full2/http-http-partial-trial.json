@@ -1,0 +1,16 @@
+{
+    "ok": false,
+    "stage": "validation",
+    "file": "fixture-http-partial-trial.csv",
+    "issues": [
+        {
+            "row": 2,
+            "col": "TRIAL",
+            "code": "missing",
+            "note": "the TRIAL cell is blank: every line names its trial, or the column is left out and the file name (or 1) is used"
+        }
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\"\n\"Audit\",\"Age\",20,\"50\",\"10\"\n\"\",\"Age\",20,\"50.2\",\"10\"\n",
+    "deleted": true
+}
+

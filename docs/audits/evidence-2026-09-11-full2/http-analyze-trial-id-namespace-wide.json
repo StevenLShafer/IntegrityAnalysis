@@ -1,0 +1,17 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-namespace-wide.csv",
+    "trials": 1,
+    "overallP": 0.0053,
+    "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",\"0.005275\",\"0.0048 to 0.0058\",\"1e+05\",\"\",\"variable\"\n,\"Summary\",\"0.005275\",\"0.0048 to 0.0058\",,\"\",\"summary\"\n,,,,,,\n",
+    "journalTables": {
+        "Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\",\"Arm 3 (n = 30)\",\"Arm 4 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10.0)\",\"50.5 (10.0)\",\"50.0 (10.0)\",\"50.5 (10.0)\"\n"
+    },
+    "journalTablesOmitted": {
+
+    },
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n",
+    "deleted": true,
+    "seed": 42
+}
+

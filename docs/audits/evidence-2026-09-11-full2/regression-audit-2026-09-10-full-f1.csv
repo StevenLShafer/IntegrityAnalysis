@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-10-full-f1.R","nine shared-law rows with one extreme: the trial p is the exact mid-p, whichever row is extreme (audit 2026-09-10 full, F1)",7,0,0,0,0,""
+"test-audit-2026-09-10-full-f1.R","fourteen shared-law rows with one extreme: the exact value sits inside the reported interval",2,0,0,0,0,""
+"test-audit-2026-09-10-full-f1.R","a row with a law of its own is mapped through its own draws, exactly as before",2,0,0,0,0,""
+"test-audit-2026-09-10-full-f1.R","the null key: identical inputs share it, any differing input does not; margins alone for a category row",3,0,0,0,0,""

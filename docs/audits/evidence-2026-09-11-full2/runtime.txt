@@ -1,0 +1,6 @@
+R version 4.5.3 (2026-03-11 ucrt)
+Locale: C
+Base RNG: Mersenne-Twister; Inversion; Rejection
+dqrng: 0.4.1
+Target: 7c6583f7190ce581ab157b8f931ef5f39eba3789
+No restored or updated packages; read-only private dependency snapshot.

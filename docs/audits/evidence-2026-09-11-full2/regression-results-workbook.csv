@@ -1,0 +1,3 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-results-workbook.R","the results download carries all four tabs, correctly filled",21,0,0,0,0,""
+"test-results-workbook.R","a single trial gets no overall row",2,0,0,0,0,""

@@ -1,0 +1,18 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-namespace-short-control.csv",
+    "trials": 2,
+    "overallP": 0.0714,
+    "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Synthetic trial A\",\"Age\",\"0.1405\",\"0.11 to 0.18\",\"1000\",\"\",\"variable\"\n,\"Summary\",\"0.1405\",\"0.11 to 0.18\",,\"\",\"summary\"\n,,,,,,\n\"Synthetic trial B\",\"Age\",\"0.16\",\"0.12 to 0.2\",\"1000\",\"\",\"variable\"\n,\"Summary\",\"0.16\",\"0.12 to 0.2\",,\"\",\"summary\"\n,,,,,,\n",
+    "journalTables": {
+        "Synthetic trial A": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10.0)\",\"50.5 (10.0)\"\n",
+        "Synthetic trial B": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10.0)\",\"50.5 (10.0)\"\n"
+    },
+    "journalTablesOmitted": {
+
+    },
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic trial A\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic trial A\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n\"Synthetic trial B\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic trial B\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n",
+    "deleted": true,
+    "seed": 42
+}
+

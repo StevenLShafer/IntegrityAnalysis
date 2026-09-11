@@ -1,0 +1,18 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-namespace-template.csv",
+    "trials": 2,
+    "overallP": 0.0714,
+    "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",\"0.1405\",\"0.11 to 0.18\",\"1000\",\"\",\"variable\"\n,\"Summary\",\"0.1405\",\"0.11 to 0.18\",,\"\",\"summary\"\n,,,,,,\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity A\",\"Age\",\"0.16\",\"0.12 to 0.2\",\"1000\",\"\",\"variable\"\n,\"Summary\",\"0.16\",\"0.12 to 0.2\",,\"\",\"summary\"\n,,,,,,\n",
+    "journalTables": {
+        "Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10.0)\",\"50.5 (10.0)\"\n",
+        "Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity A": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10.0)\",\"50.5 (10.0)\"\n"
+    },
+    "journalTablesOmitted": {
+
+    },
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.0\",\"10.0\",1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.5\",\"10.0\",1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity A\",\"Age\",30,\"50.0\",\"10.0\",1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity A\",\"Age\",30,\"50.5\",\"10.0\",1,1,1\n",
+    "deleted": true,
+    "seed": 42
+}
+

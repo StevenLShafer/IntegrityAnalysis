@@ -1,0 +1,15 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-namespace-short-control.csv",
+    "engine": "wide",
+    "flags": [
+
+    ],
+    "rows": 4,
+    "skipped": [
+
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic trial A\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic trial A\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n\"Synthetic trial B\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic trial B\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n",
+    "deleted": true
+}
+

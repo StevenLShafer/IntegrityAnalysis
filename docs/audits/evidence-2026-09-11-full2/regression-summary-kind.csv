@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-summary-kind.R","P_Calc returns KIND: variable lines, one summary, a blank spacer",3,0,0,0,0,""
+"test-summary-kind.R","renaming a variable to Summary changes no API result and no count of combined trials",5,0,0,0,0,""
+"test-summary-kind.R","the workbook's Summary sheet lists one study, whatever the variables are called",3,0,0,0,0,""
