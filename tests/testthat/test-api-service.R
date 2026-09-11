@@ -954,6 +954,43 @@ test_that("two trials whose 201-byte ids share their first 200 bytes stay two tr
   expect_gt(p, 0.04); expect_lt(p, 0.12)                   # 0.07139 at seed 42; 0.005275 on 6db32ee
 })
 
+# A LITERAL ID EQUAL TO A GENERATED SPELLING, THROUGH THE WIRE (fourth
+# full-pass independent audit 2026-09-11, F2 - numerical P2): a
+# journal-style CSV whose first block is a 229-byte id L and whose second
+# is the 198-byte label the reader generates for L, supplied literally.
+# On 7c6583f both shortened to the same label and the two trials became
+# one four-arm trial (0.005275, trials 1) where the file describes two
+# trials combining to 0.07139. The fixture is the auditor's
+# evidence-2026-09-11-full2/fixture-trial-id-namespace-wide.csv, rebuilt
+# here from the helper it targets.
+test_that("a literal id equal to a long id's generated spelling stays a separate trial over real HTTP (audit 2026-09-11 full2, F2)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  L <- paste0(strrep("Synthetic identity ", 12L), "A")
+  S <- .wideTrialId(L)
+  expect_identical(nchar(L, type = "bytes"), 229L); expect_identical(nchar(S, type = "bytes"), 198L)
+  f <- file.path(tempdir(), "trial-id-namespace.csv")
+  writeLines(c(rbind(paste0("Trial: ", c(L, S)),
+                     "Variable,Arm A (n=30),Arm B (n=30)",
+                     '"Age, mean (SD)","50.0 (10.0)","50.5 (10.0)"')), f)
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  tpl <- utils::read.csv(text = httr2::resp_body_json(r)$templateCsv, stringsAsFactors = FALSE)
+  expect_identical(length(unique(tpl$TRIAL)), 2L)          # 1 on 7c6583f
+  expect_true(S %in% tpl$TRIAL)                            # the literal id is its own label
+  r2 <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r2), 200)
+  b2 <- httr2::resp_body_json(r2)
+  expect_equal(b2$trials, 2L)                              # 1 on 7c6583f
+  p <- as.numeric(b2$overallP)
+  expect_gt(p, 0.04); expect_lt(p, 0.12)                   # 0.07139 at seed 42; 0.005275 on 7c6583f
+})
+
 # THE RELABELLED TABLE THROUGH THE WIRE (final-brief independent audit
 # 2026-09-11, F1): the auditor's nine-variable fixture with the extreme
 # variable's YES/NO columns swapped, posted as a real multipart /analyze
