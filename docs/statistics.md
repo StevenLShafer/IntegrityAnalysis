@@ -70,13 +70,18 @@ the observed row against its replicates, for the replicates among
 themselves, and for the trial-level Stouffer sums alike; and a
 statistic that is zero up to floating-point dust is zero. Rows whose
 simulated nulls are the same distribution — categorical rows with the
-same margins, continuous or median rows with the same inputs, in any
-order of arms or categories and, for a categorical row, with the two
-margins exchanged (the law is the same whichever way the table is
-printed, or transposed, so the key that names it is built from the
-arms as a multiset and from the two margins as an unordered pair of
-multisets — every total kept, each vector sorted, the two in a fixed
-order) — are
+same margins, continuous or median rows with the same arm sizes,
+dispersions and precisions arm by arm and the same N-weighted pooled
+mean (the individual arm means reach the simulation only through that
+mean, so a row printed (0, 0) and one printed (−1, 1) with the same N
+and SD are one law), in any order of arms or categories and, for a
+categorical row, with the two margins exchanged (the law is the same
+whichever way the table is printed, or transposed, so the key that
+names it is built from what the simulation reads: for a continuous or
+median row the pooled mean and the arms as a multiset of their sizes,
+dispersions, precisions and simulation route; for a categorical row
+the two margins as an unordered pair of multisets — every total kept,
+each vector sorted, the two in a fixed order) — are
 mapped from statistic to mid-p through **one** empirical distribution
 pooled over all their draws, so that a replicate whose extreme outcome
 sits in a different row from the observed one is the genuine tie it is,
