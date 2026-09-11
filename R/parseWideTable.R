@@ -337,7 +337,17 @@
   linesBefore <- acc$nLines          # the file's totals before this block
   colsBefore  <- acc$cols            # (the cell count is updated in place,
                                      # so a block that yields nothing still counts)
-  header  <- cells[hdr, ]
+  # THE LABEL COLUMN AND THE HEADER ARE CLIPPED, BY DECISION (security
+  # screen 2026-09-10-2004, F3). Arm cells are capped at
+  # .iaMaxWideCellChars; the row labels and the header cells were not,
+  # and the only thing bounding them was R's 10,000-byte limit on a
+  # symbol name, which made a 10 KB label become 499 lines of 10 KB (a
+  # 5 MB template from a 55 KB sheet) and a longer one an error the
+  # callers swallowed. A label is clipped to .ppMaxCellChars (2,000, the
+  # JATS and Word readers' cell cap - a long variable name with its
+  # units is under a hundred) before anything reads it.
+  cells[, 1] <- .ppClip(cells[, 1], .ppMaxCellChars)
+  header  <- .ppClip(cells[hdr, ], .ppMaxCellChars)
   armCols <- which(vapply(seq_len(ncol(cells))[-1], function(j)
     nzchar(trimws(header[j])) ||
       any(nzchar(trimws(cells[-seq_len(hdr), j]))), logical(1))) + 1L
