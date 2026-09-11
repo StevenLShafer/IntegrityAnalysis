@@ -1,0 +1,76 @@
+"branch","check","passed"
+"continuous","permutation-1",TRUE
+"continuous","permutation-2",TRUE
+"continuous","permutation-3",TRUE
+"continuous","permutation-4",TRUE
+"continuous","permutation-5",TRUE
+"continuous","permutation-6",TRUE
+"continuous","N arm 1",TRUE
+"continuous","N arm 2",TRUE
+"continuous","N arm 3",TRUE
+"continuous","MEAN arm 1",TRUE
+"continuous","MEAN arm 2",TRUE
+"continuous","MEAN arm 3",TRUE
+"continuous","SD arm 1",TRUE
+"continuous","SD arm 2",TRUE
+"continuous","SD arm 3",TRUE
+"continuous","ROUND_MEAN arm 1",TRUE
+"continuous","ROUND_MEAN arm 2",TRUE
+"continuous","ROUND_MEAN arm 3",TRUE
+"continuous","ROUND_DISPERSION arm 1",TRUE
+"continuous","ROUND_DISPERSION arm 2",TRUE
+"continuous","ROUND_DISPERSION arm 3",TRUE
+"continuous","ROUND_OBSERVATION arm 1",TRUE
+"continuous","ROUND_OBSERVATION arm 2",TRUE
+"continuous","ROUND_OBSERVATION arm 3",TRUE
+"direct","permutation-1",TRUE
+"direct","permutation-2",TRUE
+"direct","permutation-3",TRUE
+"direct","permutation-4",TRUE
+"direct","permutation-5",TRUE
+"direct","permutation-6",TRUE
+"direct","N arm 1",TRUE
+"direct","N arm 2",TRUE
+"direct","N arm 3",TRUE
+"direct","MEAN arm 1",TRUE
+"direct","MEAN arm 2",TRUE
+"direct","MEAN arm 3",TRUE
+"direct","SD arm 1",TRUE
+"direct","SD arm 2",TRUE
+"direct","SD arm 3",TRUE
+"direct","ROUND_MEAN arm 1",TRUE
+"direct","ROUND_MEAN arm 2",TRUE
+"direct","ROUND_MEAN arm 3",TRUE
+"direct","ROUND_DISPERSION arm 1",TRUE
+"direct","ROUND_DISPERSION arm 2",TRUE
+"direct","ROUND_DISPERSION arm 3",TRUE
+"direct","ROUND_OBSERVATION arm 1",TRUE
+"direct","ROUND_OBSERVATION arm 2",TRUE
+"direct","ROUND_OBSERVATION arm 3",TRUE
+"median","permutation-1",TRUE
+"median","permutation-2",TRUE
+"median","permutation-3",TRUE
+"median","permutation-4",TRUE
+"median","permutation-5",TRUE
+"median","permutation-6",TRUE
+"median","N arm 1",TRUE
+"median","N arm 2",TRUE
+"median","N arm 3",TRUE
+"median","MEAN arm 1",TRUE
+"median","MEAN arm 2",TRUE
+"median","MEAN arm 3",TRUE
+"median","Q1 arm 1",TRUE
+"median","Q1 arm 2",TRUE
+"median","Q1 arm 3",TRUE
+"median","Q3 arm 1",TRUE
+"median","Q3 arm 2",TRUE
+"median","Q3 arm 3",TRUE
+"median","ROUND_MEAN arm 1",TRUE
+"median","ROUND_MEAN arm 2",TRUE
+"median","ROUND_MEAN arm 3",TRUE
+"median","ROUND_DISPERSION arm 1",TRUE
+"median","ROUND_DISPERSION arm 2",TRUE
+"median","ROUND_DISPERSION arm 3",TRUE
+"median","ROUND_OBSERVATION arm 1",TRUE
+"median","ROUND_OBSERVATION arm 2",TRUE
+"median","ROUND_OBSERVATION arm 3",TRUE

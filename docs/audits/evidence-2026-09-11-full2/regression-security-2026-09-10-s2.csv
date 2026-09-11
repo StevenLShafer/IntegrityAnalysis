@@ -1,0 +1,3 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-security-2026-09-10-s2.R","levels named after reserved fields become category columns, not continuous data (security audit 2026-09-10, S2)",11,0,0,0,0,""
+"test-security-2026-09-10-s2.R","the level-name rule: base columns and header tokens are renamed, other levels kept",5,0,0,0,0,""

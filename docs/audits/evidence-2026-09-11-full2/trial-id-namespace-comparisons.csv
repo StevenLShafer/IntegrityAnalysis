@@ -1,0 +1,5 @@
+"mode","seed","expected_trials","parsed_trials","analyzed_trials","overallP","overall_CI","trial_p","displayed_trial_CI","actual_M","reader_flags","analysis_flags"
+"wide",42,2,1,1,0.005275,"not displayed","0.005275","0.0048 to 0.0058","1e+05","",""
+"template",42,2,2,2,0.07139,"not displayed","0.1405;0.16","0.11 to 0.18;0.12 to 0.2","1000","",""
+"short-control",42,2,2,2,0.07139,"not displayed","0.1405;0.16","0.11 to 0.18;0.12 to 0.2","1000","",""
+"same-id-control",42,1,1,1,0.005275,"not displayed","0.005275","0.0048 to 0.0058","1e+05","",""

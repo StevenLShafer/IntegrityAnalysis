@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-10-f1.R","one very heterogeneous row no longer erases its own null (audit 2026-09-10 F1)",7,0,0,0,0,""
+"test-audit-2026-09-10-f1.R","making a row MORE heterogeneous cannot lower the trial p through the snap",4,0,0,0,0,""
+"test-audit-2026-09-10-f1.R","the tolerance is the printed grid's alone - the observed arms cannot enter it",4,0,0,0,0,""

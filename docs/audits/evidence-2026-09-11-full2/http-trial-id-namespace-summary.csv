@@ -1,0 +1,7 @@
+"endpoint","case","status","ok","template_trials","reported_trials","overallP","flags"
+"parse","trial-id-namespace-wide",200,TRUE,1,NA,NA,""
+"parse","trial-id-namespace-template",200,TRUE,2,NA,NA,""
+"parse","trial-id-namespace-short-control",200,TRUE,2,NA,NA,""
+"analyze","trial-id-namespace-wide",200,TRUE,1,1,0.0053,""
+"analyze","trial-id-namespace-template",200,TRUE,2,2,0.0714,""
+"analyze","trial-id-namespace-short-control",200,TRUE,2,2,0.0714,""

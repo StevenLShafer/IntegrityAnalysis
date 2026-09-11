@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-11-full-f1.R","the fixture is the auditor's: the transposed extreme row has arm totals 2 and 198",5,0,0,0,0,""
+"test-audit-2026-09-11-full-f1.R","transposing the extreme variable's table leaves the trial p where the exact value is (audit 2026-09-11 full, F1, nine rows)",12,0,0,0,0,""
+"test-audit-2026-09-11-full-f1.R","fourteen rows: the exact value sits inside the displayed interval after transposition (audit 2026-09-11 full, F1)",7,0,0,0,0,""
+"test-audit-2026-09-11-full-f1.R","transposing an ORDINARY variable, or every variable, is likewise inert",8,0,0,0,0,""
+"test-audit-2026-09-11-full-f1.R","the categorical key is the unordered pair of sorted margins: transposes and permutations share it, other laws do not",9,0,0,0,0,""

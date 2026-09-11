@@ -1,0 +1,15 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-template-201.csv",
+    "engine": "template",
+    "flags": [
+
+    ],
+    "rows": 4,
+    "skipped": [
+
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline cA\",\"Age\",30,\"50\",\"10\",1,1,1\n\"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline cA\",\"Age\",30,\"50.5\",\"10\",1,1,1\n\"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline cB\",\"Age\",30,\"50\",\"10\",1,1,1\n\"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline cB\",\"Age\",30,\"50.5\",\"10\",1,1,1\n",
+    "deleted": true
+}
+

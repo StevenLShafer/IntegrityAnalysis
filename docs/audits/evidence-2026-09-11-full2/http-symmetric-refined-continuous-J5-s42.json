@@ -1,0 +1,17 @@
+{
+    "ok": true,
+    "file": "fixture-symmetric-refined-continuous-J5-s42.csv",
+    "trials": 1,
+    "overallP": 0.0086,
+    "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"T\",\"V01\",\"0.1243\",\"0 to 0.25\",\"1e+05\",\"attainable floor\",\"variable\"\n,\"V02\",\"0.1234\",\"0 to 0.25\",\"1e+05\",\"attainable floor\",\"variable\"\n,\"V03\",\"0.7664\",\"0.65 to 0.88\",\"1e+05\",\"\",\"variable\"\n,\"V04\",\"0.1236\",\"0 to 0.25\",\"1e+05\",\"attainable floor\",\"variable\"\n,\"V05\",\"0.1239\",\"0 to 0.25\",\"1e+05\",\"attainable floor\",\"variable\"\n,\"Summary\",\"0.008575\",\"\",,\"\",\"summary\"\n,,,,,,\n",
+    "journalTables": {
+        "T": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"V01, mean (SD)\",\"0 (6.0)\",\"0 (6.0)\"\n\"V02, mean (SD)\",\"0 (6.0)\",\"0 (6.0)\"\n\"V03, mean (SD)\",\"'-1 (6.0)\",\"1 (6.0)\"\n\"V04, mean (SD)\",\"0 (6.0)\",\"0 (6.0)\"\n\"V05, mean (SD)\",\"0 (6.0)\",\"0 (6.0)\"\n"
+    },
+    "journalTablesOmitted": {
+
+    },
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"T\",\"V01\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V01\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V02\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V02\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V03\",30,\"-1\",\"6.0\",0,1,0\n\"T\",\"V03\",30,\"1\",\"6.0\",0,1,0\n\"T\",\"V04\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V04\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V05\",30,\"0\",\"6.0\",0,1,0\n\"T\",\"V05\",30,\"0\",\"6.0\",0,1,0\n",
+    "deleted": true,
+    "seed": 42
+}
+

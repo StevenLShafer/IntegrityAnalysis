@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-2149.R","a 100 KB trial id in a marker row is clipped at its source, not copied into 5,000 lines (screen 2149 F1)",7,0,0,0,0,""
+"test-screen-2026-09-10-2149.R","an ordinary marker id and an ordinary sheet name are untouched",4,0,0,0,0,""
+"test-screen-2026-09-10-2149.R","the wide branch's frame passes the text refusal, and the refusal measures column names (screen 2149 F2)",4,0,0,0,0,""

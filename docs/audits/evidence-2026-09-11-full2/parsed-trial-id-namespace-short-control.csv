@@ -1,0 +1,5 @@
+"TRIAL","ROW","N","MEAN","SD","SE","ROUND_MEAN","ROUND_DISPERSION","ROUND_OBSERVATION"
+"Synthetic trial A","Age",30,50,10,NA,1,1,1
+"Synthetic trial A","Age",30,50.5,10,NA,1,1,1
+"Synthetic trial B","Age",30,50,10,NA,1,1,1
+"Synthetic trial B","Age",30,50.5,10,NA,1,1,1

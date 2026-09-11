@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-pcalc-direct.R","no rounding columns at all: inferred from the printed decimals, identical to supplying them",2,0,0,0,0,""
+"test-pcalc-direct.R","a blank ROUND_OBSERVATION follows the mean's precision; the direct-draw path included",1,0,0,0,0,""
+"test-pcalc-direct.R","fewer than two patients in an arm is a named refusal, not a crash",3,0,0,0,0,""
+"test-pcalc-direct.R","the validator's own output is unchanged by the inference (it already carries the columns)",2,0,0,0,0,""

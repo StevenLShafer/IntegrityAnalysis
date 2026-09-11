@@ -1211,6 +1211,25 @@ vectors (`.iaCategoryKey()`). Every numeric input the categorical
 simulation reads is the pair of margins, so the key now names exactly
 the law and nothing about its printing. No row's own draws change.
 
+**Recognised under aggregation (2026-09-11, the fourth full pass).**
+The fourth audit turned the same question on the continuous and median
+keys and found them too literal in the other direction: they listed
+each arm's mean, but the simulation never reads an arm's mean — the
+common location is drawn about the N-weighted pooled mean, and the
+statistic measures the replicate's own arms about their own centre —
+so two rows printed (0, 0) and (−1, 1) with the same N, SD and
+precision are one law with two keys. Five such continuous rows read
+0.008575 at seed 42 where the same draws mapped through one law give
+0.010285 (an independent two-million-replicate reference 0.0107, the
+other side of 0.01); seven median rows read 0.01074 for a same-draw
+0.009825 (reference 0.0096). The keys now carry what the simulation
+reads: the pooled mean, and per arm the size, dispersion, precisions
+and — for a continuous row — whether the arm takes the direct draw
+(the one place the individual means still matter, through the
+representability gate, and a different simulation). Equal-sized arms
+that exchange their SDs or quartiles are the same multiset and so the
+same law, as the audit's algebra says. No row's own draws change.
+
 **Bounded, the same day.** The security screen of the merge (2026-09-10-1523)
 found the first form quadratic in the rows sharing a law — every row's
 draws were held for the stage and each shared row was counted against

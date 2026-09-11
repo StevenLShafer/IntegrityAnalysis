@@ -1,0 +1,3 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-1222.R","a duplicate-name refusal names the original headers and returns the sheet as received (screen 1222 F2)",8,0,0,0,0,""
+"test-screen-2026-09-10-1222.R","blank-TRIAL issues index the frame the validator returns, long layout included (screen 1222 F3)",5,0,0,0,0,""

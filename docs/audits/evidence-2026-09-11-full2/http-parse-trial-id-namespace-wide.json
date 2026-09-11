@@ -1,0 +1,15 @@
+{
+    "ok": true,
+    "file": "fixture-trial-id-namespace-wide.csv",
+    "engine": "wide",
+    "flags": [
+
+    ],
+    "rows": 4,
+    "skipped": [
+
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"SE\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.0\",\"10.0\",,1,1,1\n\"Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic identity Synthetic ide #a020339ac28c\",\"Age\",30,\"50.5\",\"10.0\",,1,1,1\n",
+    "deleted": true
+}
+

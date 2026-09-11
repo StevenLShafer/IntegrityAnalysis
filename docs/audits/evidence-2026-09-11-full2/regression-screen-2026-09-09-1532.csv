@@ -1,0 +1,7 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-09-1532.R","the count for two levels is a closed form, and it is the right one",150,0,0,0,0,""
+"test-screen-2026-09-09-1532.R","the convolution declares a ceiling instead of allocating past it",2,0,0,0,0,""
+"test-screen-2026-09-09-1532.R","an arm above the analysis ceiling is refused before any work",4,0,0,0,0,""
+"test-screen-2026-09-09-1532.R","levels are not free: the grid is bounded by cells, not by rows",6,0,0,0,0,""
+"test-screen-2026-09-09-1532.R","a Latin-1 CSV header is read, not refused",3,0,0,0,0,""
+"test-screen-2026-09-09-1532.R","one declined block does not cancel another block's warning",7,0,0,0,0,""

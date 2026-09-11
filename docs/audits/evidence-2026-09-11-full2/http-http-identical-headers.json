@@ -1,0 +1,16 @@
+{
+    "ok": false,
+    "stage": "validation",
+    "file": "fixture-http-identical-headers.csv",
+    "issues": [
+        {
+            "row": null,
+            "col": "N",
+            "code": "structural",
+            "note": "two columns normalize to the same name: N from 'N' and 'N'; rename or remove one - which column is meant is ambiguous"
+        }
+    ],
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"N\",\"MEAN\",\"SD\"\n\"Audit\",\"Age\",20,30,\"50\",\"10\"\n\"Audit\",\"Age\",20,31,\"50.2\",\"10\"\n",
+    "deleted": true
+}
+

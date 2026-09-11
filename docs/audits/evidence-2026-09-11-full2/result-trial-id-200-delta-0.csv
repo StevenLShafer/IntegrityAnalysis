@@ -1,0 +1,7 @@
+"TRIAL","ROW","P","CI95","M","NOTE","KIND"
+"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline A","Age","0.007565","0 to 0.016","1e+05","attainable floor; the stated mean precision (1 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page","variable"
+NA,"Summary","0.007565","0 to 0.016",NA,"","summary"
+NA,NA,NA,NA,NA,NA,NA
+"Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline comparison Synthetic baseline B","Age","0.00752","0 to 0.016","1e+05","attainable floor; the stated mean precision (1 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page","variable"
+NA,"Summary","0.00752","0 to 0.016",NA,"","summary"
+NA,NA,NA,NA,NA,NA,NA
