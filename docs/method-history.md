@@ -1185,6 +1185,18 @@ the same z-values in a different row order, and floating addition is not
 associative. The auditor's constructions now read inside the exact
 value's sampling interval, and the two namings read the same.
 
+**Recognised under relabelling (2026-09-11).** The final-brief audit
+found the key too literal: it named a categorical law by its margins in
+the order the table printed them, so a binary variable coded
+(YES, NO) = (100, 0)/(98, 2) got a mapping of its own next to eight
+coded (0, 100)/(2, 98) — the same fixed-margin law — and the trial's
+genuine ties were split again: nine such rows read 0.0033 at seed 42
+against an exact 0.0111 (the false-positive direction; 0.0192 at seed
+43). Each margin vector is now sorted before it enters the key, and the
+continuous and median keys list their arms in one canonical order, so
+a row's law is recognised whichever way its arms or categories are
+printed. No row's own draws change.
+
 **Bounded, the same day.** The security screen of the merge (2026-09-10-1523)
 found the first form quadratic in the rows sharing a law — every row's
 draws were held for the stage and each shared row was counted against

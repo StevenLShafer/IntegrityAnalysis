@@ -910,3 +910,30 @@ test_that("a template past the row limit is a 422 on /parse, not a templateCsv o
   expect_match(b$reasons[[1]], as.character(.apiMaxRows), fixed = TRUE)
   expect_lt(nchar(b$templateCsv[[1]]), 500)              # the empty template, not the table
 })
+
+# THE RELABELLED TABLE THROUGH THE WIRE (final-brief independent audit
+# 2026-09-11, F1): the auditor's nine-variable fixture with the extreme
+# variable's YES/NO columns swapped, posted as a real multipart /analyze
+# request at seed 42, must read the exact trial mid-p (0.011146 - above
+# the screen's 0.01) as its baseline does, not 0.003285 (baad77c). The
+# reference is the report's exact enumeration; the fixture is the
+# report's own path: CSV -> upload reader -> validation -> P_Calc ->
+# resultsCsv.
+test_that("a category-relabelled fixture reads the same trial p over real HTTP (audit 2026-09-11 F1)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  d <- data.frame(TRIAL = "T", ROW = rep(sprintf("V%02d", 1:9), each = 2),
+                  N = NA_real_, MEAN = NA_real_, SD = NA_real_, YES = 1, NO = 99, stringsAsFactors = FALSE)
+  d$YES[5:6] <- c(100, 98); d$NO[5:6] <- c(0, 2)          # V03, the extreme one, recoded
+  f <- file.path(tempdir(), "J9-flip-extreme.csv")
+  utils::write.csv(d, f, row.names = FALSE)
+  r <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  res <- utils::read.csv(text = b$resultsCsv, stringsAsFactors = FALSE)
+  p <- suppressWarnings(as.numeric(res$P[!is.na(res$KIND) & res$KIND == "summary"][1]))
+  expect_gt(p, 0.008); expect_lt(p, 0.015)                 # exact 0.011146; 0.003285 on baad77c
+})

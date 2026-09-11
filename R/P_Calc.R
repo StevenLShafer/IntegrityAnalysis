@@ -70,9 +70,17 @@
 .iaNullKey <- function(kind, ROWS) {
   cols <- intersect(c("N", "MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
                       "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(ROWS))
-  paste(kind, paste(vapply(cols, function(cn)
-    paste(format(ROWS[[cn]], digits = 17), collapse = ","), character(1)),
-    collapse = ";"))
+  # The arms are a SET (final-brief independent audit 2026-09-11, F1,
+  # read across from the categorical key): the statistic is symmetric in
+  # the arms, so a row whose arms are listed in another order has the
+  # same law. The arms are put in one canonical order - lexicographic
+  # over the key columns - before they are written into the key, and
+  # the row's own draws are unchanged (the key names the mapping, never
+  # the simulation).
+  fmt <- lapply(cols, function(cn) format(ROWS[[cn]], digits = 17))
+  ord <- do.call(order, fmt)
+  paste(kind, paste(vapply(fmt, function(v) paste(v[ord], collapse = ","), character(1)),
+                    collapse = ";"))
 }
 
 # TIES BY AN EXPLICITLY BOUNDED NUMERICAL CRITERION (2026-09-07; the GPT-6
@@ -1455,9 +1463,21 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
           }
           # the categorical null depends on the MARGINS alone (r2dtable), so
           # two rows with the same margins share one law whatever their cells
+          # - and the margins as MULTISETS, not in the order the table
+          # prints them (final-brief independent audit 2026-09-11, F1):
+          # permuting the arms or the categories of a fixed-margin table
+          # maps the r2dtable distribution onto itself and leaves the
+          # Pearson statistic unchanged, so a binary variable coded
+          # (YES, NO) = (100, 0)/(98, 2) has exactly the law of one coded
+          # (0, 100)/(2, 98) - yet the ordered key gave it a mapping of
+          # its own, and nine such rows with one recoded read 0.0033 at
+          # seed 42 where the exact trial mid-p is 0.0111 (the false-
+          # positive direction). Each margin vector is sorted before it
+          # is written into the key.
           simRow <- list(simulate = simulate, obs = statObs, kind = "category", zeroTol = 0,
-                         key = paste("category", paste(rowSums(tab), collapse = ","),
-                                     paste(colSums(tab), collapse = ",")))
+                         key = paste("category",
+                                     paste(sort(rowSums(tab), decreasing = TRUE), collapse = ","),
+                                     paste(sort(colSums(tab), decreasing = TRUE), collapse = ",")))
           }
           }
         }
