@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-numeric-resolution.R","the helper marks exactly the rows whose printed grid is unrepresentable",8,0,0,0,0,""
+"test-numeric-resolution.R","the audit's row is refused, and the same row at an ordinary magnitude is analyzed",3,0,0,0,0,""
+"test-numeric-resolution.R","ordinary tables, and the magnitudes the screens pinned, are untouched",4,0,0,0,0,""
+"test-numeric-resolution.R","a median row is judged on its quartiles' magnitude and precision too",3,0,0,0,0,""
+"test-numeric-resolution.R","the direct draw stands down where its own grid is unrepresentable",3,0,0,0,0,""

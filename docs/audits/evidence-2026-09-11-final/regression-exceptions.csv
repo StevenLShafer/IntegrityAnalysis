@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-dispersion.R","the quadrature agrees with nimble running Barnett's model",0,0,0,1,0,"Reason: {nimble} is not installed"
+"test-failsafe-table.R","the fail-safe record survives a hybrid parse",0,0,0,1,0,"Reason: fixture did not take the hybrid route"
+"test-failsafe-table.R","nothing infers that categories divide the arm",0,0,0,1,0,"Reason: space too large in this configuration"

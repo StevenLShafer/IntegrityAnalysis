@@ -1,0 +1,7 @@
+"kind","transform","p","CI95","M"
+"continuous","base","0.1065","0.034 to 0.19","1000"
+"continuous","translated","0.1065","0.034 to 0.19","1000"
+"continuous","units","0.106","0.035 to 0.19","1000"
+"median","base","0.1105","0.041 to 0.19","1000"
+"median","translated","0.115","0.045 to 0.2","1000"
+"median","units","0.108","0.04 to 0.19","1000"

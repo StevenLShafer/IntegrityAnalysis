@@ -1,0 +1,4 @@
+R version 4.5.3 (2026-03-11 ucrt)
+Packages inventoried: 144
+Reused existing private dependency snapshot: TRUE
+Locked versions matched: 121
