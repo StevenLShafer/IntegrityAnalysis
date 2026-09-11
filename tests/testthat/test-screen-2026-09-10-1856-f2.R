@@ -41,11 +41,13 @@ test_that("a 1 MB line among the first five is refused before read.csv sees it, 
   expect_error(.wideRawCells(longLineCsv(1000L), "csv"), "line over")
 })
 
-test_that("the gate is linear and reads only the first five lines", {
+test_that("the gate is linear and measures every line", {
   # a 1 MB line on line 8 costs read.csv nothing (it sizes from the first
-  # five) and the gate does not read that far either
+  # five non-empty lines) but is refused all the same: since screen 2004
+  # every line is measured, because one empty first line put physical
+  # line 6 among read.csv's five
   t <- timed(.iaCsvLongLine(longLineCsv(1000L, line = 8L)))
-  expect_false(t$r)
+  expect_true(t$r)
   expect_lt(t$s, 1)
   # a 5 MB line on line 1: measured, refused, in well under a second
   t <- timed(.iaCsvLongLine(longLineCsv(5000L, line = 1L)))
