@@ -523,14 +523,28 @@ claudeAvailable <- function() {
     # A level that is a base column, or that contains one of the tokens
     # the shared normaliser reads as a header ("MEAN", "ROW", ...), takes
     # the long layout's own spelling - the variable and the level, lower
-    # case - exactly as .iaLongToWide does for a typed sheet; and the
+    # case (.iaLevelColumnName, shared with .iaLongToWide); and the
     # uniqueness check runs against the reserved fields too, before any
-    # count is assigned.
+    # count is assigned. What keeps the reserved fields safe on THIS
+    # route is not the case of the spelling - the frame is upper-cased by
+    # .iaNormalizeNames afterwards - but that the template carries every
+    # base column leftmost, so each first-match grep in the normaliser
+    # and the validator lands on the real column, and a level that still
+    # collapses onto a base name is a duplicate the validator refuses
+    # structurally (security screen 2026-09-10-1628, F3).
     levels <- vapply(levels, function(l) .iaLevelColumnName(rowName, l), character(1))
     # Category columns are shared across the whole spreadsheet, so a level
-    # named "Other" in two different variables must not collide.
-    levels <- vapply(levels, .ppUniqueName, character(1),
-                     existing = c(catColumns, .ppBaseColumns(), "Q1", "Q3", "LEVEL"))
+    # named "Other" in two different variables must not collide - and two
+    # levels of ONE variable must not either: the names are made unique
+    # one at a time, each result joining the set the next is checked
+    # against (screen 1628 F3: a vapply() checked every level against the
+    # same set, so "N" and "n" - both spelled "<variable> n" by the rule
+    # above - became one column and the second count overwrote the first).
+    seen <- c(catColumns, .ppBaseColumns(), "Q1", "Q3", "LEVEL")
+    for (k in seq_along(levels)) {
+      levels[k] <- .ppUniqueName(levels[k], existing = seen)
+      seen <- c(seen, levels[k])
+    }
     catColumns <- unique(c(catColumns, levels))
     for (val in v$values) {
       counts <- vapply(val$counts,
