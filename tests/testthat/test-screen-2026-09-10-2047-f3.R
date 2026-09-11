@@ -27,7 +27,10 @@ totalColumnsXlsx <- function(rows, K, cell, usable = TRUE) {
 heapMB <- function() sum(gc()[, 6])
 
 test_that("cells under a Total column no longer reach the skip text: a note is the label and the arm cells, clipped (screen 2047 F3)", {
-  f <- totalColumnsXlsx(200L, 20L, strrep("t", 30000L))
+  # 10 KB Total cells (not 30): a single cell over 16 KiB is refused at the
+  # xlsx preflight now (screen 2026-09-11-1602); 10 KB reaches the parser
+  # so the skip-text clip this test guards is still exercised
+  f <- totalColumnsXlsx(200L, 20L, strrep("t", 10000L))
   blocks <- parseWideTable(f, "xlsx")
   expect_false(is.null(blocks))
   sk <- blocks[[1]]$skipped
