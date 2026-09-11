@@ -281,6 +281,20 @@ if (file.exists("R/parseWideTable.R")) {
   if (!any(grepl("\\.ppClip\\(sub\\(\"\\^Trial:", pw)) ||
       !any(grepl("else \\.ppClip\\(sheetName,\\s*\\.iaMaxTrialIdChars\\)", pw)))
     note("R/parseWideTable.R: the trial id must be clipped at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1)")
+  # ...and every text reader of a CSV opens it through .iaCsvConnection()
+  # (raw = TRUE, screen 2026-09-10-2100 F1): a path argument would let
+  # file() inflate a format the magic list does not name.
+  for (f in c("R/parseWideTable.R", "R/app_globals.R", "R/apiService.R", "R/app_server.R")) {
+    if (!file.exists(f)) next
+    src <- codeLinesOf(f)
+    bad <- grep("(count\\.fields|read\\.csv)\\s*\\(\\s*(path|file|f)\\b", src, value = TRUE)
+    if (length(bad))
+      note(paste0(f, ": a CSV reader takes a PATH - it must take .iaCsvConnection(path), ",
+                  "which file() never inflates (screen 2100 F1): ", paste(trimws(bad), collapse = " | ")))
+  }
+  cc <- pwBody(".iaCsvConnection")
+  if (!length(cc) || !any(grepl("raw\\s*=\\s*TRUE", cc)))
+    note("R/parseWideTable.R: .iaCsvConnection() must open with raw = TRUE (screen 2100 F1)")
   ll <- pwBody(".iaCsvLongLine")
   if (!length(ll) || any(grepl("readLines\\s*\\(", ll)) ||
       !any(grepl("file\\s*\\(\\s*path\\s*,\\s*\"rb\"\\s*\\)", ll)) ||
