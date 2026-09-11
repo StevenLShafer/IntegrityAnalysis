@@ -1014,6 +1014,13 @@ app_server <- function(input, output, session) {
           outputComments(paste0("Could not read ", files$name[i], "."))
           next
         }
+        # the template route's cells are bounded, as the API's are
+        # (screen 2026-09-10-2047, F2)
+        msg <- .iaTableTextRefusal(d)
+        if (!is.null(msg)) {
+          outputComments(paste0("Could not read ", files$name[i], ": ", msg, "."))
+          next
+        }
         outputComments(paste0("Read ", files$name[i], ": ", nrow(d),
                               " row(s)."))
         frames[[length(frames) + 1]] <-

@@ -379,6 +379,7 @@ whichever it sent.
 | picture of a table | 20 megapixels; up to 10 TIFF pages; JPEG, PNG or TIFF by its bytes, not its name | 422 with the reason |
 | spreadsheet archives (`.xlsx`) | 100 MiB uncompressed, 512 entries, compression ratio 200 | 422 |
 | spreadsheet sheet | 10,000 rows, 500 columns, judged before the table limits below | 422 (`stage: "parse"` from `/analyze`) |
+| template cells | no cell over 2,000 characters, and no more than 20 MB of text in the table, judged before `templateCsv` is written (a workbook stores a repeated string once, so a small file can hold a very large table) | 422 with the reason (`stage: "parse"` from `/analyze`) |
 | CSV line | 100 KB per line, every line, measured before the file is parsed (the parser's cost is quadratic in a line's length; 500 columns of 40 characters is 20 KB) | 422 with the reason (`stage: "parse"` from `/analyze`) |
 | CSV bytes | a gzip, bzip2, xz, LZMA or zstd stream named `.csv` - every format R inflates transparently - is refused by its first bytes, before any reader opens it (the request cap bounds the compressed bytes only); the line measure itself reads the file as raw bytes, in fixed chunks | 422 with the reason (`stage: "parse"` from `/analyze`) |
 | parse time | 60 s per document (300 s with the AI assist) | 422 (`stage: "parse"` from `/analyze`) |
