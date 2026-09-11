@@ -49,13 +49,28 @@ test_that("zstd and LZMA streams named .csv are refused by their bytes, like gzi
 })
 
 test_that("the line measure is a stream of raw bytes: constant memory on 25 MiB of newlines (screen 2047 F4)", {
+  skip_if_not_installed("callr")
   f <- tempfile(fileext = ".csv")
   con <- file(f, "wb"); for (i in 1:25) writeBin(as.raw(rep(0x0a, 2^20)), con); close(con)
-  invisible(gc()); before <- sum(gc(reset = TRUE)[, 2])
   t <- system.time(r <- .iaCsvLongLine(f))[["elapsed"]]
   expect_false(r)
   expect_lt(t, 5)
-  expect_lt(heapMB() - before, 120)                       # about 550 MB above baseline on b1c1dea
+  # The heap high-water is measured in a FRESH process: inside a full
+  # suite the collector's trigger has grown with everything before, so an
+  # in-process delta says more about the suite than the function. The
+  # child loads the tree under test (the repo when the tests run from it,
+  # the installed package under R CMD check).
+  root <- normalizePath(test_path("..", ".."), mustWork = FALSE)
+  m <- callr::r(function(f, root) {
+    if (file.exists(file.path(root, "R", "parseWideTable.R")))
+      pkgload::load_all(root, quiet = TRUE)
+    else suppressPackageStartupMessages(library(IntegrityAnalysis))
+    invisible(gc()); before <- sum(gc(reset = TRUE)[, 2])
+    r <- IntegrityAnalysis:::.iaCsvLongLine(f)
+    c(result = r, deltaMB = sum(gc()[, 6]) - before)
+  }, args = list(f, root))
+  expect_false(as.logical(m[["result"]]))
+  expect_lt(m[["deltaMB"]], 150)                          # about 550 MB above baseline on b1c1dea; 42 here
 })
 
 test_that("the streamed measure finds a long line wherever it sits, across chunk boundaries, with or without a final newline", {
