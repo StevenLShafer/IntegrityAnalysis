@@ -1197,6 +1197,20 @@ continuous and median keys list their arms in one canonical order, so
 a row's law is recognised whichever way its arms or categories are
 printed. No row's own draws change.
 
+**Recognised under transposition (2026-09-11, the third full pass).**
+The next audit found the one relabelling the sorted key still missed:
+transposing a categorical table — arms (0, 100)/(2, 98) read as
+(0, 2)/(100, 98) — exchanges the arm totals and the category totals,
+and the fixed-margin law is symmetric in the two (the probability of a
+table, ∏rᵢ! ∏cⱼ! / (N! ∏tᵢⱼ!), and the Pearson statistic are both
+unchanged), so it is the same law once more; the key, sorted within
+each margin but ordered between them, told the two apart, and the
+nine-row trial with its extreme row transposed read 0.003285 again.
+The categorical key is now the unordered pair of the two sorted margin
+vectors (`.iaCategoryKey()`). Every numeric input the categorical
+simulation reads is the pair of margins, so the key now names exactly
+the law and nothing about its printing. No row's own draws change.
+
 **Bounded, the same day.** The security screen of the merge (2026-09-10-1523)
 found the first form quadratic in the rows sharing a law — every row's
 draws were held for the stage and each shared row was counted against

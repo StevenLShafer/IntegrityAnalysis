@@ -71,9 +71,10 @@ themselves, and for the trial-level Stouffer sums alike; and a
 statistic that is zero up to floating-point dust is zero. Rows whose
 simulated nulls are the same distribution — categorical rows with the
 same margins, continuous or median rows with the same inputs, in any
-order of arms or categories (the law is the same whichever way the
-table is printed, so the key that names it is built from the margins
-and the arms as sets) — are
+order of arms or categories and, for a categorical row, with the two
+margins exchanged (the law is the same whichever way the table is
+printed, or transposed, so the key that names it is built from the
+arms as a set and from the two margins as an unordered pair of sets) — are
 mapped from statistic to mid-p through **one** empirical distribution
 pooled over all their draws, so that a replicate whose extreme outcome
 sits in a different row from the observed one is the genuine tie it is,
