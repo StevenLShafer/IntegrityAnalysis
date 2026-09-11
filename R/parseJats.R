@@ -102,10 +102,24 @@
 .ppMaxParaChars     <- 20000L
 .ppJatsMaxTextChars <- 2000000L
 .ppMaxLineWords     <- 500L
+# Clips to n BYTES (security screen 2026-09-10-2100, F3): the test was in
+# bytes and the cut in characters, so a label of 2,500 four-byte
+# characters passed as 8,000 bytes - four times the bound the wide reader
+# had just been given. The cut is made on a bytes-encoded copy, which
+# substr() cuts byte-wise; a multibyte character split at the boundary is
+# dropped by iconv(sub = ""), and the result is marked UTF-8 again.
 .ppClip <- function(s, n) {
   s[is.na(s)] <- ""
   long <- nchar(s, type = "bytes") > n
-  if (any(long)) s[long] <- substr(s[long], 1L, n)
+  if (any(long)) {
+    x <- s[long]
+    Encoding(x) <- "bytes"
+    x <- substr(x, 1L, n)
+    x <- iconv(x, from = "UTF-8", to = "UTF-8", sub = "")
+    x[is.na(x)] <- ""
+    Encoding(x) <- "UTF-8"
+    s[long] <- x
+  }
   s
 }
 
