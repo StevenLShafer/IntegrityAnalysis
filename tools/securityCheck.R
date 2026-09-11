@@ -291,10 +291,16 @@ if (file.exists("R/parseWideTable.R")) {
     note("R/parseWideTable.R: the trial id must take its label from the file's map (.wideTrialLabels over every sheet's originals, looked up once per sheet as labBySheet) at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1; audit 2026-09-11 full2 F2)")
   tl <- pwBody(".wideTrialLabels")
   if (!length(tl) || !any(grepl("\\.wideTrialId\\(id\\)", tl)) ||
-      !any(grepl("while\\s*\\(exists\\(lab,\\s*envir\\s*=\\s*taken", tl)) ||
       !any(grepl("new\\.env\\(hash\\s*=\\s*TRUE", tl)) ||
-      !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars\\s*-\\s*24L\\)", tl)))
-    note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId(), keep the labels in use in a hash set, and resolve a taken label with a shorter, counter-suffixed clip (audit 2026-09-11 full2 F2; CodeRabbit on #306)")
+      !any(grepl("stem <- \\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars\\s*-\\s*24L\\)", tl)) ||
+      !any(grepl("h <- substr\\(digest::digest\\(id", tl)) ||
+      !any(grepl("lab <- paste0\\(stem, \" #\", h, \" \\(\", k, \"\\)\"\\)", tl)))
+    note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId(), keep the labels in use in a hash set, and resolve a taken label with a counter on a stem and digest computed ONCE per id, outside the loop (audit 2026-09-11 full2 F2; CodeRabbit on #306; screen 2026-09-11-1407 F1)")
+  # ...and nothing inside the counter loop may hash or clip the id again
+  loopStart <- grep("repeat \\{", tl); loopEnd <- grep("if \\(!exists\\(lab", tl)
+  if (length(loopStart) && length(loopEnd) &&
+      any(grepl("digest::digest|\\.ppClip\\(", tl[loopStart[1]:loopEnd[1]])))
+    note("R/parseWideTable.R: the counter loop of .wideTrialLabels() re-hashes or re-clips the id (screen 2026-09-11-1407 F1)")
   tb <- pwBody(".wideTrialId")
   if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||
       !any(grepl("digest::digest\\(id", tb)) ||

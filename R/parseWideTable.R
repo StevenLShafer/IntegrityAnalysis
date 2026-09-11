@@ -398,14 +398,24 @@
 # - until the label is free of every other original's. Distinct
 # originals therefore get distinct labels within a file, and the same
 # original still names one trial. The bound holds throughout: at most
-# 176 + 2 + 12 + 6 bytes. The counter depends on the file's contents,
+# 176 + 2 + 12 + 9 bytes (a six-digit counter, more than any row cap
+# admits; screen 2026-09-11-1407 N1). The counter depends on the file's contents,
 # so a long id's label is stable across files unless a file also
 # carries the spelling it would take, which is the case being resolved.
 # THE WORK IS LINEAR IN THE IDS (CodeRabbit on #306): the labels in use
 # are a hash set (an environment), so a crafted file of many long ids
 # that all collide costs one lookup per counter step, not a scan of
 # every label taken so far; and the lookup of a block's label is one
-# vectorised match per sheet (parseWideTable), not one per block.
+# vectorised match per sheet (parseWideTable), not one per block. AND LINEAR IN THE ID'S
+# BYTES (security screen 2026-09-11-1407, F1 - MEDIUM): the clipped
+# stem and the digest of a long id are computed ONCE, outside the
+# counter loop, because each step re-hashing the whole id made the
+# cost counters x bytes - and on the xlsx route the marker cell is
+# bounded only by the 100 MiB inflation cap, so one 10 MB marker
+# beside ten thousand literal counter spellings (the author computes
+# the SHA-1 offline) cost 200 s in the request's own thread. Now a
+# long id costs one clip and one digest however many of its spellings
+# the file has taken.
 .wideTrialLabels <- function(originals) {
   originals <- unique(originals[!is.na(originals) & nzchar(originals)])
   literal <- nchar(originals, type = "bytes") <= .iaMaxTrialIdChars
@@ -415,12 +425,15 @@
   for (i in which(!literal)) {
     id <- originals[i]
     lab <- .wideTrialId(id)
-    k <- 1L
-    while (exists(lab, envir = taken, inherits = FALSE)) {
-      k <- k + 1L
-      lab <- paste0(.ppClip(id, .iaMaxTrialIdChars - 24L), " #",
-                    substr(digest::digest(id, algo = "sha1", serialize = FALSE), 1L, 12L),
-                    " (", k, ")")
+    if (exists(lab, envir = taken, inherits = FALSE)) {
+      stem <- .ppClip(id, .iaMaxTrialIdChars - 24L)          # once per id, not per step
+      h <- substr(digest::digest(id, algo = "sha1", serialize = FALSE), 1L, 12L)
+      k <- 1L
+      repeat {
+        k <- k + 1L
+        lab <- paste0(stem, " #", h, " (", k, ")")
+        if (!exists(lab, envir = taken, inherits = FALSE)) break
+      }
     }
     labels[i] <- lab
     assign(lab, TRUE, envir = taken)
