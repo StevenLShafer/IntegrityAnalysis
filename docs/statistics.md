@@ -74,7 +74,9 @@ same margins, continuous or median rows with the same inputs, in any
 order of arms or categories and, for a categorical row, with the two
 margins exchanged (the law is the same whichever way the table is
 printed, or transposed, so the key that names it is built from the
-arms as a set and from the two margins as an unordered pair of sets) — are
+arms as a multiset and from the two margins as an unordered pair of
+multisets — every total kept, each vector sorted, the two in a fixed
+order) — are
 mapped from statistic to mid-p through **one** empirical distribution
 pooled over all their draws, so that a replicate whose extreme outcome
 sits in a different row from the observed one is the genuine tie it is,
