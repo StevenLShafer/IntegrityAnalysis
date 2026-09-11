@@ -78,6 +78,32 @@
   n <- .iaCsvColumns(path)
   is.na(n) || n > .iaSheetColCap
 }
+# THE LENGTH OF A LINE IS GATED BEFORE read.csv SEES IT (security screen
+# 2026-09-10-1856, F2 - HIGH). read.table() sizes a header = FALSE frame
+# from its first five lines and is QUADRATIC in the length of any of them:
+# one field of 1 MB on line 2 - three fields, so the column gate passes it
+# - took 107 s on this machine, a 25 MiB line about eighteen hours, before
+# any of the bounds that follow the read. Every CSV route (the wide
+# reader, the API's template read, the app's) paid it. readLines() is
+# linear (0.02 s a megabyte), so the first five physical lines are
+# measured in bytes first; 100 KB is five times the widest sheet the
+# column cap admits (500 columns x 40 characters), and a quoted field
+# spanning lines cannot hide behind it because count.fields() returns NA
+# for the continuation lines and .iaCsvColumns refuses NA.
+.iaCsvMaxLineBytes <- 100000L
+.iaCsvLongLine <- function(path) {
+  first <- readLines(path, n = 5L, warn = FALSE, encoding = "bytes")
+  length(first) && any(nchar(first, type = "bytes") > .iaCsvMaxLineBytes)
+}
+# The one reason a CSV is refused before it is read, or NULL: the callers
+# (the wide reader, the API's and the app's template reads) stop with it.
+.iaCsvRefusal <- function(path) {
+  if (.iaCsvLongLine(path))
+    return(paste0("the file has a line over ", round(.iaCsvMaxLineBytes / 1000),
+                  " KB in its first five and was not read"))
+  if (.iaCsvTooWide(path)) return(.iaSheetCapMessage("the file"))
+  NULL
+}
 # a workbook with more sheets than this is refused: each sheet read inflates
 # the archive again (screen 2026-09-05-2117 F2), so the cost is sheets x
 # declared size, and a baseline-table workbook has a handful
@@ -107,7 +133,8 @@
     d
   }
   if (ext == "csv") {
-    if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
+    msg <- .iaCsvRefusal(path)
+    if (!is.null(msg)) stop(msg, call. = FALSE)
     d <- utils::read.csv(path, header = FALSE, colClasses = "character",
                          check.names = FALSE, nrows = .iaSheetRowCap + 1L)
     return(list(toMat(capped(d, "the file"))))

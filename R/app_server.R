@@ -932,7 +932,8 @@ app_server <- function(input, output, session) {
           d
         }
         if (ext == "csv") {
-          if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"), call. = FALSE)
+          msg <- .iaCsvRefusal(path)        # a long line or too many columns (screen 1856 F2)
+          if (!is.null(msg)) stop(msg, call. = FALSE)
           # value columns as text: see .iaReadCsvKeepingText()
           return(capped(.iaReadCsvKeepingText(path,
                                               nrows = .iaSheetRowCap + 1L)))
