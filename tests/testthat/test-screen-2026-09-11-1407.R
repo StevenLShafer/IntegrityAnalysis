@@ -95,11 +95,11 @@ test_that("a marker cell over the 128 KiB text bound is refused before the read 
   expect_match(r2$reasons, "100 MB", fixed = TRUE)           # .apiZipInflationOK refuses, before any parse
 })
 
-test_that("a marker cell within the 128 KiB bound is read and takes a distinct counter label (screen 1407 F1, through the route)", {
-  X <- strrep("X", 1e5)                                     # 100 KB: under the 128 KiB bound
+test_that("a marker cell within the 16 KiB bound is read and takes a distinct counter label (screen 1407 F1, through the route)", {
+  X <- strrep("X", 8000L)                                   # 8 KB: under the 16 KiB cell bound
   # the other markers are X's own plain spelling and one counter, supplied
   # literally: X must resolve past them to (3), never merge into them
-  fx <- bigMarkerXlsx(1e5, takenSpellings(X, 2L))
+  fx <- bigMarkerXlsx(8000L, takenSpellings(X, 2L))
   t <- system.time(r <- .apiReadUpload(fx$path, "bigcell.xlsx"))[["elapsed"]]
   expect_true(isTRUE(r$ok)); expect_identical(r$engine, "wide")
   expect_lt(t, 20)

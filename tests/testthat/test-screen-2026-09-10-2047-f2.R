@@ -25,13 +25,16 @@ templateXlsx <- function(rows, cell, cols = 1L) {
   openxlsx::writeData(wb, "S", d); openxlsx::saveWorkbook(wb, f, overwrite = TRUE); f
 }
 
-test_that("a template workbook with a 30 KB cell is refused before the reply is written (screen 2047 F2)", {
-  f <- templateXlsx(5000L, strrep("z", 30000L))
+test_that("a template workbook with a 10 KB cell is refused before the reply is written (screen 2047 F2)", {
+  # 10 KB (not 30): a single cell over 16 KiB is now refused at the xlsx
+  # preflight (screen 2026-09-11-1602); 10 KB passes it, interned once, and
+  # reaches the cell cap this test guards
+  f <- templateXlsx(5000L, strrep("z", 10000L))
   expect_lt(file.size(f), 200000)                         # a small file holding a large table
   t <- system.time(r <- .apiReadUpload(f, "t.xlsx"))[["elapsed"]]
   expect_lt(t, 10)
   expect_false(isTRUE(r$ok))
-  expect_match(r$reasons, "cell of 30000 characters", fixed = TRUE)
+  expect_match(r$reasons, "cell of 10000 characters", fixed = TRUE)
   expect_match(r$reasons, as.character(.ppMaxCellChars), fixed = TRUE)
   expect_null(r$data)                                     # nothing to serialise
 })

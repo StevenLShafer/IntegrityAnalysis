@@ -459,11 +459,13 @@ if (file.exists("R/apiService.R")) {
   zi <- fnBody(api, ".apiZipInflationOK"); xr <- fnBody(api, ".apiXlsxStringRunOK")
   if (!length(zi) || !any(grepl("\\.apiXlsxStringRunOK\\(path", zi)) ||
       !length(xr) || !any(grepl("\\.iaMaxXlsxStringRun", xr)) ||
+      !any(grepl("\\.iaMaxXlsxStringBytes", xr)) ||
       !any(grepl("unz\\(path", xr)) || !any(grepl("readBin\\(con", xr)) ||
       !any(grepl("sharedStrings", xr)) || !any(grepl("worksheets", xr)))
     note(paste("R/apiService.R: the xlsx preflight lost its cell-text bound -",
-               "a single large non-ASCII marker cell drives openxlsx's",
-               "quadratic string reader and pins the worker (screen 2026-09-11-1455 F1)"))
+               "a single large non-ASCII cell (.iaMaxXlsxStringRun) or many",
+               "cells summing past .iaMaxXlsxStringBytes drive openxlsx's",
+               "quadratic string reader and pin the worker (screens 2026-09-11-1455 and -1602 F1)"))
 
   # H2: /analyze refuses an oversized table before simulating
   if (!any(grepl("\\.apiMaxRows", api)) ||
