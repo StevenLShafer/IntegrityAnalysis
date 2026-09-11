@@ -284,14 +284,17 @@ if (file.exists("R/parseWideTable.R")) {
   # audit 2026-09-11 F2: a literal id equal to a long id's generated
   # spelling merged two trials), whose every label comes from
   # .wideTrialId() or a counter-suffixed clip of the same shape
-  if (!any(grepl("\\.wideTrialLabel\\(idMap,\\s*sub\\(\"\\^Trial:", pw)) ||
-      !any(grepl("else \\.wideTrialLabel\\(idMap,\\s*sheetName\\)", pw)))
-    note("R/parseWideTable.R: the trial id must pass the file's label map (.wideTrialLabel(idMap, ...)) at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1; audit 2026-09-11 full2 F2)")
+  if (!any(grepl("labBySheet\\[\\[s\\]\\] <- ", pw) | grepl("labBySheet <- lapply\\(origBySheet", pw)) ||
+      !any(grepl("\\.wideParseBlock\\(sub,\\s*hdr,\\s*labBySheet\\[\\[s\\]\\]\\[b\\]", pw)) ||
+      !any(grepl("else labBySheet\\[\\[s\\]\\]\\[1L\\]", pw)) ||
+      !any(grepl("idMap <- \\.wideTrialLabels\\(unlist\\(origBySheet\\)\\)", pw)))
+    note("R/parseWideTable.R: the trial id must take its label from the file's map (.wideTrialLabels over every sheet's originals, looked up once per sheet as labBySheet) at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1; audit 2026-09-11 full2 F2)")
   tl <- pwBody(".wideTrialLabels")
   if (!length(tl) || !any(grepl("\\.wideTrialId\\(id\\)", tl)) ||
-      !any(grepl("while\\s*\\(lab %in% taken\\)", tl)) ||
+      !any(grepl("while\\s*\\(exists\\(lab,\\s*envir\\s*=\\s*taken", tl)) ||
+      !any(grepl("new\\.env\\(hash\\s*=\\s*TRUE", tl)) ||
       !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars\\s*-\\s*24L\\)", tl)))
-    note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId() and resolve a label already taken in the file with a shorter, counter-suffixed clip (audit 2026-09-11 full2 F2)")
+    note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId(), keep the labels in use in a hash set, and resolve a taken label with a shorter, counter-suffixed clip (audit 2026-09-11 full2 F2; CodeRabbit on #306)")
   tb <- pwBody(".wideTrialId")
   if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||
       !any(grepl("digest::digest\\(id", tb)) ||

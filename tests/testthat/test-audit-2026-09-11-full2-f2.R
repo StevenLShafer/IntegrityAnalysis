@@ -99,4 +99,24 @@ test_that(".wideTrialLabels(): literal ids are their own labels, generated ones 
   # a 100 KB id (screen 2149) is bounded the same way
   big <- strrep("i", 99990L)
   expect_identical(.wideTrialLabels(big)$label, .wideTrialId(big))
+  # a vector lookup is one match, and an absent id falls back to its own spelling
+  expect_identical(.wideTrialLabel(m3, c(x, "A", .wideTrialId(x))), c(m3$label[3], "A", m3$label[1]))
+})
+
+test_that("hostile ids do not break the map, and many colliding ids cost linear time (CodeRabbit on #306)", {
+  # invalid UTF-8 in a long id and in a literal one: hashed, clipped, mapped without error
+  bad <- paste0(strrep("\xff\xfe", 120L), "z"); Encoding(bad) <- "unknown"
+  lit <- paste0(strrep("\xff", 10L), "!"); Encoding(lit) <- "unknown"
+  m <- .wideTrialLabels(c(bad, lit))
+  expect_identical(length(m$label), 2L)
+  expect_true(all(nchar(m$label, type = "bytes") <= .iaMaxTrialIdChars))
+  expect_identical(m$label[2], lit)
+  # 20,000 long ids whose plain spellings are all taken by literals: each
+  # resolves in one counter step - well under a second, not a quadratic scan
+  longs <- paste0(strrep("L", 205L), seq_len(20000L))
+  lits <- vapply(longs, .wideTrialId, character(1), USE.NAMES = FALSE)
+  t <- system.time(mm <- .wideTrialLabels(c(lits, longs)))[["elapsed"]]
+  expect_lt(t, 20)
+  expect_identical(length(unique(mm$label)), 40000L)
+  expect_true(all(grepl(" \\(2\\)$", mm$label[20001:40000])))
 })
