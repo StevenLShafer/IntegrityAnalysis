@@ -262,9 +262,13 @@ if (file.exists("R/parseWideTable.R")) {
   cz <- pwBody(".iaCsvCompressed")
   if (!length(cz) || !any(grepl("readBin\\s*\\(", cz)) ||
       !any(grepl("0x1f,\\s*0x8b", cz)) || !any(grepl("0x42,\\s*0x5a,\\s*0x68", cz)) ||
-      !any(grepl("0xfd,\\s*0x37,\\s*0x7a,\\s*0x58,\\s*0x5a", cz)))
+      !any(grepl("0xfd,\\s*0x37,\\s*0x7a,\\s*0x58,\\s*0x5a", cz)) ||
+      !any(grepl("0x5d,\\s*0x00,\\s*0x00,\\s*0x80,\\s*0x00", cz)) ||
+      !any(grepl("0xff,\\s*0x4c,\\s*0x5a,\\s*0x4d,\\s*0x41", cz)) ||
+      !any(grepl("0x28,\\s*0xb5,\\s*0x2f,\\s*0xfd", cz)))
     note(paste("R/parseWideTable.R: .iaCsvCompressed() must read the bytes with readBin()",
-               "and refuse the gzip, bzip2 and xz magics (screen 2026-09-10-2004 F2)"))
+               "and refuse every magic R inflates - gzip, bzip2, xz, both LZMA spellings",
+               "and zstd (screens 2026-09-10-2004 F2 and -2047 F1)"))
   rf <- pwBody(".iaCsvRefusal")
   a <- grep("\\.iaCsvCompressed\\s*\\(", rf)
   b <- grep("\\.iaCsvLongLine\\s*\\(|\\.iaCsvTooWide\\s*\\(", rf)
@@ -272,10 +276,14 @@ if (file.exists("R/parseWideTable.R")) {
     note(paste("R/parseWideTable.R: .iaCsvRefusal() must judge the compressed-stream",
                "magic before any reader opens the file (screen 2004 F2)"))
   ll <- pwBody(".iaCsvLongLine")
-  if (!length(ll) || !any(grepl("readLines\\s*\\(", ll)) ||
-      any(grepl("readLines\\s*\\([^)]*\\bn\\s*=", ll)))
-    note(paste("R/parseWideTable.R: .iaCsvLongLine() must measure every line - a",
-               "five-line measure was bypassed by an empty first line (screen 2004 F1)"))
+  if (!length(ll) || any(grepl("readLines\\s*\\(", ll)) ||
+      !any(grepl("file\\s*\\(\\s*path\\s*,\\s*\"rb\"\\s*\\)", ll)) ||
+      !any(grepl("readBin\\s*\\(", ll)))
+    note(paste("R/parseWideTable.R: .iaCsvLongLine() must measure the file as a stream",
+               "of bytes - file(path, \"rb\") and readBin() in chunks, never readLines():",
+               "a five-line measure was bypassed by an empty first line (screen 2004 F1),",
+               "a whole-file readLines() held a pointer per line and read through file()",
+               "in text mode, which inflates (screen 2047 F1, F4)"))
 }
 
 ## 2 - the comments log stays escaped ------------------------------------
