@@ -157,6 +157,20 @@ function(req, res, file = NULL) {
                 templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
                 deleted = TRUE))
   }
+  # THE TABLE GATE /analyze APPLIES, HERE TOO (security screen
+  # 2026-09-10-1628, F1): templateCsv never serialises a table the
+  # service would refuse to analyse for its rows or columns.
+  if (nrow(r$data) > IntegrityAnalysis:::.apiMaxRows ||
+      ncol(r$data) > IntegrityAnalysis:::.apiMaxCols) {
+    res$status <- 422
+    return(list(ok = FALSE, file = name,
+                reasons = paste0("table has ", nrow(r$data), " rows x ", ncol(r$data),
+                                 " columns; the service accepts at most ",
+                                 IntegrityAnalysis:::.apiMaxRows, " rows and ",
+                                 IntegrityAnalysis:::.apiMaxCols, " columns"),
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
+                deleted = TRUE))
+  }
   list(ok = TRUE, file = name, engine = r$engine,
        # scrubbed and length-bounded like /analyze's (screen
        # 2026-09-07-1654, F3): a flag quotes lines from the document

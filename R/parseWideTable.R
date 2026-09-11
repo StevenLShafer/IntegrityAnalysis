@@ -233,6 +233,39 @@
 # (NA when the caller does not know - the server substitutes the file
 # stem). Returns list(trial, data, arms, skipped), or NULL when no line
 # parsed.
+# THE WIDE READER IS BOUNDED BEFORE IT BUILDS (security screen
+# 2026-09-10-1628, F1 - HIGH). Every count row of a journal-style table
+# adds category columns named from the author's label, and every output
+# line is a list the width of every column; nothing capped either, so a
+# 23 KB sheet of 1,000 distinct "n (%)" rows built a 2,000 x 2,009 frame
+# in 237 s on one thread, and a workbook of thousands of "Trial:" blocks
+# (3,333 fit one sheet under the row cap) would have folded to a frame
+# of billions of cells and killed the process for memory - every gate on
+# the way in passed, because they measure bytes, sheets and rows, not
+# what the reader makes of them. The bounds are the ones the API's
+# analysis already applies (.iaMaxLevelColumns = .apiMaxCols for the
+# category columns; .iaMaxWideLines = .apiMaxRows for the template
+# lines), counted as the rows are classified and again across a file's
+# blocks, and a table past them is refused with a reason BEFORE a line
+# is built - by a classed condition both callers turn into a refusal
+# rather than a fallback (a file the wide reader refuses is not read
+# again as a template: the same sheet would cost the same).
+.iaMaxWideLines <- 5000L   # template lines a journal-style file may become: .apiMaxRows
+.iaWideTooLarge <- function(msg)
+  stop(structure(class = c("iaWideTooLarge", "error", "condition"),
+                 list(message = msg, call = NULL)))
+.wideCheckWidth <- function(catColumns)
+  if (length(catColumns) > .iaMaxLevelColumns)
+    .iaWideTooLarge(sprintf(paste("the journal-style table would need %d category columns",
+                                  "(one per count level and its complement); the limit is %d -",
+                                  "a baseline table's categorical variables have a handful of",
+                                  "levels each"), length(catColumns), .iaMaxLevelColumns))
+.wideCheckLines <- function(nLines)
+  if (nLines > .iaMaxWideLines)
+    .iaWideTooLarge(sprintf(paste("the journal-style table would become %d template lines",
+                                  "(one per variable per arm); the limit is %d"),
+                            nLines, .iaMaxWideLines))
+
 .wideParseBlock <- function(cells, hdr, trial) {
   header  <- cells[hdr, ]
   armCols <- which(vapply(seq_len(ncol(cells))[-1], function(j)
@@ -331,6 +364,7 @@
 
   dataRows <- seq(hdr + 1L, length.out = nrow(cells) - hdr)
   for (r in dataRows) {
+    .wideCheckWidth(catColumns)          # screen 1628 F1: refuse before the build
     rawLabel <- cells[r, 1]
     bodyTxt  <- cells[r, armCols]
     if (!nzchar(trimws(rawLabel)) && !any(nzchar(trimws(bodyTxt)))) {
@@ -671,6 +705,11 @@
   # interior empty cell becomes an all-NA line (holding the position, and
   # painting yellow in the grid) while TRAILING empties - the generator's
   # padding for a variable with fewer arms - produce no line at all.
+  .wideCheckWidth(catColumns)
+  .wideCheckLines(sum(vapply(outRows, function(rr) {
+    filled <- which(!vapply(rr$perArm, is.null, logical(1)))
+    if (length(filled) == 0) 0L else max(filled)
+  }, numeric(1))))
   allCols <- c(.ppBaseColumns(), if (anyMedian) c("Q1", "Q3"), catColumns)
   rows <- list()
   for (rr in outRows) {
@@ -720,6 +759,18 @@
 #'   it), `data` is a template-format frame, `skipped` names each
 #'   unusable row and why (the app turns these into red grid rows).
 #' @noRd
+# A block joins the file's list only while the file as a whole is within
+# the bounds (screen 1628 F1): the lines add up, and the category columns
+# are the UNION across blocks - which is the width of the frame the
+# callers build from them.
+.wideAddBlock <- function(blocks, blk) {
+  blocks[[length(blocks) + 1]] <- blk
+  base <- c(.ppBaseColumns(), "Q1", "Q3")
+  .wideCheckLines(sum(vapply(blocks, function(b) nrow(b$data), integer(1))))
+  .wideCheckWidth(unique(unlist(lapply(blocks, function(b) setdiff(names(b$data), base)))))
+  blocks
+}
+
 parseWideTable <- function(path, ext) {
   sheetList <- tryCatch(.wideRawCells(path, ext), error = function(e) NULL)
   if (is.null(sheetList)) return(NULL)
@@ -741,7 +792,7 @@ parseWideTable <- function(path, ext) {
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
                                sub("^Trial:\\s*", "", cells[markers[b], 1]))
-        if (!is.null(blk)) blocks[[length(blocks) + 1]] <- blk
+        if (!is.null(blk)) blocks <- .wideAddBlock(blocks, blk)
       }
     } else {
       hdr <- .wideHeaderRow(cells)
@@ -753,7 +804,7 @@ parseWideTable <- function(path, ext) {
                    grepl("(?i)^sheet ?\\d*$", sheetName))
         NA_character_ else sheetName
       blk <- .wideParseBlock(cells, hdr, trial)
-      if (!is.null(blk)) blocks[[length(blocks) + 1]] <- blk
+      if (!is.null(blk)) blocks <- .wideAddBlock(blocks, blk)
     }
   }
   if (length(blocks) == 0) NULL else blocks

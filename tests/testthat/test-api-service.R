@@ -887,3 +887,26 @@ test_that("a trial past the pool ceiling is a 422 at the analysis stage on the w
   expect_equal(b$issues[[1]]$code, "error")
   expect_match(b$issues[[1]]$note, "share a null law")
 })
+
+# /parse APPLIES THE TABLE GATE /analyze HAS (security screen 2026-09-10-1628,
+# F1): templateCsv never serialises a table the service would refuse to
+# analyse for its rows or columns. Read through the running service.
+test_that("a template past the row limit is a 422 on /parse, not a templateCsv of thousands of lines (screen 1628 F1)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  n <- .apiMaxRows + 2L
+  d <- data.frame(TRIAL = "T", ROW = rep(sprintf("V%05d", seq_len(n / 2)), each = 2),
+                  N = 10, MEAN = 50, SD = 10, stringsAsFactors = FALSE)
+  f <- file.path(tempdir(), "too-many-rows.csv")
+  utils::write.csv(d, f, row.names = FALSE)
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 422)
+  b <- httr2::resp_body_json(r)
+  expect_false(isTRUE(b$ok))
+  expect_match(b$reasons[[1]], "rows", fixed = TRUE)
+  expect_match(b$reasons[[1]], as.character(.apiMaxRows), fixed = TRUE)
+  expect_lt(nchar(b$templateCsv[[1]]), 500)              # the empty template, not the table
+})

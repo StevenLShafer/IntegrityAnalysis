@@ -767,6 +767,19 @@
 # rbind two data frames that may not share all columns, filling the gaps with
 # NA.  Used when merging deterministic and AI-derived rows, which can name
 # different category columns.
+# Every frame at once, on the union of their columns, in one rbind - the
+# shape the app uses to combine files (screen 2026-09-10-1628, F1: folding
+# .ppRbindFill pairwise copies the accumulated frame at every step).
+.ppRbindFillAll <- function(frames) {
+  frames <- Filter(function(f) !is.null(f) && nrow(f) > 0, frames)
+  if (length(frames) == 0) return(NULL)
+  allCols <- unique(unlist(lapply(frames, names)))
+  do.call(rbind, lapply(frames, function(d) {
+    for (cn in setdiff(allCols, names(d))) d[[cn]] <- NA
+    d[, allCols, drop = FALSE]
+  }))
+}
+
 .ppRbindFill <- function(a, b) {
   if (is.null(a) || nrow(a) == 0) return(b)
   if (is.null(b) || nrow(b) == 0) return(a)
