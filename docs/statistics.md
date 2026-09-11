@@ -283,10 +283,14 @@ here so that the discrepancy is not rediscovered as a defect.
 
 The rows' evidence is summed as Stouffer's z-scores, and that sum is
 judged against its own simulated null: every replicate of every row is
-ranked within its row, given the mid-p its rank implies, floored and
-z-scored exactly as the observed row is, and the z's are summed across
-rows replicate by replicate. That is legitimate because the rows are
-simulated independently. The observed sum is compared with the
+given the mid-p its statistic implies, floored and z-scored exactly as
+the observed row is, and the z's are summed across rows replicate by
+replicate. The mapping from statistic to mid-p is the row's own
+empirical one when its null law is its alone, and a single pooled one
+over the union of their draws when several rows share a law (the
+paragraph on the zero tolerance above says how a law is recognised);
+every row still draws its own independent replicates. That is
+legitimate because the rows are simulated independently. The observed sum is compared with the
 simulated sums, ties counting half. The result is a trial p judged at
 the same rounding and the same N as the data — not against a normal
 table that assumes continuous, uniform row p's — and so one that is
