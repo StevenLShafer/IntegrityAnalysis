@@ -64,23 +64,43 @@
 # whose simulated nulls are the same distribution share ONE score mapping
 # in the exact combination - see the stage loop. A continuous or median
 # row's null is fixed by every numeric input its simulation reads, so the
-# key is all of them, formatted to full precision; the categorical branch
-# keys on its margins (see there). Rows with different inputs get
-# different keys and are mapped, as before, through their own draws.
-.iaNullKey <- function(kind, ROWS) {
-  cols <- intersect(c("N", "MEAN", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
+# key is all of them, formatted to full precision - and ONLY them, in
+# the form the simulation reads them (fourth full-pass audit 2026-09-11,
+# F1): the individual arm means never reach a simulate closure. The
+# continuous replicate draws its common location about the N-weighted
+# pooled mean (Meanmean) and the median replicate about the N-weighted
+# pooled median (medPool); each arm's own mean enters nowhere else -
+# the observed statistic uses it, the null does not - except that the
+# direct-draw route's representability gate reads the largest |MEAN| of
+# the row, and the route itself changes the simulation, so the route
+# per arm is in the key in its place. So a row printed (0, 0) and one
+# printed (-1, 1), same N, SD and precision, are one law: the audit's
+# five such rows read 0.008575 at seed 42 where the same draws, mapped
+# through one law, give 0.010285 (the other side of 0.01), and seven
+# median rows read 0.01074 for a same-draw 0.009825. The categorical
+# branch keys on its margins (see .iaCategoryKey). Rows with different
+# inputs get different keys and are mapped, as before, through their
+# own draws.
+.iaNullKey <- function(kind, ROWS, direct = NULL) {
+  cols <- intersect(c("N", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
                       "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(ROWS))
-  # The arms are a SET (final-brief independent audit 2026-09-11, F1,
-  # read across from the categorical key): the statistic is symmetric in
-  # the arms, so a row whose arms are listed in another order has the
-  # same law. The arms are put in one canonical order - lexicographic
-  # over the key columns - before they are written into the key, and
-  # the row's own draws are unchanged (the key names the mapping, never
-  # the simulation).
+  # The arms are a MULTISET (final-brief independent audit 2026-09-11,
+  # F1, read across from the categorical key): the statistic and the
+  # pooled variance and quartiles are symmetric in the arms, so a row
+  # whose arms are listed in another order has the same law, and so has
+  # a row whose equal-sized arms exchange their SDs or quartiles. The
+  # arms are put in one canonical order - lexicographic over the key
+  # columns - before they are written into the key, and the row's own
+  # draws are unchanged (the key names the mapping, never the simulation).
   fmt <- lapply(cols, function(cn) format(ROWS[[cn]], digits = 17))
+  if (!is.null(direct)) fmt <- c(fmt, list(ifelse(direct, "direct", "full")))
   ord <- do.call(order, fmt)
-  paste(kind, paste(vapply(fmt, function(v) paste(v[ord], collapse = ","), character(1)),
-                    collapse = ";"))
+  # the pooled mean, computed exactly as the simulate closures compute
+  # it, so that identical inputs give identical bits
+  pooled <- format(sum(ROWS$N * ROWS$MEAN) / sum(ROWS$N), digits = 17)
+  paste(kind, pooled,
+        paste(vapply(fmt, function(v) paste(v[ord], collapse = ","), character(1)),
+              collapse = ";"))
 }
 
 # THE CATEGORICAL LAW'S KEY. r2dtable's law depends on the margins alone,
@@ -1421,7 +1441,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
                                   nt <- c(.iaFinePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN, same),
                                           .iaCoarsePrecisionNote(ROWS$MEAN, ROWS$ROUND_MEAN))
                                   paste(nt[nzchar(nt)], collapse = "; ") },
-                         zeroTol = zt, key = .iaNullKey("continuous", ROWS))
+                         zeroTol = zt, key = .iaNullKey("continuous", ROWS, direct))
         } else {
           # FIX: drop = FALSE added. With a single category column,
           # ROWS[,CategoryNames] dropped to a bare vector and the

@@ -1009,3 +1009,35 @@ test_that("a fixture with one categorical table transposed reads the same trial 
   p <- suppressWarnings(as.numeric(res$P[!is.na(res$KIND) & res$KIND == "summary"][1]))
   expect_gt(p, 0.008); expect_lt(p, 0.015)                 # exact 0.011146; 0.003285 on 6db32ee
 })
+
+# THE POOLED-MEAN TWINS THROUGH THE WIRE (fourth full-pass independent
+# audit 2026-09-11, F1): five continuous variables of two arms, N 30, SD
+# 6, integer means and observations, SD to one decimal - four printed
+# (0, 0) and one (-1, 1). The individual means never reach the
+# simulation (only their N-weighted mean does), so the five rows are one
+# law; the key listed the means and gave V03 a mapping of its own, and
+# the trial read 0.008575 at seed 42 (7c6583f) where the same draws
+# mapped through one law give 0.010285 - the other side of the screen's
+# 0.01 - and an independent two-million-replicate reference gives
+# 0.0107 (0.0105-0.0110). The fixture is the auditor's
+# evidence-2026-09-11-full2/fixture-symmetric-refined-continuous-J5-s42.csv,
+# written here line for line, as a real multipart /analyze request.
+test_that("continuous rows with one pooled mean and different arm means read one law over real HTTP (audit 2026-09-11 full2, F1)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  d <- data.frame(TRIAL = "T", ROW = rep(sprintf("V%02d", 1:5), each = 2),
+                  N = 30, MEAN = 0, SD = 6, ROUND_MEAN = 0, ROUND_DISPERSION = 1, ROUND_OBSERVATION = 0,
+                  stringsAsFactors = FALSE)
+  d$MEAN[5:6] <- c(-1, 1)                                  # V03: the same pooled mean, arms apart
+  f <- file.path(tempdir(), "pooled-mean-twins-J5.csv")
+  utils::write.csv(d, f, row.names = FALSE)
+  r <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  res <- utils::read.csv(text = b$resultsCsv, stringsAsFactors = FALSE)
+  p <- suppressWarnings(as.numeric(res$P[!is.na(res$KIND) & res$KIND == "summary"][1]))
+  expect_gt(p, 0.01); expect_lt(p, 0.0135)                 # 0.0116 at 10,000 replicates (reference 0.0107); 0.008575 on 7c6583f
+})
