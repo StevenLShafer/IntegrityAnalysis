@@ -369,9 +369,11 @@
 # described, with no flag. So an id within the bound is used as it is,
 # and a longer one becomes its first (bound - 16) bytes, a space, "#"
 # and the first twelve hex digits of the SHA-1 of the WHOLE id: at most
-# 198 bytes, and two ids that differ anywhere are two trials (a
-# collision needs two ids agreeing on 48 bits of the digest as well as
-# 184 bytes of text). The clip is byte-wise (.ppClip) and the digest is
+# 198 bytes, and two ids that differ anywhere are two trials. The
+# digest distinguishes ids that differ by accident; it is not a
+# security boundary - an author who wants two blocks read as one trial
+# can simply name them alike (screen 2026-09-11-1046, N1). The clip is
+# byte-wise (.ppClip) and the digest is
 # of the string's bytes, so the label is bounded whatever the encoding.
 # The same id in two blocks, or on two sheets, still names one trial.
 .wideTrialId <- function(id) {
