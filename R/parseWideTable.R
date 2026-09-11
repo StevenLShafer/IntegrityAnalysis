@@ -99,9 +99,33 @@
 # and, with the compressed-stream refusal below, bounded in memory by the
 # on-disk cap; the measure also bounds every later line, which nothing
 # bounded before.
+# ...and measured as a STREAM of bytes (security screen 2026-09-10-2047,
+# F1 and F4): readLines() over the file held a pointer per line - 25 MiB
+# of newline bytes alone was 550 MB - and opened the file through
+# file() in text mode, which inflates every compressed format R knows
+# (the magic list below is R's, and R's list grows by version: zstd
+# arrived in 4.5.0). file(path, "rb") does not inflate, readBin() in
+# fixed chunks holds one chunk, and the longest run between newline
+# bytes is the longest line: constant memory, linear time, immune to
+# inflation whatever the bytes are.
 .iaCsvLongLine <- function(path) {
-  lines <- readLines(path, warn = FALSE, encoding = "bytes")
-  length(lines) && any(nchar(lines, type = "bytes") > .iaCsvMaxLineBytes)
+  con <- file(path, "rb"); on.exit(close(con))
+  run <- 0L
+  repeat {
+    chunk <- readBin(con, "raw", n = 2^18)
+    if (!length(chunk)) break
+    nl <- which(chunk == as.raw(0x0a))
+    if (!length(nl)) {
+      run <- run + length(chunk)
+    } else {
+      # the run that ends at the first newline, the runs between, the tail
+      longest <- max(run + nl[1] - 1L, if (length(nl) > 1L) max(diff(nl)) - 1L else 0L)
+      if (longest > .iaCsvMaxLineBytes) return(TRUE)
+      run <- length(chunk) - nl[length(nl)]
+    }
+    if (run > .iaCsvMaxLineBytes) return(TRUE)
+  }
+  run > .iaCsvMaxLineBytes
 }
 # A COMPRESSED STREAM NAMED .csv IS REFUSED BY ITS BYTES (security screen
 # 2026-09-10-2004, F2). R's file() in text mode detects gzip, bzip2 and
@@ -114,11 +138,19 @@
 # same vector was closed for JATS on 2026-09-03 (.ppJatsOK, libxml2's
 # zlib) with a magic-byte check; this is that check for CSV, read with
 # readBin(), which does not inflate.
+# The magics are R's own list (src/main/connections.c, R 4.5): gzip,
+# bzip2, xz, LZMA-alone in both spellings R accepts, and zstd (screen
+# 2026-09-10-2047, F1: the first three alone left zstd and LZMA - a 6 KB
+# zstd holding a 200 MB line, 32,300:1 - to inflate inside the gate).
 .iaCsvCompressed <- function(path) {
   b <- readBin(path, "raw", n = 6L)
-  if (length(b) >= 2L && identical(b[1:2], as.raw(c(0x1f, 0x8b)))) return("gzip")
-  if (length(b) >= 3L && identical(b[1:3], as.raw(c(0x42, 0x5a, 0x68)))) return("bzip2")
-  if (length(b) >= 6L && identical(b[1:6], as.raw(c(0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00)))) return("xz")
+  starts <- function(...) { m <- as.raw(c(...)); length(b) >= length(m) && identical(b[seq_along(m)], m) }
+  if (starts(0x1f, 0x8b)) return("gzip")
+  if (starts(0x42, 0x5a, 0x68)) return("bzip2")
+  if (starts(0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00)) return("xz")
+  if (starts(0x5d, 0x00, 0x00, 0x80, 0x00)) return("lzma")
+  if (starts(0xff, 0x4c, 0x5a, 0x4d, 0x41, 0x00)) return("lzma")
+  if (starts(0x28, 0xb5, 0x2f, 0xfd)) return("zstd")
   NULL
 }
 # The one reason a CSV is refused before it is read, or NULL: the callers
