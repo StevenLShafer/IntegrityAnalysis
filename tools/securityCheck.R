@@ -299,10 +299,13 @@ if (file.exists("R/parseWideTable.R")) {
   # ...and the id is clipped and hashed EXACTLY ONCE in the whole body,
   # never inside the counter loop (screen 2026-09-11-1407 F1; the 1455 F2
   # note: fail CLOSED - a loop the anchors cannot locate is a finding, not
-  # a pass). .ppClip(id and digest::digest(id must each appear once, the
+  # a pass). .ppClip(id and digest::digest(id must each occur once, the
   # two hoisted assignments; a second occurrence means one is in the loop.
-  if (sum(grepl("\\.ppClip\\(id,", tl)) != 1L ||
-      sum(grepl("digest::digest\\(id", tl)) != 1L)
+  # Count INVOCATIONS, not matching lines - two calls on one line count as
+  # two (CodeRabbit on #310) - via gregexpr over the whole body.
+  nOccur <- function(pat, lines)
+    sum(vapply(gregexpr(pat, lines), function(m) if (m[1] == -1L) 0L else length(m), integer(1)))
+  if (nOccur("\\.ppClip\\(id,", tl) != 1L || nOccur("digest::digest\\(id", tl) != 1L)
     note("R/parseWideTable.R: .wideTrialLabels() must clip and hash the id exactly once each (outside the counter loop) - a second occurrence is the re-hash the loop must not do (screen 2026-09-11-1407 F1; 1455 F2)")
   tb <- pwBody(".wideTrialId")
   if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||

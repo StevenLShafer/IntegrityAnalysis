@@ -50,7 +50,7 @@ test_that("a padded non-ASCII marker cell is refused before the quadratic read, 
   t <- system.time(r <- .apiReadUpload(g, "attack.xlsx"))[["elapsed"]]
   expect_lt(t, 5)                                           # 28 s on ba6f5ea, quadratic to hours
   expect_false(isTRUE(r$ok))                                # refused: the string-run bound
-  expect_match(r$reason, "100 MB|not read", fixed = FALSE)  # the decompression preflight's message
+  expect_match(r$reasons, "100 MB|not read", fixed = FALSE)  # the decompression preflight's message
 })
 
 test_that("the guard scales: a 2 MB cell is refused as cheaply as a 1 MB one (screen 1455 F1, the differential shape)", {
@@ -74,6 +74,32 @@ test_that(".apiXlsxStringRunOK: it bounds the longest run, not the total, and st
             file.path(d, "xl", "sharedStrings.xml"), eos = NULL)
   z <- tempfile(fileext = ".zip"); zip::zip(z, "xl/sharedStrings.xml", root = d)
   expect_false(.apiXlsxStringRunOK(z, "xl/sharedStrings.xml"))
+})
+
+test_that("a CDATA marker cell is refused, not silently emptied (screen 1455 F1; CodeRabbit on #310)", {
+  # openxlsx returns a CDATA cell empty in 0 s (no quadratic), but the
+  # trial id is silently lost; the "<"-run heuristic would be fooled by
+  # the internal "<" bytes, so the preflight refuses any "<!" markup in
+  # the string parts outright
+  cells <- rbind(c("Trial: PLACEHOLDERID", "", ""), c("Variable", "Arm A (n=10)", "Arm B (n=10)"),
+                 c("Age, mean (SD)", "45.3 (12.1)", "46.1 (11.8)"))
+  f <- tempfile(fileext = ".xlsx"); wb <- createWorkbook(); addWorksheet(wb, "S")
+  writeData(wb, "S", as.data.frame(cells, stringsAsFactors = FALSE), colNames = FALSE)
+  saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d)
+  ss <- file.path(d, "xl", "sharedStrings.xml")
+  s <- readChar(ss, file.size(ss), useBytes = TRUE)
+  inner <- paste(rep("a<b", 2e5), collapse = "")                     # over the run cap, and full of "<"
+  # replace only the TEXT content, so it works whatever attributes the
+  # <t> tag carries: CDATA is valid element content
+  s2 <- sub("Trial: PLACEHOLDERID", paste0("<![CDATA[", inner, "]]>"), s, fixed = TRUE)
+  stopifnot(!identical(s2, s))
+  writeChar(s2, ss, eos = NULL, useBytes = TRUE)
+  writeBin(as.raw(sample(0:255, 3e5, TRUE)), file.path(d, "docProps", "pad.bin"))
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d)
+  expect_false(.apiXlsxStringRunOK(g, utils::unzip(g, list = TRUE)$Name))
+  r <- .apiReadUpload(g, "cdata.xlsx")
+  expect_false(isTRUE(r$ok))
 })
 
 test_that("an ordinary workbook still reads (the guard does not refuse real tables)", {

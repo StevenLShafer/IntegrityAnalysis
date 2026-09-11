@@ -648,24 +648,36 @@
 
 # FALSE when any string-bearing part of the workbook holds a run of more
 # than .iaMaxXlsxStringRun bytes without a "<" - an upper bound on a
-# single cell's text, since an XML text node contains no literal "<".
-# The parts are the shared-string table and every worksheet (a hostile
-# file may carry inline strings instead of shared ones). Each is read
-# from the zip through an inflating connection in bounded chunks, and
-# the scan bails at the first over-long run, so a crafted huge cell is
-# detected within one chunk and never handed to openxlsx.
+# single cell's text, since an XML text node contains no literal "<" -
+# or carries a "<!" markup declaration (a CDATA section or a comment).
+# The "<"-run bound assumes cell text has no literal "<"; CDATA breaks
+# that, so a "<![CDATA[ ... ]]>" body could hide an over-long run behind
+# its internal "<" bytes (CodeRabbit on #310). openxlsx 4.2.8.1 returns
+# such a cell empty in 0 s (no quadratic, but the id is silently lost),
+# and no baseline-table writer emits CDATA into a string part, so a "<!"
+# in these parts is refused outright rather than trusted. The parts are
+# the shared-string table and every worksheet (a hostile file may carry
+# inline strings instead of shared ones). Each is read from the zip
+# through an inflating connection in bounded chunks, and the scan bails
+# at the first over-long run or "<!", so a crafted cell is detected
+# within one chunk and never handed to openxlsx.
 .apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun) {
   parts <- names[grepl("(^|/)xl/sharedStrings\\.xml$", names) |
                  grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
-  lt <- as.raw(0x3c)
+  lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
   for (nm in parts) {
     con <- tryCatch(unz(path, nm, open = "rb"), error = function(e) NULL)
     if (is.null(con)) next
-    run <- 0L; ok <- TRUE
+    run <- 0L; ok <- TRUE; endsWithLt <- FALSE
     repeat {
       b <- readBin(con, "raw", n = 1048576L)
       if (length(b) == 0) break
+      if (endsWithLt && b[1] == bang) { ok <- FALSE; break }         # "<!" split across the chunk boundary
       pos <- which(b == lt)
+      # a "<" immediately followed by "!" is a markup declaration (CDATA,
+      # comment); refuse it - text nodes never begin one
+      inner <- pos[pos < length(b)]
+      if (length(inner) && any(b[inner + 1L] == bang)) { ok <- FALSE; break }
       if (!length(pos)) {
         run <- run + length(b)
         if (run > cap) { ok <- FALSE; break }
@@ -675,6 +687,7 @@
         run <- length(b) - pos[length(pos)]                          # the tail run, carried out
         if (run > cap) { ok <- FALSE; break }
       }
+      endsWithLt <- b[length(b)] == lt                               # a "<" at the very end: check "!" next chunk
     }
     close(con)
     if (!ok) return(FALSE)
