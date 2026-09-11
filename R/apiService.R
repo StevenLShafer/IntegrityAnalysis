@@ -734,6 +734,18 @@
     # A journal-style table the wide reader refuses for size (screen
     # 2026-09-10-1628, F1) is a refusal with the reason, not a fall-through
     # to the template reader: the same sheet would cost the same there.
+    # A CSV is gated ONCE, here, before either reader (screen 2026-09-10-1856,
+    # F2): a line over .iaCsvMaxLineBytes among the first five (read.csv is
+    # quadratic in it), or more columns than the sheet cap. Inside the readers
+    # the same refusal was an error the fallback swallowed, so the caller saw
+    # "could not read" with no reason.
+    if (ext == "csv") {
+      msg <- .iaCsvRefusal(path)
+      if (!is.null(msg))
+        return(list(ok = FALSE, reasons = paste0(name, ": ", msg),
+                    data = NULL, skipped = NULL, flags = character(0),
+                    engine = NA_character_))
+    }
     wide <- tryCatch(parseWideTable(path, ext),
                      iaWideTooLarge = function(e) e, error = function(e) NULL)
     if (inherits(wide, "iaWideTooLarge"))
@@ -769,7 +781,8 @@
     d <- tryCatch({
       # bounded like .wideRawCells (the sparse-sheet expansion, 2026-09-05)
       if (ext == "csv") {
-        if (.iaCsvTooWide(path)) stop(.iaSheetCapMessage("the file"))
+        msg <- .iaCsvRefusal(path)          # a long line or too many columns (screen 1856 F2)
+        if (!is.null(msg)) stop(msg)
         # THE VALUE COLUMNS ARE READ AS TEXT (independent audit 2026-09-09, F5).
         # read.csv() coerces "50.000" to the double 50 before the validator can
         # count its trailing zeros, so the precision the spreadsheet route now
