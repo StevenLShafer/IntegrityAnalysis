@@ -1,0 +1,43 @@
+{
+  "found": true,
+  "notes": "",
+  "arms": [
+    {
+      "name": "A",
+      "n": 90
+    },
+    {
+      "name": "B",
+      "n": 91
+    }
+  ],
+  "continuous": [],
+  "categorical": [
+    {
+      "label": "Category",
+      "categories": [
+        "N",
+        "MEAN",
+        "SD"
+      ],
+      "values": [
+        {
+          "arm": "A",
+          "counts": [
+            30,
+            50,
+            10
+          ]
+        },
+        {
+          "arm": "B",
+          "counts": [
+            30,
+            51,
+            10
+          ]
+        }
+      ]
+    }
+  ]
+}

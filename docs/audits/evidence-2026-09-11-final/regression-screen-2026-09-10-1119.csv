@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-1119.R","a trial column blank in every cell is filled from the file name and analysed (screen 1119 F1)",5,0,0,0,0,""
+"test-screen-2026-09-10-1119.R","a trial column blank in SOME cells is refused, cell by cell, never analysed",5,0,0,0,0,""
+"test-screen-2026-09-10-1119.R","the validator: all blank defaults like an absent column; some blank fails with the cells named",8,0,0,0,0,""

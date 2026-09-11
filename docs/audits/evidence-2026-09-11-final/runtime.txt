@@ -1,0 +1,6 @@
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32
+Locale: C
+RNG: Mersenne-Twister, Inversion, Rejection
+Audited commit: 7fd654589ddbbaa5bf03e96aad2aecbca9576bb7
+Source: isolated detached git worktree; shared checkout and dependencies unchanged.

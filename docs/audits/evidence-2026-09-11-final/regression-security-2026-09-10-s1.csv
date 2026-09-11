@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-security-2026-09-10-s1.R","identical duplicate headers survive the refusal's template, and the resubmission stays refused (security audit 2026-09-10, S1)",7,0,0,0,0,""
+"test-security-2026-09-10-s1.R","/parse returns both columns too",1,0,0,0,0,""
+"test-security-2026-09-10-s1.R","the serializer keeps every column of a frame with duplicate names, base columns first",1,0,0,0,0,""

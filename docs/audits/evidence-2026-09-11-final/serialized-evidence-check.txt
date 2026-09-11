@@ -1,0 +1,1 @@
+Checked 44 RDS files: no functions, environments, or Windows paths.

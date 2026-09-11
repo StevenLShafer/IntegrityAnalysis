@@ -1,0 +1,8 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-0536.R","the cell budget bounds the block, not each arm on its own",3,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","a block that fits is still read, and the answer is unchanged",3,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","a Latin-1 CSV survives the NEXT call, not just this one",4,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","undecodable bytes in a VALUE cell are handled too",3,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","the Shiny spelling is covered as well as the API's",3,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","an ordinary ASCII CSV is unchanged by all of this",2,0,0,0,0,""
+"test-screen-2026-09-10-0536.R","the hover sentence counts one extreme, which is what it says",3,0,0,0,0,""

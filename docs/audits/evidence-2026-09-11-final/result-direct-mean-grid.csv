@@ -1,0 +1,4 @@
+"TRIAL","ROW","P","CI95","M","NOTE","KIND"
+"Audit","Mean-grid","0.0047","0 to 0.01","1e+05","attainable floor; the stated mean precision (6 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page","variable"
+NA,"Summary","0.0047","0 to 0.01",NA,"","summary"
+NA,NA,NA,NA,NA,NA,NA
