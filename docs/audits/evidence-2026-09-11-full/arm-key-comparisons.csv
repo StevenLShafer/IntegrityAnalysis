@@ -1,0 +1,4 @@
+"branch","keys","integer_less","integer_ties","integer_midp","ok","p","CI95","M","note"
+"continuous",1,125,1,0.01255,TRUE,"0.01255","","10000",""
+"direct",1,140,1,0.1405,TRUE,"0.1405","","1000",""
+"median",1,34,1,0.000345,TRUE,"0.000345","0.00024 to 0.00049","1e+05",""

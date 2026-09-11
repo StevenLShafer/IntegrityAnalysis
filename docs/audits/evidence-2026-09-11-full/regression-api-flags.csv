@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-api-flags.R","the request's directory is scrubbed out of a flag",3,0,0,0,0,""
+"test-api-flags.R","a long flag is truncated, and the truncation is marked",2,0,0,0,0,""
+"test-api-flags.R","a long flag of multi-byte characters is truncated by BYTES",3,0,0,0,0,""
+"test-api-flags.R","a long ARRAY of flags is truncated, and says how many were dropped",3,0,0,0,0,""
+"test-api-flags.R","nothing to say stays nothing",3,0,0,0,0,""

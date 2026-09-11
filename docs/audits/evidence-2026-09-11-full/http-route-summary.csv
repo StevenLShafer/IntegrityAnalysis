@@ -1,0 +1,11 @@
+"case","status","ok","trials","overallP"
+"J9-baseline-seed42",200,TRUE,1,"0.0113"
+"J9-flip-extreme-seed42",200,TRUE,1,"0.0113"
+"J14-baseline-seed42",200,TRUE,1,"5e-04"
+"J14-flip-extreme-seed42",200,TRUE,1,"5e-04"
+"all-excluded-trial",200,TRUE,2,"0.0582"
+"http-duplicate",422,FALSE,NA,NA
+"http-partial-trial",422,FALSE,NA,NA
+"http-identical-headers",422,FALSE,NA,NA
+"transpose-J9-extreme-s42",200,TRUE,1,"0.0033"
+"transpose-J14-extreme-s42",200,TRUE,1,"1e-04"
