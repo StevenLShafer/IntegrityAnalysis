@@ -731,7 +731,15 @@
                     data = NULL, skipped = NULL, flags = character(0),
                     engine = NA_character_))
     }
-    wide <- tryCatch(parseWideTable(path, ext), error = function(e) NULL)
+    # A journal-style table the wide reader refuses for size (screen
+    # 2026-09-10-1628, F1) is a refusal with the reason, not a fall-through
+    # to the template reader: the same sheet would cost the same there.
+    wide <- tryCatch(parseWideTable(path, ext),
+                     iaWideTooLarge = function(e) e, error = function(e) NULL)
+    if (inherits(wide, "iaWideTooLarge"))
+      return(list(ok = FALSE, reasons = paste0(name, ": ", conditionMessage(wide)),
+                  data = NULL, skipped = NULL, flags = character(0),
+                  engine = NA_character_))
     if (!is.null(wide)) {
       # The blocks are folded pairwise (security screen 2026-09-10-1554,
       # F2). .ppRbindFill() takes exactly two frames, and do.call() handed
@@ -739,9 +747,12 @@
       # style sheet, the most ordinary input) raised 'argument "b" is
       # missing' and three or more raised 'unused argument', neither
       # caught by the handlers - a 500 for every wide upload but a two-
-      # trial one, since the API's first commit. Reduce() returns a single
-      # block as it is and folds any number.
-      d <- Reduce(.ppRbindFill, lapply(wide, function(b) {
+      # trial one, since the API's first commit. The blocks are joined on
+      # the union of their columns in ONE rbind, as the app joins files
+      # (screen 2026-09-10-1628, F1: a pairwise fold copies the whole
+      # accumulated frame at every step - cubic in the blocks); the reader
+      # has already bounded the lines and the width.
+      d <- .ppRbindFillAll(lapply(wide, function(b) {
         bd <- b$data
         # the trial column by the normaliser's rule, whatever its case
         # (audit 2026-09-10 F4); filled from the file name only when the

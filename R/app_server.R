@@ -956,7 +956,16 @@ app_server <- function(input, output, session) {
         # exactly as before. One frame per trial BLOCK, because the
         # skip registry keys on a frame's single trial.
         wide <- tryCatch(parseWideTable(files$datapath[i], files$ext[i]),
+                         iaWideTooLarge = function(e) e,
                          error = function(e) NULL)
+        # a journal-style table past the reader's bounds (screen
+        # 2026-09-10-1628, F1) is refused with its reason, not read again
+        # as a template
+        if (inherits(wide, "iaWideTooLarge")) {
+          outputComments(paste0("Could not read ", files$name[i], ": ",
+                                conditionMessage(wide), "."))
+          next
+        }
         if (!is.null(wide)) {
           # one budget of unusable lines for the whole FILE, spent across
           # its blocks (screen 2026-09-07-2101, F4)
