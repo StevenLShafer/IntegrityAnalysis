@@ -48,12 +48,31 @@ test_that("the largest block the gate admits scores in seconds, not fifty", {
   # N = 4,900, not 5,000: an ambiguous cell's bracket top adds one to the
   # arm's row total, and since screen 0815 a row total over .iaMaxArmN is
   # refused before scoring - exactly as the validator would refuse it
+  # The heap high-water is measured in a FRESH process (as screen 2047's
+  # gate test measures it): inside a full suite the collector's trigger
+  # and the live baseline have grown with everything before, so the
+  # in-process figure read 420-446 MB against the 400 MB bound on 2026-09-11
+  # (R CMD check on GitHub, twice, and every local full-suite run that
+  # day) while the same call alone read well under it. The child loads
+  # the tree under test (the repo when the tests run from it, the
+  # installed package under R CMD check). The timing stays in-process.
+  skip_if_not_installed("callr")
+  root <- normalizePath(test_path("..", ".."), mustWork = FALSE)
   for (d in list(shape(4, 25, 4900, 14), shape(25, 2, 4900, 14))) {
     r <- peak(res <- fill(d))
     expect_true(isTRUE(res$resolved))
     expect_equal(res$nTables, 16384L)
     expect_lt(r$t, 20)
-    expect_lt(r$mb, 400)
+    m <- callr::r(function(d, root) {
+      if (file.exists(file.path(root, "R", "failsafeTable.R")))
+        pkgload::load_all(root, quiet = TRUE)
+      else suppressPackageStartupMessages(library(IntegrityAnalysis))
+      invisible(gc()); before <- sum(gc(reset = TRUE)[, 2])
+      res <- IntegrityAnalysis:::.ppFailsafeTableFill(d$lo, d$hi, d$cnt, d$N, partition = FALSE)
+      c(resolved = isTRUE(res$resolved), deltaMB = sum(gc()[, 6]) - before)
+    }, args = list(d, root))
+    expect_true(as.logical(m[["resolved"]]))
+    expect_lt(m[["deltaMB"]], 400)
   }
 })
 
