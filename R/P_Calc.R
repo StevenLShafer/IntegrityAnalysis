@@ -83,6 +83,24 @@
                     collapse = ";"))
 }
 
+# THE CATEGORICAL LAW'S KEY. r2dtable's law depends on the margins alone,
+# and the Pearson statistic is invariant under any permutation of the
+# arms, any permutation of the categories (final-brief independent audit
+# 2026-09-11, F1) and the transposition that exchanges the two (third
+# full-pass audit 2026-09-11, F1: the probability of a table,
+# prod(r_i!) prod(c_j!) / (N! prod(t_ij!)), and the statistic are both
+# symmetric in the roles of the two margins). So the key is the
+# UNORDERED PAIR of the two SORTED margin vectors: each vector is sorted
+# and written out, and the two strings are then put in a fixed order
+# (radix, so the order is the bytes' and not the locale's). The key
+# names the mapping only; every row still simulates from its own table
+# in its own arm order, so no pinned value moves.
+.iaCategoryKey <- function(tab) {
+  m <- c(paste(sort(rowSums(tab), decreasing = TRUE), collapse = ","),
+         paste(sort(colSums(tab), decreasing = TRUE), collapse = ","))
+  paste("category", paste(sort(m, method = "radix"), collapse = " | "))
+}
+
 # TIES BY AN EXPLICITLY BOUNDED NUMERICAL CRITERION (2026-09-07; the GPT-6
 # audit's finding F1, docs/audits/). A tie - a replicate exactly as
 # homogeneous as the printed table - is the heart of the mid-p, and it
@@ -1473,11 +1491,17 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
           # its own, and nine such rows with one recoded read 0.0033 at
           # seed 42 where the exact trial mid-p is 0.0111 (the false-
           # positive direction). Each margin vector is sorted before it
-          # is written into the key.
+          # is written into the key - and the two vectors enter the key
+          # as an UNORDERED PAIR (third full-pass independent audit
+          # 2026-09-11, F1): transposing the table exchanges the arm
+          # totals and the category totals, maps the r2dtable law onto
+          # its transpose and leaves the Pearson statistic unchanged,
+          # so (0, 100)/(2, 98) and (0, 2)/(100, 98) are one law; the
+          # sorted-but-ordered key told them apart and the nine-row
+          # trial with its extreme row transposed read 0.003285 once
+          # more. See .iaCategoryKey().
           simRow <- list(simulate = simulate, obs = statObs, kind = "category", zeroTol = 0,
-                         key = paste("category",
-                                     paste(sort(rowSums(tab), decreasing = TRUE), collapse = ","),
-                                     paste(sort(colSums(tab), decreasing = TRUE), collapse = ",")))
+                         key = .iaCategoryKey(tab))
           }
           }
         }

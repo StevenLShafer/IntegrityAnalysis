@@ -980,3 +980,32 @@ test_that("a category-relabelled fixture reads the same trial p over real HTTP (
   p <- suppressWarnings(as.numeric(res$P[!is.na(res$KIND) & res$KIND == "summary"][1]))
   expect_gt(p, 0.008); expect_lt(p, 0.015)                 # exact 0.011146; 0.003285 on baad77c
 })
+
+# THE TRANSPOSED TABLE THROUGH THE WIRE (third full-pass independent audit
+# 2026-09-11, F1): the same nine-variable fixture with the extreme
+# variable's table TRANSPOSED - its arms become (0, 2)/(100, 98), so its
+# arm totals are 2 and 198 and its category totals 100 and 100, the
+# reverse of every other variable's - posted as a real multipart /analyze
+# request at seed 42, must read the exact trial mid-p (0.011146) as its
+# baseline does, not 0.003285 (6db32ee). The fixture is the auditor's
+# evidence-2026-09-11-full/fixture-transpose-J9-extreme-s42.csv, written
+# here line for line.
+test_that("a fixture with one categorical table transposed reads the same trial p over real HTTP (audit 2026-09-11 full, F1)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  d <- data.frame(TRIAL = "T", ROW = rep(sprintf("V%02d", 1:9), each = 2),
+                  N = NA_real_, MEAN = NA_real_, SD = NA_real_, YES = 1, NO = 99, stringsAsFactors = FALSE)
+  d$YES[5:6] <- c(0, 100); d$NO[5:6] <- c(2, 98)          # V03, the extreme one, transposed: the
+                                                           # auditor's lines "V03",0,2 and "V03",100,98
+  f <- file.path(tempdir(), "J9-transpose-extreme.csv")
+  utils::write.csv(d, f, row.names = FALSE)
+  r <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(f)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  res <- utils::read.csv(text = b$resultsCsv, stringsAsFactors = FALSE)
+  p <- suppressWarnings(as.numeric(res$P[!is.na(res$KIND) & res$KIND == "summary"][1]))
+  expect_gt(p, 0.008); expect_lt(p, 0.015)                 # exact 0.011146; 0.003285 on 6db32ee
+})
