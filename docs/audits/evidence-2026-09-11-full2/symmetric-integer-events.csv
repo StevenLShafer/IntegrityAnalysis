@@ -1,0 +1,13 @@
+"case","J","M","integer_strict","integer_ties","p","matches_pooled_rank_reference"
+"symmetric-refined-continuous-J5-s42.rds",5,100000,820,417,0.010285,TRUE
+"symmetric-refined-continuous-J7-s42.rds",7,100000,83,37,0.001015,TRUE
+"symmetric-refined-direct-J5-s42.rds",5,10000,126,56,0.0154,TRUE
+"symmetric-refined-direct-J7-s42.rds",7,100000,134,59,0.001635,TRUE
+"symmetric-refined-median-J6-s42.rds",6,10000,184,62,0.0215,TRUE
+"symmetric-refined-median-J6-s43.rds",6,10000,204,50,0.0229,TRUE
+"symmetric-refined-median-J7-s42.rds",7,100000,863,219,0.009725,TRUE
+"symmetric-refined-median-J7-s43.rds",7,100000,875,215,0.009825,TRUE
+"symmetric-refined-median-J8-s42.rds",8,100000,332,86,0.00375,TRUE
+"symmetric-refined-median-J8-s43.rds",8,100000,354,104,0.00406,TRUE
+"symmetric-refined-median-J9-s42.rds",9,100000,151,52,0.00177,TRUE
+"symmetric-refined-median-J9-s43.rds",9,100000,153,48,0.00177,TRUE

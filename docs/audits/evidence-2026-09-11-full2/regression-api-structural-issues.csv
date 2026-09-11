@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-api-structural-issues.R","two columns that normalise to one name arrive as a structural issue naming the name",9,0,0,0,0,""
+"test-api-structural-issues.R","a missing required column arrives as a structural issue naming the column",5,0,0,0,0,""
+"test-api-structural-issues.R","the validator files one structural issue per problem, and none on a sound table",5,0,0,0,0,""

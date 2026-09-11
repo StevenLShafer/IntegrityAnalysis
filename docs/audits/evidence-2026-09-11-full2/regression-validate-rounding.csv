@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-validate-rounding.R","a decimal mean with an empty ROUND_MEAN validates (no crash)",3,0,0,0,0,""
+"test-validate-rounding.R","integer means with empty rounding columns stay at 0",2,0,0,0,0,""
+"test-validate-rounding.R","text in a rounding column is coerced, not fatal",2,0,0,0,0,""
+"test-validate-rounding.R","explicit rounding values are respected (no regression)",2,0,0,0,0,""

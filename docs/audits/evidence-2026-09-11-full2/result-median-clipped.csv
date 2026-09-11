@@ -1,0 +1,4 @@
+"TRIAL","ROW","P","CI95","M","NOTE","KIND"
+"Audit","Median","0.0436","0.021 to 0.069","10000","quartiles beyond the metalog's skew limit; fitted at the limit; the stated mean precision (1 decimals) exceeds the digits these values carry, and the arms are equal at the digits they print, so the p rests on that precision - check it against the page","variable"
+NA,"Summary","0.0436","0.021 to 0.069",NA,"","summary"
+NA,NA,NA,NA,NA,NA,NA

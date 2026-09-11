@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-11-full-f2.R","two 201-byte ids sharing their first 200 bytes stay two trials, bounded (audit 2026-09-11 full, F2)",13,0,0,0,0,""
+"test-audit-2026-09-11-full-f2.R","ids within the bound are untouched, and the same long id in two blocks is one trial",5,0,0,0,0,""
+"test-audit-2026-09-11-full-f2.R",".wideTrialId(): bounded, identity-preserving, deterministic, byte-wise",12,0,0,0,0,""

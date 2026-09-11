@@ -1,0 +1,3 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-2100-f3.R",".ppClip() clips to bytes, and never leaves a split multibyte character (screen 2100 F3)",6,0,0,0,0,""
+"test-screen-2026-09-10-2100-f3.R","a multibyte row label under 499 arms is 2,000 bytes in every line, not 8,000",6,0,0,0,0,""

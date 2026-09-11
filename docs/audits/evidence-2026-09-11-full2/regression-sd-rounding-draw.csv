@@ -1,0 +1,7 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-sd-rounding-draw.R","validateData infers a blank ROUND_DISPERSION from the SD's printed decimals, per variable, and keeps a supplied one",6,0,0,0,0,""
+"test-sd-rounding-draw.R","the interval a printed SD stands for: half a unit either side, never below zero, zero stays zero, blanks inferred",5,0,0,0,0,""
+"test-sd-rounding-draw.R","a coarsely printed SD changes the null the row is judged against; a finely printed one barely does",3,0,0,0,0,""
+"test-sd-rounding-draw.R","a direct caller without ROUND_DISPERSION gets the inference the validator would make",1,0,0,0,0,""
+"test-sd-rounding-draw.R","a printed SD of exactly zero is not an interval: identical arms with SD 0 still sit at p = 0.5",2,0,0,0,0,""
+"test-sd-rounding-draw.R","the interval never goes below zero, and a coarse claim the SD does not sit on is refused",4,0,0,0,0,""

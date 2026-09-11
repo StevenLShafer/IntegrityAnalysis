@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-0923.R","a header arm size near the integer limit does not sink the document",4,0,0,0,0,""
+"test-screen-2026-09-10-0923.R",".ppCountBracket() refuses in doubles, before as.integer()",3,0,0,0,0,""
+"test-screen-2026-09-10-0923.R","a derived arm size is never below the printed count",7,0,0,0,0,""

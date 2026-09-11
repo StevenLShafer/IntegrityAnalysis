@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-tie-criterion.R","the three minimum tables of margins (2, 2, 6) x (3, 7) are one tie group",5,0,0,0,0,""
+"test-tie-criterion.R","the audit's categorical row reads its exact mid-p (0.35), not a tenth of it",2,0,0,0,0,""
+"test-tie-criterion.R","five such rows combine to the exact trial mid-p (about 0.084), not 0.0002",2,0,0,0,0,""
+"test-tie-criterion.R","identical printed means with unequal arm sizes are at the attainable floor despite floating-point dust",3,0,0,0,0,""

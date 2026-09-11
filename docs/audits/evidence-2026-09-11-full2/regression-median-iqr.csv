@@ -1,0 +1,7 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-median-iqr.R","metalog coefficients recover the printed quantiles exactly",5,0,0,0,0,""
+"test-median-iqr.R","validateData accepts a well-formed median/IQR row",2,0,0,0,0,""
+"test-median-iqr.R","validateData rejects ambiguous and malformed quartile rows",4,0,0,0,0,""
+"test-median-iqr.R","median rows point the right way: identical arms alarm, different arms do not",2,0,0,0,0,""
+"test-median-iqr.R","a row beyond the metalog's skew limit is fitted at the limit and says so, not refused (2026-09-07)",6,0,0,0,0,""
+"test-median-iqr.R","calibration: honest median/IQR data give roughly uniform p",5,0,0,0,0,""

@@ -1,0 +1,647 @@
+{
+  "three_by_two": {
+    "rows": [
+      2,
+      2,
+      6
+    ],
+    "cols": [
+      3,
+      7
+    ],
+    "J": 9,
+    "minimum": [
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "next": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        3,
+        3
+      ]
+    ],
+    "q0": 0.7,
+    "q1": 0.16666666666666666,
+    "exact_trial": 0.0835896145,
+    "exact_trial_fraction": "167179229/2000000000",
+    "states": [
+      {
+        "statistic": 1.2698412698412698,
+        "rational": "80/63",
+        "probability": 0.7
+      },
+      {
+        "statistic": 2.857142857142857,
+        "rational": "20/7",
+        "probability": 0.16666666666666666
+      },
+      {
+        "statistic": 6.031746031746032,
+        "rational": "380/63",
+        "probability": 0.1
+      },
+      {
+        "statistic": 7.619047619047619,
+        "rational": "160/21",
+        "probability": 0.03333333333333333
+      }
+    ]
+  },
+  "three_by_three": {
+    "rows": [
+      2,
+      3,
+      4
+    ],
+    "cols": [
+      2,
+      3,
+      4
+    ],
+    "J": 3,
+    "minimum": [
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        2
+      ]
+    ],
+    "next": [
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        1,
+        0,
+        2
+      ],
+      [
+        1,
+        2,
+        1
+      ]
+    ],
+    "q0": 0.11428571428571428,
+    "q1": 0.05714285714285714,
+    "exact_trial": 0.0026122448979591837,
+    "exact_trial_fraction": "16/6125",
+    "states": [
+      {
+        "statistic": 1.0,
+        "rational": "1",
+        "probability": 0.11428571428571428
+      },
+      {
+        "statistic": 2.8125,
+        "rational": "45/16",
+        "probability": 0.05714285714285714
+      },
+      {
+        "statistic": 2.875,
+        "rational": "23/8",
+        "probability": 0.11428571428571428
+      },
+      {
+        "statistic": 3.0625,
+        "rational": "49/16",
+        "probability": 0.05714285714285714
+      },
+      {
+        "statistic": 3.25,
+        "rational": "13/4",
+        "probability": 0.05714285714285714
+      },
+      {
+        "statistic": 3.4375,
+        "rational": "55/16",
+        "probability": 0.11428571428571428
+      },
+      {
+        "statistic": 3.8125,
+        "rational": "61/16",
+        "probability": 0.0380952380952381
+      },
+      {
+        "statistic": 4.5,
+        "rational": "9/2",
+        "probability": 0.02857142857142857
+      },
+      {
+        "statistic": 5.125,
+        "rational": "41/8",
+        "probability": 0.05714285714285714
+      },
+      {
+        "statistic": 5.3125,
+        "rational": "85/16",
+        "probability": 0.01904761904761905
+      },
+      {
+        "statistic": 5.625,
+        "rational": "45/8",
+        "probability": 0.05714285714285714
+      },
+      {
+        "statistic": 5.6875,
+        "rational": "91/16",
+        "probability": 0.0380952380952381
+      },
+      {
+        "statistic": 6.0625,
+        "rational": "97/16",
+        "probability": 0.02857142857142857
+      },
+      {
+        "statistic": 6.1875,
+        "rational": "99/16",
+        "probability": 0.0380952380952381
+      },
+      {
+        "statistic": 6.4375,
+        "rational": "103/16",
+        "probability": 0.0380952380952381
+      },
+      {
+        "statistic": 7.0,
+        "rational": "7",
+        "probability": 0.014285714285714285
+      },
+      {
+        "statistic": 7.75,
+        "rational": "31/4",
+        "probability": 0.02857142857142857
+      },
+      {
+        "statistic": 7.875,
+        "rational": "63/8",
+        "probability": 0.01904761904761905
+      },
+      {
+        "statistic": 9.0,
+        "rational": "9",
+        "probability": 0.006349206349206349
+      },
+      {
+        "statistic": 9.25,
+        "rational": "37/4",
+        "probability": 0.01904761904761905
+      },
+      {
+        "statistic": 9.5625,
+        "rational": "153/16",
+        "probability": 0.03492063492063492
+      },
+      {
+        "statistic": 10.5625,
+        "rational": "169/16",
+        "probability": 0.009523809523809525
+      },
+      {
+        "statistic": 11.25,
+        "rational": "45/4",
+        "probability": 0.004761904761904762
+      },
+      {
+        "statistic": 13.0,
+        "rational": "13",
+        "probability": 0.002380952380952381
+      },
+      {
+        "statistic": 14.0625,
+        "rational": "225/16",
+        "probability": 0.0031746031746031746
+      },
+      {
+        "statistic": 18.0,
+        "rational": "18",
+        "probability": 0.0007936507936507937
+      }
+    ]
+  },
+  "three_equal_arms": {
+    "rows": [
+      3,
+      3,
+      3
+    ],
+    "cols": [
+      2,
+      3,
+      4
+    ],
+    "J": 3,
+    "minimum": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ]
+    ],
+    "next": [
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        1,
+        0,
+        2
+      ],
+      [
+        1,
+        1,
+        1
+      ]
+    ],
+    "q0": 0.2571428571428571,
+    "q1": 0.2571428571428571,
+    "exact_trial": 0.042507288629737607,
+    "exact_trial_fraction": "729/17150",
+    "states": [
+      {
+        "statistic": 1.5,
+        "rational": "3/2",
+        "probability": 0.2571428571428571
+      },
+      {
+        "statistic": 3.5,
+        "rational": "7/2",
+        "probability": 0.2571428571428571
+      },
+      {
+        "statistic": 5.0,
+        "rational": "5",
+        "probability": 0.12857142857142856
+      },
+      {
+        "statistic": 6.0,
+        "rational": "6",
+        "probability": 0.06428571428571428
+      },
+      {
+        "statistic": 6.5,
+        "rational": "13/2",
+        "probability": 0.21428571428571427
+      },
+      {
+        "statistic": 9.0,
+        "rational": "9",
+        "probability": 0.02142857142857143
+      },
+      {
+        "statistic": 9.5,
+        "rational": "19/2",
+        "probability": 0.04285714285714286
+      },
+      {
+        "statistic": 13.5,
+        "rational": "27/2",
+        "probability": 0.014285714285714285
+      }
+    ]
+  },
+  "three_larger": {
+    "rows": [
+      3,
+      4,
+      5
+    ],
+    "cols": [
+      2,
+      4,
+      6
+    ],
+    "J": 3,
+    "minimum": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        1,
+        1,
+        2
+      ],
+      [
+        1,
+        2,
+        2
+      ]
+    ],
+    "next": [
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        2
+      ],
+      [
+        0,
+        2,
+        3
+      ]
+    ],
+    "q0": 0.07792207792207792,
+    "q1": 0.05194805194805195,
+    "exact_trial": 0.0009462623731471767,
+    "exact_trial_fraction": "432/456533",
+    "states": [
+      {
+        "statistic": 1.1166666666666667,
+        "rational": "67/60",
+        "probability": 0.07792207792207792
+      },
+      {
+        "statistic": 1.9166666666666667,
+        "rational": "23/12",
+        "probability": 0.05194805194805195
+      },
+      {
+        "statistic": 2.066666666666667,
+        "rational": "31/15",
+        "probability": 0.1038961038961039
+      },
+      {
+        "statistic": 2.1166666666666667,
+        "rational": "127/60",
+        "probability": 0.05194805194805195
+      },
+      {
+        "statistic": 2.316666666666667,
+        "rational": "139/60",
+        "probability": 0.05194805194805195
+      },
+      {
+        "statistic": 2.8666666666666667,
+        "rational": "43/15",
+        "probability": 0.03896103896103896
+      },
+      {
+        "statistic": 3.6666666666666665,
+        "rational": "11/3",
+        "probability": 0.09090909090909091
+      },
+      {
+        "statistic": 3.8666666666666667,
+        "rational": "58/15",
+        "probability": 0.025974025974025976
+      },
+      {
+        "statistic": 3.9166666666666665,
+        "rational": "47/12",
+        "probability": 0.025974025974025976
+      },
+      {
+        "statistic": 4.2,
+        "rational": "21/5",
+        "probability": 0.025974025974025976
+      },
+      {
+        "statistic": 4.516666666666667,
+        "rational": "271/60",
+        "probability": 0.025974025974025976
+      },
+      {
+        "statistic": 4.65,
+        "rational": "93/20",
+        "probability": 0.017316017316017316
+      },
+      {
+        "statistic": 4.666666666666667,
+        "rational": "14/3",
+        "probability": 0.03463203463203463
+      },
+      {
+        "statistic": 4.916666666666667,
+        "rational": "59/12",
+        "probability": 0.06926406926406926
+      },
+      {
+        "statistic": 5.25,
+        "rational": "21/4",
+        "probability": 0.030303030303030304
+      },
+      {
+        "statistic": 5.266666666666667,
+        "rational": "79/15",
+        "probability": 0.012987012987012988
+      },
+      {
+        "statistic": 5.316666666666666,
+        "rational": "319/60",
+        "probability": 0.017316017316017316
+      },
+      {
+        "statistic": 6.0,
+        "rational": "6",
+        "probability": 0.008658008658008658
+      },
+      {
+        "statistic": 6.066666666666666,
+        "rational": "91/15",
+        "probability": 0.012987012987012988
+      },
+      {
+        "statistic": 6.516666666666667,
+        "rational": "391/60",
+        "probability": 0.008658008658008658
+      },
+      {
+        "statistic": 6.6,
+        "rational": "33/5",
+        "probability": 0.01948051948051948
+      },
+      {
+        "statistic": 6.666666666666667,
+        "rational": "20/3",
+        "probability": 0.03463203463203463
+      },
+      {
+        "statistic": 6.916666666666667,
+        "rational": "83/12",
+        "probability": 0.012987012987012988
+      },
+      {
+        "statistic": 7.2,
+        "rational": "36/5",
+        "probability": 0.006493506493506494
+      },
+      {
+        "statistic": 7.316666666666666,
+        "rational": "439/60",
+        "probability": 0.008658008658008658
+      },
+      {
+        "statistic": 7.516666666666667,
+        "rational": "451/60",
+        "probability": 0.004329004329004329
+      },
+      {
+        "statistic": 7.65,
+        "rational": "153/20",
+        "probability": 0.005772005772005772
+      },
+      {
+        "statistic": 7.666666666666667,
+        "rational": "23/3",
+        "probability": 0.01948051948051948
+      },
+      {
+        "statistic": 7.916666666666667,
+        "rational": "95/12",
+        "probability": 0.004329004329004329
+      },
+      {
+        "statistic": 8.25,
+        "rational": "33/4",
+        "probability": 0.025974025974025976
+      },
+      {
+        "statistic": 8.266666666666667,
+        "rational": "124/15",
+        "probability": 0.006493506493506494
+      },
+      {
+        "statistic": 8.4,
+        "rational": "42/5",
+        "probability": 0.005772005772005772
+      },
+      {
+        "statistic": 8.666666666666666,
+        "rational": "26/3",
+        "probability": 0.004329004329004329
+      },
+      {
+        "statistic": 8.85,
+        "rational": "177/20",
+        "probability": 0.004329004329004329
+      },
+      {
+        "statistic": 8.916666666666666,
+        "rational": "107/12",
+        "probability": 0.008658008658008658
+      },
+      {
+        "statistic": 9.0,
+        "rational": "9",
+        "probability": 0.01341991341991342
+      },
+      {
+        "statistic": 9.45,
+        "rational": "189/20",
+        "probability": 0.002886002886002886
+      },
+      {
+        "statistic": 9.866666666666667,
+        "rational": "148/15",
+        "probability": 0.0021645021645021645
+      },
+      {
+        "statistic": 9.916666666666666,
+        "rational": "119/12",
+        "probability": 0.0017316017316017316
+      },
+      {
+        "statistic": 10.65,
+        "rational": "213/20",
+        "probability": 0.002886002886002886
+      },
+      {
+        "statistic": 10.8,
+        "rational": "54/5",
+        "probability": 0.001443001443001443
+      },
+      {
+        "statistic": 10.916666666666666,
+        "rational": "131/12",
+        "probability": 0.004329004329004329
+      },
+      {
+        "statistic": 11.466666666666667,
+        "rational": "172/15",
+        "probability": 0.0010822510822510823
+      },
+      {
+        "statistic": 11.666666666666666,
+        "rational": "35/3",
+        "probability": 0.0012987012987012987
+      },
+      {
+        "statistic": 12.0,
+        "rational": "12",
+        "probability": 0.008658008658008658
+      },
+      {
+        "statistic": 12.266666666666667,
+        "rational": "184/15",
+        "probability": 0.0010822510822510823
+      },
+      {
+        "statistic": 14.25,
+        "rational": "57/4",
+        "probability": 0.0017316017316017316
+      },
+      {
+        "statistic": 14.4,
+        "rational": "72/5",
+        "probability": 0.0007215007215007215
+      },
+      {
+        "statistic": 14.666666666666666,
+        "rational": "44/3",
+        "probability": 0.0010822510822510823
+      },
+      {
+        "statistic": 18.666666666666668,
+        "rational": "56/3",
+        "probability": 0.00021645021645021645
+      }
+    ]
+  }
+}
