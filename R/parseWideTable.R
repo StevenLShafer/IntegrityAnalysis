@@ -266,7 +266,21 @@
                                   "(one per variable per arm); the limit is %d"),
                             nLines, .iaMaxWideLines))
 
-.wideParseBlock <- function(cells, hdr, trial) {
+# THE COST OF REACHING THE BOUNDS IS BOUNDED TOO (security screen
+# 2026-09-10-1715, F1 and F2 - both HIGH). The 1628 fix placed the line
+# bound AFTER the row loop and recomputed the file's totals over every
+# block on every block, so the work of reaching a refusal was itself
+# unbounded: 4,000 identical "Age, mean (SD)" rows took 141 s to be
+# refused (.ppUniqueName tried "Age", "Age 2", ... "Age k" against a
+# growing vector - cubic in the rows), and 6,666 one-line "Trial:" blocks
+# took nine minutes (the totals summed over all blocks at every block -
+# quadratic). Now the lines are counted as each row joins outRows and
+# checked against the FILE's running total (linesBefore, colsBefore come
+# in from the caller), row names are made unique through a hash set with
+# a per-base hint (amortised constant), and the file's totals are carried
+# forward rather than recomputed.
+.wideParseBlock <- function(cells, hdr, trial, linesBefore = 0L,
+                            colsBefore = character(0)) {
   header  <- cells[hdr, ]
   armCols <- which(vapply(seq_len(ncol(cells))[-1], function(j)
     nzchar(trimws(header[j])) ||
@@ -307,9 +321,39 @@
 
   outRows      <- list()   # same shape as the engine's: row / type / perArm
   skipped      <- list()
-  usedRowNames <- character(0)
   catColumns   <- character(0)
   anyMedian    <- FALSE
+  # Row names are unique within the block: the same rule as .ppUniqueName
+  # ("Age", "Age 2", "Age 3", ...) but through a hash set with a per-base
+  # hint of the next suffix to try, so a sheet of identical labels costs
+  # each row a constant, not a scan of every earlier name for every
+  # candidate (screen 1715 F1: cubic in the rows).
+  usedRowNames <- new.env(hash = TRUE, parent = emptyenv())
+  nextSuffix   <- new.env(hash = TRUE, parent = emptyenv())
+  takeRowName <- function(base) {
+    if (!nzchar(base)) base <- "Unnamed"
+    if (is.null(usedRowNames[[base]])) { usedRowNames[[base]] <- TRUE; return(base) }
+    k <- nextSuffix[[base]]; if (is.null(k)) k <- 2L
+    while (!is.null(usedRowNames[[paste(base, k)]])) k <- k + 1L
+    nm <- paste(base, k)
+    usedRowNames[[nm]] <- TRUE; nextSuffix[[base]] <- k + 1L
+    nm
+  }
+  # Every row joins outRows through addOutRow(), which counts the lines it
+  # will become (one per arm up to the last filled one, the count the
+  # build uses) against the FILE's running total and refuses mid-loop
+  # (screen 1715 F1: the bound after the loop left the loop unbounded).
+  nLines <- 0L
+  addOutRow <- function(rr) {
+    outRows[[length(outRows) + 1]] <<- rr
+    filled <- which(!vapply(rr$perArm, is.null, logical(1)))
+    nLines <<- nLines + (if (length(filled)) max(filled) else 0L)
+    .wideCheckLines(linesBefore + nLines)
+  }
+  # the width, likewise against the file's union (colsBefore is bounded
+  # by the same cap, so the difference is cheap)
+  checkWidth <- function()
+    .wideCheckWidth(c(colsBefore, setdiff(catColumns, colsBefore)))
 
   addSkip <- function(label, reason, txt)
     skipped[[length(skipped) + 1]] <<-
@@ -325,7 +369,7 @@
   catHeaderNPct <- FALSE
   catAccum  <- NULL   # list(row = <ROW label>, perArm = list of named lists)
   flushCat <- function(reset = TRUE) {
-    if (!is.null(catAccum)) outRows[[length(outRows) + 1]] <<- catAccum
+    if (!is.null(catAccum)) addOutRow(catAccum)
     catAccum <<- NULL
     if (reset) {
       catHeader     <<- NA_character_
@@ -335,8 +379,7 @@
   addCount <- function(colName, counts) {
     # counts: integer vector over arms, NA where the cell was empty
     if (is.null(catAccum)) {
-      rowName <- .ppUniqueName(catHeader, usedRowNames)
-      usedRowNames <<- c(usedRowNames, rowName)
+      rowName <- takeRowName(catHeader)
       catAccum <<- list(row = rowName, type = "category",
                         perArm = vector("list", nArms))
     }
@@ -363,8 +406,18 @@
   }
 
   dataRows <- seq(hdr + 1L, length.out = nrow(cells) - hdr)
+  # A row that parses becomes at least one line, so a block with more
+  # rows past its header than the file has lines left cannot be within
+  # the bound: refused here, before a row is tokenised (screen 1715 F1 -
+  # the per-row cost is linear now, about 3 ms, but 9,999 rows of it is
+  # still half a minute for a refusal the count alone can give).
+  if (linesBefore + length(dataRows) > .iaMaxWideLines)
+    .iaWideTooLarge(sprintf(paste("the journal-style table has %d rows past its header",
+                                  "(%d template lines already counted); the limit is %d",
+                                  "lines, and every usable row becomes at least one"),
+                            length(dataRows), linesBefore, .iaMaxWideLines))
   for (r in dataRows) {
-    .wideCheckWidth(catColumns)          # screen 1628 F1: refuse before the build
+    checkWidth()                         # screen 1628 F1: refuse before the build
     rawLabel <- cells[r, 1]
     bodyTxt  <- cells[r, armCols]
     if (!nzchar(trimws(rawLabel)) && !any(nzchar(trimws(bodyTxt)))) {
@@ -577,9 +630,7 @@
                 paste("median outside its own [Q1, Q3] in this arm, so the",
                       "arm was dropped - the other arm(s) were kept. Check",
                       "these cells against the manuscript"), txt)
-      rowName <- .ppUniqueName(if (nzchar(label)) label else "Unnamed",
-                               usedRowNames)
-      usedRowNames <- c(usedRowNames, rowName)
+      rowName <- takeRowName(if (nzchar(label)) label else "Unnamed")
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- toks[[j]]
         if (is.null(t) || t$type != "medianTriple") return(NULL)
@@ -590,8 +641,7 @@
              ROUND_MEAN = t$dec1, ROUND_DISPERSION = NA_integer_,
              ROUND_OBSERVATION = t$dec1)
       })
-      outRows[[length(outRows) + 1]] <-
-        list(row = rowName, type = "median", perArm = perArm)
+      addOutRow(list(row = rowName, type = "median", perArm = perArm))
       next
     }
 
@@ -616,10 +666,8 @@
       # (vocacapsaicin corpus, 2026-08-22).
       statRow <- !is.na(hdrName) &&
         (!nzchar(label) || grepl("(?i)^mean$", label, perl = TRUE))
-      rowName <- .ppUniqueName(
-        if (statRow) hdrName
-        else if (nzchar(label)) label else "Unnamed", usedRowNames)
-      usedRowNames <- c(usedRowNames, rowName)
+      rowName <- takeRowName(if (statRow) hdrName
+                             else if (nzchar(label)) label else "Unnamed")
       if (statRow) catHeader <- hdrName
       # "Age, mean (SEM)" in the label files the value as SE, mirroring
       # the engine's row-level override; there is no footnote here to
@@ -643,8 +691,7 @@
              # the round trip close exactly.
              ROUND_OBSERVATION = t$dec1)
       })
-      outRows[[length(outRows) + 1]] <-
-        list(row = rowName, type = "continuous", perArm = perArm)
+      addOutRow(list(row = rowName, type = "continuous", perArm = perArm))
       next
     }
 
@@ -669,8 +716,7 @@
                 txt)
         next
       }
-      rowName <- .ppUniqueName(catName, usedRowNames)
-      usedRowNames <- c(usedRowNames, rowName)
+      rowName <- takeRowName(catName)
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- toks[[j]]
         if (is.null(t) || !t$type %in% c("nPct", "numParen")) return(NULL)
@@ -678,8 +724,7 @@
         stats::setNames(list(cnt, as.integer(effN[j] - cnt)),
                         c(catName, complementName))
       })
-      outRows[[length(outRows) + 1]] <-
-        list(row = rowName, type = "category", perArm = perArm)
+      addOutRow(list(row = rowName, type = "category", perArm = perArm))
       next
     }
 
@@ -705,11 +750,9 @@
   # interior empty cell becomes an all-NA line (holding the position, and
   # painting yellow in the grid) while TRAILING empties - the generator's
   # padding for a variable with fewer arms - produce no line at all.
-  .wideCheckWidth(catColumns)
-  .wideCheckLines(sum(vapply(outRows, function(rr) {
-    filled <- which(!vapply(rr$perArm, is.null, logical(1)))
-    if (length(filled) == 0) 0L else max(filled)
-  }, numeric(1))))
+  flushCat()
+  checkWidth()
+  .wideCheckLines(linesBefore + nLines)
   allCols <- c(.ppBaseColumns(), if (anyMedian) c("Q1", "Q3"), catColumns)
   rows <- list()
   for (rr in outRows) {
@@ -762,19 +805,24 @@
 # A block joins the file's list only while the file as a whole is within
 # the bounds (screen 1628 F1): the lines add up, and the category columns
 # are the UNION across blocks - which is the width of the frame the
-# callers build from them.
-.wideAddBlock <- function(blocks, blk) {
-  blocks[[length(blocks) + 1]] <- blk
+# callers build from them. The totals are CARRIED (screen 1715 F2: a
+# recount over every block at every block was quadratic - nine minutes
+# for 6,666 one-line blocks) and handed to each block as it is parsed,
+# so a block refuses mid-loop once the file is past a bound.
+.wideAddBlock <- function(acc, blk) {
   base <- c(.ppBaseColumns(), "Q1", "Q3")
-  .wideCheckLines(sum(vapply(blocks, function(b) nrow(b$data), integer(1))))
-  .wideCheckWidth(unique(unlist(lapply(blocks, function(b) setdiff(names(b$data), base)))))
-  blocks
+  acc$nLines <- acc$nLines + nrow(blk$data)
+  acc$cols   <- unique(c(acc$cols, setdiff(names(blk$data), base)))
+  .wideCheckLines(acc$nLines)
+  .wideCheckWidth(acc$cols)
+  acc
 }
 
 parseWideTable <- function(path, ext) {
   sheetList <- tryCatch(.wideRawCells(path, ext), error = function(e) NULL)
   if (is.null(sheetList)) return(NULL)
   blocks <- list()
+  acc <- list(nLines = 0L, cols = character(0))   # the file's running totals
   for (s in seq_along(sheetList)) {
     cells <- sheetList[[s]]
     if (nrow(cells) == 0) next
@@ -791,8 +839,12 @@ parseWideTable <- function(path, ext) {
         hdr <- .wideHeaderRow(sub)
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
-                               sub("^Trial:\\s*", "", cells[markers[b], 1]))
-        if (!is.null(blk)) blocks <- .wideAddBlock(blocks, blk)
+                               sub("^Trial:\\s*", "", cells[markers[b], 1]),
+                               linesBefore = acc$nLines, colsBefore = acc$cols)
+        if (!is.null(blk)) {
+          acc <- .wideAddBlock(acc, blk)
+          blocks[[length(blocks) + 1]] <- blk
+        }
       }
     } else {
       hdr <- .wideHeaderRow(cells)
@@ -803,8 +855,12 @@ parseWideTable <- function(path, ext) {
       trial <- if (is.null(sheetName) || !nzchar(sheetName) ||
                    grepl("(?i)^sheet ?\\d*$", sheetName))
         NA_character_ else sheetName
-      blk <- .wideParseBlock(cells, hdr, trial)
-      if (!is.null(blk)) blocks <- .wideAddBlock(blocks, blk)
+      blk <- .wideParseBlock(cells, hdr, trial,
+                             linesBefore = acc$nLines, colsBefore = acc$cols)
+      if (!is.null(blk)) {
+        acc <- .wideAddBlock(acc, blk)
+        blocks[[length(blocks) + 1]] <- blk
+      }
     }
   }
   if (length(blocks) == 0) NULL else blocks
