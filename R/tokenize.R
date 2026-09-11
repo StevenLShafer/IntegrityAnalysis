@@ -74,12 +74,20 @@
 # row per token: type, text, the numbers it contains (num1, num2 =
 # first/second number, e.g. mean and SD), decimals of num1, and the token's
 # x extent (x0, x1, mid) recovered from the word coordinates.
-.ppTokenizeLine <- function(line) {
+# `first = TRUE` returns the FIRST token only, from one regexpr() match:
+# the journal-style reader classifies a cell by its first token and
+# discarded the rest, but paid for every one (security screen
+# 2026-09-10-1856, F1: a 2,000-character cell of "1 1 1 ..." is a
+# thousand tokens, a data frame each, 0.84 s a cell - and a workbook of
+# 49,900 such cells, within every other bound, was eleven hours). One
+# match is one scan of the cell whatever it contains.
+.ppTokenizeLine <- function(line, first = FALSE) {
   joined    <- paste(line$text, collapse = " ")
   wordStart <- cumsum(c(1, nchar(line$text) + 1))[seq_len(nrow(line))]
   wordEnd   <- wordStart + nchar(line$text) - 1
 
-  m <- gregexpr(.ppTokenRegex, joined, perl = TRUE)[[1]]
+  m <- if (first) regexpr(.ppTokenRegex, joined, perl = TRUE)
+       else gregexpr(.ppTokenRegex, joined, perl = TRUE)[[1]]
   if (m[1] == -1) {
     return(data.frame(type = character(0), text = character(0),
                       num1 = numeric(0), num2 = numeric(0),

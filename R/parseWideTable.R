@@ -261,10 +261,15 @@
 # hours). So a file has a budget of cells classified (.iaMaxWideCells,
 # carried across its blocks and checked before each block by rows x
 # arms and inside the loop as the cells are handed to the tokenizer),
-# and a cell longer than .ppMaxCellChars - the JATS and Word readers'
-# own cap; a baseline cell is under forty characters - refuses the file
-# before it is tokenised.
+# and a cell longer than .iaMaxWideCellChars (200; a baseline cell is
+# under forty characters) refuses the file before it is tokenised.
 .iaMaxWideCells <- 50000L  # arm cells a journal-style file may hand the tokenizer
+# A cell of a journal-style table is a number or two ("45.3 (12.1)",
+# "127 [98, 160]", "12 (40%)"): under forty characters. The JATS and Word
+# readers' cap (.ppMaxCellChars, 2,000) admitted a thousand tokens a cell
+# (screen 1856 F1), so the wide reader has its own, an order of magnitude
+# tighter and still five times any real cell.
+.iaMaxWideCellChars <- 200L
 .wideCheckCells <- function(nCells)
   if (nCells > .iaMaxWideCells)
     .iaWideTooLarge(sprintf(paste("the journal-style table has %d cells to read (rows x arms,",
@@ -423,8 +428,10 @@
       return(list(type = "medianTriple",
                   num1 = .ppAsNumeric(m[2]), num2 = .ppAsNumeric(m[3]),
                   num3 = .ppAsNumeric(m[4]), dec1 = .ppDecimals(m[2])))
+    # the first token only - one scan of the cell, not a data frame per
+    # token it holds (screen 2026-09-10-1856, F1)
     t <- .ppTokenizeLine(data.frame(text = txt, x = 0, width = nchar(txt),
-                                    stringsAsFactors = FALSE))
+                                    stringsAsFactors = FALSE), first = TRUE)
     if (nrow(t) == 0) return(NULL)
     as.list(t[1, ])
   }
@@ -504,11 +511,11 @@
 
     # screen 1822 F1 and F2: a cell is bounded in length before the
     # tokenizer sees it, and the file's budget of cells is spent here
-    long <- nchar(cellTxt) > .ppMaxCellChars
+    long <- nchar(cellTxt) > .iaMaxWideCellChars
     if (any(long))
       .iaWideTooLarge(sprintf(paste("a cell of %d characters in the row labelled '%s';",
                                     "the limit is %d - a baseline cell is a number or two"),
-                              max(nchar(cellTxt)), substr(label, 1, 60), .ppMaxCellChars))
+                              max(nchar(cellTxt)), substr(label, 1, 60), .iaMaxWideCellChars))
     acc$nCells <- acc$nCells + nArms
     .wideCheckCells(acc$nCells)
     toks <- lapply(cellTxt, function(x)
