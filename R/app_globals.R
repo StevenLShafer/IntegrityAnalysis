@@ -359,8 +359,9 @@ m <- 100000
   dots <- list(...)
   wantCheckNames <- !identical(dots[["check.names"]], FALSE)
   dots[["check.names"]] <- FALSE
+  con <- .iaCsvConnection(path); on.exit(close(con))   # raw: never inflated (screen 2100 F1)
   d <- do.call(utils::read.csv,
-               c(list(path, colClasses = "character"), dots))
+               c(list(con, colClasses = "character"), dots))
   san <- function(x) iconv(x, from = "", to = "UTF-8", sub = "byte")
   names(d) <- san(names(d))
   for (j in seq_along(d)) if (is.character(d[[j]])) d[[j]] <- san(d[[j]])

@@ -64,11 +64,22 @@
 # 10,001 x 50,001 frame past a first-line gate). count.fields is linear in
 # the file, which the upload cap bounds. An unbalanced quote makes it NA
 # (F5): NA refuses.
+# EVERY CSV READER OPENS THE FILE RAW (security screen 2026-09-10-2100,
+# F1). R's file() in text mode inflates every compressed format it knows
+# - gzip, bzip2, xz, LZMA, zstd since 4.5.0, and whatever a later R adds
+# - whatever the file is called. The magic-byte refusal in front of the
+# readers names the formats known today; this connection makes the
+# readers themselves immune: file(path, "rt", raw = TRUE) is documented
+# to suppress the compressed-file check, and count.fields(), read.csv()
+# and readLines() all accept it. The caller closes it.
+.iaCsvConnection <- function(path) file(path, "rt", raw = TRUE)
+
 .iaCsvColumns <- function(path) {
   # comment.char = "": count.fields treats "#" as a comment by default and
   # read.csv does not, so a wide line opening with "#" was invisible to
   # the gate and built by the reader (screen 2026-09-06-1118 F1)
-  n <- suppressWarnings(utils::count.fields(path, sep = ",", quote = "\"", comment.char = "",
+  con <- .iaCsvConnection(path); on.exit(close(con))
+  n <- suppressWarnings(utils::count.fields(con, sep = ",", quote = "\"", comment.char = "",
                                             blank.lines.skip = TRUE))
   if (!length(n)) return(0L)
   if (anyNA(n)) return(NA_integer_)
@@ -198,7 +209,8 @@
   if (ext == "csv") {
     msg <- .iaCsvRefusal(path)
     if (!is.null(msg)) stop(msg, call. = FALSE)
-    d <- utils::read.csv(path, header = FALSE, colClasses = "character",
+    con <- .iaCsvConnection(path); on.exit(close(con), add = TRUE)
+    d <- utils::read.csv(con, header = FALSE, colClasses = "character",
                          check.names = FALSE, nrows = .iaSheetRowCap + 1L)
     return(list(toMat(capped(d, "the file"))))
   }
