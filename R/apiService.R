@@ -604,15 +604,26 @@
 # such characters in a 308 KB workbook (an incompressible padding entry
 # defeats the ratio ceiling, and 2 MB is far below the 100 MiB declared
 # cap) read for 115 s in .apiReadUpload with every gate green, pinning
-# the single worker. A baseline table's cells are tens of bytes; the
-# useful clip is 200 (.iaMaxWideCellChars) and a long label 2,000
-# (.ppMaxCellChars), so 128 KiB is orders of magnitude of headroom and
-# still bounds the read to well under a second. The bound is on the
-# LONGEST RUN of bytes containing no "<" (0x3C) in the string-bearing
-# xlsx parts: an XML text node escapes "<", so a run between two "<" is
-# an upper bound on one cell's text, measured on the raw inflating
-# stream (linear, no UTF-8 cost) before openxlsx ever sees it.
-.iaMaxXlsxStringRun <- 131072L
+# the single worker. The preflight bounds the string-bearing parts two
+# ways, on the raw inflating stream (linear, no UTF-8 cost) before
+# openxlsx ever sees a byte:
+#   - .iaMaxXlsxStringRun bounds the LONGEST RUN of bytes containing no
+#     "<" (0x3C) - an XML text node escapes "<", so a run between two
+#     "<" is an upper bound on ONE cell's text. A baseline table's cells
+#     are tens of bytes and the .ppMaxCellChars clip is 2,000 characters
+#     (~8 KB in UTF-8), so 16 KiB is comfortable headroom and openxlsx's
+#     per-string quadratic at 16 KiB is a few milliseconds.
+#   - .iaMaxXlsxStringBytes bounds the TOTAL of those "<"-free bytes over
+#     ALL the parts (security screen 2026-09-11-1602, F1 - HIGH). The
+#     per-cell bound alone did not bound the SUM: openxlsx's cost is
+#     quadratic PER string and summed over every string, so ~740 cells
+#     of 127 KiB each - each under the old per-cell cap, the file under
+#     1 MB, every gate green - stalled the worker for ~5.5 minutes. A
+#     whole baseline table is tens to low-hundreds of KB; 8 MiB is deep
+#     headroom and bounds the aggregate read to a few seconds even for a
+#     full budget of 16 KiB strings.
+.iaMaxXlsxStringRun   <- 16384L
+.iaMaxXlsxStringBytes <- 8388608L
                                    # uncompressed bytes over the archive's size, not
                                    # per entry (the comment said per-entry; the code
                                    # never was - security audit 2026-09-10)
@@ -661,10 +672,12 @@
 # through an inflating connection in bounded chunks, and the scan bails
 # at the first over-long run or "<!", so a crafted cell is detected
 # within one chunk and never handed to openxlsx.
-.apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun) {
+.apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun,
+                                capTotal = .iaMaxXlsxStringBytes) {
   parts <- names[grepl("(^|/)xl/sharedStrings\\.xml$", names) |
                  grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
   lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
+  total <- 0                                                          # "<"-free bytes over ALL parts
   for (nm in parts) {
     con <- tryCatch(unz(path, nm, open = "rb"), error = function(e) NULL)
     if (is.null(con)) next
@@ -678,6 +691,8 @@
       # comment); refuse it - text nodes never begin one
       inner <- pos[pos < length(b)]
       if (length(inner) && any(b[inner + 1L] == bang)) { ok <- FALSE; break }
+      total <- total + (length(b) - length(pos))                     # every non-"<" byte is cell text
+      if (total > capTotal) { ok <- FALSE; break }                   # the AGGREGATE bound (screen 1602 F1)
       if (!length(pos)) {
         run <- run + length(b)
         if (run > cap) { ok <- FALSE; break }

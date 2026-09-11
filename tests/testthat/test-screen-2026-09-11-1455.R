@@ -76,6 +76,46 @@ test_that(".apiXlsxStringRunOK: it bounds the longest run, not the total, and st
   expect_false(.apiXlsxStringRunOK(z, "xl/sharedStrings.xml"))
 })
 
+# The AGGREGATE bound (security screen 2026-09-11-1602, F1 - HIGH): the
+# per-cell bound above does not bound the SUM, and openxlsx's cost is
+# quadratic PER string summed over every string, so many cells each just
+# under the per-cell cap restore the stall - ~740 cells of 127 KiB read
+# for 5.5 minutes with every gate green. .iaMaxXlsxStringBytes bounds the
+# total "<"-free bytes; a workbook past it is refused before the read.
+manyCellXlsx <- function(nStrings, eachChars, pad = 3e5) {
+  # nStrings distinct marker rows, each carrying eachChars non-ASCII bytes
+  ids <- vapply(seq_len(nStrings), function(i) paste0(strrep("é", eachChars), i), character(1))
+  cells <- do.call(rbind, lapply(ids, function(id)
+    rbind(c(paste0("Trial: ", id), "", ""), c("Variable", "Arm A (n=10)", "Arm B (n=10)"),
+          c("Age, mean (SD)", "45.3 (12.1)", "46.1 (11.8)"))))
+  f <- tempfile(fileext = ".xlsx"); wb <- createWorkbook(); addWorksheet(wb, "S")
+  writeData(wb, "S", as.data.frame(cells, stringsAsFactors = FALSE), colNames = FALSE)
+  saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d)
+  if (pad > 0) { zip::unzip(f, exdir = d); writeBin(as.raw(sample(0:255, pad, TRUE)), file.path(d, "docProps", "pad.bin"))
+    g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g }
+  else f
+}
+
+test_that("many mid-sized cells summing past the aggregate budget are refused before the read (screen 1602 F1)", {
+  # 1,200 cells of ~8 KB each is ~9.6 MB of text, over the 8 MiB budget:
+  # under the old per-cell-only guard this read for minutes (each cell is
+  # under the per-cell cap); now the aggregate bound catches it
+  g <- manyCellXlsx(1200L, 4000L)                          # 4,000 é = 8 KB each
+  expect_lt(file.size(g), 2e6)                             # a small workbook
+  info <- utils::unzip(g, list = TRUE)
+  expect_false(.apiXlsxStringRunOK(g, info$Name))
+  t <- system.time(r <- .apiReadUpload(g, "many.xlsx"))[["elapsed"]]
+  expect_lt(t, 5)                                          # minutes under the old guard
+  expect_false(isTRUE(r$ok))
+})
+
+test_that("a workbook within the aggregate budget still reads (screen 1602 F1, the accept side)", {
+  g <- manyCellXlsx(200L, 40L)                             # 200 small cells, well under budget
+  info <- utils::unzip(g, list = TRUE)
+  expect_true(.apiXlsxStringRunOK(g, info$Name))
+})
+
 test_that("a CDATA marker cell is refused, not silently emptied (screen 1455 F1; CodeRabbit on #310)", {
   # openxlsx returns a CDATA cell empty in 0 s (no quadratic), but the
   # trial id is silently lost; the "<"-run heuristic would be fooled by
