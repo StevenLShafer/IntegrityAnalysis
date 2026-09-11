@@ -597,6 +597,22 @@
 .apiMaxUncompressed <- 104857600   # 100 MiB declared, total
 .apiMaxZipEntries   <- 512L        # a workbook has tens, not thousands
 .apiMaxZipRatio     <- 200         # compression ratio ceiling: AGGREGATE declared
+# The largest single cell TEXT a workbook may carry into openxlsx, in
+# bytes (security screen 2026-09-11-1455, F1 - HIGH). openxlsx's shared-
+# string reader is quadratic in a single string's bytes when it holds
+# non-ASCII characters (UTF-8 validation): a marker cell of 1,000,000
+# such characters in a 308 KB workbook (an incompressible padding entry
+# defeats the ratio ceiling, and 2 MB is far below the 100 MiB declared
+# cap) read for 115 s in .apiReadUpload with every gate green, pinning
+# the single worker. A baseline table's cells are tens of bytes; the
+# useful clip is 200 (.iaMaxWideCellChars) and a long label 2,000
+# (.ppMaxCellChars), so 128 KiB is orders of magnitude of headroom and
+# still bounds the read to well under a second. The bound is on the
+# LONGEST RUN of bytes containing no "<" (0x3C) in the string-bearing
+# xlsx parts: an XML text node escapes "<", so a run between two "<" is
+# an upper bound on one cell's text, measured on the raw inflating
+# stream (linear, no UTF-8 cost) before openxlsx ever sees it.
+.iaMaxXlsxStringRun <- 131072L
                                    # uncompressed bytes over the archive's size, not
                                    # per entry (the comment said per-entry; the code
                                    # never was - security audit 2026-09-10)
@@ -623,7 +639,60 @@
   # under-declares while the stream over-inflates still cannot claim a
   # plausible ratio (re-review, H3).
   onDisk <- max(file.size(path), 1)
-  declared / onDisk <= .apiMaxZipRatio
+  if (declared / onDisk > .apiMaxZipRatio) return(FALSE)
+  # ...and the largest cell text openxlsx would read is bounded, so its
+  # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
+  if (ext == "xlsx" && !.apiXlsxStringRunOK(path, info$Name)) return(FALSE)
+  TRUE
+}
+
+# FALSE when any string-bearing part of the workbook holds a run of more
+# than .iaMaxXlsxStringRun bytes without a "<" - an upper bound on a
+# single cell's text, since an XML text node contains no literal "<" -
+# or carries a "<!" markup declaration (a CDATA section or a comment).
+# The "<"-run bound assumes cell text has no literal "<"; CDATA breaks
+# that, so a "<![CDATA[ ... ]]>" body could hide an over-long run behind
+# its internal "<" bytes (CodeRabbit on #310). openxlsx 4.2.8.1 returns
+# such a cell empty in 0 s (no quadratic, but the id is silently lost),
+# and no baseline-table writer emits CDATA into a string part, so a "<!"
+# in these parts is refused outright rather than trusted. The parts are
+# the shared-string table and every worksheet (a hostile file may carry
+# inline strings instead of shared ones). Each is read from the zip
+# through an inflating connection in bounded chunks, and the scan bails
+# at the first over-long run or "<!", so a crafted cell is detected
+# within one chunk and never handed to openxlsx.
+.apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun) {
+  parts <- names[grepl("(^|/)xl/sharedStrings\\.xml$", names) |
+                 grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
+  lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
+  for (nm in parts) {
+    con <- tryCatch(unz(path, nm, open = "rb"), error = function(e) NULL)
+    if (is.null(con)) next
+    run <- 0L; ok <- TRUE; endsWithLt <- FALSE
+    repeat {
+      b <- readBin(con, "raw", n = 1048576L)
+      if (length(b) == 0) break
+      if (endsWithLt && b[1] == bang) { ok <- FALSE; break }         # "<!" split across the chunk boundary
+      pos <- which(b == lt)
+      # a "<" immediately followed by "!" is a markup declaration (CDATA,
+      # comment); refuse it - text nodes never begin one
+      inner <- pos[pos < length(b)]
+      if (length(inner) && any(b[inner + 1L] == bang)) { ok <- FALSE; break }
+      if (!length(pos)) {
+        run <- run + length(b)
+        if (run > cap) { ok <- FALSE; break }
+      } else {
+        if (run + (pos[1] - 1L) > cap) { ok <- FALSE; break }        # the run carried in, up to the first "<"
+        if (length(pos) > 1L && max(diff(pos)) - 1L > cap) { ok <- FALSE; break }  # runs wholly inside this chunk
+        run <- length(b) - pos[length(pos)]                          # the tail run, carried out
+        if (run > cap) { ok <- FALSE; break }
+      }
+      endsWithLt <- b[length(b)] == lt                               # a "<" at the very end: check "!" next chunk
+    }
+    close(con)
+    if (!ok) return(FALSE)
+  }
+  TRUE
 }
 
 # The on-disk ceiling for a non-zip spreadsheet (.xls, no longer accepted) - the request

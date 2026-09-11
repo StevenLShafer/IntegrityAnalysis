@@ -81,26 +81,25 @@ bigMarkerXlsx <- function(bigBytes, others) {
   list(path = g, X = X)
 }
 
-# What the xlsx route actually admits (reachability control). A marker
-# cell of repeated bytes is caught by the 100 MB-decompression guard well
-# below the size the screen's worst case assumed: a 2 MB cell (a 9 KB
-# workbook) is refused before parsing, and cells the reader does accept
-# are about 1 MB and below - at which size the counter loop's old cost
-# was seconds, not the hours the unbounded estimate gave. So the live
-# severity was modest; the hoist above removes the super-linear factor
-# regardless, and the differential is the map test above.
-test_that("the xlsx decompression guard bounds a repeated-byte marker cell (screen 1407 F1, reachability)", {
-  fx2 <- bigMarkerXlsx(2e6, character(0))
+# What the xlsx route admits after screen 2026-09-11-1455 F1. That screen
+# found openxlsx's shared-string reader quadratic in a single cell's
+# bytes and bounded every cell's text at 128 KiB (.iaMaxXlsxStringRun,
+# .apiXlsxStringRunOK) before the read - so a marker cell over that is now
+# refused outright, and the counter-loop cost this file exercises can only
+# be reached by MANY within-bound ids, which the map test above covers
+# directly. A cell within the bound is read and takes its counter label.
+test_that("a marker cell over the 128 KiB text bound is refused before the read (screens 1407 and 1455 F1)", {
+  fx2 <- bigMarkerXlsx(2e6, character(0))                   # 2 MB cell
   r2 <- .apiReadUpload(fx2$path, "big2mb.xlsx")
   expect_false(isTRUE(r2$ok))
-  expect_match(r2$reason, "100 MB", fixed = TRUE)           # the decompression preflight, before any parse
+  expect_match(r2$reasons, "100 MB", fixed = TRUE)           # .apiZipInflationOK refuses, before any parse
 })
 
-test_that("a 500 KB marker cell the reader accepts still takes a distinct counter label, quickly (screen 1407 F1, through the route)", {
-  X <- strrep("X", 5e5)
+test_that("a marker cell within the 128 KiB bound is read and takes a distinct counter label (screen 1407 F1, through the route)", {
+  X <- strrep("X", 1e5)                                     # 100 KB: under the 128 KiB bound
   # the other markers are X's own plain spelling and one counter, supplied
   # literally: X must resolve past them to (3), never merge into them
-  fx <- bigMarkerXlsx(5e5, takenSpellings(X, 2L))
+  fx <- bigMarkerXlsx(1e5, takenSpellings(X, 2L))
   t <- system.time(r <- .apiReadUpload(fx$path, "bigcell.xlsx"))[["elapsed"]]
   expect_true(isTRUE(r$ok)); expect_identical(r$engine, "wide")
   expect_lt(t, 20)

@@ -296,11 +296,17 @@ if (file.exists("R/parseWideTable.R")) {
       !any(grepl("h <- substr\\(digest::digest\\(id", tl)) ||
       !any(grepl("lab <- paste0\\(stem, \" #\", h, \" \\(\", k, \"\\)\"\\)", tl)))
     note("R/parseWideTable.R: .wideTrialLabels() must take a long id's label from .wideTrialId(), keep the labels in use in a hash set, and resolve a taken label with a counter on a stem and digest computed ONCE per id, outside the loop (audit 2026-09-11 full2 F2; CodeRabbit on #306; screen 2026-09-11-1407 F1)")
-  # ...and nothing inside the counter loop may hash or clip the id again
-  loopStart <- grep("repeat \\{", tl); loopEnd <- grep("if \\(!exists\\(lab", tl)
-  if (length(loopStart) && length(loopEnd) &&
-      any(grepl("digest::digest|\\.ppClip\\(", tl[loopStart[1]:loopEnd[1]])))
-    note("R/parseWideTable.R: the counter loop of .wideTrialLabels() re-hashes or re-clips the id (screen 2026-09-11-1407 F1)")
+  # ...and the id is clipped and hashed EXACTLY ONCE in the whole body,
+  # never inside the counter loop (screen 2026-09-11-1407 F1; the 1455 F2
+  # note: fail CLOSED - a loop the anchors cannot locate is a finding, not
+  # a pass). .ppClip(id and digest::digest(id must each occur once, the
+  # two hoisted assignments; a second occurrence means one is in the loop.
+  # Count INVOCATIONS, not matching lines - two calls on one line count as
+  # two (CodeRabbit on #310) - via gregexpr over the whole body.
+  nOccur <- function(pat, lines)
+    sum(vapply(gregexpr(pat, lines), function(m) if (m[1] == -1L) 0L else length(m), integer(1)))
+  if (nOccur("\\.ppClip\\(id,", tl) != 1L || nOccur("digest::digest\\(id", tl) != 1L)
+    note("R/parseWideTable.R: .wideTrialLabels() must clip and hash the id exactly once each (outside the counter loop) - a second occurrence is the re-hash the loop must not do (screen 2026-09-11-1407 F1; 1455 F2)")
   tb <- pwBody(".wideTrialId")
   if (!length(tb) || !any(grepl("\\.ppClip\\(id,\\s*\\.iaMaxTrialIdChars", tb)) ||
       !any(grepl("digest::digest\\(id", tb)) ||
@@ -443,6 +449,21 @@ if (file.exists("R/apiService.R")) {
       !any(grepl("@filter sizelimit", plum, fixed = TRUE)))
     note(paste("inst/api/plumber.R lost its request-size filter -",
                "an unbounded upload is buffered in memory (review H1)"))
+
+  # F1 (screen 2026-09-11-1455): the xlsx preflight bounds the largest
+  # single cell text before openxlsx reads it - its shared-string reader
+  # is quadratic in a non-ASCII string's bytes, so a 2 MB marker cell in
+  # a 308 KB workbook (padding defeats the ratio ceiling) pinned the
+  # worker for 115 s. .apiZipInflationOK() must call .apiXlsxStringRunOK(),
+  # whose body streams the string-bearing parts and bounds a "<"-free run.
+  zi <- fnBody(api, ".apiZipInflationOK"); xr <- fnBody(api, ".apiXlsxStringRunOK")
+  if (!length(zi) || !any(grepl("\\.apiXlsxStringRunOK\\(path", zi)) ||
+      !length(xr) || !any(grepl("\\.iaMaxXlsxStringRun", xr)) ||
+      !any(grepl("unz\\(path", xr)) || !any(grepl("readBin\\(con", xr)) ||
+      !any(grepl("sharedStrings", xr)) || !any(grepl("worksheets", xr)))
+    note(paste("R/apiService.R: the xlsx preflight lost its cell-text bound -",
+               "a single large non-ASCII marker cell drives openxlsx's",
+               "quadratic string reader and pins the worker (screen 2026-09-11-1455 F1)"))
 
   # H2: /analyze refuses an oversized table before simulating
   if (!any(grepl("\\.apiMaxRows", api)) ||
