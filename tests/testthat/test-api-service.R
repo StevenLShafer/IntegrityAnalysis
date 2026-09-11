@@ -911,6 +911,49 @@ test_that("a template past the row limit is a 422 on /parse, not a templateCsv o
   expect_lt(nchar(b$templateCsv[[1]]), 500)              # the empty template, not the table
 })
 
+# TWO LONG TRIAL IDS THROUGH THE WIRE (third full-pass independent
+# statistical audit 2026-09-11, F2 - numerical P2): a journal-style CSV
+# of two "Trial:" blocks whose 201-byte ids share their first 200 bytes,
+# each one two-arm row of Age, mean (SD) 50.0 (10.0) / 50.5 (10.0). On
+# 6db32ee the 200-byte clip made them one trial of four arms: /parse
+# returned one TRIAL and /analyze `trials: 1` with an overall p of
+# 0.005275 (0.0048-0.0058) where the file describes two two-arm trials
+# combining to 0.07139. The fixture is the auditor's
+# evidence-2026-09-11-full/fixture-trial-id-201-delta-0.5.csv, written
+# here line for line.
+longIdCsv <- function(suffixes = c("A", "B")) {
+  id <- paste0(strrep("Synthetic baseline comparison ", 6L), "Synthetic baseline c", suffixes)
+  f <- file.path(tempdir(), "trial-id-201.csv")
+  writeLines(c(rbind(paste0("Trial: ", id),
+                     "Variable,Arm A (n=30),Arm B (n=30)",
+                     '"Age, mean (SD)","50.0 (10.0)","50.5 (10.0)"')), f)
+  list(path = f, id = id)
+}
+test_that("two trials whose 201-byte ids share their first 200 bytes stay two trials over real HTTP (audit 2026-09-11 full, F2)", {
+  skip_on_cran()
+  api <- startApi()
+  on.exit(api$px$kill(), add = TRUE)
+  fx <- longIdCsv()
+  expect_identical(nchar(fx$id, type = "bytes"), c(201L, 201L))
+  r <- apiReq(api$base, "/parse") |>
+    httr2::req_body_multipart(file = curl::form_file(fx$path)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r), 200)
+  b <- httr2::resp_body_json(r)
+  tpl <- utils::read.csv(text = b$templateCsv, stringsAsFactors = FALSE)
+  expect_identical(length(unique(tpl$TRIAL)), 2L)          # 1 on 6db32ee
+  expect_identical(nrow(tpl), 4L)                          # two trials, two arms each
+  expect_lte(max(nchar(unique(tpl$TRIAL), type = "bytes")), .iaMaxTrialIdChars)
+  r2 <- apiReq(api$base, "/analyze?seed=42") |>
+    httr2::req_body_multipart(file = curl::form_file(fx$path)) |>
+    httr2::req_perform()
+  expect_equal(httr2::resp_status(r2), 200)
+  b2 <- httr2::resp_body_json(r2)
+  expect_equal(b2$trials, 2L)                              # 1 on 6db32ee
+  p <- as.numeric(b2$overallP)
+  expect_gt(p, 0.04); expect_lt(p, 0.12)                   # 0.07139 at seed 42; 0.005275 on 6db32ee
+})
+
 # THE RELABELLED TABLE THROUGH THE WIRE (final-brief independent audit
 # 2026-09-11, F1): the auditor's nine-variable fixture with the extreme
 # variable's YES/NO columns swapped, posted as a real multipart /analyze

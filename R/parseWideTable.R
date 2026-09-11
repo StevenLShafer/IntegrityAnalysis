@@ -361,6 +361,25 @@
 # a 215 KB upload, held three times over on the way out. A trial id is
 # tens of characters; 200 is generous.
 .iaMaxTrialIdChars <- 200L
+# ...AND A CLIPPED ID KEEPS ITS IDENTITY (third full-pass independent
+# statistical audit 2026-09-11, F2 - numerical P2). The clip alone made
+# two distinct ids with a common first 200 bytes ONE trial: two two-arm
+# blocks of the same variable became a four-arm trial, and an overall
+# p of 0.071 read 0.0053 - a different experiment from the one the file
+# described, with no flag. So an id within the bound is used as it is,
+# and a longer one becomes its first (bound - 16) bytes, a space, "#"
+# and the first twelve hex digits of the SHA-1 of the WHOLE id: at most
+# 198 bytes, and two ids that differ anywhere are two trials (a
+# collision needs two ids agreeing on 48 bits of the digest as well as
+# 184 bytes of text). The clip is byte-wise (.ppClip) and the digest is
+# of the string's bytes, so the label is bounded whatever the encoding.
+# The same id in two blocks, or on two sheets, still names one trial.
+.wideTrialId <- function(id) {
+  id[is.na(id)] <- ""
+  if (nchar(id, type = "bytes") <= .iaMaxTrialIdChars) return(id)
+  paste0(.ppClip(id, .iaMaxTrialIdChars - 16L), " #",
+         substr(digest::digest(id, algo = "sha1", serialize = FALSE), 1L, 12L))
+}
 # THE WORK IS COUNTED, NOT ONLY THE OUTPUT (security screen 2026-09-10-1822,
 # F1 and F2 - both HIGH). Every arm cell of every row goes through the
 # tokenizer (about 1.3 ms a cell, a data frame per token) whether or not
@@ -999,8 +1018,10 @@ parseWideTable <- function(path, ext) {
     markers <- which(grepl("^Trial:\\s*\\S", cells[, 1]))
     if (length(markers) > 0) {
       # the stacked results-workbook shape: each "Trial: <id>" row opens
-      # a block; ids here are exact (no sheet-name truncation), which is
-      # why this shape round-trips long trial names faithfully
+      # a block; ids here are exact up to the bound (no sheet-name
+      # truncation), which is why this shape round-trips long trial
+      # names faithfully - and past the bound they keep their identity
+      # (.wideTrialId)
       ends <- c(markers[-1] - 1L, nrow(cells))
       for (b in seq_along(markers)) {
         if (ends[b] <= markers[b]) next   # marker with nothing under it
@@ -1008,8 +1029,7 @@ parseWideTable <- function(path, ext) {
         hdr <- .wideHeaderRow(sub)
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
-                               .ppClip(sub("^Trial:\\s*", "", cells[markers[b], 1]),
-                                       .iaMaxTrialIdChars), acc)
+                               .wideTrialId(sub("^Trial:\\s*", "", cells[markers[b], 1])), acc)
         if (!is.null(blk)) {
           .wideAddBlock(acc, blk)
           blocks[[length(blocks) + 1]] <- blk
@@ -1023,7 +1043,7 @@ parseWideTable <- function(path, ext) {
       # defaults ("Sheet1"), which the caller replaces with the file stem
       trial <- if (is.null(sheetName) || !nzchar(sheetName) ||
                    grepl("(?i)^sheet ?\\d*$", sheetName))
-        NA_character_ else .ppClip(sheetName, .iaMaxTrialIdChars)
+        NA_character_ else .wideTrialId(sheetName)
       blk <- .wideParseBlock(cells, hdr, trial, acc)
       if (!is.null(blk)) {
         .wideAddBlock(acc, blk)
