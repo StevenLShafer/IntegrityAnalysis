@@ -824,6 +824,13 @@
     if (is.na(tr)) d$TRIAL <- stem
     else if (all(is.na(d[[tr]]) | !nzchar(trimws(as.character(d[[tr]])))))
       d[[tr]] <- stem
+    # the template route's cells are bounded before anything is written
+    # back (screen 2026-09-10-2047, F2)
+    msg <- .iaTableTextRefusal(d)
+    if (!is.null(msg))
+      return(list(ok = FALSE, reasons = paste0(name, ": ", msg),
+                  data = NULL, skipped = NULL, flags = character(0),
+                  engine = NA_character_))
     list(ok = TRUE, data = d, skipped = NULL, flags = character(0),
          engine = "template")
   } else {

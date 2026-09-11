@@ -556,6 +556,41 @@ m <- 100000
 # the variable's. Lines without a LEVEL pass through untouched; a file
 # without a LEVEL column is returned as it came.
 .iaMaxLevelColumns <- 200L   # the wide table the long layout may build: .apiMaxCols
+
+# THE TEMPLATE ROUTE'S CELLS ARE BOUNDED TOO (security screen
+# 2026-09-10-2047, F2). The journal-style reader caps and clips its cells;
+# the template reader - which the wide reader falls through to whenever it
+# returns NULL - wrote every cell verbatim into the reply. An xlsx stores a
+# repeated string once, so the inflation preflight passed; R's string cache
+# kept the frame small, so the row and column gates passed; then the
+# template CSV materialised rows x columns x length: a 130 KB workbook of
+# 5,000 rows with one 30 KB text column came back as a 150 MB reply
+# (611 MB peak), and 500 rows x 194 such columns ran write.csv for 325 s
+# before failing on R's 2^31 byte limit. So a template frame is refused,
+# on both routes, when any cell is longer than .ppMaxCellChars (2,000, the
+# other readers' cap) or the text it holds exceeds .iaMaxTableTextBytes
+# (20 MB - a baseline table is under one), before anything is written.
+.iaMaxTableTextBytes <- 20000000L
+.iaTableTextRefusal <- function(d) {
+  if (is.null(d) || !nrow(d) || !ncol(d)) return(NULL)
+  chr <- vapply(d, function(x) is.character(x) || is.factor(x), logical(1))
+  if (!any(chr)) return(NULL)
+  total <- 0
+  for (j in which(chr)) {
+    n <- nchar(as.character(d[[j]]), type = "bytes")
+    n[is.na(n)] <- 0L
+    if (any(n > .ppMaxCellChars))
+      return(sprintf(paste("a cell of %d characters in column '%s'; the limit is %d -",
+                           "a baseline table's cells are numbers and short labels"),
+                     max(n), substr(names(d)[j], 1, 60), .ppMaxCellChars))
+    total <- total + sum(n)
+    if (total > .iaMaxTableTextBytes)
+      return(sprintf(paste("the table holds more than %d MB of text; the limit is %d MB -",
+                           "a baseline table holds well under one"),
+                     round(total / 1e6), .iaMaxTableTextBytes %/% 1000000L))
+  }
+  NULL
+}
 .iaLongToWide <- function(DATA) {
   if (is.null(DATA) || !("LEVEL" %in% names(DATA)) || !("ROW" %in% names(DATA)))
     return(DATA)
