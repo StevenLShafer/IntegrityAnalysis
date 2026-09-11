@@ -1,0 +1,18 @@
+{
+    "ok": true,
+    "file": "fixture-all-excluded-trial.csv",
+    "trials": 2,
+    "overallP": 0.0582,
+    "resultsCsv": "\"TRIAL\",\"ROW\",\"P\",\"CI95\",\"M\",\"NOTE\",\"KIND\"\n\"A\",\"Age\",\"0.05825\",\"0.038 to 0.08\",\"10000\",\"\",\"variable\"\n,\"Summary\",\"0.05825\",\"0.038 to 0.08\",,\"\",\"summary\"\n,,,,,,\n\"B\",\"Unresolved category\",\"Not analysed\",\"\",,\"no values in any cell of this row - a label without N, mean, dispersion or counts. If a document parser left it blank, the document's flags say why (a percentage block it could not reconstruct, for instance); the counts can be typed in\",\"variable\"\n,\"Summary\",\"No values\",\"\",,\"0 of 1 rows analysed; the rest were refused - see their P cells\",\"summary\"\n,,,,,,\n",
+    "journalTables": {
+        "A": "\"Variable\",\"Arm 1 (n = 30)\",\"Arm 2 (n = 30)\"\n\"Age, mean (SD)\",\"50.0 (10)\",\"50.2 (10)\"\n",
+        "B": "\"Variable\",\"Arm 1\"\n\"Unresolved category\",\"\"\n"
+    },
+    "journalTablesOmitted": {
+
+    },
+    "templateCsv": "\"TRIAL\",\"ROW\",\"N\",\"MEAN\",\"SD\",\"ROUND_MEAN\",\"ROUND_DISPERSION\",\"ROUND_OBSERVATION\"\n\"A\",\"Age\",30,\"50.0\",\"10\",1,0,1\n\"A\",\"Age\",30,\"50.2\",\"10\",1,0,1\n\"B\",\"Unresolved category\",,,,0,,0\n\"B\",\"Unresolved category\",,,,0,,0\n",
+    "deleted": true,
+    "seed": 42
+}
+

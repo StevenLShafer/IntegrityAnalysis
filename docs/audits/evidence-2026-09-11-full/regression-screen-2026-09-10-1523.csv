@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-1523.R","the sorted-pool counts equal the bounded tie criterion, ties and near-ties included",14,0,0,0,0,""
+"test-screen-2026-09-10-1523.R","250 rows sharing one law: the shared mapping is linear, not quadratic (screen 1523 F1)",2,0,0,0,0,""
+"test-screen-2026-09-10-1523.R","a trial whose shared rows would need more than the pool ceiling is refused before a draw",3,0,0,0,0,""
+"test-screen-2026-09-10-1523.R","the API refuses it at the analysis stage with the reason, not a 500 and not a hang",3,0,0,0,0,""

@@ -1,0 +1,3 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-screen-2026-09-10-2100-raw.R","the CSV readers open the file raw: a gzip stream is read as its bytes, never inflated (screen 2100 F1)",5,0,0,0,3,""
+"test-screen-2026-09-10-2100-raw.R",".iaCsvConnection() is raw, and an ordinary CSV reads through it exactly as before",8,0,0,0,0,""

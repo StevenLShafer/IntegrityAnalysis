@@ -1,0 +1,4 @@
+"test","message"
+"the CSV readers open the file raw: a gzip stream is read as its bytes, never inflated (screen 2100 F1)","line 1 appears to contain embedded nulls"
+"the CSV readers open the file raw: a gzip stream is read as its bytes, never inflated (screen 2100 F1)","line 2 appears to contain embedded nulls"
+"the CSV readers open the file raw: a gzip stream is read as its bytes, never inflated (screen 2100 F1)","incomplete final line found by readTableHeader on '<local-path>"

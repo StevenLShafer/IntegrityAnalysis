@@ -1,0 +1,6 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-11-f1.R","recoding the extreme variable's categories leaves the trial p where the exact value is (audit 2026-09-11 F1, nine rows)",12,0,0,0,0,""
+"test-audit-2026-09-11-f1.R","fourteen rows: the exact value sits inside the displayed interval after recoding (audit 2026-09-11 F1)",7,0,0,0,0,""
+"test-audit-2026-09-11-f1.R","recoding an ORDINARY variable, or every variable, is likewise inert (audit 2026-09-11, the 24-case sweep)",8,0,0,0,0,""
+"test-audit-2026-09-11-f1.R","the key names the law, not the printing: permuted categories, permuted arms, canonical continuous arms",4,0,0,0,0,""
+"test-audit-2026-09-11-f1.R","a row with a law of its own is mapped exactly as before: the pinned distinct-law value stands",2,0,0,0,0,""

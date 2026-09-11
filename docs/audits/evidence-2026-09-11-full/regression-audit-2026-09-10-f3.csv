@@ -1,0 +1,5 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-10-f3.R","a category block left blank by the parser is counted on the Summary line (audit 2026-09-10 F3, JATS)",13,0,0,0,0,""
+"test-audit-2026-09-10-f3.R","...and through Word",12,0,0,0,0,""
+"test-audit-2026-09-10-f3.R","...and through the actual /analyze handler with the XML parse subprocess",4,0,0,0,0,""
+"test-audit-2026-09-10-f3.R","the validator returns what it left out, and the engine lists it once",17,0,0,0,0,""

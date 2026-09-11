@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-audit-2026-09-10-full-f2.R","a trial whose every row was left out is reported, not dropped (audit 2026-09-10 full, F2)",13,0,0,0,0,""
+"test-audit-2026-09-10-full-f2.R","...and through the actual /analyze handler",4,0,0,0,0,""
+"test-audit-2026-09-10-full-f2.R","the engine alone: a trial with no analysable rows yields the excluded lines and a No values Summary",4,0,0,0,0,""

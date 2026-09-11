@@ -1,0 +1,4 @@
+"file","test","passed","failed","errors","skipped","warnings","details"
+"test-degenerate-categories.R","NA category cell refuses the row instead of crashing",1,0,0,0,0,""
+"test-degenerate-categories.R","zero-margin category column is dropped; fully degenerate refused",1,0,0,0,0,""
+"test-degenerate-categories.R","healthy categorical rows still analyze",1,0,0,0,0,""
