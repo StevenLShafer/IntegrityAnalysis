@@ -275,6 +275,12 @@ if (file.exists("R/parseWideTable.R")) {
   if (!length(rf) || !length(a) || !length(b) || min(a) > min(b))
     note(paste("R/parseWideTable.R: .iaCsvRefusal() must judge the compressed-stream",
                "magic before any reader opens the file (screen 2004 F2)"))
+  # ...and a trial id is clipped at both its sources - the "Trial:" marker
+  # and the sheet name - before it is copied into every line (screen 2149 F1)
+  ids <- grep("\\.wideParseBlock\\s*\\(", pw)
+  if (!any(grepl("\\.ppClip\\(sub\\(\"\\^Trial:", pw)) ||
+      !any(grepl("else \\.ppClip\\(sheetName,\\s*\\.iaMaxTrialIdChars\\)", pw)))
+    note("R/parseWideTable.R: the trial id must be clipped at its source - the marker and the sheet name - before it is copied into every line (screen 2149 F1)")
   ll <- pwBody(".iaCsvLongLine")
   if (!length(ll) || any(grepl("readLines\\s*\\(", ll)) ||
       !any(grepl("file\\s*\\(\\s*path\\s*,\\s*\"rb\"\\s*\\)", ll)) ||

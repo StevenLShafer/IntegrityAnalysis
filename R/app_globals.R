@@ -573,6 +573,11 @@ m <- 100000
 .iaMaxTableTextBytes <- 20000000L
 .iaTableTextRefusal <- function(d) {
   if (is.null(d) || !nrow(d) || !ncol(d)) return(NULL)
+  # the column NAMES are cells too - header cells on the template route,
+  # copied into every issue that names the column (screen 2149, F2)
+  nn <- nchar(names(d), type = "bytes"); nn[is.na(nn)] <- 0L
+  if (any(nn > .ppMaxCellChars))
+    return(sprintf("a column name of %d characters; the limit is %d", max(nn), .ppMaxCellChars))
   chr <- vapply(d, function(x) is.character(x) || is.factor(x), logical(1))
   if (!any(chr)) return(NULL)
   total <- 0
