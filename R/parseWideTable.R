@@ -400,17 +400,19 @@
   linesBefore <- acc$nLines          # the file's totals before this block
   colsBefore  <- acc$cols            # (the cell count is updated in place,
                                      # so a block that yields nothing still counts)
-  # THE LABEL COLUMN AND THE HEADER ARE CLIPPED, BY DECISION (security
-  # screen 2026-09-10-2004, F3). Arm cells are capped at
-  # .iaMaxWideCellChars; the row labels and the header cells were not,
-  # and the only thing bounding them was R's 10,000-byte limit on a
-  # symbol name, which made a 10 KB label become 499 lines of 10 KB (a
-  # 5 MB template from a 55 KB sheet) and a longer one an error the
-  # callers swallowed. A label is clipped to .ppMaxCellChars (2,000, the
-  # JATS and Word readers' cell cap - a long variable name with its
-  # units is under a hundred) before anything reads it.
-  cells[, 1] <- .ppClip(cells[, 1], .ppMaxCellChars)
-  header  <- .ppClip(cells[hdr, ], .ppMaxCellChars)
+  # THE WHOLE BLOCK IS CLIPPED ON ENTRY, BY DECISION (security screens
+  # 2026-09-10-2004 F3 and -2047 F3). Arm cells are capped at
+  # .iaMaxWideCellChars; the labels and header cells were bounded only by
+  # R's 10,000-byte symbol limit (a 10 KB label became 499 lines of
+  # 10 KB); and the 2004 fix clipped column 1 and the header only, which
+  # left the cells under a "Total" column - dropped from the arms below,
+  # so never capped - to be pasted whole into the skip text of every row
+  # (2,000 rows x 20 such columns of 30 KB: 1.3 GB). Every cell is
+  # clipped to .ppMaxCellChars (2,000, the JATS and Word readers' cap; a
+  # variable name with its units is under a hundred) before anything
+  # reads it: one pass over the matrix, substr on the long cells only.
+  cells[] <- .ppClip(cells, .ppMaxCellChars)
+  header  <- cells[hdr, ]
   armCols <- which(vapply(seq_len(ncol(cells))[-1], function(j)
     nzchar(trimws(header[j])) ||
       any(nzchar(trimws(cells[-seq_len(hdr), j]))), logical(1))) + 1L
@@ -488,6 +490,12 @@
     skipped[[length(skipped) + 1]] <<-
       data.frame(label = label, reason = reason, text = txt,
                  stringsAsFactors = FALSE)
+  # The text a skipped row carries to the grid's hover note: the label and
+  # the ARM cells (never a "Total" column, which sits outside the arms and
+  # their cap - screen 2047 F3), clipped to a note's length. It used to be
+  # the whole row, which a dropped column of long cells made unbounded.
+  rowText <- function(r)
+    .ppClip(paste(c(cells[r, 1], cells[r, armCols]), collapse = " | "), 500L)
 
   # A category variable accumulates over consecutive count rows (the
   # generator writes a "Sex, n" header then one indented row per
@@ -626,7 +634,7 @@
     if (!any(present)) {
       addSkip(if (nzchar(label)) label else paste(cellTxt, collapse = " "),
               "cells not in a recognized format - enter by hand",
-              paste(cells[r, ], collapse = " | "))
+              rowText(r))
       next
     }
     mainType <- names(sort(table(types), decreasing = TRUE))[1]
@@ -677,7 +685,7 @@
                       collapse = " "),
                 paste("median without quartiles - enter median/Q1/Q3 by",
                       "hand if an IQR is printed"),
-                paste(cells[r, ], collapse = " | "))
+                rowText(r))
         next
       }
       nonInt <- vapply(toks, function(t)
@@ -687,7 +695,7 @@
         addSkip(if (nzchar(label)) label else catHeader,
                 paste("non-integer values under a category heading -",
                       "not counts; enter by hand"),
-                paste(cells[r, ], collapse = " | "))
+                rowText(r))
         next
       }
       if (is.na(catHeader)) catHeader <- "Category"
@@ -708,7 +716,7 @@
     catHeader <- NA_character_
     catHeaderNPct <- FALSE
 
-    txt <- paste(cells[r, ], collapse = " | ")
+    txt <- rowText(r)
 
     # -- median rows ----------------------------------------------------
     if (mainType == "medianTriple" || tag %in% c("medIQR", "medRng")) {
