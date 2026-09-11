@@ -10,8 +10,9 @@
 # 2026-09-10, with the fix in R/parseWideTable.R (a per-file budget of
 # cells classified, .iaMaxWideCells, carried across blocks in the totals
 # environment and checked before each block by rows x arms and inside the
-# loop; a cell longer than .ppMaxCellChars refuses the file before it is
-# tokenised). Reproduced through the path the screen names - the CSVs
+# loop; a cell longer than the wide reader's cell cap refuses the file
+# before it is tokenised - .ppMaxCellChars at first, .iaMaxWideCellChars
+# (200) since screen 1856). Reproduced through the path the screen names - the CSVs
 # through .apiReadUpload(), timed - and checked to FAIL on 7c377dc by
 # timing (8 s for the 10,000-token cell, 134 s for the bare cells; both
 # admitted there).
@@ -38,7 +39,7 @@ test_that("one oversized cell is refused before the tokenizer sees it (screen 18
   expect_lt(t$s, 5)                                       # 8.1 s on 7c377dc, and admitted
   expect_false(isTRUE(t$r$ok))
   expect_match(t$r$reasons, "characters", fixed = TRUE)
-  expect_match(t$r$reasons, as.character(.ppMaxCellChars), fixed = TRUE)
+  expect_match(t$r$reasons, as.character(.iaMaxWideCellChars), fixed = TRUE)
   expect_error(parseWideTable(bigCellCsv(10000L), "csv"), class = "iaWideTooLarge")
 })
 
@@ -71,10 +72,10 @@ test_that("a table within the budget still reads, and a cell at the limit is not
   f <- tempfile(fileext = ".xlsx"); writeBaselineTablesXlsx(tabs, f)
   r <- .apiReadUpload(f, "two.xlsx")
   expect_true(isTRUE(r$ok)); expect_identical(nrow(r$data), nrow(two))
-  # a cell of exactly .ppMaxCellChars characters is read (and skipped as unrecognised, not refused)
+  # a cell of exactly .iaMaxWideCellChars characters is read (and skipped as unrecognised, not refused)
   g <- tempfile(fileext = ".csv")
   writeLines(c("Variable,Arm A (n=10),Arm B (n=10)",
-               paste0('"Age, mean (SD)","', strrep("1 ", .ppMaxCellChars / 2), '","50.3 (10.1)"'),
+               paste0('"Age, mean (SD)","', strrep("1 ", .iaMaxWideCellChars / 2), '","50.3 (10.1)"'),
                '"Height, mean (SD)","165 (7)","167 (7)"'), g)
   b <- parseWideTable(g, "csv")
   expect_false(is.null(b))
