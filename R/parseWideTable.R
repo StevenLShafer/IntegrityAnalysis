@@ -251,6 +251,28 @@
 # rather than a fallback (a file the wide reader refuses is not read
 # again as a template: the same sheet would cost the same).
 .iaMaxWideLines <- 5000L   # template lines a journal-style file may become: .apiMaxRows
+# THE WORK IS COUNTED, NOT ONLY THE OUTPUT (security screen 2026-09-10-1822,
+# F1 and F2 - both HIGH). Every arm cell of every row goes through the
+# tokenizer (about 1.3 ms a cell, a data frame per token) whether or not
+# the row becomes a line, and the line and row bounds above see only
+# rows that produce output: 200 rows of bare "1" cells under 499 arm
+# headers - a 207 KB CSV, admitted by every cap - cost 134 s and counted
+# zero lines; and ONE cell of 40,000 tokens cost 37 s (a cap-sized cell,
+# hours). So a file has a budget of cells classified (.iaMaxWideCells,
+# carried across its blocks and checked before each block by rows x
+# arms and inside the loop as the cells are handed to the tokenizer),
+# and a cell longer than .ppMaxCellChars - the JATS and Word readers'
+# own cap; a baseline cell is under forty characters - refuses the file
+# before it is tokenised.
+.iaMaxWideCells <- 50000L  # arm cells a journal-style file may hand the tokenizer
+.wideCheckCells <- function(nCells)
+  if (nCells > .iaMaxWideCells)
+    .iaWideTooLarge(sprintf(paste("the journal-style table has %d cells to read (rows x arms,",
+                                  "across the file); the limit is %d - a baseline table has",
+                                  "a few hundred"), nCells, .iaMaxWideCells))
+.wideNewTotals <- function()   # the file's running totals, shared by its blocks
+  list2env(list(nLines = 0L, cols = character(0), nCells = 0L),
+           envir = new.env(parent = emptyenv()))
 .iaWideTooLarge <- function(msg)
   stop(structure(class = c("iaWideTooLarge", "error", "condition"),
                  list(message = msg, call = NULL)))
@@ -279,8 +301,10 @@
 # in from the caller), row names are made unique through a hash set with
 # a per-base hint (amortised constant), and the file's totals are carried
 # forward rather than recomputed.
-.wideParseBlock <- function(cells, hdr, trial, linesBefore = 0L,
-                            colsBefore = character(0)) {
+.wideParseBlock <- function(cells, hdr, trial, acc = .wideNewTotals()) {
+  linesBefore <- acc$nLines          # the file's totals before this block
+  colsBefore  <- acc$cols            # (the cell count is updated in place,
+                                     # so a block that yields nothing still counts)
   header  <- cells[hdr, ]
   armCols <- which(vapply(seq_len(ncol(cells))[-1], function(j)
     nzchar(trimws(header[j])) ||
@@ -416,6 +440,7 @@
                                   "(%d template lines already counted); the limit is %d",
                                   "lines, and every usable row becomes at least one"),
                             length(dataRows), linesBefore, .iaMaxWideLines))
+  .wideCheckCells(acc$nCells + length(dataRows) * nArms)   # screen 1822 F2: rows x arms, up front
   for (r in dataRows) {
     checkWidth()                         # screen 1628 F1: refuse before the build
     rawLabel <- cells[r, 1]
@@ -477,6 +502,15 @@
       }
     }
 
+    # screen 1822 F1 and F2: a cell is bounded in length before the
+    # tokenizer sees it, and the file's budget of cells is spent here
+    long <- nchar(cellTxt) > .ppMaxCellChars
+    if (any(long))
+      .iaWideTooLarge(sprintf(paste("a cell of %d characters in the row labelled '%s';",
+                                    "the limit is %d - a baseline cell is a number or two"),
+                              max(nchar(cellTxt)), substr(label, 1, 60), .ppMaxCellChars))
+    acc$nCells <- acc$nCells + nArms
+    .wideCheckCells(acc$nCells)
     toks <- lapply(cellTxt, function(x)
       if (nzchar(x)) classify(x) else NULL)
     types <- vapply(toks, function(t)
@@ -815,14 +849,14 @@
   acc$cols   <- unique(c(acc$cols, setdiff(names(blk$data), base)))
   .wideCheckLines(acc$nLines)
   .wideCheckWidth(acc$cols)
-  acc
+  invisible(acc)
 }
 
 parseWideTable <- function(path, ext) {
   sheetList <- tryCatch(.wideRawCells(path, ext), error = function(e) NULL)
   if (is.null(sheetList)) return(NULL)
   blocks <- list()
-  acc <- list(nLines = 0L, cols = character(0))   # the file's running totals
+  acc <- .wideNewTotals()   # the file's running totals: lines, columns, cells
   for (s in seq_along(sheetList)) {
     cells <- sheetList[[s]]
     if (nrow(cells) == 0) next
@@ -839,10 +873,9 @@ parseWideTable <- function(path, ext) {
         hdr <- .wideHeaderRow(sub)
         if (is.na(hdr)) next
         blk <- .wideParseBlock(sub, hdr,
-                               sub("^Trial:\\s*", "", cells[markers[b], 1]),
-                               linesBefore = acc$nLines, colsBefore = acc$cols)
+                               sub("^Trial:\\s*", "", cells[markers[b], 1]), acc)
         if (!is.null(blk)) {
-          acc <- .wideAddBlock(acc, blk)
+          .wideAddBlock(acc, blk)
           blocks[[length(blocks) + 1]] <- blk
         }
       }
@@ -855,10 +888,9 @@ parseWideTable <- function(path, ext) {
       trial <- if (is.null(sheetName) || !nzchar(sheetName) ||
                    grepl("(?i)^sheet ?\\d*$", sheetName))
         NA_character_ else sheetName
-      blk <- .wideParseBlock(cells, hdr, trial,
-                             linesBefore = acc$nLines, colsBefore = acc$cols)
+      blk <- .wideParseBlock(cells, hdr, trial, acc)
       if (!is.null(blk)) {
-        acc <- .wideAddBlock(acc, blk)
+        .wideAddBlock(acc, blk)
         blocks[[length(blocks) + 1]] <- blk
       }
     }
