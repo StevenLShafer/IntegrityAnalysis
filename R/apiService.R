@@ -630,6 +630,13 @@
 #     seconds whatever the sheet count.
 .iaMaxXlsxStringRun   <- 16384L
 .iaMaxXlsxStringBytes <- 8388608L
+# The largest xl/workbook.xml the reader will let openxlsx parse (security
+# screen 2026-09-11-1913, F1). getSheetNames() runs a regex over the whole
+# of workbook.xml that is quadratic on a crafted body, so it is bounded
+# before that call. A real workbook.xml is a few KB even at ten sheets;
+# 16 KiB is generous headroom and holds the quadratic's worst case to a
+# fraction of a second.
+.iaMaxWorkbookXmlBytes <- 16384L
                                    # uncompressed bytes over the archive's size, not
                                    # per entry (the comment said per-entry; the code
                                    # never was - security audit 2026-09-10)
@@ -657,10 +664,42 @@
   # plausible ratio (re-review, H3).
   onDisk <- max(file.size(path), 1)
   if (declared / onDisk > .apiMaxZipRatio) return(FALSE)
-  # ...and the largest cell text openxlsx would read is bounded, so its
-  # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
-  if (ext == "xlsx" && !.apiXlsxStringRunOK(path, info$Name)) return(FALSE)
+  if (ext == "xlsx") {
+    # xl/workbook.xml is bounded BEFORE any getSheetNames() call (security
+    # screen 2026-09-11-1913, F1): openxlsx's getSheetNames runs a regex
+    # over the whole of workbook.xml that is quadratic on a crafted body
+    # (repeated "<sheets>" openers with no closer - 256 KB took 85 s, and
+    # it runs up to three times per upload), and nothing else bounds
+    # workbook.xml (the cell-text preflight scans sharedStrings and the
+    # worksheets, not this part). A real workbook.xml is a few KB even at
+    # the ten-sheet ceiling. Bound BOTH the declared size in the central
+    # directory AND the bytes actually readable, so an under-declared part
+    # cannot slip through; the read is capped so the quadratic is never
+    # fed a large string.
+    wbLen <- info$Length[grepl("(^|/)xl/workbook\\.xml$", info$Name)]
+    if (length(wbLen) && any(wbLen > .iaMaxWorkbookXmlBytes)) return(FALSE)
+    if (!.apiWorkbookXmlBounded(path)) return(FALSE)
+    # ...and the largest cell text openxlsx would read is bounded, so its
+    # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
+    if (!.apiXlsxStringRunOK(path, info$Name)) return(FALSE)
+  }
   TRUE
+}
+
+# FALSE when xl/workbook.xml's actual (inflated) bytes exceed
+# .iaMaxWorkbookXmlBytes - a stream-bounded read so a part that
+# under-declares its size in the central directory is still caught before
+# getSheetNames runs its quadratic regex over it (security screen
+# 2026-09-11-1913, F1). A missing or unreadable workbook.xml is not this
+# guard's concern (getSheetNames handles it and .apiXlsxSheetCount fails
+# closed); this only refuses one that is too LARGE.
+.apiWorkbookXmlBounded <- function(path, cap = .iaMaxWorkbookXmlBytes) {
+  b <- suppressWarnings(tryCatch({
+    con <- unz(path, "xl/workbook.xml", open = "rb")
+    on.exit(close(con), add = TRUE)
+    readBin(con, "raw", n = cap + 1L)
+  }, error = function(e) raw(0)))
+  length(b) <= cap
 }
 
 # FALSE when any string-bearing part of the workbook holds a run of more
