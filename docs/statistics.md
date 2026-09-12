@@ -384,6 +384,25 @@ makes a number reproducible; it does not make it more precise.
   outcome, not a baseline.
 - **Independence of variables** within a trial, and of trials across a
   file, as above.
+- **Recognising equal laws is not exhaustive.** Rows whose simulated
+  null is the same distribution share one statistic-to-p mapping, so a
+  genuine tie between them is not mistaken for coincidence (see
+  "Combining rows into a trial p"). The key that decides "same law"
+  recognises the arms and categories in any order, a categorical table
+  and its transpose, and the individual arm locations entering only
+  through their N-weighted pooled value. It does **not** recognise every
+  equivalence: shifting a variable's locations by an even multiple of
+  its rounding grid leaves the law unchanged (the statistic is
+  translation-invariant and an even-grid shift keeps the round-half-to-
+  even phase) yet moves the pooled value the key records, and reflecting
+  three or more arms is likewise unrecognised. Two variables of
+  identical arm sizes, dispersions and precisions whose locations differ
+  by such a shift are then mapped separately, and a genuine tie between
+  them is split — a second-order inflation of the false-positive rate,
+  in either direction across the 0.01 screen, on a table shape that is
+  unusual in practice. The screen accepts this residual rather than
+  pursue an exhaustive canonicalisation of the simulation law (an
+  independent audit, 2026-09-11; see [method-history.md](method-history.md)).
 - **The row models**: normal observations for mean/SD rows; a metalog
   for median/IQR rows, refitted per replicate from quartiles drawn
   within their printed intervals and then given a scale drawn from the
