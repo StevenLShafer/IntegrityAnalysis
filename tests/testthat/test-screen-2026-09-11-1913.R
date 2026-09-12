@@ -95,6 +95,31 @@ test_that("a decoy workbook part is refused: the archive must have exactly one x
   }
 })
 
+test_that("the workbook rels part is bounded, and a duplicate entry name is refused (screen 2117 F3, F4)", {
+  # an oversized xl/_rels/workbook.xml.rels (openxlsx runs a quadratic
+  # regex over it per sheet) is refused, matching openxlsx's selector
+  wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "x"))
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d)
+  writeChar(paste0("<Relationships>", strrep('Target="', 262144L %/% 8L)),
+            file.path(d, "xl", "_rels", "workbook.xml.rels"), eos = NULL, useBytes = TRUE)
+  writeBin(as.raw(sample(0:255, 3e5, TRUE)), file.path(d, "docProps", "pad.bin"))
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d)
+  t <- system.time(ok <- .apiZipInflationOK(g, "xlsx"))[["elapsed"]]
+  expect_false(ok); expect_lt(t, 3)                        # minutes if openxlsx grepped it unbounded
+  # duplicate entry names: R's zip cannot make them, Python's zipfile can
+  skip_if_not(nzchar(Sys.which("python")))
+  py <- tempfile(fileext = ".py"); zf <- tempfile(fileext = ".xlsx")
+  writeLines(c("import zipfile,sys", "z=zipfile.ZipFile(sys.argv[1],'w')",
+               "z.writestr('xl/sharedStrings.xml','<sst/>')",
+               "z.writestr('xl/sharedStrings.xml','<sst>'+('x'*100)+'</sst>')",
+               "z.writestr('[Content_Types].xml','<Types/>')", "z.close()"), py)
+  system2("python", c(py, zf), stdout = NULL, stderr = NULL)
+  skip_if_not(file.exists(zf))
+  expect_gt(anyDuplicated(utils::unzip(zf, list = TRUE)$Name), 0L)
+  expect_false(.apiZipInflationOK(zf, "xlsx"))             # the scan reads the first entry, openxlsx the last
+})
+
 test_that("an ordinary workbook still reads (the bound does not refuse real files)", {
   two <- wideFixtureTwoTrials()
   v <- shiny::isolate(validateData(two))

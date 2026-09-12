@@ -46,15 +46,26 @@ test_that("a Word manuscript with long field-data runs passes the docx preflight
   expect_silent(suppressWarnings(.ppDocxData(g)))          # the whole route parses
 })
 
-test_that("the docx route still refuses a zip bomb and a non-zip file (the generic bounds remain)", {
+test_that("the docx route reaches the generic zip-bomb bounds and refuses a non-zip file (screen 2117 F1; 2148 F3)", {
   # a non-zip file named .docx is refused (a docx must be a zip)
   nz <- tempfile(fileext = ".docx"); writeBin(as.raw(rep(65L, 1000L)), nz)
   expect_false(.apiZipInflationOK(nz, "docx"))
-  # a declared-oversize archive is refused by the generic total bound
+  # a real zip whose declared uncompressed total exceeds the cap is
+  # refused THROUGH the docx ext - proving the "docx" branch reaches the
+  # generic bounds, not that a stray early return skips them
   d <- tempfile("z"); dir.create(d)
-  writeBin(raw(0), file.path(d, "big.bin"))
-  # (the ratio/total gates are exercised by the xlsx zip-bomb tests; here
-  # we only assert the docx ext reaches them - a normal small docx passes)
-  g <- manuscriptDocx(runBytes = 100L, totalPad = 2000L)
-  expect_true(.apiZipInflationOK(g, "docx"))
+  writeChar(strrep("A", 2000L), file.path(d, "word_document.xml"), eos = NULL)
+  g <- tempfile(fileext = ".docx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE), root = d)
+  info <- utils::unzip(g, list = TRUE)
+  info$Length[1] <- .apiMaxUncompressed + 1L               # (the real gate reads the archive's own directory)
+  # drive the real gate: an archive declaring over the cap is refused
+  bomb <- tempfile(fileext = ".docx")
+  con <- file(bomb, "wb"); writeBin(charToRaw("not a real bomb; see below"), con); close(con)
+  # build a genuine over-cap declared archive: many entries summing past the cap
+  big <- tempfile("b"); dir.create(big)
+  for (i in 1:20) writeBin(as.raw(rep(0L, 6e6)), file.path(big, sprintf("p%02d.xml", i)))  # 120 MB uncompressed
+  gb <- tempfile(fileext = ".docx"); zip::zip(gb, list.files(big), root = big)
+  expect_false(.apiZipInflationOK(gb, "docx"))             # over the 100 MiB declared cap, via docx
+  # a normal small docx passes
+  expect_true(.apiZipInflationOK(manuscriptDocx(runBytes = 100L, totalPad = 2000L), "docx"))
 })
