@@ -132,8 +132,14 @@
   # same decompression preflight the spreadsheet route has runs here
   # first, for the app and the API alike (repeat security screen
   # 2026-09-06, F2 - a 17 KB file declaring 4 MiB of padding was read).
-  # An unreadable archive is refused: a .docx must be a zip.
-  if (!isTRUE(.apiZipInflationOK(docxFile, "xlsx")))
+  # An unreadable archive is refused: a .docx must be a zip. It is passed
+  # as "docx", NOT "xlsx": the generic zip-bomb bounds (entry count,
+  # declared total, ratio) apply, but the xlsx cell-text, workbook-part
+  # and sheet-count bounds do NOT - a Word manuscript's XML parts all end
+  # in "xml" and legitimately carry long base64 field-data runs, so the
+  # widened xlsx scan refused real manuscripts (security screen
+  # 2026-09-11-2117, F1). officer, not openxlsx, reads the docx.
+  if (!isTRUE(.apiZipInflationOK(docxFile, "docx")))
     stop("the Word file's archive declares more than ",
          round(.apiMaxUncompressed / 1024^2), " MB uncompressed, or is not ",
          "a Word archive, and was not read", call. = FALSE)

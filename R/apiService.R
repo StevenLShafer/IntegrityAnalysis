@@ -647,12 +647,12 @@
   if (ext == "csv") return(TRUE)
   info <- tryCatch(utils::unzip(path, list = TRUE), error = function(e) NULL)
   if (is.null(info) || !nrow(info)) {
-    # Not readable as a zip. .xlsx MUST be one, so an unreadable .xlsx is
-    # refused rather than passed to openxlsx (the re-review found this
-    # branch FALLING OPEN, 2026-08-26). .xls is OLE2 rather than zip, so
-    # it legitimately lands here; bound it by file size instead, since
-    # there is no directory to inspect.
-    if (ext == "xlsx") return(FALSE)
+    # Not readable as a zip. .xlsx and .docx MUST be zips, so an
+    # unreadable one is refused rather than passed to its reader (the
+    # re-review found this branch FALLING OPEN for xlsx, 2026-08-26).
+    # .xls is OLE2 rather than zip, so it legitimately lands here; bound
+    # it by file size instead, since there is no directory to inspect.
+    if (ext %in% c("xlsx", "docx")) return(FALSE)
     return(file.size(path) <= .apiMaxBytesOnDisk)
   }
   if (nrow(info) > .apiMaxZipEntries) return(FALSE)
