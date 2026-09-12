@@ -52,3 +52,13 @@ id_rsa*
 __pycache__/
 *.pyc
 tests/testthat/testthat-problems.rds
+
+# Reference material dropped into the working tree during review (article
+# PDFs for citation checks, reviewer copies of the methods paper, pasted
+# audit text). Kept locally, never committed. No PDF at the repo ROOT is
+# tracked - repo PDFs live under docs/, and corpus PDFs are ignored above.
+/*.pdf
+/Audit of the IntegrityAnalysis methods.txt
+
+# Claude Code session and local config directory.
+.claude/
