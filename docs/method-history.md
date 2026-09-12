@@ -1230,6 +1230,32 @@ representability gate, and a different simulation). Equal-sized arms
 that exchange their SDs or quartiles are the same multiset and so the
 same law, as the audit's algebra says. No row's own draws change.
 
+**Recognised, but not exhaustively (2026-09-11, the fifth pass, accepted
+as a limitation).** The fifth audit shifted one variable's locations by
+an even multiple of the rounding grid — means (−1, 1) read as (9, 11),
+or medians and quartiles shifted by ten. The statistic is
+translation-invariant and an even-grid shift preserves the
+round-half-to-even phase, so the law is unchanged; but the shift moves
+the N-weighted pooled value the key records (0 → 10), so the row is
+mapped separately from its unshifted twins and their genuine ties are
+split. Five continuous rows read 0.008575 shifted against 0.010285 on
+the same draws (an independent reference 0.0107); seven median rows
+0.01074 against 0.009825 — the effect crosses 0.01 in either direction.
+This is the fourth distinct symmetry the key has been shown to miss
+(after arm/category permutation, transposition, and aggregation), and a
+fifth, reflection of three or more arms, is visible in the same algebra.
+A correct fix canonicalises the pooled value's phase modulo twice the
+coarsest rounding grid, per branch and per the banker's-rounding parity;
+a phase error would merge genuinely different laws, which is worse than
+the split it cures. Steve's decision (by phone, the same day): accept
+the residual as a documented limitation rather than extend the key
+again — the tool is a screen, the effect is second-order and needs an
+unusual table shape, and the diligence is better spent on corpus
+validation. The Barnett-crash finding of the same pass (a table of many
+identical arm means overflowed the dispersion likelihood; now evaluated
+in log space) was fixed; F1 stands as this note records. The pooled-mean
+key of the fourth pass is unchanged.
+
 **Bounded, the same day.** The security screen of the merge (2026-09-10-1523)
 found the first form quadratic in the rows sharing a law — every row's
 draws were held for the stage and each shared row was counted against
