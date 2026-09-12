@@ -82,6 +82,19 @@ test_that("a docx carrying a quadratic word/workbook.xml is bounded on the xlsx-
   expect_false(ok); expect_lt(t, 3)
 })
 
+test_that("a decoy workbook part is refused: the archive must have exactly one xl/workbook.xml (screen 2006 F1)", {
+  # openxlsx selects with an UNESCAPED "workbook.xml$" (the "." a wildcard),
+  # so "xl/workbookAxml" is a part openxlsx reads but a dot-escaped bound
+  # misses. The gate requires exactly one match, named xl/workbook.xml.
+  for (entry in c("xl/workbookAxml", "evil/workbook.xml")) {
+    g <- suffixWbXmlXlsx(entry, 262144L)                   # real xl/workbook.xml stays small
+    hits <- utils::unzip(g, list = TRUE)$Name[grepl("workbook.xml$", utils::unzip(g, list = TRUE)$Name)]
+    expect_gt(length(hits), 1L)                            # openxlsx would pick more than one
+    t <- system.time(ok <- .apiZipInflationOK(g, "xlsx"))[["elapsed"]]
+    expect_false(ok); expect_lt(t, 3)                      # refused as an ambiguous/decoy naming
+  }
+})
+
 test_that("an ordinary workbook still reads (the bound does not refuse real files)", {
   two <- wideFixtureTwoTrials()
   v <- shiny::isolate(validateData(two))

@@ -676,19 +676,25 @@
     # directory AND the bytes actually readable, so an under-declared part
     # cannot slip through; the read is capped so the quadratic is never
     # fed a large string.
-    # Select the entry the way openxlsx does - by the "workbook.xml$"
-    # SUFFIX, not the literal "xl/workbook.xml" (security screen
-    # 2026-09-11-1946, F1): openxlsx greps the central directory by
-    # suffix, so a part named "evil/workbook.xml" reaches its regex while
-    # a literal-name bound misses it, and a docx routed through this gate
-    # (ext forced to xlsx) carrying a "word/workbook.xml" would too (F2).
-    # Bound EVERY suffix match, by declared size and by the bytes actually
-    # readable, so an under-declared or oddly-pathed part cannot slip past.
-    wbHits <- info$Name[grepl("workbook\\.xml$", info$Name)]
+    # The workbook part is REQUIRED to be exactly one entry named
+    # "xl/workbook.xml", and bounded (security screens 2026-09-11-1913,
+    # -1946, -2006). Chasing openxlsx's own selector by hand kept leaving
+    # gaps - it greps the central directory with an UNESCAPED
+    # "workbook.xml$" (the "." a wildcard), so a part named "workbookAxml"
+    # or "evil/workbook.xml" is one openxlsx reads but a literal or
+    # dot-escaped bound misses. Rather than replicate that grammar, the
+    # archive is constrained to the one shape a real workbook has: exactly
+    # one match of openxlsx's unescaped pattern, and it must be
+    # "xl/workbook.xml". A legitimate workbook always has that part and
+    # nothing else ending in "workbook" + any char + "xml"; openxlsx
+    # errors on two matches anyway, so refusing a decoy costs nothing
+    # legitimate and removes the whole naming game (including a docx
+    # routed here with a "word/workbook.xml").
+    wbHits <- info$Name[grepl("workbook.xml$", info$Name)]   # openxlsx's OWN (unescaped) selector
     if (length(wbHits)) {
-      if (any(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes, na.rm = TRUE))
-        return(FALSE)
-      for (nm in wbHits) if (!.apiWorkbookXmlBounded(path, nm)) return(FALSE)
+      if (length(wbHits) != 1L || !identical(wbHits, "xl/workbook.xml")) return(FALSE)
+      if (isTRUE(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes)) return(FALSE)
+      if (!.apiWorkbookXmlBounded(path, wbHits)) return(FALSE)
     }
     # ...and the largest cell text openxlsx would read is bounded, so its
     # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
