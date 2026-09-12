@@ -676,9 +676,20 @@
     # directory AND the bytes actually readable, so an under-declared part
     # cannot slip through; the read is capped so the quadratic is never
     # fed a large string.
-    wbLen <- info$Length[grepl("(^|/)xl/workbook\\.xml$", info$Name)]
-    if (length(wbLen) && any(wbLen > .iaMaxWorkbookXmlBytes)) return(FALSE)
-    if (!.apiWorkbookXmlBounded(path)) return(FALSE)
+    # Select the entry the way openxlsx does - by the "workbook.xml$"
+    # SUFFIX, not the literal "xl/workbook.xml" (security screen
+    # 2026-09-11-1946, F1): openxlsx greps the central directory by
+    # suffix, so a part named "evil/workbook.xml" reaches its regex while
+    # a literal-name bound misses it, and a docx routed through this gate
+    # (ext forced to xlsx) carrying a "word/workbook.xml" would too (F2).
+    # Bound EVERY suffix match, by declared size and by the bytes actually
+    # readable, so an under-declared or oddly-pathed part cannot slip past.
+    wbHits <- info$Name[grepl("workbook\\.xml$", info$Name)]
+    if (length(wbHits)) {
+      if (any(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes, na.rm = TRUE))
+        return(FALSE)
+      for (nm in wbHits) if (!.apiWorkbookXmlBounded(path, nm)) return(FALSE)
+    }
     # ...and the largest cell text openxlsx would read is bounded, so its
     # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
     if (!.apiXlsxStringRunOK(path, info$Name)) return(FALSE)
@@ -686,16 +697,17 @@
   TRUE
 }
 
-# FALSE when xl/workbook.xml's actual (inflated) bytes exceed
+# FALSE when the named archive entry's actual (inflated) bytes exceed
 # .iaMaxWorkbookXmlBytes - a stream-bounded read so a part that
 # under-declares its size in the central directory is still caught before
 # getSheetNames runs its quadratic regex over it (security screen
-# 2026-09-11-1913, F1). A missing or unreadable workbook.xml is not this
-# guard's concern (getSheetNames handles it and .apiXlsxSheetCount fails
-# closed); this only refuses one that is too LARGE.
-.apiWorkbookXmlBounded <- function(path, cap = .iaMaxWorkbookXmlBytes) {
+# 2026-09-11-1913, F1). The caller passes each entry openxlsx would select
+# by the "workbook.xml$" suffix (screen 2026-09-11-1946, F1). A missing or
+# unreadable entry is not this guard's concern (getSheetNames handles it
+# and .apiXlsxSheetCount fails closed); this only refuses one too LARGE.
+.apiWorkbookXmlBounded <- function(path, entry = "xl/workbook.xml", cap = .iaMaxWorkbookXmlBytes) {
   b <- suppressWarnings(tryCatch({
-    con <- unz(path, "xl/workbook.xml", open = "rb")
+    con <- unz(path, entry, open = "rb")
     on.exit(close(con), add = TRUE)
     readBin(con, "raw", n = cap + 1L)
   }, error = function(e) raw(0)))

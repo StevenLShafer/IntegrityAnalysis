@@ -50,6 +50,38 @@ test_that(".apiWorkbookXmlBounded catches an under-declared oversized part, and 
   expect_true(.apiWorkbookXmlBounded(ok))                 # a real workbook.xml is a few KB
 })
 
+# openxlsx selects the workbook part by the "workbook.xml$" SUFFIX, not
+# the literal "xl/workbook.xml", so the bound matches every suffix hit
+# (security screen 2026-09-11-1946, F1): a part named "evil/workbook.xml"
+# reaches openxlsx's regex, and a docx routed through this gate with a
+# "word/workbook.xml" would too (F2).
+suffixWbXmlXlsx <- function(entry, bytes, pad = 3e5) {
+  wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "x"))
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d)
+  dir.create(file.path(d, dirname(entry)), showWarnings = FALSE, recursive = TRUE)
+  writeChar(paste0("<workbook>", strrep("<sheets>", bytes %/% 8L)), file.path(d, entry), eos = NULL, useBytes = TRUE)
+  writeBin(as.raw(sample(0:255, pad, TRUE)), file.path(d, "docProps", "pad.bin"))
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
+}
+
+test_that("an oversized workbook.xml under any path is refused, matching openxlsx's suffix selector (screen 1946 F1)", {
+  g <- suffixWbXmlXlsx("evil/workbook.xml", 262144L)       # real xl/workbook.xml stays small
+  hits <- utils::unzip(g, list = TRUE)$Name[grepl("workbook.xml$", utils::unzip(g, list = TRUE)$Name)]
+  expect_true("evil/workbook.xml" %in% hits && "xl/workbook.xml" %in% hits)
+  t <- system.time(ok <- .apiZipInflationOK(g, "xlsx"))[["elapsed"]]
+  expect_false(ok); expect_lt(t, 3)                        # missed by a literal-name bound on 1d5e936
+  expect_false(.apiWorkbookXmlBounded(g, "evil/workbook.xml"))
+})
+
+test_that("a docx carrying a quadratic word/workbook.xml is bounded on the xlsx-routed gate (screen 1946 F2)", {
+  # .ppDocxData routes docx through .apiZipInflationOK(., 'xlsx'); the
+  # suffix bound covers word/workbook.xml the same way
+  g <- suffixWbXmlXlsx("word/workbook.xml", 262144L)
+  t <- system.time(ok <- .apiZipInflationOK(g, "xlsx"))[["elapsed"]]
+  expect_false(ok); expect_lt(t, 3)
+})
+
 test_that("an ordinary workbook still reads (the bound does not refuse real files)", {
   two <- wideFixtureTwoTrials()
   v <- shiny::isolate(validateData(two))
