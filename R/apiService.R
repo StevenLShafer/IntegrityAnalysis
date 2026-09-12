@@ -620,8 +620,14 @@
 #     of 127 KiB each - each under the old per-cell cap, the file under
 #     1 MB, every gate green - stalled the worker for ~5.5 minutes. A
 #     whole baseline table is tens to low-hundreds of KB; 8 MiB is deep
-#     headroom and bounds the aggregate read to a few seconds even for a
-#     full budget of 16 KiB strings.
+#     headroom. openxlsx re-parses the shared-string table on EVERY sheet
+#     read (.wideRawCells loops read.xlsx per sheet), so the aggregate is
+#     scaled by the sheet count (security screen 2026-09-11-1655): a
+#     10-sheet workbook whose shared strings fill the 8 MiB budget read
+#     for 36 s, ten times a single sheet's ~3.6 s. The budget below is the
+#     WHOLE-FILE ceiling; the effective bound is it divided by the number
+#     of sheets, so the total work over the per-sheet loop stays a few
+#     seconds whatever the sheet count.
 .iaMaxXlsxStringRun   <- 16384L
 .iaMaxXlsxStringBytes <- 8388608L
                                    # uncompressed bytes over the archive's size, not
@@ -676,6 +682,12 @@
                                 capTotal = .iaMaxXlsxStringBytes) {
   parts <- names[grepl("(^|/)xl/sharedStrings\\.xml$", names) |
                  grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
+  # openxlsx re-parses the shared-string table once per sheet, so the same
+  # text costs its parse time times the sheet count; divide the whole-file
+  # budget by the number of worksheets so the total per-sheet work stays
+  # bounded (security screen 2026-09-11-1655, F1).
+  nSheets <- sum(grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names))
+  capTotal <- capTotal %/% max(1L, nSheets)
   lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
   total <- 0                                                          # "<"-free bytes over ALL parts
   for (nm in parts) {
