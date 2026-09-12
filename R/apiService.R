@@ -656,6 +656,13 @@
     return(file.size(path) <= .apiMaxBytesOnDisk)
   }
   if (nrow(info) > .apiMaxZipEntries) return(FALSE)
+  # Duplicate entry names: unz() (this gate's reader) returns the FIRST
+  # match, but openxlsx extracts with utils::unzip, whose loop writes
+  # every entry so the LAST wins - so a bomb hidden in a second entry of
+  # the same name is scanned as the benign first and read as the bomb
+  # (security screen 2026-09-11-2117, F4). No writer produces duplicate
+  # names; refuse them (applies to every archive, not only xlsx).
+  if (anyDuplicated(info$Name)) return(FALSE)
   declared <- sum(info$Length, na.rm = TRUE)
   if (declared > .apiMaxUncompressed) return(FALSE)
   # The declared sizes are attacker-controlled, so ALSO bound the
@@ -695,6 +702,21 @@
       if (length(wbHits) != 1L || !identical(wbHits, "xl/workbook.xml")) return(FALSE)
       if (isTRUE(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes)) return(FALSE)
       if (!.apiWorkbookXmlBounded(path, wbHits)) return(FALSE)
+    }
+    # The workbook RELATIONSHIPS part is bounded the same way (security
+    # screen 2026-09-11-2117, F3): read.xlsx reads xl/_rels/workbook.xml
+    # .rels whole and runs a quadratic regex - regexpr("(?<=Target=\").+
+    # xml(?=\")", perl = TRUE) - over its <Relationship> nodes once per
+    # declared sheet per read (a 256 KB node of repeated "Target=" cost
+    # 60 s a call, up to 110 calls). Its name ends in "rels", so the
+    # cell-text scan does not reach it. It must be exactly one entry named
+    # xl/_rels/workbook.xml.rels and at most .iaMaxWorkbookXmlBytes; a
+    # real rels for ten sheets is one or two KB.
+    relsHits <- info$Name[grepl("workbook.xml.rels$", info$Name)]   # openxlsx's OWN selector
+    if (length(relsHits)) {
+      if (length(relsHits) != 1L || !identical(relsHits, "xl/_rels/workbook.xml.rels")) return(FALSE)
+      if (isTRUE(info$Length[match(relsHits, info$Name)] > .iaMaxWorkbookXmlBytes)) return(FALSE)
+      if (!.apiWorkbookXmlBounded(path, relsHits)) return(FALSE)
     }
     # ...and the largest cell text openxlsx would read is bounded, so its
     # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).

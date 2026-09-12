@@ -471,7 +471,11 @@ if (file.exists("R/apiService.R")) {
       !any(grepl("grepl(\"xml$\", names", xr, fixed = TRUE)) ||
       # the workbook part is required to be exactly one xl/workbook.xml,
       # not matched by a hand-rolled grammar (screen 2026-09-11-2006 F1)
-      !any(grepl("identical(wbHits, \"xl/workbook.xml\")", zi, fixed = TRUE)))
+      !any(grepl("identical(wbHits, \"xl/workbook.xml\")", zi, fixed = TRUE)) ||
+      # duplicate entry names are refused (screen 2026-09-11-2117 F4) and
+      # the workbook rels part is bounded like the workbook part (F3)
+      !any(grepl("anyDuplicated(info$Name)", zi, fixed = TRUE)) ||
+      !any(grepl("identical(relsHits, \"xl/_rels/workbook.xml.rels\")", zi, fixed = TRUE)))
     note(paste("R/apiService.R: the xlsx preflight lost its cell-text bound -",
                "a single large non-ASCII cell (.iaMaxXlsxStringRun) or many",
                "cells summing past .iaMaxXlsxStringBytes drive openxlsx's",
