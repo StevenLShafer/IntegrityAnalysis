@@ -169,20 +169,22 @@ lyingSheetsXlsx <- function(nDecl, nStrings, eachChars, pad = 3e5) {
   g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
 }
 
-test_that("sheet declarations are counted whatever whitespace separates them, and a truncated workbook.xml fails closed (screen 1730 F1; CodeRabbit on #313)", {
-  mkDecl <- function(sep) {
-    wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "x"))
-    f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
-    d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d); wbx <- file.path(d, "xl", "workbook.xml")
-    x <- readChar(wbx, file.size(wbx), useBytes = TRUE)
-    m <- regmatches(x, regexpr("<sheet [^>]*/>", x))
-    extra <- paste(vapply(2:10, function(k) sub("^<sheet ", paste0("<sheet", sep),
-      sub('name="[^"]*"', sprintf('name="S%d"', k), sub('sheetId="[0-9]+"', sprintf('sheetId="%d"', k), m))), character(1)), collapse = "")
-    writeChar(sub(m, paste0(m, extra), x, fixed = TRUE), wbx, eos = NULL, useBytes = TRUE)
-    g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
-  }
-  for (sep in c(" ", "\t", "\n", "\r\n"))
-    expect_identical(.apiXlsxSheetCount(mkDecl(sep)), 10L)  # a space regex would miss tab/CR/LF
+test_that("the sheet count is openxlsx's own, so a tag-name desync cannot undercount it (screen 1730 F1; screen 1826 F1)", {
+  # a workbook whose xl/workbook.xml declares its sheets with a tag
+  # openxlsx matches loosely (<sheet[^>]*>) but a hand-rolled "<sheet "
+  # regex would miss - the exact desync that reopened the stall. Counting
+  # via getSheetNames() cannot undercount what read.xlsx will loop over.
+  wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "x"))
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d); wbx <- file.path(d, "xl", "workbook.xml")
+  x <- readChar(wbx, file.size(wbx), useBytes = TRUE)
+  m <- regmatches(x, regexpr("<sheet [^>]*/>", x))
+  extra <- paste(vapply(2:10, function(k) sub("^<sheet ", "<sheetZ ",
+    sub('name="[^"]*"', sprintf('name="S%d"', k), sub('sheetId="[0-9]+"', sprintf('sheetId="%d"', k), m))), character(1)), collapse = "")
+  writeChar(sub(m, paste0(m, extra), x, fixed = TRUE), wbx, eos = NULL, useBytes = TRUE)
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d)
+  expect_gt(length(openxlsx::getSheetNames(g)), 1L)        # openxlsx sees the <sheetZ ...> declarations
+  expect_identical(.apiXlsxSheetCount(g), length(openxlsx::getSheetNames(g)))   # the divisor matches, whatever the tag
 })
 
 test_that("a one-part workbook declaring ten sheets cannot keep the whole budget (screen 1730 F1)", {

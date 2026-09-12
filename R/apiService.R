@@ -726,36 +726,23 @@
   TRUE
 }
 
-# How many sheets a workbook DECLARES - the number of <sheet ...> elements
-# in xl/workbook.xml, which is what openxlsx loops over (getSheetNames),
-# and which need not equal the count of worksheet parts in the zip
-# (security screen 2026-09-11-1730, F1). Read from the zip through an
-# inflating connection, bounded (workbook.xml is tiny; a hostile one is
-# read only up to a few MB and, if it declares more than the sheet cap in
-# that window, returns a large count so the budget divides hard). Returns
-# at least 1 (a workbook has at least one sheet, and an unreadable
-# workbook.xml must not divide by zero).
+# How many sheets a workbook DECLARES - and therefore how many times the
+# per-sheet read loop re-parses the shared strings (security screen
+# 2026-09-11-1730, F1). This is exactly the count .wideRawCells loops
+# over, so it is taken from openxlsx's OWN enumeration, getSheetNames(),
+# rather than re-implementing the workbook.xml grammar by hand: a
+# hand-rolled "<sheet ...>" regex desynced from openxlsx's looser
+# "<sheet[^>]*>" match, so a workbook declaring "<sheetZ .../>" elements
+# was counted as one sheet here while openxlsx read ten, reopening the
+# per-sheet stall (screen 2026-09-11-1826, F1 - HIGH). getSheetNames()
+# reads only workbook.xml and its relationships (small; not the quadratic
+# shared-string path), the archive has already passed the ratio and
+# 100 MiB caps, and .wideRawCells calls it again immediately downstream.
+# Fail CLOSED to the sheet ceiling if it cannot be read, and never return
+# below one (no divide by zero).
 .apiXlsxSheetCount <- function(path) {
-  # workbook.xml is tiny; read up to a few MB (far more than any real one,
-  # and enough to see many more than .iaSheetCountCap sheet declarations).
-  # A workbook with no readable workbook.xml (or none at all, e.g. a
-  # synthetic part-only archive) counts as one sheet - never divide by
-  # zero, and openxlsx would read at most one sheet from it anyway.
-  b <- suppressWarnings(tryCatch({
-    con <- unz(path, "xl/workbook.xml", open = "rb")
-    on.exit(close(con), add = TRUE)
-    readBin(con, "raw", n = 4194304L)
-  }, error = function(e) raw(0)))
-  if (!length(b)) return(1L)
-  # If the read hit its limit, later <sheet> declarations may be unseen -
-  # fail CLOSED at the sheet-count ceiling so the budget divides hardest
-  # (CodeRabbit on #313). No real workbook.xml is anywhere near 4 MiB.
-  if (length(b) >= 4194304L) return(.iaSheetCountCap)
-  x <- rawToChar(b); Encoding(x) <- "bytes"
-  # each declared <sheet ...>; XML allows any whitespace, "/", or ">"
-  # after the element name, not only a space (CodeRabbit on #313)
-  m <- gregexpr("<sheet[ \t\r\n/>]", x, useBytes = TRUE)[[1]]
-  n <- if (m[1] == -1L) 0L else length(m)
+  n <- tryCatch(length(openxlsx::getSheetNames(path)),
+                error = function(e) .iaSheetCountCap)
   max(1L, n)
 }
 
