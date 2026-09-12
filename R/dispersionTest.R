@@ -118,12 +118,26 @@
 #' @noRd
 .bdLogLik <- function(eps, t, df) {
   n <- length(t)
-  # Columns are comparisons, rows are eps values. dt() recycles `df` in
-  # column-major order, so it must be repeated per eps within each column.
-  arg  <- outer(exp(eps / 2), t)
-  dens <- stats::dt(arg, df = rep(df, each = length(eps)), log = TRUE)
-  dim(dens) <- dim(arg)
-  rowSums(dens) + n * eps / 2
+  # Columns are comparisons, rows are eps values. The scaled statistic is
+  # x = exp(eps/2) * t and the term is log dt(x, df). Formed directly,
+  # exp(eps/2) OVERFLOWS to Inf at the large eps the grid search reaches
+  # (the slab mode sits near n*slabVar/2, ~1400 for many comparisons), and
+  # for a ZERO statistic Inf * 0 is NaN, which propagates into the grid's
+  # max and stopping test - "missing value where TRUE/FALSE needed"
+  # (independent statistical audit 2026-09-11, F2). A table of many
+  # identical arm means (all t = 0) is a valid input, so the density is
+  # evaluated in LOG space, where a zero statistic is exact and a huge one
+  # underflows to -Inf rather than overflowing to NaN:
+  #   log dt(x, df) = C(df) - ((df+1)/2) * log1p(x^2/df),
+  #   C(df) = lgamma((df+1)/2) - lgamma(df/2) - (1/2) log(df*pi),
+  # with log(x^2/df) = eps + log(t^2) - log(df) - which is -Inf at t = 0,
+  # so x^2/df is 0 there and the Inf*0 never forms. log1p(exp(.)) is taken
+  # by the log-sum-exp identity so it is stable for a large argument too.
+  Cdf  <- lgamma((df + 1) / 2) - lgamma(df / 2) - 0.5 * log(df * pi)
+  lArg <- outer(eps, 2 * log(abs(t)) - log(df), "+")   # log(x^2/df); -Inf where t == 0
+  l1pe <- ifelse(lArg > 0, lArg + log1p(exp(-lArg)), log1p(exp(lArg)))  # log1p(x^2/df), stable
+  dens <- sweep(sweep(l1pe, 2, (df + 1) / 2, "*"), 2, Cdf)   # ((df+1)/2)*log1p(.) - C(df), per column
+  rowSums(-dens) + n * eps / 2
 }
 
 #' Simpson's rule over an evenly spaced grid with an odd number of points
