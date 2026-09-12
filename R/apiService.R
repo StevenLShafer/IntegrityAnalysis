@@ -747,8 +747,14 @@
     readBin(con, "raw", n = 4194304L)
   }, error = function(e) raw(0)))
   if (!length(b)) return(1L)
+  # If the read hit its limit, later <sheet> declarations may be unseen -
+  # fail CLOSED at the sheet-count ceiling so the budget divides hardest
+  # (CodeRabbit on #313). No real workbook.xml is anywhere near 4 MiB.
+  if (length(b) >= 4194304L) return(.iaSheetCountCap)
   x <- rawToChar(b); Encoding(x) <- "bytes"
-  m <- gregexpr("<sheet[ />]", x, useBytes = TRUE)[[1]]                # each declared <sheet ...>
+  # each declared <sheet ...>; XML allows any whitespace, "/", or ">"
+  # after the element name, not only a space (CodeRabbit on #313)
+  m <- gregexpr("<sheet[ \t\r\n/>]", x, useBytes = TRUE)[[1]]
   n <- if (m[1] == -1L) 0L else length(m)
   max(1L, n)
 }

@@ -169,6 +169,22 @@ lyingSheetsXlsx <- function(nDecl, nStrings, eachChars, pad = 3e5) {
   g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
 }
 
+test_that("sheet declarations are counted whatever whitespace separates them, and a truncated workbook.xml fails closed (screen 1730 F1; CodeRabbit on #313)", {
+  mkDecl <- function(sep) {
+    wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "x"))
+    f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+    d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d); wbx <- file.path(d, "xl", "workbook.xml")
+    x <- readChar(wbx, file.size(wbx), useBytes = TRUE)
+    m <- regmatches(x, regexpr("<sheet [^>]*/>", x))
+    extra <- paste(vapply(2:10, function(k) sub("^<sheet ", paste0("<sheet", sep),
+      sub('name="[^"]*"', sprintf('name="S%d"', k), sub('sheetId="[0-9]+"', sprintf('sheetId="%d"', k), m))), character(1)), collapse = "")
+    writeChar(sub(m, paste0(m, extra), x, fixed = TRUE), wbx, eos = NULL, useBytes = TRUE)
+    g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
+  }
+  for (sep in c(" ", "\t", "\n", "\r\n"))
+    expect_identical(.apiXlsxSheetCount(mkDecl(sep)), 10L)  # a space regex would miss tab/CR/LF
+})
+
 test_that("a one-part workbook declaring ten sheets cannot keep the whole budget (screen 1730 F1)", {
   g <- lyingSheetsXlsx(10L, 450L, 8000L)                  # 1 worksheet part, 10 declared, ~7.2 MB shared text
   expect_identical(sum(grepl("xl/worksheets/.*xml$", utils::unzip(g, list = TRUE)$Name)), 1L)   # one part
