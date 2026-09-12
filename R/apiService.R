@@ -684,10 +684,14 @@
                  grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
   # openxlsx re-parses the shared-string table once per sheet, so the same
   # text costs its parse time times the sheet count; divide the whole-file
-  # budget by the number of worksheets so the total per-sheet work stays
-  # bounded (security screen 2026-09-11-1655, F1).
-  nSheets <- sum(grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names))
-  capTotal <- capTotal %/% max(1L, nSheets)
+  # budget by the number of sheets so the total per-sheet work stays
+  # bounded (security screen 2026-09-11-1655, F1). Count the <sheet>
+  # elements DECLARED in xl/workbook.xml, which is what openxlsx loops
+  # over (getSheetNames), not the worksheet PARTS in the zip: a one-part
+  # workbook declaring ten sheets re-parses the strings ten times while
+  # its part count is one (screen 2026-09-11-1730, F1). A real one-sheet
+  # table keeps the full budget; the liar's declaration divides its own.
+  capTotal <- capTotal %/% max(1L, .apiXlsxSheetCount(path))
   lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
   total <- 0                                                          # "<"-free bytes over ALL parts
   for (nm in parts) {
@@ -720,6 +724,39 @@
     if (!ok) return(FALSE)
   }
   TRUE
+}
+
+# How many sheets a workbook DECLARES - the number of <sheet ...> elements
+# in xl/workbook.xml, which is what openxlsx loops over (getSheetNames),
+# and which need not equal the count of worksheet parts in the zip
+# (security screen 2026-09-11-1730, F1). Read from the zip through an
+# inflating connection, bounded (workbook.xml is tiny; a hostile one is
+# read only up to a few MB and, if it declares more than the sheet cap in
+# that window, returns a large count so the budget divides hard). Returns
+# at least 1 (a workbook has at least one sheet, and an unreadable
+# workbook.xml must not divide by zero).
+.apiXlsxSheetCount <- function(path) {
+  # workbook.xml is tiny; read up to a few MB (far more than any real one,
+  # and enough to see many more than .iaSheetCountCap sheet declarations).
+  # A workbook with no readable workbook.xml (or none at all, e.g. a
+  # synthetic part-only archive) counts as one sheet - never divide by
+  # zero, and openxlsx would read at most one sheet from it anyway.
+  b <- suppressWarnings(tryCatch({
+    con <- unz(path, "xl/workbook.xml", open = "rb")
+    on.exit(close(con), add = TRUE)
+    readBin(con, "raw", n = 4194304L)
+  }, error = function(e) raw(0)))
+  if (!length(b)) return(1L)
+  # If the read hit its limit, later <sheet> declarations may be unseen -
+  # fail CLOSED at the sheet-count ceiling so the budget divides hardest
+  # (CodeRabbit on #313). No real workbook.xml is anywhere near 4 MiB.
+  if (length(b) >= 4194304L) return(.iaSheetCountCap)
+  x <- rawToChar(b); Encoding(x) <- "bytes"
+  # each declared <sheet ...>; XML allows any whitespace, "/", or ">"
+  # after the element name, not only a space (CodeRabbit on #313)
+  m <- gregexpr("<sheet[ \t\r\n/>]", x, useBytes = TRUE)[[1]]
+  n <- if (m[1] == -1L) 0L else length(m)
+  max(1L, n)
 }
 
 # The on-disk ceiling for a non-zip spreadsheet (.xls, no longer accepted) - the request

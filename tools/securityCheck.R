@@ -460,7 +460,7 @@ if (file.exists("R/apiService.R")) {
   if (!length(zi) || !any(grepl("\\.apiXlsxStringRunOK\\(path", zi)) ||
       !length(xr) || !any(grepl("\\.iaMaxXlsxStringRun", xr)) ||
       !any(grepl("\\.iaMaxXlsxStringBytes", xr)) ||
-      !any(grepl("nSheets", xr)) || !any(grepl("capTotal %/%", xr, fixed = TRUE)) ||
+      !any(grepl(".apiXlsxSheetCount(path)", xr, fixed = TRUE)) ||
       !any(grepl("unz\\(path", xr)) || !any(grepl("readBin\\(con", xr)) ||
       !any(grepl("sharedStrings", xr)) || !any(grepl("worksheets", xr)))
     note(paste("R/apiService.R: the xlsx preflight lost its cell-text bound -",
