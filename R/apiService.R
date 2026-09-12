@@ -684,10 +684,15 @@
                  grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
   # openxlsx re-parses the shared-string table once per sheet, so the same
   # text costs its parse time times the sheet count; divide the whole-file
-  # budget by the number of worksheets so the total per-sheet work stays
-  # bounded (security screen 2026-09-11-1655, F1).
-  nSheets <- sum(grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names))
-  capTotal <- capTotal %/% max(1L, nSheets)
+  # budget so the total per-sheet work stays bounded (security screen
+  # 2026-09-11-1655, F1). Divide by the sheet-count CEILING, not by the
+  # count of worksheet parts in the zip: openxlsx loops over the <sheet>
+  # elements declared in xl/workbook.xml, which need not match the parts,
+  # so a one-part workbook declaring ten sheets re-parses the strings ten
+  # times while the part count is one (screen 2026-09-11-1730, F1). The
+  # reader refuses more than .iaSheetCountCap sheets, so that ceiling is
+  # the true worst-case multiplier whatever the file declares.
+  capTotal <- capTotal %/% .iaSheetCountCap
   lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
   total <- 0                                                          # "<"-free bytes over ALL parts
   for (nm in parts) {
