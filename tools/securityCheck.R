@@ -465,11 +465,19 @@ if (file.exists("R/apiService.R")) {
       !any(grepl(".iaMaxWorkbookXmlBytes", zi, fixed = TRUE)) ||
       !any(grepl(".apiWorkbookXmlBounded", zi, fixed = TRUE)) ||
       !any(grepl("unz\\(path", xr)) || !any(grepl("readBin\\(con", xr)) ||
-      !any(grepl("sharedStrings", xr)) || !any(grepl("worksheets", xr)))
+      # the cell-text scan covers EVERY part ending in "xml", not a
+      # path-anchored or dot-escaped selector a renamed part can dodge
+      # (screen 2026-09-11-2033 F1)
+      !any(grepl("grepl(\"xml$\", names", xr, fixed = TRUE)) ||
+      # the workbook part is required to be exactly one xl/workbook.xml,
+      # not matched by a hand-rolled grammar (screen 2026-09-11-2006 F1)
+      !any(grepl("identical(wbHits, \"xl/workbook.xml\")", zi, fixed = TRUE)))
     note(paste("R/apiService.R: the xlsx preflight lost its cell-text bound -",
                "a single large non-ASCII cell (.iaMaxXlsxStringRun) or many",
                "cells summing past .iaMaxXlsxStringBytes drive openxlsx's",
-               "quadratic string reader and pin the worker (screens 2026-09-11-1455 and -1602 F1)"))
+               "quadratic string reader; it must scan every .xml part and",
+               "require exactly one xl/workbook.xml (screens 2026-09-11-1455,",
+               "-1602, -2006 and -2033 F1)"))
 
   # H2: /analyze refuses an oversized table before simulating
   if (!any(grepl("\\.apiMaxRows", api)) ||

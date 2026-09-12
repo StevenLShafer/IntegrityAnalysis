@@ -737,8 +737,24 @@
 # within one chunk and never handed to openxlsx.
 .apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun,
                                 capTotal = .iaMaxXlsxStringBytes) {
-  parts <- names[grepl("(^|/)xl/sharedStrings\\.xml$", names) |
-                 grepl("(^|/)xl/worksheets/[^/]+\\.xml$", names)]
+  # EVERY .xml part is scanned, not just the canonically-named
+  # sharedStrings and worksheets (security screen 2026-09-11-2033, F1).
+  # openxlsx selects the shared-string part by an unescaped "sharedStrings
+  # .xml$" over the full extracted paths, and a worksheet by a substring
+  # of its rels Target, so a part renamed "evil/sharedStrings.xml" or
+  # "xl/ws/s1.xml" is one openxlsx reads (and runs its 115-second
+  # shared-string quadratic on) while a path-anchored selector misses it.
+  # Rather than replicate openxlsx's grammar for each part, the run and
+  # aggregate bounds - both cheap linear streaming - are applied to every
+  # entry whose name ends in "xml". That is deliberately broader than
+  # "\\.xml$": openxlsx's own selectors end in "xml$" with the dot a
+  # wildcard ("sharedStrings.xml$"), so a part named "sharedStringsZxml"
+  # is one it can read while a literal-dot scan would miss it. A
+  # legitimate workbook's other XML parts (styles, theme, the workbook
+  # part) are tens of KB with no long text run and no "<!" markup, so they
+  # pass; any part openxlsx could read as a string, whatever it is named,
+  # is bounded.
+  parts <- names[grepl("xml$", names, ignore.case = TRUE)]
   # openxlsx re-parses the shared-string table once per sheet, so the same
   # text costs its parse time times the sheet count; divide the whole-file
   # budget by the number of sheets so the total per-sheet work stays

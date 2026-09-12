@@ -202,6 +202,36 @@ test_that("a single-sheet workbook keeps the full budget (screen 1655 F1, no ove
   expect_true(.apiXlsxStringRunOK(g, utils::unzip(g, list = TRUE)$Name))
 })
 
+# openxlsx selects the shared-string part by an unescaped "sharedStrings
+# .xml$" and a worksheet by a rels-Target substring, so a path-anchored
+# selector was dodged by renaming the part (security screen 2026-09-11-2033,
+# F1). The cell-text bound now scans EVERY .xml part, so a renamed
+# shared-string part is caught whatever it is called.
+renamedSsXlsx <- function(ssName, nchars = 5e5L, pad = 3e5) {
+  wb <- createWorkbook(); addWorksheet(wb, "S1"); writeData(wb, 1, data.frame(a = "PLACEHOLDERID"))
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d)
+  ss <- file.path(d, "xl", "sharedStrings.xml")
+  s <- readChar(ss, file.size(ss), useBytes = TRUE)
+  writeChar(sub("PLACEHOLDERID", paste(rep("\u00e9", nchars), collapse = ""), s, fixed = TRUE), ss, eos = NULL, useBytes = TRUE)
+  if (ssName != "xl/sharedStrings.xml") {
+    dir.create(file.path(d, dirname(ssName)), showWarnings = FALSE, recursive = TRUE)
+    file.rename(ss, file.path(d, ssName))
+  }
+  writeBin(as.raw(sample(0:255, pad, TRUE)), file.path(d, "docProps", "pad.bin"))
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
+}
+
+test_that("a renamed shared-string part is scanned and refused, whatever it is called (screen 2033 F1)", {
+  for (nm in c("evil/sharedStrings.xml", "xl/ss.xml", "sharedStringsZxml")) {
+    g <- renamedSsXlsx(nm)
+    parts <- utils::unzip(g, list = TRUE)$Name
+    expect_false("xl/sharedStrings.xml" %in% parts)        # the honest path is gone
+    t <- system.time(ok <- .apiZipInflationOK(g, "xlsx"))[["elapsed"]]
+    expect_false(ok); expect_lt(t, 3)                      # ~115 s if openxlsx read it unbounded
+  }
+})
+
 test_that("a workbook within the aggregate budget still reads (screen 1602 F1, the accept side)", {
   g <- manyCellXlsx(200L, 40L)                             # 200 small cells, well under budget
   info <- utils::unzip(g, list = TRUE)
