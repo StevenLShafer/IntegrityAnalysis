@@ -110,6 +110,43 @@ test_that("many mid-sized cells summing past the aggregate budget are refused be
   expect_false(isTRUE(r$ok))
 })
 
+# The per-SHEET multiplier (security screen 2026-09-11-1655, F1 - MEDIUM):
+# openxlsx re-parses the shared-string table on every sheet read, so the
+# per-file aggregate budget did not bound the total work - a 10-sheet
+# workbook whose shared strings fill the budget read for ~36 s, ten times
+# a single sheet's. The budget is now divided by the sheet count.
+manySheetXlsx <- function(nSheets, nStrings, eachChars, pad = 3e5) {
+  wb <- createWorkbook()
+  k <- 0L
+  for (sh in seq_len(nSheets)) {
+    addWorksheet(wb, paste0("S", sh))
+    ids <- vapply(seq_len(nStrings), function(i) { k <<- k + 1L
+      paste0(strrep("\u00e9", eachChars), k) }, character(1))
+    cells <- do.call(rbind, lapply(ids, function(id)
+      rbind(c(paste0("Trial: ", id), "", ""), c("Variable", "Arm A (n=10)", "Arm B (n=10)"),
+            c("Age, mean (SD)", "45.3 (12.1)", "46.1 (11.8)"))))
+    writeData(wb, sh, as.data.frame(cells, stringsAsFactors = FALSE), colNames = FALSE)
+  }
+  f <- tempfile(fileext = ".xlsx"); saveWorkbook(wb, f, overwrite = TRUE)
+  d <- tempfile("x"); dir.create(d); zip::unzip(f, exdir = d)
+  writeBin(as.raw(sample(0:255, pad, TRUE)), file.path(d, "docProps", "pad.bin"))
+  g <- tempfile(fileext = ".xlsx"); zip::zip(g, list.files(d, all.files = TRUE, no.. = TRUE, recursive = TRUE), root = d); g
+}
+
+test_that("a 10-sheet workbook past the per-sheet budget is refused (screen 1655 F1)", {
+  g <- manySheetXlsx(10L, 90L, 4000L)                     # ~7 MB distinct shared text; over 8 MiB/10
+  info <- utils::unzip(g, list = TRUE)
+  expect_false(.apiXlsxStringRunOK(g, info$Name))
+  t <- system.time(r <- .apiReadUpload(g, "tensheet.xlsx"))[["elapsed"]]
+  expect_lt(t, 5)                                          # ~36 s on 84dcc21
+  expect_false(isTRUE(r$ok))
+})
+
+test_that("a single-sheet workbook keeps the full budget (screen 1655 F1, no over-refusal)", {
+  g <- manySheetXlsx(1L, 90L, 4000L)                      # same text, one sheet: under both bounds
+  expect_true(.apiXlsxStringRunOK(g, utils::unzip(g, list = TRUE)$Name))
+})
+
 test_that("a workbook within the aggregate budget still reads (screen 1602 F1, the accept side)", {
   g <- manyCellXlsx(200L, 40L)                             # 200 small cells, well under budget
   info <- utils::unzip(g, list = TRUE)
