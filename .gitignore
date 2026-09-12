@@ -62,3 +62,8 @@ tests/testthat/testthat-problems.rds
 
 # Claude Code session and local config directory.
 .claude/
+
+# Deploy-tamper check runtime log: appended on every run of
+# tools/checkDeployedBuild.ps1 (Add-Content), so it is always dirty in the
+# working tree and carries no versioned meaning. Kept locally, never committed.
+tools/checkDeployedBuild.log
