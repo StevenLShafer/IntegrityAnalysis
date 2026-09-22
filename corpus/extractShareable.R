@@ -35,6 +35,8 @@
 
 args       <- commandArgs(trailingOnly = TRUE)
 corpusRoot <- Sys.getenv("INTEGRITY_CORPUS", "C:/dev/Corpus")
+source(file.path(Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis"),
+                 "corpus", "corpusPaths.R"))
 indexDir   <- file.path(corpusRoot, "index")
 outDir     <- if (length(args) >= 1 && !grepl("^--", args[1])) args[1] else
               file.path(corpusRoot, "_share")
@@ -97,7 +99,8 @@ if ("files" %in% tiers) {
       dir.create(file.path(outDir, "files", fmt), recursive = TRUE,
                  showWarnings = FALSE)
     ok <- vapply(seq_len(nrow(take)), function(k) {
-      from <- file.path(corpusRoot, "master", take$FORMAT[k], take$FILE[k])
+      from <- corpusFilePath(corpusRoot, take$SHARE[k], take$FORMAT[k],
+                             take$FILE[k])
       to   <- file.path(outDir, "files", take$FORMAT[k], take$FILE[k])
       if (file.exists(to)) return(TRUE)
       isTRUE(suppressWarnings(file.link(from, to))) ||

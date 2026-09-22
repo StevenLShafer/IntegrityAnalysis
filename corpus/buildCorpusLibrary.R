@@ -223,6 +223,7 @@ sources           <- sources[sources$ROLE == "work", ]
 # transcriptions of it; read that file's header for the failure it
 # prevents, and for the precondition that decides where it is needed.
 source(file.path(repoRoot, "corpus", "safeMatch.R"))
+source(file.path(repoRoot, "corpus", "corpusPaths.R"))
 
 emptyIdent <- function(n)
   data.frame(PMID = rep(NA_character_, n), PMCID = NA_character_,
@@ -647,10 +648,12 @@ message("=== linking into the master tree ===")
 files <- files[order(files$ACCESSION, files$EXT, files$SOURCE_ID), ]
 files$COPY <- ave(seq_len(nrow(files)),
                   paste(files$ACCESSION, files$EXT), FUN = seq_along)
-files$MASTER_PATH <- with(files, file.path(
-  masterDir, EXT, ifelse(COPY == 1L,
-                         sprintf("%s.%s", ACCESSION, EXT),
-                         sprintf("%s.c%d.%s", ACCESSION, COPY, EXT))))
+# SHARE is set above (section 8), so the confidential tier lands in its
+# own directory rather than interleaved with everything else.
+files$MASTER_PATH <- with(files, corpusFilePath(
+  corpusRoot, SHARE, EXT, ifelse(COPY == 1L,
+                                 sprintf("%s.%s", ACCESSION, EXT),
+                                 sprintf("%s.c%d.%s", ACCESSION, COPY, EXT))))
 for (d in unique(dirname(files$MASTER_PATH)))
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
