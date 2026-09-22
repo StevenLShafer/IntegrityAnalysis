@@ -8,6 +8,7 @@
 
 setwd("C:/dev/Corpus")
 repo <- "C:/dev/IntegrityAnalysis"
+source(file.path(repo, "corpus", "corpusPaths.R"))
 m <- read.csv("index/master.csv", colClasses = "character")
 w <- read.csv("index/works.csv",  colClasses = "character")
 d <- read.csv("index/identity.csv", colClasses = "character")
@@ -104,7 +105,7 @@ cat("\n=========== INTEGRITY of the index itself ===========\n")
 a <- read.csv("index/accessions.csv", colClasses = "character")
 chk(!anyDuplicated(a$ACCESSION), "no accession names two works")
 chk(all(m$ACCESSION %in% a$ACCESSION), "every indexed file has a known accession")
-miss <- sum(!file.exists(file.path("master", m$FORMAT, m$FILE)))
+miss <- sum(!file.exists(corpusFilePath(".", m$SHARE, m$FORMAT, m$FILE)))
 chk(miss == 0, sprintf("every indexed file exists on disk (%d missing)", miss))
 chk(!any(b(m$SHA256)), "every file has a SHA-256")
 chk(length(unique(m$SHA256)) > 0.5 * nrow(m), "hashes are not degenerate")

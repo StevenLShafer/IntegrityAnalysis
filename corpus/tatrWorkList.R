@@ -36,6 +36,8 @@ getArg <- function(flag, default = NULL) {
 hasFlag <- function(flag) flag %in% args
 
 corpusRoot <- Sys.getenv("INTEGRITY_CORPUS", "C:/dev/Corpus")
+source(file.path(Sys.getenv("INTEGRITY_ROOT", "C:/dev/IntegrityAnalysis"),
+                 "corpus", "corpusPaths.R"))
 out        <- getArg("--out", "tatrWorkList.csv")
 nodes      <- as.integer(getArg("--nodes", "1"))
 sourceOnly <- getArg("--source", NA_character_)
@@ -87,7 +89,7 @@ if (!is.na(sample) && sample < nrow(pdfs)) {
   message(sprintf("  sampled %d (seed 20260901)", nrow(pdfs)))
 }
 
-pdfs$PATH <- file.path(corpusRoot, "master", "pdf", pdfs$FILE)
+pdfs$PATH <- corpusFilePath(corpusRoot, pdfs$SHARE, "pdf", pdfs$FILE)
 missing <- !file.exists(pdfs$PATH)
 if (any(missing)) {
   message(sprintf("  !! %d listed PDFs are not on disk - excluded", sum(missing)))
