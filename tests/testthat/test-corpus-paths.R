@@ -61,10 +61,36 @@ test_that("an unknown share class is refused, not guessed", {
   # Guessing has two failure modes and both are bad: guess "master" for a
   # confidential file and it is exposed to every path-based copy; guess
   # "master-confidential" for a public one and it vanishes from extraction.
-  expect_error(corpusShareDir(NA_character_), "no SHARE class")
-  expect_error(corpusShareDir(""),            "no SHARE class")
+  expect_error(corpusShareDir(NA_character_), "unrecognised SHARE")
+  expect_error(corpusShareDir(""),            "unrecognised SHARE")
   expect_error(corpusFilePath("r", c("public", NA), "pdf", c("a.pdf", "b.pdf")),
-               "no SHARE class")
+               "unrecognised SHARE")
+  # a blank is reported as <blank> rather than as an empty string, so the
+  # message reads sensibly when several offenders are listed together
+  expect_error(corpusShareDir(NA_character_), "<blank>")
+})
+
+test_that("an unknown share class is refused even when it is not blank", {
+  sourceCorpusPaths()
+  # CodeRabbit on PR #325. The first version tested only for NA and "", so
+  # any OTHER unrecognised value - a new tier, a typo - fell through to
+  # "master", the shared tree. A future confidential class would have been
+  # filed exactly where this whole change exists to stop it going.
+  expect_error(corpusShareDir("embargoed"),       "unrecognised SHARE")
+  expect_error(corpusShareDir("confidential-2"),  "unrecognised SHARE")
+  expect_error(corpusShareDir("Confidential"),    "unrecognised SHARE")  # case matters
+  expect_error(corpusShareDir(c("public", "embargoed")), "unrecognised SHARE")
+  # and the message must name the offender, or the fix is a guessing game
+  expect_error(corpusShareDir("embargoed"), "embargoed")
+})
+
+test_that("every share class the index actually uses is accepted", {
+  sourceCorpusPaths()
+  # The allowlist must cover reality, or the resolver refuses the live
+  # index. These are the five classes present in master.csv on 2026-09-22.
+  for (s in c("public", "noncommercial", "verbatim-only", "restricted",
+              "confidential"))
+    expect_silent(corpusShareDir(s))
 })
 
 test_that("the resolver is vectorised, so a mixed index is handled row-wise", {

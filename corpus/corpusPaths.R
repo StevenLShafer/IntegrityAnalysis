@@ -35,18 +35,41 @@
 #'
 #' @param share Character vector of SHARE values from `index/master.csv`.
 #' @return "master-confidential" for the confidential tier, "master" otherwise.
+## The share classes this resolver knows how to place. Deliberately an
+## ALLOWLIST, not a test for emptiness (CodeRabbit on PR #325): the first
+## version rejected NA and "" but mapped every other unrecognised value -
+## "embargoed", "confidential-2", a typo - to "master", the SHARED tree.
+## That is the exact failure this split was made to prevent, reintroduced
+## inside the guard meant to prevent it.
+##
+## Adding a share class therefore BREAKS this function until someone says
+## where files of that class belong. That is the intended behaviour: a new
+## tier is a decision about confidentiality, and it should not be possible
+## to add one and have its files quietly inherit the shared directory.
+.corpusShareClasses <- c("public", "noncommercial", "verbatim-only",
+                         "restricted", "confidential")
+
 corpusShareDir <- function(share) {
   # An unknown share class is not defaulted. Guessing has two failure modes
   # and both are bad: guess "master" for a confidential file and it is
   # exposed to every path-based copy; guess "master-confidential" for a
   # public one and it silently disappears from extraction. Refuse instead -
-  # every row in master.csv has carried a SHARE since the index was built,
-  # so this can only fire on a corrupted or hand-edited index.
-  bad <- is.na(share) | !nzchar(as.character(share))
-  if (any(bad))
-    stop(sum(bad), " file(s) have no SHARE class, so their location cannot ",
-         "be determined. Fix index/master.csv; do not guess.")
-  ifelse(share == "confidential", "master-confidential", "master")
+  # every row in master.csv has carried a known SHARE since the index was
+  # built, so this can only fire on a corrupted, hand-edited, or newly
+  # extended index.
+  s   <- as.character(share)
+  bad <- is.na(s) | !nzchar(s) | !(s %in% .corpusShareClasses)
+  if (any(bad)) {
+    seen <- unique(ifelse(is.na(s[bad]) | !nzchar(s[bad]), "<blank>", s[bad]))
+    stop(sum(bad), " file(s) have an unrecognised SHARE class (",
+         paste(utils::head(seen, 5), collapse = ", "),
+         "), so their location cannot be determined. Known classes: ",
+         paste(.corpusShareClasses, collapse = ", "),
+         ". Fix index/master.csv, or add the new class to ",
+         ".corpusShareClasses and decide which tree it belongs in. ",
+         "Do not guess.")
+  }
+  ifelse(s == "confidential", "master-confidential", "master")
 }
 
 #' Full path to a corpus file
