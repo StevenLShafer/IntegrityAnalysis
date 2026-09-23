@@ -495,9 +495,45 @@ test_that("a BLANK label column with bare numbers is still refused", {
     c("Age (SD)", "49(9)", "45(11)"),
     c("BMI (SD)", "24(2)", "25(3)"))
   f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  # expect_null, not a disjunction. The first version of this assertion was
+  #   expect_true(is.null(b) || !any(grepl("^Age", hdr$ROW) & is.na(hdr$MEAN)))
+  # which PASSED WHILE TESTING NOTHING: when the sheet parses, Age gets a
+  # valid MEAN, so the right-hand side is TRUE and the assertion holds
+  # either way. It was written to prove the veto still bites and could not
+  # have detected its absence - and the veto was in fact dead at the time
+  # (the numericBody pattern lacked perl = TRUE and matched no number).
+  # CodeRabbit on #326 caught the assertion; running it caught the veto.
+  expect_null(parseWideTable(f, "xlsx"))
+})
+
+test_that("arm names above a numbered row make the sheet ambiguous, so it is refused", {
+  # A caption row carrying the real arm names, followed by a numbered row:
+  # accepting "Group" would report the arms as 1 and 2 and silently discard
+  # "Active" and "Placebo". Arm identity is positional, so the numbers parse
+  # perfectly well and nothing would look wrong. Refuse instead of guessing.
+  m <- rbind(
+    c("Baseline characteristics", "Active", "Placebo"),
+    c("Group",                    "1",      "2"),
+    c("Age (SD)",                 "49(9)",  "45(11)"),
+    c("BMI (SD)",                 "24(2)",  "25(3)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  expect_null(parseWideTable(f, "xlsx"))
+})
+
+test_that("a numbered header with nothing above it is still accepted", {
+  # The counterpart to the test above: the refusal is triggered by earlier
+  # arm names, not by numbered arms as such. Steve's remi.xlsx opens on its
+  # "Group | 1 | ... | 9" row and must keep working.
+  m <- rbind(
+    c("Group",    "1",     "2"),
+    c("N",        "11",    "10"),
+    c("Age (SD)", "49(9)", "45(11)"),
+    c("BMI (SD)", "24(2)", "25(3)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
   b <- parseWideTable(f, "xlsx")
-  hdr <- if (is.null(b)) NULL else b[[1]]$data
-  # Either declined outright, or at least it did not take row 1 as the
-  # header and call the arms "1" and "2" on that basis.
-  expect_true(is.null(b) || !any(grepl("^Age", hdr$ROW) & is.na(hdr$MEAN)))
+  expect_false(is.null(b))
+  # ROW is "Age (SD)", not "Age": "(SD)" alone is not one of the tag
+  # patterns that get stripped, so the label is kept verbatim.
+  d <- b[[1]]$data
+  expect_identical(d$MEAN[grepl("^Age", d$ROW)], c(49, 45))
 })
