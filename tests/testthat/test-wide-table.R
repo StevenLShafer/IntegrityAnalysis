@@ -445,3 +445,59 @@ test_that("a median row with empty cells still earns its Q1/Q3 columns", {
   # the readable row is untouched
   expect_identical(b$data$MEAN[b$data$ROW == "Weight"], c(70.1, 71.3))
 })
+
+# --------------------------------------------------------------------------
+# Steve's remi.xlsx, 2026-09-23. A nine-arm baseline table transcribed by
+# hand from a manuscript, headed "Group | 1 | 2 | ... | 9". It was refused
+# outright, and the app fell through to the template reader which then
+# reported "missing column labeled N / MEAN / SD" - accurate, and no help
+# at all, because the file was never a template.
+# --------------------------------------------------------------------------
+
+test_that("a label column headed Group is recognised, with bare-number arms", {
+  m <- rbind(
+    c("Group",    "1",         "2",         "3"),
+    c("N",        "11",        "10",        "11"),
+    c("Age (SD)", "49(9)",     "45(11)",    "46(12)"),
+    c("BMI (SD)", "24.3(2.3)", "24.3(3.5)", "22.9(2.5)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")
+
+  expect_false(is.null(b))                      # it used to return NULL
+  d <- b[[1]]$data
+  age <- d[grepl("^Age", d$ROW), ]
+  expect_identical(nrow(age), 3L)
+  expect_identical(age$MEAN, c(49, 45, 46))
+  expect_identical(age$SD,   c(9, 11, 12))
+  expect_identical(age$N,    c(11, 10, 11))     # the "N" row supplies arm sizes
+})
+
+test_that("Arm, Treatment and Cohort head a label column too", {
+  for (word in c("Arm", "Treatment", "Cohort", "Variable")) {
+    m <- rbind(
+      c(word,       "1",     "2"),
+      c("N",        "11",    "10"),
+      c("Age (SD)", "49(9)", "45(11)"),
+      c("BMI (SD)", "24(2)", "25(3)"))
+    f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+    expect_false(is.null(parseWideTable(f, "xlsx")), info = word)
+  }
+})
+
+test_that("a BLANK label column with bare numbers is still refused", {
+  # The veto exists so a row of DATA is never mistaken for a header. It is
+  # lifted only when the label cell NAMES the column; with the name absent,
+  # nothing distinguishes "| 11 | 10 | 11" from an ordinary data row, and
+  # relaxing it there would invent headers.
+  m <- rbind(
+    c("",         "1",     "2"),
+    c("",         "11",    "10"),
+    c("Age (SD)", "49(9)", "45(11)"),
+    c("BMI (SD)", "24(2)", "25(3)"))
+  f <- writeRawXlsx(m, tempfile(fileext = ".xlsx"))
+  b <- parseWideTable(f, "xlsx")
+  hdr <- if (is.null(b)) NULL else b[[1]]$data
+  # Either declined outright, or at least it did not take row 1 as the
+  # header and call the arms "1" and "2" on that basis.
+  expect_true(is.null(b) || !any(grepl("^Age", hdr$ROW) & is.na(hdr$MEAN)))
+})
