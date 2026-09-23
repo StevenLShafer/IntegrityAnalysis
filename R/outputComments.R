@@ -30,7 +30,14 @@ outputComments <- function(
     echo = getOption("ECHO_OUTPUT_COMMENTS", interactive()),
     sep = " ")
 {
-  isolate({
+  # shiny:: qualified, not bare. shiny is in Imports, so it is LOADED but
+  # not attached; a bare isolate() resolves only because the running app
+  # calls library(shiny). Any caller that does not - a test, a script -
+  # got "could not find function isolate" the moment this was reached,
+  # which is why NO test had ever exercised a structural-refusal path:
+  # the refusal calls outputComments() and the test died there
+  # (2026-09-23, adding the ROW-synonym tests).
+  shiny::isolate({
     argslist <- list(...)
     if (length(argslist) == 1) {
       text <- argslist[[1]]
@@ -41,10 +48,10 @@ outputComments <- function(
     # If this is called within a shiny app, try to get the active session
     # and write to the session's logger
     commentsLog <- function(x) invisible(NULL)
-    session <- getDefaultReactiveDomain()
+    session <- shiny::getDefaultReactiveDomain()
     if (!is.null(session) &&
         is.environment(session$userData) &&
-        is.reactive(session$userData$commentsLog))
+        shiny::is.reactive(session$userData$commentsLog))
     {
       commentsLog <- session$userData$commentsLog
     }

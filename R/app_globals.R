@@ -205,6 +205,31 @@ m <- 100000
     if (length(i)) names(DATA)[i[1]] <- "ROW"
   }
 
+  # VARIABLE and its kin, for the same reason GROUP is here (Steve's
+  # remi.v2.xlsx, 2026-09-23). Transcribing a manuscript's baseline table
+  # by hand, the natural heading for the column of variable names is
+  # "Variable" - or "Characteristic", or "Parameter". A sheet using any of
+  # them was refused with "missing column labeled ROW": accurate, and no
+  # help, because the column was right there. The workaround was to add a
+  # SECOND column literally named ROW, which then held row numbers instead
+  # of variable names and made the grid worse.
+  #
+  # ANCHORED, not a grep, unlike GROUP above. "GROUP" is grepped and so
+  # already swallows "Grouping"; widening that habit to "ITEM" or
+  # "PARAMETER" would swallow "Itemized notes" and "Parameter units". The
+  # cost of the anchor is that a trailing unit or plural must be spelled
+  # out, which the pattern does.
+  #
+  # This lives in the normaliser, NOT in validateData, because the comment
+  # above .iaTrialColumn is right: two implementations of one rule set is
+  # the defect. The reader and the validator must agree about what heads a
+  # column of variable names, so the rule is stated once, here.
+  nm <- names(DATA)
+  if (!length(grep("ROW", nm))) {
+    i <- grep("^(VARIABLE|CHARACTERISTIC|PARAMETER|OUTCOME|ITEM)S?$", nm)
+    if (length(i)) names(DATA)[i[1]] <- "ROW"
+  }
+
   # The grep that F1 turned on: ANY name containing ROW becomes ROW.
   nm <- names(DATA)
   i <- grep("ROW", nm)
