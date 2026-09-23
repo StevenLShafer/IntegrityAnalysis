@@ -191,7 +191,22 @@ template format above, not this one.
 **An article PDF.** Upload the article; the app finds the baseline
 table ("Table 1") in the text layer and extracts it into the grid. The
 extraction is deterministic — the same PDF always yields the same table
-— and entirely local. Median rows are extracted too, **when the table
+— and entirely local.
+
+> **One table only.** The reader finds and extracts a *single* baseline
+> table. A manuscript that divides its baseline data across two or three
+> tables — demographics in Table 1, comorbidities in Table 2, operative
+> details in Table 3 — will not be parsed correctly: the app extracts
+> whichever one table it judges the best baseline candidate, and the rest
+> are neither found nor merged with it. Nothing warns you that the others
+> existed, so **if you know the baseline data is split, check what landed
+> in the grid against the paper.** The remedy is to transcribe the tables
+> into one spreadsheet and upload that (see *A baseline table in a
+> spreadsheet*, above); a spreadsheet may carry every variable from all
+> the tables as long as each line names its own variable and arm. This is
+> a real limitation of the deterministic reader rather than a bug — it
+> has no way to decide that three tables describe the same arms in the
+> same order — and splitting baseline data this way is unusual. Median rows are extracted too, **when the table
 says the bracketed interval is an IQR** (in the row label, caption, or
 footnote); a median with a min–max range, or with an unlabeled
 interval, is flagged for hand entry instead — the analysis needs

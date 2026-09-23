@@ -112,6 +112,22 @@ The engine does not pick a page and hope. It enumerates **every** captioned tabl
 document, scores each caption for how much it sounds like a baseline table, and parses the most
 promising ones.
 
+> **The engine returns ONE baseline table, and that is a contract, not an accident.** It selects
+> a single winning table; it never merges two. A manuscript that divides its baseline data across
+> several tables — demographics in Table 1, comorbidities in Table 2, operative details in
+> Table 3 — yields whichever one scored highest, silently, with no signal that the others held
+> baseline data too.
+>
+> Merging them is not a scoring problem. It would require deciding that several tables describe
+> **the same arms in the same column order**, which nothing in the document guarantees: arm
+> counts differ between tables, column order differs, and a mis-alignment would silently pair one
+> arm's mean with another arm's N — producing a confident verdict from data that was never in the
+> paper. That failure is worse than extracting one table and saying so.
+>
+> The documented route for a split baseline table is transcription into a single spreadsheet,
+> where the user asserts the arm alignment rather than the engine guessing it. See the user guide,
+> *An article PDF*. (Steve's ALN-D-26-01239 review, 2026-09-23.)
+
 - Captions are matched as **adjacent words** ("Table" + a numeral), not by a regex over joined
   line text — on a two-column page that joined text contains the other column's prose. Roman
   numerals are matched too; they are the house style of *Anaesthesia* and *CJA*.
