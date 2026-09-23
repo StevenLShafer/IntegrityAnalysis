@@ -276,10 +276,23 @@
     if (length(body) < 2) next
     if (any(grepl("(?i)\\(\\s*n\\s*=\\s*\\d", body, perl = TRUE)))
       return(r)
-    labelish <- !nzchar(trimws(row[1])) ||
-      grepl("(?i)^(variable|characteristic|parameter|outcome|item)s?$",
-            trimws(row[1]), perl = TRUE)
-    if (labelish && !any(grepl("^[<>]?-?[\\d.,·]+$", body))) {
+    # "Group", "Arm", "Treatment" head a label column just as plainly as
+    # "Variable" does (Steve's remi.xlsx, 2026-09-23: a nine-arm baseline
+    # table headed "Group | 1 | 2 | ... | 9").
+    lab <- trimws(row[1])
+    labelish <- !nzchar(lab) ||
+      grepl(paste0("(?i)^(variable|characteristic|parameter|outcome|item",
+                   "|group|arm|treatment|cohort)s?$"), lab, perl = TRUE)
+    # BARE-NUMBER ARM LABELS. The veto below exists so that a row of data
+    # is never mistaken for a header, and for a BLANK label cell it must
+    # stay: nothing else distinguishes "| 11 | 10 | 11" from a data row.
+    # But when the label cell NAMES the column - "Group" - then "Group | 1
+    # | 2 | 3" is unambiguous, and vetoing it rejected a perfectly ordinary
+    # journal table. So the veto is lifted only for a named label column,
+    # and the evidence test below (two rows carrying a label and a
+    # value-shaped cell) still has to pass either way.
+    numericBody <- any(grepl("^[<>]?-?[\\d.,·]+$", body))
+    if (labelish && (!numericBody || nzchar(lab))) {
       below <- seq(r + 1L, length.out = min(15L, nrow(cells) - r))
       evidence <- sum(vapply(below, function(rr)
         nzchar(trimws(cells[rr, 1])) &&
