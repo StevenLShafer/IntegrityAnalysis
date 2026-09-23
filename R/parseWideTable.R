@@ -291,7 +291,34 @@
     # journal table. So the veto is lifted only for a named label column,
     # and the evidence test below (two rows carrying a label and a
     # value-shaped cell) still has to pass either way.
-    numericBody <- any(grepl("^[<>]?-?[\\d.,·]+$", body))
+    #
+    # perl = TRUE IS LOAD-BEARING, and its absence is why this veto had
+    # NEVER FIRED (CodeRabbit on #326, confirmed by running the pattern).
+    # `\d` inside a bracket expression is not a digit class in R's default
+    # TRE engine, so "^[<>]?-?[\d.,·]+$" matched no number at all and
+    # numericBody was permanently FALSE. valuePat above uses the same class
+    # and is grepped WITH perl = TRUE, which is why that one works. The
+    # guard documented here only starts existing with this line.
+    numericBody <- any(grepl("^[<>]?-?[\\d.,·]+$", body, perl = TRUE))
+    # AN EARLIER ROW MAY HOLD THE REAL ARM NAMES (CodeRabbit on #326). A
+    # sheet can open with a caption row carrying the arm names and follow
+    # it with a numbered row:
+    #     Baseline characteristics | Active | Placebo
+    #     Group                    | 1      | 2
+    # Accepting "Group" here would report the arms as "1" and "2" and throw
+    # away "Active" and "Placebo" - silently, since arm identity is
+    # positional and the numbers parse perfectly well. Rather than guess
+    # which row was meant, refuse the sheet: a named-label row with numeric
+    # cells is only trusted when nothing above it looks like arm names.
+    priorNames <- FALSE
+    if (numericBody && r > 1L)
+      priorNames <- any(vapply(seq_len(r - 1L), function(rr) {
+        b <- trimws(cells[rr, -1]); b <- b[nzchar(b)]
+        length(b) >= 2 &&
+          !any(grepl("^[<>]?-?[\\d.,·]+$", b, perl = TRUE)) &&
+          !any(grepl(valuePat, b, perl = TRUE))
+      }, logical(1)))
+    if (labelish && numericBody && nzchar(lab) && priorNames) return(NA_integer_)
     if (labelish && (!numericBody || nzchar(lab))) {
       below <- seq(r + 1L, length.out = min(15L, nrow(cells) - r))
       evidence <- sum(vapply(below, function(rr)
