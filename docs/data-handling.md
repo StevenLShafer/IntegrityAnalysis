@@ -6,18 +6,22 @@
   Fable 5) at Steve Shafer's request, from the app and service as built.
   It describes CURRENT behavior; if a data path changes, this file
   changes in the same commit. This Markdown, in the public repository,
-  is the published copy. The pages workflow (.github/workflows/pages.yaml)
-  serves only site/ and the user guide at integrityanalysis.io; the
-  rendered inst/extdata/data-handling.html ships inside the package and
-  is not (yet) served at any URL.
+  is the published copy. Since 2026-09-24 it is ALSO the "Data handling"
+  section of the user guide: docs/include.lua splices this file into
+  docs/user-guide.md at build time, so it is served at
+  https://integrityanalysis.io/guide.html#data-handling and in the app's
+  own documentation page. There is one copy of the text - this one. The
+  standalone rendering inst/extdata/data-handling.html still ships inside
+  the package and is not served at any URL.
 
-  TO REGENERATE THE HTML after editing:
+  TO REGENERATE BOTH HTML FILES after editing (from the repository root):
     "C:\Program Files\Quarto\bin\tools\pandoc.exe" docs/data-handling.md
       -s --embed-resources --toc --metadata title="IntegrityAnalysis - Data Handling"
       -c docs/user-guide.css -o inst/extdata/data-handling.html
+  and then the user-guide command in docs/user-guide.md's header.
 -->
 
-# IntegrityAnalysis — Data Handling
+# Data handling
 
 *For editors and publishers evaluating the service, and for the
 security and legal reviewers they may consult. This statement describes
