@@ -345,6 +345,88 @@ Replies are constrained by a JSON schema (`.ppTableSchemaJson()`), so there is n
 parsing. Merging keeps every deterministic row and adds only variables the deterministic pass
 never produced.
 
+### 05e — The repeated-measures layout (2026-09-24, issue 34)
+
+Everything above models a table as **arms in columns**: value tokens are clustered
+into columns, each column is named an arm, and one row is read per variable.
+Laboratory and repeated-measures papers print the transpose:
+
+```
+Variable     Group   Baseline    After drug
+HR (bpm)       1     141 ± 15    142 ± 17
+               2     143 ± 10    133 ± 10*
+               3     140 ± 12    123 ± 10*
+MAP (mm Hg)    1     130 ± 15    131 ± 17
+```
+
+**Arms are rows** (the `Group` column runs 1..k beneath each variable) and
+**timepoints are columns**. On PMID 11375852 the column engine found two "arms" —
+the Baseline and after-drug *columns* — and took each variable's three group rows
+as three variables (`HR`, `Unnamed`, `Unnamed 2`): 36 rows for 18 baseline values,
+with every after-drug value filed as baseline data. Post-treatment values are a
+drug effect, not a random sample of one population; fed to a homogeneity test they
+can return a confident small p that has nothing to do with data integrity. That is
+the failure this engine must never produce, and it is issue 24's failure mode
+(a confident p on data that are not baseline characteristics) arriving by a
+different route — the wrong *columns* of the right table.
+
+`R/parseRepeatedMeasures.R` is tried first by `.ppParseBlock()`, after the lines are
+classified and **before** columns are clustered (clustering is the step that
+misreads this layout). It returns `NULL` unless the layout is unambiguous — a header
+line naming both a `Group` column and a `Baseline` column, data rows whose group
+index runs 1..k beneath each variable, and most of the block fitting that pattern —
+and on `NULL` the column path runs exactly as before. When it fires it reads the
+Baseline column **only**, one row per (variable, group); names the arms from the
+stacked `(Group k)` legend above the header; and takes N from the document text,
+which for animal studies is the only place it lives (`.ppGroupsOfN()`, "divided
+into three groups of eight each", including the case where poppler cuts that
+sentence at a line break and interleaves the other column between the two halves).
+
+Three guards on that reading, each added on review of PR #330 (CodeRabbit,
+2026-09-24), each answering a way the reader could have put a wrong value in the
+grid with nothing flagged:
+
+- **The Baseline column is bounded by the next header, not only by a tolerance.**
+  A value is taken only when `Baseline` is the *nearest* of the header line's
+  column centres to it. Without that, a row whose Baseline cell was blank could
+  take its after-treatment value — 50 pt to the right, inside a tolerance of half
+  the Group-to-Baseline distance — as baseline data: the exact contamination the
+  reader exists to stop. A blank cell stays blank.
+- **A group row the reader could not use is reported, not dropped.** The layout
+  is accepted when most of its lines fit; the rest — a `median [IQR]` row, a row
+  with no Baseline value — are listed in `skipped` with the reason and the line's
+  text, so `reviewFlags()` says "table line(s) could not be used" as it does for
+  the wide reader. Such a row still counts as its group's row for the 1..k run
+  check (a blank cell is part of the layout, not evidence against it); without
+  that, one blank cell broke the run and the whole table fell to the column
+  engine, which filed the after-drug value as baseline.
+- **Every "into k groups of n" statement is read, not the first.** A Methods
+  section can describe a pilot "divided into three groups of eight" and then the
+  study "divided into three groups of ten"; `.ppGroupsOfN()` returns each distinct
+  statement, and `.ppGroupNFor()` applies a size only when the statements for the
+  table's arm count agree on one — otherwise N stays missing, which the flags say.
+
+Two things changed around it, and both are deliberate:
+
+- **`.ppParseScore()` no longer credits `Unnamed` rows as variables.** An `Unnamed`
+  row is a value the block parser found with no label. At +2 each against a −1
+  penalty, twelve of them let the misread above score 24 and beat every honest
+  reading of the page (a correct six-variable parse scores 14). The penalty stays;
+  the credit goes. This is a scorer change and its effect on candidate selection
+  was measured, not assumed — see issue 34.
+- **N recovered from prose is a flag, not a fact.** It is reported through
+  `reviewFlags()` as "recovered from the document text — verify against the
+  CONSORT flow diagram", exactly like the existing text recovery, so under
+  `ai = "fallback"` the AI is still consulted for such a paper. Its rows are merged
+  by label and never overwrite a coordinate-located value; on the motivating
+  article that adds Table 2's two *baseline* Stimulation rows and nothing else.
+
+What it does **not** do: merge tables. Carlisle's published table of this trial
+carries nine variables from two tables; the engine reads one (see the user guide,
+*One table only*). The single-table parse of Table 1 gives p = 1.2×10⁻⁴; the
+published 1.2×10⁻⁶ needs Table 2's two variables as well. Both are recorded in
+`docs/validation-ledger.md`.
+
 ## Files
 
 | File | Role |

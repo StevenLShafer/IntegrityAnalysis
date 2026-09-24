@@ -116,6 +116,235 @@ today: `C:/Temp/ia-wt-docs` (this documentation audit),
 `C:/Temp/ia-wt-s1523` (screen 1523), `C:/Temp/ia-wt-sdround`
 (feature/sd-rounding-draw), `C:/Temp/ia-wt-ties` (corpus/ties-experiment).
 
+**2026-09-24 (overnight, Fable 5.1, Steve offline):** issue 34 below is
+in progress on `fix/long-layout-issue-34`. Two corpus-scale measurements
+were launched from snapshot libraries in the session scratchpad
+(`.../scratchpad/lib-main` = main@e16e185, `.../scratchpad/lib-after` =
+the branch), both with `Rscript --vanilla` because the repository's
+`.Rprofile` activates renv and silently discards `R_LIBS` — a first pair
+of mass-test runs was invalidated by exactly that and discarded.
+`corpus/measureMisparse.R` BEFORE run: `.NewCarlisle/misparse/` (log
+`.../scratchpad/misparse-before.log`); the on-disk output that was there
+did not reproduce issue 24's figures and sits beside a folder named
+`contaminated`, so it was set aside untouched as
+`.NewCarlisle/misparse-ondisk-untrusted-set-aside-2026-09-24`. The AFTER
+run follows it into the same path and is renamed on completion.
+
+---
+
+## 34. The baseline block ran into the follow-up timepoints — and the page was the transpose of what the finding assumed
+
+**Status: fixed on `fix/long-layout-issue-34`, 2026-09-24, from
+`docs/audits/2026-09-24-repeated-measures-parse-finding-cowork.md`** — a
+finding delivered by a Cowork session running IntegrityAnalysis over the
+Fujii, Boldt and Reuben corpora. Of 168 Carlisle-2012 Fujii trials, 51
+returned `parsed table failed validation`, **22 of 27 canine trials among
+them** — the stratum Carlisle found most aberrant (21 of 24 inconsistent
+with random sampling) and the stratum we were losing entirely.
+
+### The diagnosis, and where it was backwards
+
+The finding's test case is PMID 11375852 (Fujii et al., *Anesth Analg*
+2001;92:1590–3, retracted), chosen because Table 1 of Carlisle, Dexter,
+Pandit, Shafer & Yentis, *Anaesthesia* 2015;70:848–858 prints its complete
+baseline table and the text gives the Monte Carlo result, p = 1.2 × 10⁻⁶.
+The finding named three defects on it, in the right order of importance:
+N absent (36 of 37 issues), arm detection collapsed to two unnamed arms,
+and — the one that matters — the parse taking post-treatment values as
+baseline data, so that supplying N alone would have turned a visible
+failure into a confident p computed on rows that are not baseline
+characteristics. All three were real.
+
+**The finding's model of the page was the transpose of the truth.** It
+assumed a wide table with follow-up columns appended and a 27-row target.
+The page (`pdftools::pdf_data`, page 2) is a **long** table:
+
+```
+Variable     Group   Baseline    [after midazolam]
+HR (bpm)       1     141 ± 15    142 ± 17
+               2     143 ± 10    133 ± 10*†
+               3     140 ± 12    123 ± 10*†‡
+```
+
+Arms are *rows* under a `Group` column; timepoints are *columns*. The
+column engine took the two timepoint columns for two arms and each
+variable's three group rows for three variables (`HR`, `Unnamed`,
+`Unnamed 2`): 36 rows for 18 baseline values, every after-drug value
+filed as baseline. That also explains Carlisle's ninth variable:
+"RAP(2)" in the 2015 table is Table 1's *after-dose* RAP column, and the
+two "Stimulation" rows are the baseline column of **Table 2** (Pdi),
+a separate table beside it. So the correct single-table parse is
+**6 variables × 3 arms = 18 rows**, not 27 — the 27 needs two tables and
+one post-treatment row, and this engine reads one table (user guide,
+*One table only*). The finding's "58 = 27 + 27 + noise" arithmetic was a
+coincidence.
+
+### What changed
+
+- **`R/parseRepeatedMeasures.R`** — a repeated-measures reader that `.ppParseBlock()`
+  tries first, after line classification and before column clustering.
+  It fires only on an unambiguous layout (a header naming both `Group`
+  and `Baseline`, group indices running 1..k beneath each variable, most
+  of the block fitting) and returns `NULL` otherwise, so the column path
+  is unchanged unless it fires. It reads the Baseline column **only**,
+  one row per (variable, group), and names the arms from the stacked
+  "(Group k)" legend.
+- **`.ppGroupsOfN()` in `R/armNRecovery.R`** — "divided into three
+  groups of eight each", the only way an animal study states its N.
+  Neither existing text reader matched it ("n =", "randomised"). It
+  returns the group *count* too, and the reader refuses the size when
+  that count differs from the arms it read. It also handles the sentence
+  cut at a line break with the other column's text interleaved between
+  the halves — which is how poppler delivers this page: *"...into three
+  groups of* stimulation did not change. Compared with Group 1, *eight
+  each: ..."*. Exact at the line boundary, nothing looser.
+  *On review (CodeRabbit, PR #330):* it returns **every** distinct such
+  statement, not the first, and `.ppGroupNFor()` applies a size only
+  when the statements for the table's arm count agree on one — a pilot
+  of eight and a study of ten leave N missing rather than guessed.
+- **Two more guards in the reader, on the same review.** A value is taken
+  from the Baseline column only when `Baseline` is the *nearest* header
+  centre to it, so a row whose Baseline cell is blank cannot take its
+  after-drug value (50 pt to the right was inside the old tolerance).
+  And a group row the reader cannot use — blank Baseline cell, a median
+  row — is listed in `skipped` with the reason and the line's text
+  (`reviewFlags()`: "table line(s) could not be used") instead of
+  vanishing; it still counts as its group's row for the 1..k run check,
+  because before that one blank cell broke the run and the whole table
+  fell to the column engine, which filed the after-drug value as
+  baseline. Documented in `docs/parsepdf-architecture.md` §05e.
+- **`.ppParseScore()` no longer credits `Unnamed` rows as variables.**
+  This is the change that let the fix win rather than merely exist. On
+  this page the misread scored 24 (twelve `Unnamed` rows at +2 each, −1
+  each in penalty) against 14 for a correct six-variable reading; Tables
+  2 and 3 misread the same way scored 7 and 14. With the credit gone the
+  corrected Table 1 reading (8 after its caption penalty) beats every
+  other candidate. The penalty stays. A scorer change can move other
+  files' candidate selection; it was measured, below.
+  *Correction on review (CodeRabbit, PR #330):* the first version filtered
+  the `Unnamed` rows out of the row set BEFORE counting the penalty, so
+  the penalty was always zero — credit and penalty both gone. The penalty
+  is now counted over the unfiltered row names, as intended. This was not
+  visible on the motivating page (the misread loses either way) and is
+  the reason the misparse measurement below was run twice.
+
+Not changed, deliberately: `validateData` still requires N. The finding
+was explicit that tolerating a missing N would clear 36 of 37 issues on
+this paper and make the trial analysable on baseline and post-treatment
+rows together, converting a visible failure into an invisible one.
+
+### Results on the article (deterministic engine, `ai = "never"`)
+
+| | before | after |
+|---|---|---|
+| rows | 36 | **18** |
+| arms | `<NA>`, "No study drug" | **No study drug (Group 1); Sedative dose of midazolam (Group 2); Anesthetic dose of midazolam (Group 3)** |
+| N | NA | **8, 8, 8** — flagged "recovered from the document text" |
+| after-dose values in the output | 18 | **0** |
+| `validateData` | FAIL (37 issues) | **passes** |
+| trial p | — | **1.2 × 10⁻⁴** (six variables; Carlisle's 1.2 × 10⁻⁶ used nine) |
+
+Hybrid (`ai = "fallback"`, which still consults the AI because a recovered
+N is a flag): 24 rows — the 18 above plus Table 2's two *baseline*
+Stimulation rows the AI found, **no after-dose value, every deterministic
+row preserved**. Down from 58 contaminated rows.
+
+### Tests committed (Steve's instruction: the fix must not regress)
+
+1. `tests/testthat/test-fujii-11375852-engine.R` — Carlisle's 27 rows as
+   printed against `P_Calc`: `<0.0001` at the 100,000-replicate ceiling
+   on three seeds, and a perturbed copy that leaves the floor. Honest
+   scope: the display floor is where 1.2 × 10⁻⁶ lives, so this is
+   agreement at the app's resolution, not a reproduction of the value.
+   Recorded in `docs/validation-ledger.md`.
+2. `tests/testthat/test-repeated-measures-layout.R` — a synthetic repeated-measures page built with
+   the `pdf()` device (the `test-real-layouts.R` convention), asserting
+   each defect separately: the parse stops at the Baseline column (none of
+   nine distinct after-dose pairs leaks), three arms named from the
+   legend, N recovered from the Methods and refused when the stated group
+   count disagrees, end-to-end validation, and — the guard — a wide table
+   that merely says "Group" is left to the wide reader. Added on review:
+   a page with one Baseline cell blank — its after-drug value (80 pt to
+   the right) must not be read, the row must appear in `skipped` with
+   the reason, the flag must say so, and the other eight rows must still
+   be read (before the fix this page fell to the column engine: 17 rows,
+   after-drug values included).
+3. `tests/testthat/test-armn-recovery.R` — the sentence, the line-break
+   split, and the sample-size sentence that must not match. Added on
+   review: two statements for the same group count that disagree on the
+   size (N refused), statements for a different group count (ignored),
+   and the same sentence twice (one statement, not a disagreement).
+4. `corpus/checkFujii11375852.R` — the real article, corpus tooling, skips
+   when absent. Ten asserted checks on the deterministic result (all
+   pass); the hybrid reported beside it, not asserted.
+
+### Nothing else moves — measured, not assumed
+
+- `testthat` suite, unmodified main@e16e185: 122 files, 3,989 passed,
+  **1 failed**, 33 skipped. Modified tree: 124 files / 4,033 passed / **0 failed** / 33 skipped (two full runs, 4,008 and 4,033 passed, none failing). Unmodified `main` showed one failure that the silent reporter did not name; it did not reproduce on the branch across two runs, and I do not claim to have fixed it — it is a 1→0 change I cannot attribute.
+- `corpus/runMassTest.R` over the 61 PDFs of `corpus/TEST`, main vs
+  branch, each from its own installed snapshot library under
+  `Rscript --vanilla`: **60 parsed / 1 failed on both**, the same file
+  both times (`PMID_19104182.pdf`, "parsed table failed validation"),
+  and **all 60 parsed files return byte-identical `ROW` vectors** —
+  the parser's output on the test corpus did not change. Trial p differs
+  in the third digit on 57 of 60 files (none crossing 0.01 or 0.05) and
+  the per-row replicate count on 2 of 60: `runMassTest.R` seeds nothing,
+  so that is the engine's unseeded Monte Carlo on identical input, not
+  the parser. (A first pair of runs was discarded: `R_LIBS` had been
+  silently overridden by renv's `.Rprofile`, and both had run against
+  renv's installed copy — caught by printing `find.package()`.)
+- `corpus/measureMisparse.R`, the finding's quantitative test of its own
+  hypothesis (the "partial" bucket should shrink as tables shed their
+  follow-up columns). Both sides re-established from snapshot libraries,
+  because the output found on disk did not reproduce the 496/422/98 that
+  issue 24 quotes (it recomputes to 380/387/221 over 988 files) and sat
+  beside a folder named `contaminated`; it was set aside untouched.
+  **BEFORE, main@e16e185** (`.NewCarlisle/misparse-before-e16e185/`):
+  1,110 files scored, 1,017 parsed, 80 with no pairs; of the 937 with
+  pairs, **416 fully corroborated (44.4%)**, 521 with ≥1 uncorroborated
+  pair (55.6%); 12,923 pairs of ours, 7,269 corroborated (56.2%); 4,473
+  of Carlisle's pairs missed (38.2%). **AFTER, this branch at `f0b1eca`**
+  (`.NewCarlisle/misparse-after-issue34/`, same 1,110 files, same
+  corpus, the branch's installed snapshot under `--vanilla`): 1,017
+  parsed, 81 with no pairs; of the 936 with pairs, **417 fully
+  corroborated (44.6%)**, 519 with ≥1 uncorroborated pair (55.4%); 12,820
+  pairs of ours, 7,284 corroborated (56.8%); **4,458 of Carlisle's pairs
+  missed (38.0%)**. `corpus/compareMisparse.R` (new) puts the two runs
+  side by side: **1,013 of 1,017 files have an identical
+  (ours, corroborated, uncorroborated) triple**, and the four that moved
+  all moved the right way —
+  `PMID_18292675` 56 pairs, none corroborated → 12 pairs, all
+  corroborated, and all 12 of Carlisle's pairs now found (the
+  repeated-measures layout, read as this fix intends);
+  `PMID_16531446` 48 uncorroborated → 4 pairs, 2 corroborated;
+  `PMID_15377579` 17 uncorroborated → no pairs at all (the misread no
+  longer wins; nothing replaces it, which is the honest result);
+  `PMID_21564041` 2 → 4 pairs, 1 → 2 corroborated. No file lost a
+  corroborated pair. The finding's prediction — the partial bucket
+  shrinks and the fully-corroborated bucket grows — holds, by one file
+  each: this layout is rare in the Carlisle-2017 corpus, which is human
+  RCTs, not the animal stratum where it failed.
+  **AFTER, with the review fixes** (scorer penalty restored, Baseline
+  column bounded by the next header, unmatched lines reported — each of
+  which can move candidate selection): *a second run on the fixed code's
+  snapshot was launched at merge time and is recorded here by follow-up.
+  The merge was not held for it: the suite, the real-article check and
+  the first AFTER run are the gates, and this is the confirmation.*
+- `corpus/validateCarlisle2017.R` cannot move: it reads Carlisle's
+  hand-entered spreadsheet straight into `validateData` → `P_Calc` and
+  contains no call to any parser (`grep -c "parseBaseline|ppParse"` = 0).
+  The citable ledger row stands.
+
+**Still open.** The 26 human Fujii failures were never captured (the batch
+discarded failed parses at the time) and should be re-run; Boldt's 175
+cardiac-surgery trials, many repeated-measures with this table shape and
+no published ground truth, were held pending this and can now proceed —
+with `checkFujii11375852.R`'s two-result discipline applied to the hybrid
+route, since the AI merge adds rows by label and the deterministic engine
+is the only part of the pipeline that cannot introduce a post-treatment
+value.
+
 ---
 
 ## 32. A memory ceiling for the parse child (the render cap for scanned pages is closed)

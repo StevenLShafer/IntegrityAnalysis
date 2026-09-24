@@ -23,6 +23,20 @@ those live in `docs/statistics.md` and beside the corpus tooling.
 | 2026-09-06 | sigma-draw engine, location-scale pair (recorded in #193) | 5,041 usable | 10,000 | 0.9931 / 0.9932 | — | 89.3% / 89.9% | 98.5% either way | a PAIRED RE-RUN of the row above, not a new engine: the replicate's common location drawn at σ/√(mean N) (as shipped) vs σ/√ΣN, identical data and seeds; 419 vs 420 alarms, 7 crossing each way; median change 0.0000–0.0007 by arm size, no direction. The 0.9931 differs from the row above's 0.9929 only because it is a fresh run. Data: `C:/dev/Corpus/synthetic/location-scale/` |
 | 2026-09-06 | SD rounding draw (feature/sd-rounding-draw, from 166dc5b) | 5,041 usable | 10,000 | 0.9932 | 0.0138 | 89.2% | 98.5% | vs the sigma-draw run: median \|Δp\| 0.0077, r 0.9982, alarms 420 → 418 (5 down, 7 up), no direction by arm size; data `C:/dev/Corpus/synthetic/sd-round/` |
 
+### A single published trial, computed by the method's own authors
+
+The table above is agreement in aggregate. This entry ties the engine to **one
+published Monte Carlo p computed by the people who defined the method** —
+the worked example of Carlisle, Dexter, Pandit, Shafer & Yentis, *Anaesthesia*
+2015;70:848–858, whose Table 1 prints the complete baseline table of Fujii et
+al., *Anesth Analg* 2001;92:1590–3 (PMID 11375852, retracted; reference 10 of
+the 2015 paper), and whose text gives its result: **p = 1.2 × 10⁻⁶**.
+
+| Date | Engine | Input | Replicate ceiling | Result | Notes |
+|---|---|---|---|---|---|
+| 2026-09-24 | issue-34 branch (from e16e185) | Carlisle's 27 rows as printed: 9 variables × 3 arms, n = 8 | 100,000 | **`<0.0001`** on seeds 42, 7, 2026; escalated to the ceiling on every seed | the display floor at that ceiling; 1.2 × 10⁻⁶ lies below it, so this is agreement at the resolution the app has, not a reproduction of the value. Pinned by `tests/testthat/test-fujii-11375852-engine.R`, which also checks that perturbing the means by one SD lifts the trial off the floor |
+| 2026-09-24 | same | the article's Table 1 parsed by the deterministic engine: 6 variables × 3 arms, N = 8 from the Methods, no after-dose value | 100,000 | **1.2 × 10⁻⁴** | six variables, not nine: the published figure includes Table 2's two Stimulation variables and the after-dose RAP that the 2015 table lists as "RAP(2)". The engine reads one table. Checked by `corpus/checkFujii11375852.R` (skips when the article is absent) |
+
 "Usable" excludes the trials where Carlisle's stored p is exactly 1 (a
 z = +∞ artifact of his closed-form combination, 39 trials) and any
 trial one run could not join — so 5,041 (5,080 − 39) is the most a run

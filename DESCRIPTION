@@ -77,6 +77,7 @@ Collate:
   utils.R
   parseWideTable.R
   armNRecovery.R
+  parseRepeatedMeasures.R
   failsafeTable.R
   parseBaselineTableHeuristics.R
   parseDocx.R

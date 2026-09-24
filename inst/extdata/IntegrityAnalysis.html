@@ -282,25 +282,42 @@ spreadsheet may carry every variable from all the tables as long as each
 line names its own variable and arm. This is a real limitation of the
 deterministic reader rather than a bug — it has no way to decide that
 three tables describe the same arms in the same order — and splitting
-baseline data this way is unusual. Median rows are extracted too,
-<strong>when the table says the bracketed interval is an IQR</strong>
-(in the row label, caption, or footnote); a median with a min–max range,
-or with an unlabeled interval, is flagged for hand entry instead — the
-analysis needs quartiles, and the app will not guess. Extraction is
-imperfect by nature: table lines the reader could not use appear as
-red-flagged rows in the grid (fill them in from the paper, or delete
-them). A scanned page with no text layer is beyond the deterministic
-reader — but with an API key entered, the AI assist reads the rendered
-page image directly (see the AI assist section). Without a key, the app
-tries local <strong>optical character recognition</strong> (tesseract)
-on the scanned page: when OCR reads the table usably, the whole
-extracted table is shaded <strong>pale cyan</strong> with a warning,
-because OCR can misread digits (3 vs 8, 1 vs 7) — carefully verify every
-cyan value against the manuscript before analyzing. A scan too degraded
-for OCR fails cleanly with a message; the AI assist reads such pages far
-more reliably, and everything OCR does happens on this server — nothing
-leaves it. Whatever was extracted can be reviewed, corrected, and
-analyzed without leaving the app.</p>
+baseline data this way is unusual.</p>
+</blockquote>
+<blockquote>
+<p><strong>Repeated-measures tables.</strong> Laboratory and crossover
+papers often print the <em>arms as rows</em> — a <code>Group</code>
+column running 1, 2, 3 beneath each variable — with the <em>timepoints
+as columns</em>: <code>Baseline</code>, then one or more after-treatment
+columns. The app recognises this layout and reads <strong>the Baseline
+column only</strong>; the after-treatment values are a drug effect, not
+a random sample of one population, and are deliberately left out. Such
+tables usually print no group size, so the app looks for it in the text
+(“divided into three groups of eight each”) and, when it finds it, fills
+N and <strong>flags it as recovered from the document text</strong> —
+verify it against the Methods before analyzing, exactly as for any
+recovered N. If the text states two different sizes for the same number
+of groups (a pilot and the study proper, say), N is left blank rather
+than guessed. A group row with no usable Baseline value is not read from
+its other columns; it is listed as a red-flagged row for you to fill in
+or delete. Median rows are extracted too, <strong>when the table says
+the bracketed interval is an IQR</strong> (in the row label, caption, or
+footnote); a median with a min–max range, or with an unlabeled interval,
+is flagged for hand entry instead — the analysis needs quartiles, and
+the app will not guess. Extraction is imperfect by nature: table lines
+the reader could not use appear as red-flagged rows in the grid (fill
+them in from the paper, or delete them). A scanned page with no text
+layer is beyond the deterministic reader — but with an API key entered,
+the AI assist reads the rendered page image directly (see the AI assist
+section). Without a key, the app tries local <strong>optical character
+recognition</strong> (tesseract) on the scanned page: when OCR reads the
+table usably, the whole extracted table is shaded <strong>pale
+cyan</strong> with a warning, because OCR can misread digits (3 vs 8, 1
+vs 7) — carefully verify every cyan value against the manuscript before
+analyzing. A scan too degraded for OCR fails cleanly with a message; the
+AI assist reads such pages far more reliably, and everything OCR does
+happens on this server — nothing leaves it. Whatever was extracted can
+be reviewed, corrected, and analyzed without leaving the app.</p>
 </blockquote>
 <p><strong>A picture of a table (jpg, png, tif) — uploaded, dropped, or
 pasted.</strong> A screenshot or scan of Table 1 uploads like a PDF, and
