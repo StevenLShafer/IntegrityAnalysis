@@ -153,3 +153,34 @@ test_that("an N printed in the table header is never overridden", {
   expect_identical(res$arms$N, c(15L, 17L))
   expect_true(all(is.na(res$armNSource)))
 })
+
+# --------------------------------------------------------------------------
+# "divided into three groups of eight each" (issue 34, 2026-09-24)
+# --------------------------------------------------------------------------
+test_that("a stated 'k groups of n each' is read, with its group count", {
+  g <- .ppGroupsOfN("Twenty-four mongrel dogs were divided into three groups of eight each.")
+  expect_identical(g$groups, 3L)
+  expect_identical(g$n, 8L)
+  g <- .ppGroupsOfN("Rats were randomized into 4 groups of 10 animals.")
+  expect_identical(c(g$groups, g$n), c(4L, 10L))
+})
+
+test_that("the sentence split at a line break, with the other column between, is still read", {
+  # poppler emits each physical line of a two-column page as the left segment
+  # then the right; PMID 11375852 arrives exactly like this
+  page <- paste(
+    "       ity in dogs. Animals were divided into three groups of        stimulation did not change. Compared with Group 1,",
+    "       eight each: Group 1 received no study drug, Group 2           Pdi and Edi for each stimulus decreased during mida-",
+    sep = "\n")
+  g <- .ppGroupsOfN(page)
+  expect_identical(c(g$groups, g$n), c(3L, 8L))
+  # and the snippet quotes only the left column, not the interleaved fragment
+  expect_false(grepl("stimulation did not change", g$snippet))
+  expect_match(g$snippet, "groups of eight each")
+})
+
+test_that("a sample-size sentence and a size with no group count are refused", {
+  expect_null(.ppGroupsOfN("A sample size of eight per group was required for 80% power."))
+  expect_null(.ppGroupsOfN("Eight dogs were studied."))
+  expect_null(.ppGroupsOfN("The animals were divided into groups."))
+})

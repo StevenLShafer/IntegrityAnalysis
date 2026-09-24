@@ -89,9 +89,16 @@
 
 .ppParseScore <- function(res) {
   if (is.null(res) || inherits(res, "error") || nrow(res$data) == 0) return(-Inf)
-  contRows <- unique(res$data$ROW[!is.na(res$data$MEAN)])
+  # AN UNNAMED ROW IS NOT A VARIABLE (2026-09-24, issue 34). "Unnamed k" is
+  # what the block parser calls a value it found with no label. Counting
+  # such rows as continuous variables, at +2 each against a -1 penalty
+  # below, let a misread of PMID 11375852 - two arms, twelve Unnamed rows -
+  # score 24 and beat every honest reading of the same page (a correct
+  # 6-variable parse scores 14). The penalty stays; the credit goes.
+  named    <- !grepl("^Unnamed", res$data$ROW)
+  contRows <- unique(res$data$ROW[!is.na(res$data$MEAN) & named])
   nCont    <- length(contRows)
-  allRows  <- unique(res$data$ROW)
+  allRows  <- unique(res$data$ROW[named])
   nCat     <- length(setdiff(allRows, contRows))
   demo <- sum(grepl(paste0("(?i)\\bage\\b|\\bsex\\b|gender|\\bmale\\b|female|",
                            "weight|height|\\bbmi\\b|body\\s+mass|\\basa\\b"),
@@ -128,7 +135,7 @@
 .ppParseBlock <- function(lines, lineTexts, capIdx, trial, parenIsSD,
                           roundObsDelta, say,
                           textCands = NULL, textTotals = NULL,
-                          pctApprox = FALSE) {
+                          pctApprox = FALSE, textGroupN = NULL) {
 
   # Footnote / end-of-table patterns. Checked BEFORE tokenizing, because a
   # footnote like "Values are mean +/- SD" itself contains a mean+/-SD-shaped
@@ -301,6 +308,26 @@
   if (length(dataIdx) == 0) return(NULL)
   firstData <- dataIdx[1]
   lastData  <- dataIdx[length(dataIdx)]
+
+  # ---- The repeated-measures layout is tried first (issue 34) ------------
+  # Arms as rows under a Group column, timepoints as columns, only the
+  # Baseline column wanted. The reader returns NULL unless the layout is
+  # unambiguous, and on NULL everything below runs exactly as before. It
+  # sits here, after the lines are classified and before the columns are
+  # clustered, because clustering is the step that misreads this layout:
+  # it takes the two timepoint columns for two arms and each variable's
+  # group rows for separate variables. See R/parseRepeatedMeasures.R.
+  longRes <- .ppParseRepeatedMeasures(lines, lineTexts, kind, tokensByLine, capIdx,
+                               lastData, trial, roundObsDelta,
+                               footnoteInfo = footnoteInfo,
+                               textCands = textCands, textTotals = textTotals,
+                               textGroupN = textGroupN)
+  if (!is.null(longRes)) {
+    say("  repeated-measures layout: ", nrow(longRes$arms), " arm(s) as",
+        " rows under a Group column; Baseline column read, other timepoints",
+        " ignored.")
+    return(longRes)
+  }
 
   # ---- Column clustering --------------------------------------------------
   allToks <- do.call(rbind, tokensByLine[dataIdx])
@@ -1558,6 +1585,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
     tryCatch(.ppPdfText(pdfFile), error = function(e) character(0))
   textCands  <- .ppArmNCandidatesFromText(fullText)
   textTotals <- .ppRandomizedTotals(fullText)
+  textGroupN <- .ppGroupsOfN(fullText)          # "three groups of eight each"
   nWords   <- sum(vapply(allPages, nrow, integer(1)))
   if (length(allPages) == 0 || nWords == 0)
     stop("No text layer found in ", pdfFile,
@@ -1748,7 +1776,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
                     textCands = textCands, textTotals = textTotals,
-                    pctApprox = pctApprox),
+                    pctApprox = pctApprox, textGroupN = textGroupN),
       error = function(e) e)
     if (inherits(res, "error")) {
       say(whoIs, ": parse error - ", conditionMessage(res))
@@ -1811,7 +1839,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
                       trial, parenIsSD, roundObsDelta,
                       function(...) invisible(NULL),
                       textCands = textCands, textTotals = textTotals,
-                      pctApprox = pctApprox),
+                      pctApprox = pctApprox, textGroupN = textGroupN),
         error = function(e) NULL)
       if (.ppParseScore(resExt) <= .ppParseScore(best)) break
       best      <- resExt

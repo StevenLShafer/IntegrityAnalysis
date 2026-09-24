@@ -306,3 +306,81 @@
   }
   list(N = armN, source = source)
 }
+
+# ---------------------------------------------------------------------------
+# "divided into three groups of eight each" - the group size as animal
+# studies state it (2026-09-24, ISSUES.md issue 34).
+# ---------------------------------------------------------------------------
+# The two readers above want "n = 8" or "24 dogs were randomized". A
+# laboratory paper says neither: PMID 11375852 gives its group size only as
+# "Twenty-four mongrel dogs ... were divided into three groups of eight
+# each", and with no N in the table the whole trial failed validation.
+# This reads that one sentence shape and nothing looser. It returns the
+# COUNT of groups as well as the size, so the caller can refuse the value
+# when it does not match the number of arms actually read from the table -
+# a stated "three groups of eight" is evidence for three arms, not for
+# whatever the parser happened to find.
+.ppNumberWord <- function(w) {
+  w <- tolower(w)
+  words <- c(one = 1, two = 2, three = 3, four = 4, five = 5, six = 6,
+             seven = 7, eight = 8, nine = 9, ten = 10, eleven = 11,
+             twelve = 12, fifteen = 15, sixteen = 16, twenty = 20)
+  if (grepl("^[0-9]+$", w)) return(as.integer(w))
+  if (w %in% names(words)) return(as.integer(words[[w]]))
+  NA_integer_
+}
+
+.ppGroupsOfN <- function(txt) {
+  if (!length(txt)) return(NULL)
+  j <- .ppSquish(paste(txt, collapse = " "))
+  pat <- paste0("(?i)\\b(divided|allocated|assigned|randomi[sz]ed|separated|",
+                "split)\\b[^.;]{0,60}?\\binto\\s+([a-z0-9-]+)\\s+",
+                "(?:equal\\s+)?groups?\\s+of\\s+([a-z0-9]+)",
+                "(?:\\s+(?:each|animals?|dogs?|rats?|pigs?|rabbits?|",
+                "patients?|subjects?|participants?))?")
+  m <- regexpr(pat, j, perl = TRUE)
+  if (m[1] != -1) {
+    hit <- regmatches(j, m)
+    parts <- regmatches(hit, regexec(pat, hit, perl = TRUE))[[1]]
+    groups <- .ppNumberWord(parts[3])
+    n      <- .ppNumberWord(parts[4])
+    if (!is.na(groups) && !is.na(n) && groups >= 2 && n >= 1)
+      return(list(groups = groups, n = n,
+                  snippet = .ppSquish(substr(j, max(1, m - 30),
+                                             m + attr(m, "match.length") + 10))))
+  }
+  # THE SENTENCE IS OFTEN CUT AT A LINE BREAK, AND THE OTHER COLUMN FILLS THE
+  # GAP. poppler emits each physical line of a two-column page as the left
+  # segment followed by the right segment, so PMID 11375852 arrives as
+  #     "...divided into three groups of   stimulation did not change."
+  #     "eight each: Group 1 received ...  Pdi and Edi for each stimulus"
+  # - the size on the NEXT line, with a fragment of the Results between.
+  # Joining the page into one string cannot see that. So, per page, the
+  # sentence is also accepted when "into <k> groups of" ends one line's left
+  # segment and "<n> each" begins the next line: exact at a line boundary
+  # and nothing looser, because a window that skipped over text would take
+  # numbers from the wrong sentence.
+  for (page in txt) {
+    ln <- strsplit(page, "\n", fixed = TRUE)[[1]]
+    if (length(ln) < 2) next
+    for (i in seq_len(length(ln) - 1L)) {
+      a <- regmatches(ln[i], regexec("(?i)\\binto\\s+([a-z0-9-]+)\\s+(?:equal\\s+)?groups?\\s+of\\s*(?:\\s{2,}|$)",
+                                     ln[i], perl = TRUE))[[1]]
+      if (length(a) < 2) next
+      b <- regmatches(ln[i + 1], regexec("^\\s*([a-z0-9]+)\\s+each\\b", ln[i + 1], perl = TRUE))[[1]]
+      if (length(b) < 2) next
+      groups <- .ppNumberWord(a[2]); n <- .ppNumberWord(b[2])
+      if (is.na(groups) || is.na(n) || groups < 2 || n < 1) next
+      # the snippet is the LEFT segment of each line only - cut at the run of
+      # spaces that separates the columns - so the flag the user reads does
+      # not quote half a sentence from the other column
+      # Cut at the double-space FIRST, then squish: .ppSquish collapses all
+      # runs of whitespace to one space, so squishing first would leave
+      # nothing to cut at and quote both columns (the first version did).
+      left <- function(s) .ppSquish(sub("\\s{2,}.*$", "", sub("^\\s+", "", s)))
+      return(list(groups = groups, n = n,
+                  snippet = .ppSquish(paste(left(ln[i]), left(ln[i + 1])))))
+    }
+  }
+  NULL
+}
