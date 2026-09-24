@@ -989,6 +989,16 @@ spreadsheet columns (<code>MEASURE</code>, <code>DECM</code>,
 <code>NUMBER</code>) are also accepted. Unrecognized columns are carried
 along untouched and ignored by the analysis.</p>
 <h1 id="the-analysis">The analysis</h1>
+<blockquote>
+<p><strong>For statisticians.</strong> This chapter explains the
+analysis in words. The equations — every statistic, null model, rounding
+rule, combination step and design decision, with citations to the
+original sources of each method — are in the methods paper, <a href="https://integrityanalysis.io/methods.pdf"><em>A Monte Carlo screen
+for excessive baseline homogeneity in randomised trials: the statistical
+method implemented in IntegrityAnalysis</em> (PDF)</a>. It is a draft
+for statistical review, tied to the build it names; its LaTeX source and
+bibliography are in the repository at <a href="https://github.com/StevenLShafer/IntegrityAnalysis/tree/main/docs/methods"><code>docs/methods/</code></a>.</p>
+</blockquote>
 <h2 id="the-p-value-one-sided-toward-homogeneity">The p value:
 one-sided, toward homogeneity</h2>
 <p>For each variable, the app simulates the trial many times. Each
@@ -1313,6 +1323,13 @@ rows always draw their observations (no direct draw).</li>
 <li>Very large trials are protected against memory exhaustion by
 chunking the simulation matrices; results are identical, only the batch
 size changes.</li>
+<li>The full mathematical statement of all of the above — the
+statistics, the null models, the rounding and tie rules, the staged
+replicates and their reported uncertainty, the combination within and
+across trials, and each design decision with the measurement behind it —
+is the <a href="https://integrityanalysis.io/methods.pdf">methods paper
+(PDF)</a>, with citations to the original sources of the methods
+used.</li>
 </ul>
 <h1 id="results-and-downloads">Results and downloads</h1>
 <p>While the analysis runs, each trial’s name and p value are written to
