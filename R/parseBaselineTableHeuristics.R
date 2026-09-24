@@ -581,8 +581,12 @@
       data.frame(label = label, reason = reason, text = txt,
                  stringsAsFactors = FALSE)
 
+  # label-kind lines already absorbed into the row ABOVE them as the
+  # wrapped second line of its label (see the data branch below)
+  consumedLabel <- integer(0)
   for (i in seq(firstData, lastData)) {
     if (kind[i] == "label") {
+      if (i %in% consumedLabel) next
       lbl <- .ppCleanLabel(lineTexts[i])
       # A journal watermark ("Downloaded from http://...") or copyright
       # rail interleaves with the table's own lines on some published
@@ -615,6 +619,30 @@
     if (nrow(toks) == 0) next
     joined   <- paste(lines[[i]]$text, collapse = " ")
     rawLabel <- substr(joined, 1, min(toks$start) - 1)
+    # A ROW LABEL THAT WRAPS ONTO THE NEXT LINE (2026-09-24, Loadsman
+    # corpus, Polat 2015 DA). "Amount of intraoperative  561.67 +/- ..."
+    # with "fluid (ml)" on the line beneath, "Infusion duration of
+    # study" over "drug (min)": the second line carries no value, so it
+    # is a label-kind line, and the row went out as "Amount of
+    # intraoperative" - a truncated name that the AI merge then could
+    # not match to its own "Amount of intraoperative fluid" by label
+    # (the value signature caught it; the name was still wrong). The
+    # continuation is recognised by its typography, not its words: it
+    # begins with a lower-case letter or a bracketed unit, and journals
+    # capitalise the first line of a variable's name. A line that starts
+    # with a capital is the NEXT variable's heading or a block header
+    # and is left alone. The absorbed line is skipped by the label
+    # branch above, so it cannot also become the open block header.
+    # (the last data row's continuation lies just BEYOND lastData, so the
+    # look-ahead runs to the end of the classified lines, not the block)
+    if (i < length(kind) && kind[i + 1] == "label") {
+      nxt <- .ppSquish(lineTexts[i + 1])
+      if (grepl("^[a-z(]", nxt, perl = TRUE) && nchar(nxt) <= 40 &&
+          !grepl("[0-9]", gsub("\\([^)]*\\)", "", nxt))) {
+        rawLabel <- paste(rawLabel, nxt)
+        consumedLabel <- c(consumedLabel, i + 1L)
+      }
+    }
     label    <- .ppCleanLabel(rawLabel)
     txt      <- lineTexts[i]
 
@@ -845,9 +873,42 @@
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
+      # THE NUMBERS THEMSELVES CAN SAY "n (%)" (2026-09-24, Loadsman
+      # corpus, Akkaya 2015 EJA). A table of counts and percentages with
+      # no "%" anywhere - no "(%)" in a label, no "n (%)" header, a
+      # footnote silent on notation - reads "18 (90)" as a mean of 18
+      # with an SD of 90, and 31 of that paper's 48 rows went to the
+      # engine as continuous variables whose SD exceeded their mean. But
+      # a count with its percentage has a signature no mean (SD) pair
+      # has: the second number IS the first, as a percentage of the
+      # arm's N, at the printed precision, in every arm. Two cells of
+      # one row agreeing on that by chance would need a genuine SD to
+      # equal 100 x mean / N to the printed decimal in each arm - so
+      # when every cell of the row that has a value satisfies it, at
+      # least two do, and at least one count is nonzero, the row is
+      # counts. Only whole, in-range first numbers qualify; an arm with
+      # no N cannot vouch and disqualifies the row from this rule (the
+      # vocabulary rules below still apply). Checked ahead of the label
+      # rules because it is evidence from the cells, not from the words.
+      cellsSayPct <- local({
+        ok <- 0L; nz <- 0L
+        for (j in seq_len(nArms)) {
+          t <- armTok[[j]]
+          if (is.null(t) || !identical(t$type, "numParen")) next
+          Nj <- armN[arms[j]]
+          if (is.na(Nj) || Nj <= 0 || is.na(t$num1) || is.na(t$num2) ||
+              t$num1 %% 1 != 0 || t$num1 < 0 || t$num1 > Nj) return(FALSE)
+          tol <- 0.5 * 10^-(if (is.na(t$dec2)) 0 else t$dec2) + 1e-9
+          if (abs(t$num2 - 100 * t$num1 / Nj) > tol) return(FALSE)
+          ok <- ok + 1L
+          if (t$num1 > 0) nz <- nz + 1L
+        }
+        ok >= 2L && nz >= 1L
+      })
       decision <-
         if (parenIsSD == "sd") "sd"
         else if (parenIsSD == "percent") "percent"
+        else if (cellsSayPct) "percent"
         else if (labelSaysPct || nextLabelPct) "percent"
         # Under an open "N (%)" block header ("Race, N (%)"), an "a (b)"
         # child is a count and its percentage, whatever the footnote says
@@ -861,7 +922,10 @@
         else if (footSaysPercent) "percent"
         else "sd"
       mainType <- if (decision == "sd") "meanSD" else "nPct"
-      if (parenIsSD == "auto" && !labelSaysPct && !labelContinuous)
+      if (parenIsSD == "auto" && cellsSayPct)
+        say("  \"", label, "\": read \"a (b)\" as n (%) - in every arm the ",
+            "bracketed number is the first as a percentage of the arm N.")
+      else if (parenIsSD == "auto" && !labelSaysPct && !labelContinuous)
         say("  \"", label, "\": read \"a (b)\" as ",
             if (decision == "sd") "mean (SD)" else "n (%)",
             " - check, or set parenIsSD.")

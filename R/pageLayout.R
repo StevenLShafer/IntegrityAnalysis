@@ -188,13 +188,24 @@
   if (sum(narrow) < 4) return(pageWords)
   # the rail: four or more narrow words sharing one x position and
   # spanning a third of the page's height - running text never stacks
-  # words in a perfect vertical line
+  # words in a perfect vertical line.
+  # THE SPAN IS MEASURED FROM THE TOP OF THE FIRST WORD TO THE BOTTOM OF
+  # THE LAST, not between their y's (2026-09-24, Loadsman corpus, Akkaya
+  # 2015 EJA). A rotated word's y is where its box STARTS; its text runs
+  # on for `height` points - the URL alone is 120 points tall. Measured by
+  # y only, the five words of that page's rail (Downloaded / from / the
+  # URL / by / a token) spanned 184 of a 700-point page and the rail was
+  # kept; "Downloaded" then straddled the table's "Mild" line and the
+  # engine returned a row named "Downloaded Mild". By extent the same
+  # rail spans 340 points.
   drop <- rep(FALSE, nrow(pageWords))
-  pageSpan <- diff(range(pageWords$y))
+  top  <- pageWords$y
+  bot  <- pageWords$y + pageWords$height
+  pageSpan <- max(bot) - min(top)
   for (x0 in unique(pageWords$x[narrow])) {
     g <- which(narrow & abs(pageWords$x - x0) <= 1)
     if (length(g) >= 4 &&
-        diff(range(pageWords$y[g])) > 0.3 * pageSpan)
+        max(bot[g]) - min(top[g]) > 0.3 * pageSpan)
       drop[g] <- TRUE
   }
   if (!any(drop)) return(pageWords)

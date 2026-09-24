@@ -133,9 +133,12 @@ test_that("the vocacapsaicin layout parses completely and correctly", {
   expect_identical(bmi$MEAN, c(28.4, 28.8, 28.3, 28.3))
   expect_identical(bmi$SD, c(5.6, 5.0, 4.8, 5.1))
 
-  # the wrapped label: its "N (%)" tag on the next line makes it counts
+  # the wrapped label: its "N (%)" tag on the next line makes it counts -
+  # and since issue 35 (2026-09-24) the lower-case continuation line is
+  # part of the NAME too, so the variable is "Nonsteroidal
+  # anti-inflammatory drugs", not its first line alone
   ns <- d[grepl("^Nonsteroidal", d$ROW), ]
-  nsCol <- grep("^Nonsteroidal anti.inflammatory$", names(d), value = TRUE)
+  nsCol <- grep("^Nonsteroidal anti.inflammatory drugs$", names(d), value = TRUE)
   expect_identical(ns[[nsCol]], c(4L, 3L, 6L, 3L))
   expect_identical(ns[[paste("Not", nsCol)]], c(32L, 33L, 32L, 34L))
 

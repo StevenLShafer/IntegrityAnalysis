@@ -37,6 +37,26 @@ reviewFlags <- function(x) {
                              " treatment arm(s) were found"))
   if (any(is.na(x$arms$N)))
     flags <- c(flags, "arm N is missing for at least one arm")
+  # A TABLE WHOSE DISPERSIONS MOSTLY EXCEED THEIR MEANS is probably not a
+  # table of means (2026-09-24, Loadsman corpus, Akkaya 2015 EJA: 31 of
+  # 48 "continuous" rows were counts with their percentages - "18 (90)"
+  # - read as mean 18, SD 90, and the engine scored them, p = 0.0029, the
+  # corpus's second-strongest result). One such row is ordinary: a
+  # skewed quantity - opioid consumption, previous operations - prints an
+  # SD above its mean and is analysed as it stands. Half the table doing
+  # it is a misread, and a flag here consults the AI under ai =
+  # "fallback" and tells a human what to look at. The per-row invariant
+  # belongs in the validator as a non-fatal issue, which needs a new
+  # issue code - a contract decision, held for Steve (ISSUES.md 35).
+  cont <- !is.na(x$data$MEAN) & !is.na(x$data$SD)
+  if (sum(cont) >= 3) {
+    above <- cont & x$data$MEAN >= 0 & x$data$SD > x$data$MEAN
+    if (sum(above) >= 0.5 * sum(cont))
+      flags <- c(flags, paste0(sum(above), " of ", sum(cont), " mean (SD) ",
+                               "cells print an SD larger than the mean: ",
+                               "counts with their percentages read as ",
+                               "mean (SD)? - check the table's notation"))
+  }
   # Recovered arm sizes are usable but not the same thing as an N printed in
   # the table header: say where each one came from, so a human can verify it
   # - a text-recovered N against the CONSORT flow diagram in particular

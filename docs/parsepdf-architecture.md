@@ -427,6 +427,53 @@ carries nine variables from two tables; the engine reads one (see the user guide
 published 1.2×10⁻⁶ needs Table 2's two variables as well. Both are recorded in
 `docs/validation-ledger.md`.
 
+### 05f — Three rules from the Loadsman corpus (2026-09-24, issue 35)
+
+A Cowork session ran the batch script over 52 randomised trials supplied by John
+Loadsman and found three defects (`docs/audits/2026-09-24-duplicate-rows-and-percent-as-sd-cowork.md`).
+Its checkpoints had been produced by a library built 2026-08-21, so the first —
+one variable emitted twice, under a truncated label and the model's full one —
+was already caught on current code by the merge's value-signature dedupe of
+2026-08-25 (§08). What was still wrong, and is now fixed:
+
+- **A row label that wraps onto the next line is read whole.** "Amount of
+  intraoperative" over "fluid (ml)": the second line carries no value, so it is a
+  label-kind line, and the row went out under its first line only. The
+  continuation is recognised by typography, not vocabulary — it begins with a
+  lower-case letter or a bracketed unit, and journals capitalise the first line of
+  a variable's name — and the absorbed line cannot also become a block header. A
+  line beginning with a capital is the next variable or a block header and is left
+  alone; the look-ahead runs past the block's last data row, where the last
+  variable's continuation sits.
+- **The rotated download rail is measured by its extent.** `.ppStripRotatedText()`
+  (§05b) drops a column of narrow words that spans a third of the page — but it
+  measured the span between the words' *tops*. A rotated word's y is where its box
+  starts and its text runs on for `height` points (the URL alone is 120 tall), so
+  on Akkaya 2015 EJA the five-word rail spanned 184 of a 700-point page by tops and
+  340 by extent, was kept, and "Downloaded" straddled the table's "Mild" line: the
+  engine returned a row named `Downloaded Mild`. The span is now top-of-first to
+  bottom-of-last.
+- **The cells themselves can say "n (%)".** A table of counts and percentages with
+  no "%" anywhere — no "(%)" in a label, no "n (%)" header, a silent footnote — read
+  "18 (90)" as mean 18, SD 90, and 31 of that paper's 48 rows reached the engine as
+  continuous variables whose SD exceeded their mean. A count with its percentage has
+  a signature no mean (SD) pair has: the bracketed number *is* the first as a
+  percentage of the arm's N, at the printed precision, in every arm. When every cell
+  of the row that has a value satisfies that, at least two do, and at least one
+  count is nonzero, the row is counts — checked ahead of the vocabulary rules,
+  because it is evidence from the cells. An arm without an N cannot vouch, and the
+  row falls to the vocabulary rules as before.
+
+And one flag rather than a rule: a table in which **half or more of the mean (SD)
+cells print an SD larger than the mean** is reported by `reviewFlags()` ("counts
+with their percentages read as mean (SD)?"), which consults the AI under
+`ai = "fallback"`. One such row is ordinary — a skewed quantity prints an SD above
+its mean and is analysed as it stands — so the per-row invariant the finding asked
+for belongs in the validator as a *non-fatal* issue, which needs a new issue code:
+a contract decision held for Steve (issue 35).
+
+Real-article checks: `corpus/checkLoadsman.R` (skips when the corpus is absent).
+
 ## Files
 
 | File | Role |

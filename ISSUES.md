@@ -132,6 +132,119 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 35. Duplicated variables, counts read as mean (SD), a banner word in a label — and the month-old library that produced the finding
+
+**Status: fixed on `fix/loadsman-parse-defects`, 2026-09-24, from
+`docs/audits/2026-09-24-duplicate-rows-and-percent-as-sd-cowork.md`** — a
+finding delivered by a Cowork session running `author_batch.R` over 52
+randomised trials supplied by John Loadsman (editor, *Anaesthesia and
+Intensive Care*). One decision is held for Steve (below).
+
+**First, what produced the finding.** The batch scripts run from
+`C:/dev/Fujii Boldt Reuben`, outside the repository's renv, so
+`library(IntegrityAnalysis)` resolves to the R user library — and the
+copy installed there is **0.1.0, built 2026-08-21**. Every Loadsman
+checkpoint, the Carlisle-168 workbook of 2026-09-24 and the figures in
+the finding were produced by an engine that predates the value-signature
+dedupe of the AI merge (2026-08-25), the repeated-measures reader
+(issue 34) and every fix between. This is the fourth instance of the
+stale-library trap in the memory file `snapshot-library-provenance`; the
+standing remedy — reinstalling the user-library copy from the repository
+— has been Steve's call since 2026-09-02 and still is. Both batch scripts
+now print the library they load (path, version, build date, repository
+HEAD), store it in every checkpoint as `provenanceLib`, and **stop** on a
+copy older than 0.2.0. Their seeds were already set by the Cowork
+session (re-seeded inside `score()`, so a resumed run matches an
+uninterrupted one).
+
+**The three defects, re-measured on current `main` (841648d) before
+anything was changed:**
+
+1. *The same variable twice, under a truncated and a full label* (Polat
+   2015 DA, 18 papers). **Already fixed on `main`** by the 2026-08-25
+   value-signature dedupe: the hybrid run of Polat on current code prints
+   "Dropping 2 model variable(s) whose values duplicate deterministic rows
+   under another name: Amount of intraoperative fluid, Infusion duration
+   of study drug" and returns 15 rows — 9 continuous (3 variables × 3
+   arms of 30), Gender, and the model's Septoplasty. What remained wrong
+   was the *truncation*: "Amount of intraoperative" is the first line of
+   a label whose second line, "fluid (ml)", carries no value and so was a
+   label-kind line the row never saw. **Fixed**: a label-kind line right
+   after a data row that begins with a lower-case letter or a bracketed
+   unit is the row's continuation (journals capitalise a variable's first
+   line), joined to the label and never a block header; the look-ahead
+   runs past the block's last data row, where the last variable's
+   continuation sits. Polat now reads "Amount of intraoperative fluid"
+   and "Infusion duration of study drug".
+2. *"n (%)" read as mean and SD* (Akkaya 2015 EJA: 31 of 48 rows with
+   SD > MEAN; p = 0.0029). **Reproduced on `main`** — the page's only
+   candidate is an outcome table of counts with no "%" printed anywhere,
+   and "18 (90)" fell to the vocabulary rules' default, mean (SD).
+   **Fixed** by evidence from the cells: when, in every arm that has a
+   value, the bracketed number is the first as a percentage of the arm's
+   N at the printed precision (first number a whole count within N; at
+   least two arms; at least one nonzero), the row is "n (%)" — checked
+   ahead of the vocabulary rules. Akkaya now returns 0 continuous count
+   rows and 8 level columns; its VAS rows are medians. A table whose
+   mean (SD) cells are *mostly* SD > MEAN (half or more, three or more
+   cells) raises a review flag, which consults the AI under
+   `ai = "fallback"`.
+3. *"Downloaded Mild"* (same paper). **Reproduced on `main`.** The
+   rotated-rail stripper (`.ppStripRotatedText`, 2026-08-22) measured a
+   rail's span between its words' *tops*; a rotated word's text runs on
+   for `height` points (the URL is 120 tall), so this five-word rail
+   spanned 184 of 700 points by tops and was kept, and "Downloaded"
+   (36 points tall, starting 4 above "Mild") joined the Mild line.
+   **Fixed**: the span is top-of-first to bottom-of-last (340 here).
+
+**Held for Steve — the per-row validator issue.** The finding asks that
+"a scored continuous row with SD > MEAN raises an issue". Every issue
+code the validator has (`missing`, `unreadable`, `incongruent`,
+`too_large`, `too_much_compute`, `error`, `structural`) is a defect
+that fails the table; a skewed variable — opioid consumption 3.2 ± 5.1,
+previous operations 0.4 ± 0.8 — legitimately prints SD > MEAN and must
+be analysed as it stands. A non-fatal advisory needs a **new issue
+code** (say `suspect`, painted amber, never blocking), which is a change
+to the API contract (docs/api-users-guide.md's table of seven codes) and
+the grid legend. Until that decision, the invariant lives at the parse
+(the table-level flag above) and in the corpus check.
+
+**Tests (committed):** `tests/testthat/test-loadsman-layouts.R` — the
+Akkaya rail geometry through the stripper; a wrapped label joined on a
+middle row and on the last row, and a capitalised next line *not*
+joined; "a (b)" cells that satisfy the identity read as counts while
+"Age 40 (12)" beside them stays a mean; the same table with no arm N
+falling to mean (SD) and raising the flag; and the hybrid merge with a
+canned model reply (mocked `parseBaselineTableAI`) dropping the fuller-
+label duplicate by value while keeping "ASA I" and "ASA II" as two
+variables — the regression the finding warned a careless fix would
+cause. `corpus/checkLoadsman.R` — the real articles, skips when absent:
+Polat 9 continuous rows, N = 30, no repeated tuple, no truncated twin,
+both wrapped labels whole; Akkaya no banner word, 0 continuous rows with
+SD > MEAN, 8 level columns; the cumj paper keeps ASA I and ASA II; and
+over the corpus (46 of 52 parse deterministically) every table with
+SD > MEAN on half its mean (SD) cells carries the flag. All pass.
+
+**Nothing else moves — measured.** `runMassTest.R`, 61 PDFs, each side
+from its own installed snapshot under `Rscript --vanilla`: 60 parsed / 1
+failed on both, the same file. 50 of 60 ROW vectors identical; the ten
+that differ are all the wrapped-label rule reading a name whole
+("Uterine incision–to–" → "Uterine incision–to– delivery time, s";
+"Cervical" → "Cervical dilation, cm") plus one variable *gained*
+(PMID_15915019: "Procedure during general anesthesia 38 (88) / 35
+(83)", counts by the identity rule; trial p 0.095 → 0.12). One trial
+crosses a threshold with an identical ROW vector — PMID_17197846,
+0.05012 → 0.0467, every row p within 0.004 — which is the unseeded
+Monte Carlo of the mass-test script, as issue 34 established. Suite:
+125 files / 4,106 passed / 0 failed / 33 skipped on the branch, with one ERROR in test-vocacapsaicin-layout.R whose expectation named the truncated label "Nonsteroidal anti-inflammatory"; the label is now read whole ("... drugs"), the expectation updated, and the file re-run clean. The misparse measurement (`measureMisparse.R`) can
+see the identity rule only as pairs *removed* — a count row that was a
+mean/SD pair is one no longer — so a misfire on a genuine mean (SD) row
+would show as a lost corroborated pair; a run on this branch's snapshot
+was launched at PR time against the `e41609c` baseline (no parser change
+between `e41609c` and `841648d`) and is recorded here by follow-up.
+
+---
+
 ## 34. The baseline block ran into the follow-up timepoints — and the page was the transpose of what the finding assumed
 
 **Status: fixed on `fix/long-layout-issue-34`, 2026-09-24, from
