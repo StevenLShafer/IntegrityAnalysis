@@ -342,7 +342,8 @@ row preserved**. Down from 58 contaminated rows.
   `PMID_16189334` 24 pairs (17 uncorroborated) → 9 (2 uncorroborated),
   the 7 corroborated pairs kept; `PMID_16670112` 15 → 17 pairs, 2 → 3
   corroborated, one more of Carlisle's pairs found. The penalty's return
-  removed 28 uncorroborated pairs and cost none. So the scorer change
+  removed 27 uncorroborated pairs and added one (net 26: 5,536 → 5,510)
+  at the cost of no corroborated pair. So the scorer change
   as merged is: no credit for `Unnamed` rows, penalty as before — and
   measured on the corpus it moves three files of 1,017, all toward
   Carlisle's values.
