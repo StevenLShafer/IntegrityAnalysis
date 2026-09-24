@@ -320,6 +320,16 @@
 # when it does not match the number of arms actually read from the table -
 # a stated "three groups of eight" is evidence for three arms, not for
 # whatever the parser happened to find.
+#
+# EVERY such statement is returned, not the first (CodeRabbit on PR #330,
+# 2026-09-24). A Methods section can state a pilot "divided into three
+# groups of eight" and then the analysed animals "divided into three
+# groups of ten"; taking the first match would hand the three-arm table
+# N = 8 with nothing to catch it, because validation only asks that N be
+# present. So the result is one entry per DISTINCT (groups, n) statement,
+# and .ppParseRepeatedMeasures() applies a size only when the statements
+# for its arm count agree on one - otherwise N stays missing, which the
+# review flags say out loud.
 .ppNumberWord <- function(w) {
   w <- tolower(w)
   words <- c(one = 1, two = 2, three = 3, four = 4, five = 5, six = 6,
@@ -338,16 +348,26 @@
                 "(?:equal\\s+)?groups?\\s+of\\s+([a-z0-9]+)",
                 "(?:\\s+(?:each|animals?|dogs?|rats?|pigs?|rabbits?|",
                 "patients?|subjects?|participants?))?")
-  m <- regexpr(pat, j, perl = TRUE)
+  found <- list(groups = integer(0), n = integer(0), snippet = character(0))
+  add <- function(groups, n, snippet) {
+    # one entry per distinct statement; a sentence repeated verbatim in the
+    # Abstract and the Methods is one statement, not two
+    if (any(found$groups == groups & found$n == n)) return(invisible())
+    found$groups  <<- c(found$groups, groups)
+    found$n       <<- c(found$n, n)
+    found$snippet <<- c(found$snippet, snippet)
+  }
+  m <- gregexpr(pat, j, perl = TRUE)[[1]]
   if (m[1] != -1) {
-    hit <- regmatches(j, m)
-    parts <- regmatches(hit, regexec(pat, hit, perl = TRUE))[[1]]
-    groups <- .ppNumberWord(parts[3])
-    n      <- .ppNumberWord(parts[4])
-    if (!is.na(groups) && !is.na(n) && groups >= 2 && n >= 1)
-      return(list(groups = groups, n = n,
-                  snippet = .ppSquish(substr(j, max(1, m - 30),
-                                             m + attr(m, "match.length") + 10))))
+    for (h in seq_along(m)) {
+      hit <- substr(j, m[h], m[h] + attr(m, "match.length")[h] - 1L)
+      parts <- regmatches(hit, regexec(pat, hit, perl = TRUE))[[1]]
+      groups <- .ppNumberWord(parts[3])
+      n      <- .ppNumberWord(parts[4])
+      if (!is.na(groups) && !is.na(n) && groups >= 2 && n >= 1)
+        add(groups, n, .ppSquish(substr(j, max(1, m[h] - 30),
+                                        m[h] + attr(m, "match.length")[h] + 10)))
+    }
   }
   # THE SENTENCE IS OFTEN CUT AT A LINE BREAK, AND THE OTHER COLUMN FILLS THE
   # GAP. poppler emits each physical line of a two-column page as the left
@@ -378,9 +398,21 @@
       # runs of whitespace to one space, so squishing first would leave
       # nothing to cut at and quote both columns (the first version did).
       left <- function(s) .ppSquish(sub("\\s{2,}.*$", "", sub("^\\s+", "", s)))
-      return(list(groups = groups, n = n,
-                  snippet = .ppSquish(paste(left(ln[i]), left(ln[i + 1])))))
+      add(groups, n, .ppSquish(paste(left(ln[i]), left(ln[i + 1]))))
     }
   }
-  NULL
+  if (!length(found$groups)) return(NULL)
+  found
+}
+
+# The one group size the document states for a table of k arms, or NA.
+# Statements naming a different number of groups are not about this table
+# and are ignored; two statements for k arms that disagree on the size make
+# the size unknowable from the text, and NA is the honest answer.
+.ppGroupNFor <- function(textGroupN, k) {
+  if (is.null(textGroupN)) return(list(n = NA_integer_, snippet = NA_character_))
+  sel <- which(textGroupN$groups == k & textGroupN$n > 0)
+  if (!length(sel) || length(unique(textGroupN$n[sel])) != 1L)
+    return(list(n = NA_integer_, snippet = NA_character_))
+  list(n = as.integer(textGroupN$n[sel[1]]), snippet = textGroupN$snippet[sel[1]])
 }

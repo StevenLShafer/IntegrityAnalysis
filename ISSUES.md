@@ -198,6 +198,21 @@ coincidence.
   the halves — which is how poppler delivers this page: *"...into three
   groups of* stimulation did not change. Compared with Group 1, *eight
   each: ..."*. Exact at the line boundary, nothing looser.
+  *On review (CodeRabbit, PR #330):* it returns **every** distinct such
+  statement, not the first, and `.ppGroupNFor()` applies a size only
+  when the statements for the table's arm count agree on one — a pilot
+  of eight and a study of ten leave N missing rather than guessed.
+- **Two more guards in the reader, on the same review.** A value is taken
+  from the Baseline column only when `Baseline` is the *nearest* header
+  centre to it, so a row whose Baseline cell is blank cannot take its
+  after-drug value (50 pt to the right was inside the old tolerance).
+  And a group row the reader cannot use — blank Baseline cell, a median
+  row — is listed in `skipped` with the reason and the line's text
+  (`reviewFlags()`: "table line(s) could not be used") instead of
+  vanishing; it still counts as its group's row for the 1..k run check,
+  because before that one blank cell broke the run and the whole table
+  fell to the column engine, which filed the after-drug value as
+  baseline. Documented in `docs/parsepdf-architecture.md` §05e.
 - **`.ppParseScore()` no longer credits `Unnamed` rows as variables.**
   This is the change that let the fix win rather than merely exist. On
   this page the misread scored 24 (twelve `Unnamed` rows at +2 each, −1
@@ -206,6 +221,12 @@ coincidence.
   corrected Table 1 reading (8 after its caption penalty) beats every
   other candidate. The penalty stays. A scorer change can move other
   files' candidate selection; it was measured, below.
+  *Correction on review (CodeRabbit, PR #330):* the first version filtered
+  the `Unnamed` rows out of the row set BEFORE counting the penalty, so
+  the penalty was always zero — credit and penalty both gone. The penalty
+  is now counted over the unfiltered row names, as intended. This was not
+  visible on the motivating page (the misread loses either way) and is
+  the reason the misparse measurement below was run twice.
 
 Not changed, deliberately: `validateData` still requires N. The finding
 was explicit that tolerating a missing N would clear 36 of 37 issues on
@@ -242,9 +263,17 @@ row preserved**. Down from 58 contaminated rows.
    nine distinct after-dose pairs leaks), three arms named from the
    legend, N recovered from the Methods and refused when the stated group
    count disagrees, end-to-end validation, and — the guard — a wide table
-   that merely says "Group" is left to the wide reader.
+   that merely says "Group" is left to the wide reader. Added on review:
+   a page with one Baseline cell blank — its after-drug value (80 pt to
+   the right) must not be read, the row must appear in `skipped` with
+   the reason, the flag must say so, and the other eight rows must still
+   be read (before the fix this page fell to the column engine: 17 rows,
+   after-drug values included).
 3. `tests/testthat/test-armn-recovery.R` — the sentence, the line-break
-   split, and the sample-size sentence that must not match.
+   split, and the sample-size sentence that must not match. Added on
+   review: two statements for the same group count that disagree on the
+   size (N refused), statements for a different group count (ignored),
+   and the same sentence twice (one statement, not a disagreement).
 4. `corpus/checkFujii11375852.R` — the real article, corpus tooling, skips
    when absent. Ten asserted checks on the deterministic result (all
    pass); the hybrid reported beside it, not asserted.
@@ -275,11 +304,33 @@ row preserved**. Down from 58 contaminated rows.
   1,110 files scored, 1,017 parsed, 80 with no pairs; of the 937 with
   pairs, **416 fully corroborated (44.4%)**, 521 with ≥1 uncorroborated
   pair (55.6%); 12,923 pairs of ours, 7,269 corroborated (56.2%); 4,473
-  of Carlisle's pairs missed (38.2%). **AFTER, this branch**
-  (`.NewCarlisle/misparse-after-issue34/`): *(in flight at the time of
-  the PR — hours; recorded here by follow-up when it lands. The merge was
-  not held for it: the parse-rate and suite checks are the gates, and
-  this is the hypothesis test.)*
+  of Carlisle's pairs missed (38.2%). **AFTER, this branch at `f0b1eca`**
+  (`.NewCarlisle/misparse-after-issue34/`, same 1,110 files, same
+  corpus, the branch's installed snapshot under `--vanilla`): 1,017
+  parsed, 81 with no pairs; of the 936 with pairs, **417 fully
+  corroborated (44.6%)**, 519 with ≥1 uncorroborated pair (55.4%); 12,820
+  pairs of ours, 7,284 corroborated (56.8%); **4,458 of Carlisle's pairs
+  missed (38.0%)**. `corpus/compareMisparse.R` (new) puts the two runs
+  side by side: **1,013 of 1,017 files have an identical
+  (ours, corroborated, uncorroborated) triple**, and the four that moved
+  all moved the right way —
+  `PMID_18292675` 56 pairs, none corroborated → 12 pairs, all
+  corroborated, and all 12 of Carlisle's pairs now found (the
+  repeated-measures layout, read as this fix intends);
+  `PMID_16531446` 48 uncorroborated → 4 pairs, 2 corroborated;
+  `PMID_15377579` 17 uncorroborated → no pairs at all (the misread no
+  longer wins; nothing replaces it, which is the honest result);
+  `PMID_21564041` 2 → 4 pairs, 1 → 2 corroborated. No file lost a
+  corroborated pair. The finding's prediction — the partial bucket
+  shrinks and the fully-corroborated bucket grows — holds, by one file
+  each: this layout is rare in the Carlisle-2017 corpus, which is human
+  RCTs, not the animal stratum where it failed.
+  **AFTER, with the review fixes** (scorer penalty restored, Baseline
+  column bounded by the next header, unmatched lines reported — each of
+  which can move candidate selection): *a second run on the fixed code's
+  snapshot was launched at merge time and is recorded here by follow-up.
+  The merge was not held for it: the suite, the real-article check and
+  the first AFTER run are the gates, and this is the confirmation.*
 - `corpus/validateCarlisle2017.R` cannot move: it reads Carlisle's
   hand-entered spreadsheet straight into `validateData` → `P_Calc` and
   contains no call to any parser (`grep -c "parseBaseline|ppParse"` = 0).

@@ -95,7 +95,12 @@
   # below, let a misread of PMID 11375852 - two arms, twelve Unnamed rows -
   # score 24 and beat every honest reading of the same page (a correct
   # 6-variable parse scores 14). The penalty stays; the credit goes.
+  # The penalty is counted over ALL row names, not the named ones -
+  # `allRows` below has the Unnamed rows filtered out, so counting them
+  # there is always zero (CodeRabbit on PR #330, 2026-09-24: the first
+  # version did exactly that, and lost the penalty while removing the credit).
   named    <- !grepl("^Unnamed", res$data$ROW)
+  nUnnamed <- sum(grepl("^Unnamed", unique(res$data$ROW)))
   contRows <- unique(res$data$ROW[!is.na(res$data$MEAN) & named])
   nCont    <- length(contRows)
   allRows  <- unique(res$data$ROW[named])
@@ -124,7 +129,7 @@
     2 * (nrow(res$arms) >= 2) +
     2 * min(demo, 3) -
     2 * hardSkips -
-    sum(grepl("^Unnamed", allRows)) -
+    nUnnamed -
     max(0, clusters - 6)
 }
 

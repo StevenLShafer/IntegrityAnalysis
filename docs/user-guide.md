@@ -217,7 +217,12 @@ extraction is deterministic — the same PDF always yields the same table
 > tables usually print no group size, so the app looks for it in the text
 > ("divided into three groups of eight each") and, when it finds it, fills
 > N and **flags it as recovered from the document text** — verify it
-> against the Methods before analyzing, exactly as for any recovered N. Median rows are extracted too, **when the table
+> against the Methods before analyzing, exactly as for any recovered N.
+> If the text states two different sizes for the same number of groups
+> (a pilot and the study proper, say), N is left blank rather than
+> guessed. A group row with no usable Baseline value is not read from
+> its other columns; it is listed as a red-flagged row for you to fill in
+> or delete. Median rows are extracted too, **when the table
 says the bracketed interval is an IQR** (in the row label, caption, or
 footnote); a median with a min–max range, or with an unlabeled
 interval, is flagged for hand entry instead — the analysis needs

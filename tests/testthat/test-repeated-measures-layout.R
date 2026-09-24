@@ -34,7 +34,10 @@
 # after-drug value on every row. The after-drug values are chosen to be
 # distinct from every baseline value, so their presence is detectable.
 repeatedMeasuresPdf <- function(dir = tempdir(), file = "long.pdf",
-                          methods = "Twenty-four mongrel dogs were divided into three groups of eight each.") {
+                          methods = "Twenty-four mongrel dogs were divided into three groups of eight each.",
+                          blankBaseline = NULL) {
+  # blankBaseline = c(variable index, group index): leave that one Baseline
+  # cell empty, with its after-drug value still printed to the right
   f  <- file.path(dir, file)
   xG <- 250; xB <- 320; xA <- 400        # Group, Baseline, After column centres
   cells <- list(
@@ -59,11 +62,13 @@ repeatedMeasuresPdf <- function(dir = tempdir(), file = "long.pdf",
     list(label = "CO (L/min)",  base = c("2.2 ± 0.5", "2.2 ± 0.4", "2.3 ± 0.4"),
                                 after = c("3.2 ± 0.6", "4.8 ± 0.4", "5.3 ± 0.5")))
   y <- 250
-  for (v in vars) for (g in 1:3) {
+  for (vi in seq_along(vars)) for (g in 1:3) {
+    v <- vars[[vi]]
     if (g == 1) cells <- c(cells, list(list(x = 72, y = y, text = v$label, adj = 0)))
-    cells <- c(cells, list(list(x = xG, y = y, text = as.character(g), adj = 0.5),
-                           list(x = xB, y = y, text = v$base[g],  adj = 0.5),
-                           list(x = xA, y = y, text = v$after[g], adj = 0.5)))
+    cells <- c(cells, list(list(x = xG, y = y, text = as.character(g), adj = 0.5)))
+    if (!identical(as.integer(blankBaseline), c(vi, g)))
+      cells <- c(cells, list(list(x = xB, y = y, text = v$base[g], adj = 0.5)))
+    cells <- c(cells, list(list(x = xA, y = y, text = v$after[g], adj = 0.5)))
     y <- y + 18
   }
   cells <- c(cells, list(list(x = 72, y = y + 10,
@@ -93,6 +98,26 @@ test_that("the parse stops at the Baseline column: no after-drug value is read",
   expect_identical(d$SD[grepl("^HR", d$ROW)],    c(15, 10, 12))
   expect_identical(d$MEAN[grepl("^CO", d$ROW)],  c(2.2, 2.2, 2.3))
   expect_identical(sort(unique(d$ROW)), sort(c("HR", "MAP (mm Hg)", "CO (L/min)")))
+})
+
+test_that("a row with no Baseline cell does not take the after-drug value, and is reported", {
+  # CodeRabbit on PR #330: the tolerance alone let an after-drug cell stand
+  # in for a missing Baseline cell. MAP group 2's baseline is blank here;
+  # its after value (91 +/- 11) sits 80 pt to the right, inside the old
+  # tolerance. It must not be read, the row must be listed in `skipped`
+  # with the reason, and every other row must still be read.
+  r <- parseBaselineTableHeuristics(
+    repeatedMeasuresPdf(file = "longBlank.pdf", blankBaseline = c(2L, 2L)),
+    quiet = TRUE)
+  d <- r$data
+  expect_identical(nrow(d), 8L)
+  expect_false(any(paste(d$MEAN, d$SD) %in% paste(afterPairs$MEAN, afterPairs$SD)))
+  expect_identical(d$MEAN[d$ROW == "MAP (mm Hg)"], c(130, 131))
+  expect_identical(nrow(r$skipped), 1L)
+  expect_match(r$skipped$reason, "repeated-measures layout: no mean .* Baseline column beside group 2")
+  expect_match(r$skipped$text, "91")
+  # and the flag the user reads names the loss
+  expect_true(any(grepl("could not be used", reviewFlags(r), fixed = TRUE)))
 })
 
 test_that("three arms, each named from the table's own (Group k) legend", {

@@ -95,10 +95,23 @@
   }
   if (is.na(hdr) || !(xBase > xGroup)) return(NULL)
   tol <- max(15, 0.5 * (xBase - xGroup))
+  # THE BASELINE COLUMN IS BOUNDED ON THE RIGHT BY THE NEXT HEADER, not only
+  # by the tolerance (CodeRabbit on PR #330, 2026-09-24). The tolerance is
+  # half the Group-to-Baseline distance, and the after-treatment column can
+  # sit closer to Baseline than that: Group at 200, Baseline at 340, an
+  # after-drug cell at 390 is within 70 of Baseline. On a row whose Baseline
+  # cell is missing that after-drug value would have been read AS baseline -
+  # the exact contamination this reader exists to stop. So a value is taken
+  # only when Baseline is the NEAREST of the header line's column centres to
+  # it: the after column's own header word (or the "(Group k)" legend that
+  # stands over it, as on the motivating page) claims its cells.
+  hx <- lines[[hdr]]$x + lines[[hdr]]$width / 2
 
   ## ---- 2. the data lines: a small integer under Group, a value under Baseline
   rowsFound <- list()
   nDataSeen <- 0L
+  unmatched <- list()      # data lines this reader could not use (reported)
+  groupSeq  <- integer(0)  # every group index seen, value or no value
   for (i in seq(hdr + 1L, lastData)) {
     if (kind[i] == "stop") break
     if (kind[i] != "data") next
@@ -107,16 +120,37 @@
     if (is.null(t) || nrow(t) == 0) next
     g <- which(t$type == "plain" & !is.na(t$num1) & t$num1 == round(t$num1) &
                  t$num1 >= 1 & t$num1 <= 12 & abs(t$mid - xGroup) <= tol)
-    v <- which(t$type %in% c("meanSD", "numParen") & abs(t$mid - xBase) <= tol)
-    if (!length(g) || !length(v)) next
+    if (!length(g)) {
+      unmatched[[length(unmatched) + 1L]] <-
+        list(i = i, reason = "no group index under the Group column")
+      next
+    }
     g <- g[which.min(abs(t$mid[g] - xGroup))]
+    gIdx <- as.integer(t$num1[g])
+    groupSeq <- c(groupSeq, gIdx)
+    nearestIsBase <- vapply(t$mid, function(x) which.min(abs(hx - x)), integer(1)) ==
+      which.min(abs(hx - xBase))
+    v <- which(t$type %in% c("meanSD", "numParen") & abs(t$mid - xBase) <= tol &
+                 nearestIsBase)
+    if (!length(v)) {
+      # A group row with nothing usable under Baseline. It still counts as
+      # that group's row for the 1..k run below - a blank cell is part of the
+      # layout, not evidence against it - but nothing is read from it, and it
+      # is reported. Before this, one blank cell made the run 1,3 and the
+      # whole layout fell to the wide reader, which then filed the row's
+      # after-drug value as baseline: the failure the reader exists to stop.
+      unmatched[[length(unmatched) + 1L]] <- list(
+        i = i, reason = paste0("no mean ± SD or n (%) value under the ",
+                               "Baseline column beside group ", gIdx))
+      next
+    }
     v <- v[which.min(abs(t$mid[v] - xBase))]
     # the row's label is whatever precedes its first token; blank on the
     # second and later group rows of a variable, which inherit the last one
     lbl <- .ppCleanLabel(.ppSquish(substr(paste(lines[[i]]$text, collapse = " "),
                                          1, min(t$start) - 1)))
     rowsFound[[length(rowsFound) + 1L]] <-
-      list(i = i, g = as.integer(t$num1[g]), label = lbl, tok = t[v, , drop = FALSE])
+      list(i = i, g = gIdx, label = lbl, tok = t[v, , drop = FALSE])
   }
   if (length(rowsFound) < 4L) return(NULL)
   # Most data lines of the block must fit the pattern, or this is a wide
@@ -124,7 +158,9 @@
   if (length(rowsFound) < 0.6 * nDataSeen) return(NULL)
 
   ## ---- 3. the group index must run 1..k beneath each variable ------------
-  g <- vapply(rowsFound, `[[`, integer(1), "g")
+  # Checked over EVERY group row, including those with no usable value, so
+  # that a blank cell does not break the run.
+  g <- groupSeq
   if (min(g) != 1L || max(g) < 2L) return(NULL)
   runStart <- which(g == 1L)
   runEnd   <- c(runStart[-1] - 1L, length(g))
@@ -162,10 +198,13 @@
   ## ---- 5. arm N: not in the table; from the document text if stated ------
   armN      <- rep(NA_integer_, k)
   armSource <- rep(NA_character_, k)
-  if (!is.null(textGroupN) && isTRUE(textGroupN$groups == k) &&
-      isTRUE(textGroupN$n > 0)) {
-    armN[]      <- as.integer(textGroupN$n)
-    armSource[] <- paste0("document text (\"...", textGroupN$snippet, "...\")")
+  # .ppGroupNFor() gives the size only when every "into k groups of n"
+  # statement for THIS arm count agrees; a pilot of eight and a study of
+  # ten leave N missing rather than guessed.
+  stated <- .ppGroupNFor(textGroupN, k)
+  if (!is.na(stated$n)) {
+    armN[]      <- stated$n
+    armSource[] <- paste0("document text (\"...", stated$snippet, "...\")")
   }
   if (any(is.na(armN)) && !is.null(textCands) && nrow(textCands) > 0) {
     fill  <- .ppFillArmNFromText(armN, armName, textCands,
@@ -216,6 +255,28 @@
   DATA <- do.call(rbind, lapply(out, function(l)
     as.data.frame(l, check.names = FALSE, stringsAsFactors = FALSE)))
 
+  # A DATA LINE THIS READER DID NOT USE IS REPORTED, NOT DROPPED (CodeRabbit
+  # on PR #330, 2026-09-24). The 60% rule above accepts the layout when most
+  # lines fit; the rest - a median [IQR] row, a row whose Baseline cell is
+  # blank - would otherwise vanish with nothing in `skipped` to say so, and
+  # the review flags would tell the user every line was read. Each is listed
+  # with the line's text, the way the wide reader lists its refusals; the
+  # score's hard-skip penalty then applies to this reading as to any other.
+  skipped <- data.frame(label = character(0), reason = character(0),
+                        text = character(0), stringsAsFactors = FALSE)
+  if (length(unmatched)) {
+    skipped <- data.frame(
+      label  = vapply(unmatched, function(u) {
+        t <- tokensByLine[[u$i]]
+        .ppCleanLabel(.ppSquish(substr(paste(lines[[u$i]]$text, collapse = " "),
+                                       1, min(t$start) - 1)))
+      }, character(1)),
+      reason = paste0("repeated-measures layout: ",
+                      vapply(unmatched, `[[`, character(1), "reason")),
+      text   = vapply(unmatched, function(u) .ppSquish(lineTexts[u$i]), character(1)),
+      stringsAsFactors = FALSE)
+  }
+
   list(data       = DATA,
        arms       = data.frame(arm = armName, N = armN, stringsAsFactors = FALSE),
        armNSource = armSource,
@@ -225,8 +286,7 @@
        approxUnresolved = character(0),
        derivedCells     = NULL,
        clusters   = k,
-       skipped    = data.frame(label = character(0), reason = character(0),
-                               text = character(0), stringsAsFactors = FALSE),
+       skipped    = skipped,
        dispersion = dispersionBasis,
        layout     = "repeated-measures")
 }

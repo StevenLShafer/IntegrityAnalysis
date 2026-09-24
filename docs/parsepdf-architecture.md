@@ -382,6 +382,30 @@ which for animal studies is the only place it lives (`.ppGroupsOfN()`, "divided
 into three groups of eight each", including the case where poppler cuts that
 sentence at a line break and interleaves the other column between the two halves).
 
+Three guards on that reading, each added on review of PR #330 (CodeRabbit,
+2026-09-24), each answering a way the reader could have put a wrong value in the
+grid with nothing flagged:
+
+- **The Baseline column is bounded by the next header, not only by a tolerance.**
+  A value is taken only when `Baseline` is the *nearest* of the header line's
+  column centres to it. Without that, a row whose Baseline cell was blank could
+  take its after-treatment value — 50 pt to the right, inside a tolerance of half
+  the Group-to-Baseline distance — as baseline data: the exact contamination the
+  reader exists to stop. A blank cell stays blank.
+- **A group row the reader could not use is reported, not dropped.** The layout
+  is accepted when most of its lines fit; the rest — a `median [IQR]` row, a row
+  with no Baseline value — are listed in `skipped` with the reason and the line's
+  text, so `reviewFlags()` says "table line(s) could not be used" as it does for
+  the wide reader. Such a row still counts as its group's row for the 1..k run
+  check (a blank cell is part of the layout, not evidence against it); without
+  that, one blank cell broke the run and the whole table fell to the column
+  engine, which filed the after-drug value as baseline.
+- **Every "into k groups of n" statement is read, not the first.** A Methods
+  section can describe a pilot "divided into three groups of eight" and then the
+  study "divided into three groups of ten"; `.ppGroupsOfN()` returns each distinct
+  statement, and `.ppGroupNFor()` applies a size only when the statements for the
+  table's arm count agree on one — otherwise N stays missing, which the flags say.
+
 Two things changed around it, and both are deliberate:
 
 - **`.ppParseScore()` no longer credits `Unnamed` rows as variables.** An `Unnamed`

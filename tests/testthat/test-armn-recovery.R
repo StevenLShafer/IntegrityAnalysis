@@ -179,6 +179,32 @@ test_that("the sentence split at a line break, with the other column between, is
   expect_match(g$snippet, "groups of eight each")
 })
 
+test_that("every group-size statement is returned, and disagreement leaves N missing", {
+  # A pilot of eight and a study of ten, both "divided into three groups":
+  # the first version returned the pilot's size and nothing could catch it
+  # (CodeRabbit on PR #330). Both statements come back, and the reader's
+  # helper refuses to choose between them.
+  g <- .ppGroupsOfN(paste(
+    "In a pilot, six dogs were divided into three groups of two each.",
+    "The study animals were then divided into three groups of ten each."))
+  expect_identical(g$groups, c(3L, 3L))
+  expect_identical(g$n, c(2L, 10L))
+  expect_identical(.ppGroupNFor(g, 3L)$n, NA_integer_)
+  # statements about a different number of groups are not about this table
+  g2 <- .ppGroupsOfN(paste(
+    "Volunteers were allocated into two groups of twelve.",
+    "Dogs were divided into three groups of eight each."))
+  expect_identical(.ppGroupNFor(g2, 3L)$n, 8L)
+  expect_identical(.ppGroupNFor(g2, 2L)$n, 12L)
+  expect_identical(.ppGroupNFor(g2, 4L)$n, NA_integer_)
+  # the same sentence twice is one statement, not a disagreement
+  s <- "Animals were divided into three groups of eight each."
+  g3 <- .ppGroupsOfN(paste(s, "Results.", s))
+  expect_identical(length(g3$n), 1L)
+  expect_identical(.ppGroupNFor(g3, 3L)$n, 8L)
+  expect_identical(.ppGroupNFor(NULL, 3L)$n, NA_integer_)
+})
+
 test_that("a sample-size sentence and a size with no group count are refused", {
   expect_null(.ppGroupsOfN("A sample size of eight per group was required for 80% power."))
   expect_null(.ppGroupsOfN("Eight dogs were studied."))
