@@ -36,16 +36,35 @@ test_that("F1: translation changes no ordinary answer - the screen 1441 cases an
 })
 
 test_that("F2: the direct-draw chunk is bounded by the arm count, so peak memory does not scale with arms x replicates", {
-  # 400 direct-draw arms (N 100, SD 100 against an integer grid) at 100,000
-  # replicates: unbounded, the ch x arms matrices were 4e7 doubles each
-  # (1.3 GB with the copies); bounded at 1e7 doubles each, the peak with the
-  # translation, deviation and square copies alive stays under 0.5 GB
+  # 1,000 direct-draw arms (N 100, SD 100 against an integer grid) at
+  # 100,000 replicates - the screen's own headline shape. Unbounded, the
+  # chunk is the whole stage and each ch x arms matrix is 1e8 doubles
+  # (0.8 GB); the simulated means and their translated copy are alive
+  # together, so the peak cannot fall below 1.6 GB by construction.
+  # Bounded at 1e7 doubles per matrix, the peak does not grow with the arms.
+  #
+  # THE BOUND IS 1 GB, NOT 0.5 (2026-09-24). The first version asserted
+  # 400 arms under 0.5 GB and measured 0.40 GB on the desktop; the GitHub
+  # Actions runner reported 0.5074 GB on 2026-09-24 (run 36057041666, on a
+  # docs-only PR, green on rerun): gc()'s "max used" counts garbage not yet
+  # collected, and the runner's collection timing and baseline heap differ
+  # from the desktop's. At 400 arms the unbounded peak is only 0.78 GB, so
+  # no bound both tolerates that variance and fails on the regression; at
+  # 1,000 arms one does. Measured 2026-09-24 on the desktop (R 4.5.3,
+  # Windows), with the 1e7 / COLS term in P_Calc.R present and removed:
+  #   arms   bounded   unbounded
+  #    400   0.40 GB    0.78 GB
+  #  1,000   0.42 GB    1.69 GB
+  #  2,000   0.46 GB    3.18 GB
+  # So 1 GB sits 0.58 GB above the honest peak (six times the runner's
+  # excess) and 0.69 GB below the measured failure, whose structural 1.6 GB
+  # floor keeps it above the bound whatever the runner's gc does.
   d <- data.frame(TRIAL = "T", ROW = "X", N = 100, MEAN = 50, SD = 100,
-                  ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)[rep(1, 400), ]
+                  ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)[rep(1, 1000), ]
   invisible(gc(reset = TRUE))
   x <- runP(d, m = 100000)
   g <- gc()
   peakGB <- sum(g[, 6]) / 1024
-  expect_lt(peakGB, 0.5)
+  expect_lt(peakGB, 1)
   expect_identical(x$M[1], "1e+05")            # it did escalate to the top stage
 })
