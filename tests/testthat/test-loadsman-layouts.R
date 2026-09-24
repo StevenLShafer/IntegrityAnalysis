@@ -118,20 +118,56 @@ test_that("a lower-case category header with indented children is a header, not 
 # ---- 3. counts and percentages with no "%" anywhere on the page -------------
 countsNoPercentPdf <- function(file = file.path(tempdir(), "countsNoPct.pdf"),
                               withN = TRUE) {
-  vx <- c(300, 420)
+  # three arms of 20 with DISTINCT cells: at integer precision the rule
+  # needs three independent (count, bracket, N) tuples
+  vx <- c(280, 380, 480)
   cells <- c(
     list(list(x = 72, y = 80, text = "Table 1 Characteristics of the patients", adj = 0)),
-    rowCells(110, "", c("Group C", "Group P"), vx))
-  if (withN) cells <- c(cells, rowCells(128, "", c("(n = 20)", "(n = 20)"), vx))
+    rowCells(110, "", c("Group C", "Group P", "Group S"), vx))
+  if (withN) cells <- c(cells, rowCells(128, "", c("(n = 20)", "(n = 20)", "(n = 20)"), vx))
   cells <- c(cells,
-    rowCells(150, "Catheter discomfort", c("18 (90)", "2 (10)"), vx),
-    rowCells(168, "Mild",     c("8 (40)", "2 (10)"), vx, labelX = 82),
-    rowCells(186, "Moderate", c("4 (20)", "1 (5)"),  vx, labelX = 82),
-    rowCells(204, "Severe",   c("6 (30)", "0 (0)"),  vx, labelX = 82),
-    rowCells(222, "Age (yr)", c("40 (12)", "39 (11)"), vx),
+    rowCells(150, "Catheter discomfort", c("18 (90)", "2 (10)", "14 (70)"), vx),
+    rowCells(168, "Mild",     c("8 (40)", "2 (10)", "9 (45)"), vx, labelX = 82),
+    rowCells(186, "Moderate", c("4 (20)", "1 (5)",  "3 (15)"), vx, labelX = 82),
+    rowCells(204, "Severe",   c("6 (30)", "0 (0)",  "1 (5)"),  vx, labelX = 82),
+    rowCells(222, "Age (yr)", c("40 (12)", "39 (11)", "41 (13)"), vx),
     list(list(x = 72, y = 250, text = "Data are presented as shown.", adj = 0)))
   makeTablePdf(file, cells)
 }
+
+test_that("two arms printing the same integer values are one check, not two: a genuine mean (SD) stays", {
+  # PMID 16792606 on the misparse corpus: "Age 43 (15)" in arms of 280 and
+  # 279 satisfies 100 x 43 / 280 = 15.4 -> 15 at integer precision, and the
+  # two identical cells are not independent evidence. The row is a mean.
+  f  <- file.path(tempdir(), "ageCoincidence.pdf")
+  vx <- c(300, 420)
+  cells <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Demographic and morphometric data", adj = 0)),
+    rowCells(110, "", c("Oxygen", "Control"), vx),
+    rowCells(128, "", c("(n = 280)", "(n = 279)"), vx),
+    rowCells(150, "Age; years", c("43 (15)", "43 (15)"), vx),
+    rowCells(168, "Duration of anaesthesia; min", c("139 (80)", "137 (77)"), vx),
+    list(list(x = 72, y = 200, text = "Values are mean (SD).", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  age <- r$data[grepl("^Age", r$data$ROW), ]
+  expect_identical(age$MEAN, c(43, 43))
+  expect_identical(age$SD, c(15, 15))
+})
+
+test_that("a caption that names two tables scores below a single-table caption", {
+  # PMID 16738291: the full-width candidate joined "TABLE I Baseline
+  # characteristics" and "TABLE III Treatment outcomes" into one caption
+  # and, once it had one more usable row, outscored the single-column
+  # table, filing outcome values under Age and Height.
+  one <- .ppCaptionScore("TABLE I Baseline characteristics")
+  two <- .ppCaptionScore("TABLE I Baseline characteristics TABLE III Treatment outcomes")
+  expect_true(two < one)
+  expect_true(two <= one - 8)
+  # a caption that merely mentions another table in prose is one anchor
+  expect_identical(.ppCaptionScore("Table 1 Patient characteristics (see also the table of outcomes)"),
+                   .ppCaptionScore("Table 1 Patient characteristics"))
+})
 
 test_that("a (b) cells whose b is a as a percentage of the arm N in every arm are counts", {
   r <- parseBaselineTableHeuristics(countsNoPercentPdf(), quiet = TRUE)
@@ -140,8 +176,8 @@ test_that("a (b) cells whose b is a as a percentage of the arm N in every arm ar
   # 100 x 40 / 20 - keeps its mean and SD
   countRows <- d$ROW %in% c("Catheter discomfort", "Mild", "Moderate", "Severe")
   expect_true(all(is.na(d$MEAN[countRows])))
-  expect_identical(d$MEAN[d$ROW == "Age"], c(40, 39))
-  expect_identical(d$SD[d$ROW == "Age"], c(12, 11))
+  expect_identical(d$MEAN[d$ROW == "Age"], c(40, 39, 41))
+  expect_identical(d$SD[d$ROW == "Age"], c(12, 11, 13))
   catCols <- setdiff(names(d), c(.ppBaseColumns(), "Q1", "Q3"))
   expect_true(length(catCols) >= 2)
   # the counts themselves, not the percentages, are what the categories hold

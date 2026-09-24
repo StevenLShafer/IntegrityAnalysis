@@ -241,7 +241,48 @@ see the identity rule only as pairs *removed* — a count row that was a
 mean/SD pair is one no longer — so a misfire on a genuine mean (SD) row
 would show as a lost corroborated pair; a run on this branch's snapshot
 was launched at PR time against the `e41609c` baseline (no parser change
-between `e41609c` and `841648d`) and is recorded here by follow-up.
+between `e41609c` and `841648d`).
+
+**The misparse measurement found two more defects before the merge
+(2026-09-24, on the branch at `3cc107c`).** Against the `e41609c`
+baseline: 426 of 938 files fully corroborated (45.4%, was 417 of 936),
+5,018 uncorroborated pairs (was 5,510), 4,443 of Carlisle's pairs missed
+(was 4,457), corroborated pairs unchanged at 7,285; 968 of 1,016 triples
+identical, 16 files changed bucket, 13 of them for the better
+(`PMID_16508400` 48 pairs with 39 uncorroborated → 8, all corroborated;
+`PMID_15681945` 40 → 16, all corroborated). The three that went the
+other way were each read on both snapshots:
+
+- `PMID_16792606` (2 pairs, both lost): **the identity rule misfired.**
+  "Age 43 (15)" in arms of 280 and 279 satisfies 100 × 43 / 280 = 15.4
+  → "15" at integer precision, and the two arms print the same values,
+  so they were one check counted twice. The rule now counts *distinct*
+  (count, bracket, N) tuples and needs three of them at integer
+  precision, two when the bracket carries a decimal (a tolerance ten
+  times as sharp). Akkaya's twelve arms pass with room to spare; a
+  two-arm integer table with no "%" is left to the vocabulary rules and
+  the flag. The page is a committed test; the Age row is a mean again.
+- `PMID_16738291` (8 corroborated → 6, plus 4 wrong): **a candidate
+  switch.** The full-width candidate joins the two columns' captions —
+  "TABLE I Baseline characteristics TABLE III Treatment outcomes" — and
+  its block mixes the two tables; once the wrapped-label rule made one
+  of its lines usable it outscored the single-column reading by three
+  and filed Table III's outcome values under Age and Height. A caption
+  naming two tables is two tables: `.ppCaptionScore()` docks a second
+  "Table N" anchor by 8, below what a single-column caption earns.
+  Table I wins again; a committed test pins the scorer.
+- `PMID_16311286` (3 → 0 corroborated): scorer noise on a broken page.
+  Both readings — Table 1 as one arm with no N, ten "variables" mostly
+  fragments, and Table 3, an outcome table — fail validation; the
+  wrapped-label rule merged one fragment, Table 1 lost a point, and the
+  tie that had favoured it broke the other way. Neither reading was ever
+  analysable; the pairs it "lost" were mean (range) cells that happened
+  to match. Left as it is.
+
+One file stopped parsing (`PMID_12594136`): it had "parsed" one valueless
+row from an outcome table; now no usable rows, which is the honest
+result. A second misparse run on the corrected branch is recorded here
+by follow-up.
 
 ---
 

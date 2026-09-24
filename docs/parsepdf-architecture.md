@@ -462,7 +462,23 @@ was already caught on current code by the merge's value-signature dedupe of
   of the row that has a value satisfies that, at least two do, and at least one
   count is nonzero, the row is counts — checked ahead of the vocabulary rules,
   because it is evidence from the cells. An arm without an N cannot vouch, and the
-  row falls to the vocabulary rules as before.
+  row falls to the vocabulary rules as before. *How much evidence is enough* was
+  set by the misparse measurement: at integer precision the identity is loose
+  (any SD within 0.5 of 100 × mean / N passes) and two arms that print the same
+  values are one check, not two — "Age 43 (15)" in arms of 280 and 279 read as
+  counts and lost a genuine mean (SD) row (PMID 16792606). The cells are therefore
+  counted as *distinct* (count, bracket, N) tuples: three are needed at integer
+  precision, two when the bracket carries a decimal. A two-arm integer table with
+  no "%" anywhere is left to the vocabulary rules and, if it is mostly SD > MEAN,
+  to the review flag.
+- **A caption that names two tables is two tables.** On a two-column page the
+  full-width candidate joins the two columns' caption lines — "TABLE I Baseline
+  characteristics TABLE III Treatment outcomes" — and its block mixes the two
+  tables' rows; once the wrapped-label rule made one of those rows usable, that
+  block outscored the correct single-column reading on PMID 16738291 and filed
+  outcome values under Age and Height. `.ppCaptionScore()` now docks a caption
+  with two "Table N" anchors by 8, below what a single-column caption earns, so
+  the split reading wins whenever one exists.
 
 And one flag rather than a rule: a table in which **half or more of the mean (SD)
 cells print an SD larger than the mean** — with at least three such cells, so a one-

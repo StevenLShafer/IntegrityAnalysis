@@ -902,20 +902,36 @@
       # no N cannot vouch and disqualifies the row from this rule (the
       # vocabulary rules below still apply). Checked ahead of the label
       # rules because it is evidence from the cells, not from the words.
+      #
+      # HOW MUCH EVIDENCE IS ENOUGH (misparse measurement, 2026-09-24).
+      # At integer precision the identity is loose - any SD within 0.5
+      # of 100 x mean / N passes - and two arms that print the same
+      # values are one check, not two: "Age 43 (15)" in arms of 280 and
+      # 279 (100 x 43 / 280 = 15.4) read as counts and lost a genuine
+      # mean (SD) row (PMID 16792606). So the cells are counted as
+      # DISTINCT (count, bracket, N) tuples, and the row needs three of
+      # them at integer precision, two when the bracketed number carries
+      # a decimal (a tolerance of 0.05 is ten times as sharp). A
+      # two-arm integer table with no "%" anywhere is left to the
+      # vocabulary rules and, if it is mostly SD > MEAN, to the review
+      # flag; Akkaya's twelve arms pass with room to spare.
       cellsSayPct <- local({
-        ok <- 0L; nz <- 0L
+        sig <- character(0); nz <- 0L; minDec <- Inf
         for (j in seq_len(nArms)) {
           t <- armTok[[j]]
           if (is.null(t) || !identical(t$type, "numParen")) next
           Nj <- armN[arms[j]]
           if (is.na(Nj) || Nj <= 0 || is.na(t$num1) || is.na(t$num2) ||
               t$num1 %% 1 != 0 || t$num1 < 0 || t$num1 > Nj) return(FALSE)
-          tol <- 0.5 * 10^-(if (is.na(t$dec2)) 0 else t$dec2) + 1e-9
+          dec2 <- if (is.na(t$dec2)) 0 else t$dec2
+          tol <- 0.5 * 10^-dec2 + 1e-9
           if (abs(t$num2 - 100 * t$num1 / Nj) > tol) return(FALSE)
-          ok <- ok + 1L
+          sig <- c(sig, paste(t$num1, t$num2, Nj))
+          minDec <- min(minDec, dec2)
           if (t$num1 > 0) nz <- nz + 1L
         }
-        ok >= 2L && nz >= 1L
+        need <- if (is.finite(minDec) && minDec >= 1) 2L else 3L
+        length(unique(sig)) >= need && nz >= 1L
       })
       decision <-
         if (parenIsSD == "sd") "sd"

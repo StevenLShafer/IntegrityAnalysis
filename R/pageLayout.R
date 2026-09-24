@@ -362,6 +362,20 @@
                               "|intra-?operative|post-?operative|pain score",
                               "|recovery|haemodynamic|hemodynamic"),
                        txt, perl = TRUE)
+  # A CAPTION THAT NAMES TWO TABLES IS TWO TABLES (2026-09-24, issue 35).
+  # On a two-column page the full-width candidate joins the two columns'
+  # caption lines into one: "TABLE I Baseline characteristics TABLE III
+  # Treatment outcomes". Its block then mixes the two tables' rows, and
+  # when that block happens to yield one more usable row than the
+  # single-column reading it wins on score - PMID 16738291 filed Table
+  # III's outcome values under Age and Height once the wrapped-label rule
+  # made one of its lines usable. The vocabulary above cannot see the
+  # straddle (the joined caption still says "Baseline"); the second
+  # anchor can. Docked below what a single-column caption earns, so the
+  # split reading wins whenever one exists; a full-width table that is
+  # genuinely one table has one anchor and is untouched.
+  anchors <- gregexpr("(?i)\\btab(le|\\.)\\s+([0-9]+|[ivx]+)\\b", txt, perl = TRUE)[[1]]
+  if (anchors[1] != -1 && length(anchors) >= 2) s <- s - 8
   s
 }
 
