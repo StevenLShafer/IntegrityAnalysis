@@ -19,5 +19,5 @@ tail -2 methods.log
 if grep -q "may have changed\|Citation.*undefined\|Reference.*undefined" methods.log; then
   echo "BUILD NOT CLEAN: rerun or inspect methods.log"; exit 1
 fi
-rm -f methods.aux methods.blg methods.out methods.toc methods.bbl.bak
+rm -f methods.aux methods.blg methods.out methods.toc methods.bbl methods.bbl.bak methods.log
 echo "clean build"
