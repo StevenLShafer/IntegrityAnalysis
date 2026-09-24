@@ -683,6 +683,17 @@ along untouched and ignored by the analysis.
 
 # The analysis
 
+> **For statisticians.** This chapter explains the analysis in words. The
+> equations — every statistic, null model, rounding rule, combination
+> step and design decision, with citations to the original sources of
+> each method — are in the methods paper,
+> [*A Monte Carlo screen for excessive baseline homogeneity in randomised
+> trials: the statistical method implemented in IntegrityAnalysis*
+> (PDF)](https://integrityanalysis.io/methods.pdf). It is a draft for
+> statistical review, tied to the build it names; its LaTeX source and
+> bibliography are in the repository at
+> [`docs/methods/`](https://github.com/StevenLShafer/IntegrityAnalysis/tree/main/docs/methods).
+
 ## The p value: one-sided, toward homogeneity
 
 For each variable, the app simulates the trial many times. Each
@@ -1028,6 +1039,12 @@ produce a confident-looking answer.
 - Very large trials are protected against memory exhaustion by chunking
   the simulation matrices; results are identical, only the batch size
   changes.
+- The full mathematical statement of all of the above — the statistics,
+  the null models, the rounding and tie rules, the staged replicates and
+  their reported uncertainty, the combination within and across trials,
+  and each design decision with the measurement behind it — is the
+  [methods paper (PDF)](https://integrityanalysis.io/methods.pdf), with
+  citations to the original sources of the methods used.
 
 # Results and downloads
 

@@ -1,0 +1,423 @@
+\documentclass[11pt,a4paper]{article}
+% methods.tex - the statistical method implemented in IntegrityAnalysis, for
+% statistical readers who want the equations rather than the user guide's
+% summary. MASTER copy: this file, docs/methods/ in the public repository
+% (moved here from Steve Shafer's private working folder on 2026-09-24).
+% Build with build.sh (pdflatex + bibtex, TinyTeX); commit the rebuilt
+% methods.pdf in the same change, because the pages workflow publishes it
+% as https://integrityanalysis.io/methods.pdf and the user guide links to it.
+%
+% PROVENANCE: drafted 11 September 2026 by Claude Code (model Claude Fable 5)
+% at Steve Shafer's direction from the package's own documentation, revised
+% the same day after an adversarial review (docs/audits/
+% 2026-09-11-methods-paper-audit-chatgpt.md). On 24 September 2026, at
+% Steve's request, citations to the ORIGINAL sources of the statistical
+% methods were added where the text had named a method without one
+% (Monte Carlo, the pooled variance, the chi-square pivot and c4, Jeffreys'
+% prior, the F reference, the bootstrap, the large-sample median SE,
+% Kolmogorov-Smirnov, IEEE round-half-to-even, Xoroshiro128++); the fifth
+% audit pass, pending when the draft was written, was recorded from
+% docs/audits/README.md. The design decisions are Steve Shafer's.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{geometry}
+\geometry{margin=25mm}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black}
+\usepackage{microtype}
+\usepackage{enumitem}
+\setlist{nosep}
+\AddToHook{env/thebibliography/begin}{\small}
+
+\newcommand{\pkg}{\textsf{IntegrityAnalysis}}
+\newcommand{\R}{\textsf{R}}
+\newcommand{\midp}{\text{mid-}p}
+\newcommand{\Iv}[1]{\mathbb{1}\{#1\}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\E}{E}
+
+\title{A Monte Carlo screen for excessive baseline homogeneity in randomised trials:\\ the statistical method implemented in \pkg}
+\author{Steven L. Shafer\thanks{Department of Anesthesiology, Perioperative and Pain Medicine, Stanford University. Correspondence: steveshafer@gmail.com.}\\[2pt]
+\small with implementation notes assembled from the package's documentation}
+\date{Draft of 11 September 2026, revised after an adversarial review; citations to original sources added 24 September 2026 --- for statistical review}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+\pkg\ is an \R\ package and web application that screens a randomised trial's baseline table for unusually similar arm summaries under specified sampling and rounding models. The work builds on the investigations of \citet{carlisle2012} and the Monte Carlo methodology of \citet{carlisle2015,carlisle2017}. We describe the per-variable calculations for means, medians and category counts; printed precision and observation grids; simulation-based combination within a trial; staged replication and reported simulation uncertainty; and normal-reference combination across trials. The package calls the within-trial procedure an ``exact combination'', meaning that it uses a simulated reference distribution for the combined statistic rather than a normal approximation to that statistic. This terminology does not establish exact frequentist calibration: discrete mid-p values, fitted nuisance parameters, finite simulation, adaptive stopping and unmodelled dependence remain relevant. The description is tied to the build identified below; the two numerical findings of the latest independent audit were fixed the same day and verified through the audit's own fixtures. Design choices and the empirical evidence for them are distinguished explicitly. The document concerns statistical interpretation; parsing details are included only where they change which data are analysed.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+\section{Scope and notation}
+\label{sec:scope}
+
+A baseline table reports, for each of $k \ge 2$ arms, a mean and SD, a median and quartiles, or category counts for each baseline variable. The intended setting is individual randomisation without an allocation mechanism that deliberately balances the variables being screened. For continuous and median rows, the implementation uses independent samples from a common fitted population model; categorical rows instead use random allocation conditional on the observed margins. These are statistical reference models, not consequences of every honest randomisation scheme. The screen evaluates agreement within variables and combines the evidence within a trial and, optionally, across trials.
+
+Throughout, a \emph{row} is one variable; its \emph{arms} are indexed $i = 1,\dots,k$ with sizes $N_i$ and $N = \sum_i N_i$. A row is one of three kinds:
+\begin{itemize}
+\item \textbf{continuous}: each arm prints a mean $\bar{x}_i$ and a standard deviation $s_i$;
+\item \textbf{median}: each arm prints a median $\tilde{x}_i$ with quartiles $Q_{1i} \le Q_{3i}$;
+\item \textbf{categorical}: each arm prints counts $n_{ic}$ over categories $c = 1,\dots,C$.
+\end{itemize}
+A location or dispersion supplied to the engine has a precision $d$, defining a grid width $h=10^{-d}$; a negative $d$ represents rounding to tens, hundreds, and so on. Three per-arm widths may differ: $h_{\mu i}$ for the mean or median; $h_{s i}$ for an SD, or $h_{Q i}$ for both quartiles; and $h_{o i}$ for individual observations. Precision may be supplied explicitly or inferred from the available representation of a number. It is not necessarily recoverable from a numeric spreadsheet cell, which can lose trailing zeros. An unspecified observation precision defaults to the location precision in the normalised input; this is an assumption, not knowledge of the original measurements. We suppress the arm subscript where no ambiguity results. Rounding to a grid is denoted $\lfloor x\rceil_h$.
+
+All p-values in this document are \emph{one-sided toward homogeneity}: a small value means the arms agree more closely than random sampling explains. Excessive heterogeneity is not reported, by design (Section~\ref{sec:decisions}).
+
+\section{The hypothesis and the direction of the test}
+\label{sec:hypothesis}
+
+For a row, the null reference is the common-population or conditional-allocation model in Sections~\ref{sec:continuous}--\ref{sec:categorical}, with the input's stated rounding. The target alternative is excessive similarity of the arm summaries. Earlier work found unusual baseline distributions in both tails, with possible explanations including fabrication, error, correlation and allocation methods \citep{carlisle2017}; the present screen deliberately reports only the homogeneity tail. Its raw mid-p is the null probability of strictly closer agreement plus half the probability of equal agreement. This differs from the inclusive probability of agreement ``at least as close''. The choice is explicit in \eqref{eq:midp}.
+
+A small result is a reason to verify the table, allocation procedure and underlying data. It is neither the probability of dishonesty nor a guarantee that a large result establishes integrity. The operational flagging threshold used here is $0.01$. This is a screening decision, not a demonstrated family-wise error or false-discovery-rate guarantee for a collection of papers; the number and selection of tables screened and the follow-up process must also be reported.
+
+\section{The Monte Carlo test for one row}
+\label{sec:row}
+
+\subsection{The general scheme}
+
+For each row a statistic $T$ measures the disagreement among the arm summaries; smaller $T$ means closer agreement. The observed value $T_{\mathrm{obs}}$ is computed from the printed table. The null distribution of $T$ is not tabulated; it is simulated, in the sense of \citet{metropolis1949}. Each of $m$ replicates draws a synthetic trial under the null model described in Sections~\ref{sec:continuous}--\ref{sec:categorical}, summarises and \emph{rounds} the synthetic arms according to the supplied precision and the engine's rounding convention, and computes $T^{(r)}$, $r = 1,\dots,m$.
+
+The row p-value is the Monte Carlo mid-p \citep{lancaster1961,berry1995},
+\begin{equation}
+p_{\text{row}} = \frac{\#\{r: T^{(r)} < T_{\mathrm{obs}}\} + \tfrac12\,\#\{r: T^{(r)} = T_{\mathrm{obs}}\}}{m},
+\label{eq:midp}
+\end{equation}
+The displayed row estimate has a lower floor $1/(m+1)$; a value reaching one is replaced by $0.9999$. For the normal-score transformation used in combination, values are explicitly clipped to $[1/(m+1),0.9999]$. These are implementation conventions that avoid zero estimates and infinite scores. The raw mid-p in \eqref{eq:midp} has half-count increments $1/(2m)$. Simply flooring it is not the same procedure as the exchangeable Monte Carlo rank test with a $(b+1)/(m+1)$ correction \citep{barnard1963,hope1968,phipson2010}, and does not inherit that test's exact-level guarantee. Rounding creates positive tie probabilities, so the mid-p convention matters materially here.
+
+For comparison with an observed statistic $t$, the implementation counts a finite simulated statistic $x$ as tied when
+\begin{equation}
+|x-t| \le 10^{-10}\max(|x|,|t|).
+\end{equation}
+Strict-tail counts exclude these ties. Replicate ranks are obtained by sorting the statistics and grouping adjacent values whose gaps meet the same relative threshold. Adjacent grouping and comparison to a fixed observed value are distinct numerical operations; a universal equivalence between them is not asserted. For mean and median rows, values no larger than $10^{-12}\min_i(h_{\mu i})^2$ are first set to zero. The zero threshold depends on the printed grid, not the observed differences. Translation by each trial's own first arm removes the principal source of dust at an exact zero. These tolerances are supported by regression cases, not by a proof that every possible distinct attainable statistic is farther apart than the tolerance. In particular, weighted centres and rational Pearson values require more care than a universal grid-step spacing argument.
+
+\subsection{Reporting the Monte Carlo uncertainty}
+\label{sec:reporting}
+
+Every successfully simulated variable carries a displayed interval formed from Clopper--Pearson binomial bounds \citep{clopper1934}. If $k_<,k_=$ and $k_\le=k_<+k_=$ are the strict, tied and inclusive counts, its endpoints are
+\begin{align}
+L &= \begin{cases}0,&k_{<}=0,\\ B^{-1}_{0.025}(k_<,m-k_<+1),&k_{<}>0,\end{cases}\\
+U &= \begin{cases}1,&k_\le=m,\\ B^{-1}_{0.975}(k_\le+1,m-k_\le),&k_\le<m,\end{cases}
+\end{align}
+where $B^{-1}_{a}(u,v)$ is the beta quantile. At a fixed batch size with independent draws from a fixed reference law and a fixed observed statistic, this construction covers the underlying mid-p with probability at least 95\%: it combines a lower bound on the strict probability and an upper bound on the inclusive probability. It is not an exact binomial interval obtained by treating half-ties as binomial successes. It may remain wide even with many draws when the tie mass is large. Adaptive stopping changes the coverage statement, and the combined-trial calculation has further qualifications (Section~\ref{sec:trial}). No interval includes extraction, model or dependence uncertainty. Refused rows have no numerical interval.
+
+A row displays ``$<0.0001$'' only if its inclusive-count upper bound $U$ is below $10^{-4}$. At zero inclusive hits, $U=1-0.025^{1/m}$, about $3.69\times10^{-5}$ at $m=100{,}000$; at least $36{,}887$ draws are needed to cross the threshold. Ties are counted fully for this bound. The rule can still allow the label with a small nonzero tied count if the bound clears the threshold. It is a reporting rule under the model, not a certainty about the true probability. A simulated row estimate is never printed as literal zero.
+
+\subsection{The staged replicate scheme}
+\label{sec:staging}
+
+Every usable row of a trial is simulated at the same replicate count, in stages of $m = 1{,}000$, then $10{,}000$, then $100{,}000$. The trial advances from $1{,}000$ to $10{,}000$ while its combined mid-p (Section~\ref{sec:trial}) or any row's mid-p is below $0.1$, and from $10{,}000$ to $100{,}000$ while one is below $0.01$. Each stage draws afresh, and the results are computed from the final stage alone; the \emph{Replicates} column reports that stage. An unremarkable trial costs $1{,}000$ replicates per row; a borderline trial ten times that; an alarming trial a hundred times.
+
+Because the reported batch is selected by a data-dependent stopping rule, fixed-batch interval coverage does not transfer automatically \citep{besag1991}. An independent exact binomial calculation for the single-variable, untied version of this stopping rule gives coverage 93.7365\% at reference probability 0.009, 95.4161\% at 0.01 and 95.3709\% at 0.5 \citep{audit2026full}. The package's own enumeration of the same rule gives $93.7\%$ at $p=0.008$, $93.4\%$ at $0.085$, $93.6\%$ at $0.09$, and the nominal $95.2\%$ at $0.05$, $0.10$ and $0.20$. These numbers concern that specified experiment, not every row type or combined trial. The mechanism is selection: a batch stops at $1{,}000$ because its own estimate read at or above $0.1$, so near a threshold the reported estimate is biased upward and its fixed-batch interval undercovers for the same reason. The interval is where the effect is measured, not where it lives: the point estimate and the interval are both properties of the stopped batch. The direction is toward larger $p$. Near $0.01$ the $10{,}000$-draw estimate can fall on either side of the escalation threshold: in the untied single-row experiment with true probability $0.01$, about $51.35\%$ of runs stop at $10{,}000$ and $48.65\%$ reach $100{,}000$, and the expected raw reported estimate is about $0.010397$ \citep{paperaudit2026}. Stopping effects therefore remain relevant at the operational threshold; the final stage has no further escalation decision, but that does not make the complete adaptive procedure sequentially calibrated. The endpoint formula and the ``$<0.0001$'' decision rule are unchanged by staging; their advertised confidence level is not thereby made sequentially valid. The displayed intervals are guides to simulation uncertainty. A separately justified sequential procedure or independent confirmatory batch would be needed for a stronger coverage claim.
+
+\section{Rounding, convergence and the attainable floor}
+\label{sec:rounding}
+
+Under a common-population model, the standard error of an arm mean decreases approximately as $N_i^{-1/2}$. With $N_i=1{,}000$ and SD 13 it is about 0.41 before observation rounding, so integer-reported arm means can often coincide. Their exact coincidence probability depends on the common location relative to the grid, the dispersion model and the rounding convention. The simulation models this tie mass; it does not prove that any particular pair of equal printed means is benign. If $P(T=0)=w$ and zero is the attainable minimum, the exact raw mid-p at that minimum is $w/2$. Thus a mid-p of 0.27 would correspond to a tie mass of 0.54, not to a 27\% probability that an honest table looks this way.
+
+Under a fixed discrete reference law, define the attainable minimum $T_{\min}$ and its raw mid-p floor $\tfrac12 P(T=T_{\min})$. This is distinct from the numerical simulation floor $1/(m+1)$. The software's ``attainable floor'' note is narrower: it is shown when the observed statistic is numerically zero and no replicate has a smaller statistic. It does not identify every positive attainable minimum of a fixed-margin categorical law. For categorical rows, zero means exact agreement of proportions, not necessarily identical counts. The reference law and hence its floor depend on the supplied sample sizes, precision and fitted parameters, including parameters estimated from the table. A high individual-variable floor limits that variable's ability to flag by itself; several independent variables at their minima can still combine to a small trial result.
+
+An under-dispersion analysis that treats printed locations as exact can mistake rounding-induced ties for excessive agreement. This is distinct from the usual upper-tail test of a difference in means, which does not flag equal means. Modelling the rounding allows the screen to compare the observed ties with their frequency under the reference model and to combine information across independent variables.
+
+\subsection{Which way a half rounds}
+
+The engine uses \R's \texttt{round()}, which aims to round exact halfway values to the even neighbour; decimal-to-binary representation can affect whether a value is treated as exactly halfway \citep{rround}; the convention is IEEE 754's \emph{roundTiesToEven} \citep{ieee754}. A source table may instead have used half-away-from-zero or another convention. The distinction can matter when an observation lattice gives simulated means positive probability at printed half-steps: with 20 integer observations and one decimal in the mean, some attainable means are halfway between printed values. Historical package experiments found increased tie mid-p values under half-to-even in the particular cases tested (including an approximately 9\% relative increase in one $N_i=20$ case). This is empirical sensitivity evidence, not a theorem that the convention is always conservative for every row, grid phase or trial combination. The convention is retained for reproducibility and should be stated as an assumption when the table's convention is unknown.
+
+\section{Continuous rows}
+\label{sec:continuous}
+
+\subsection{The statistic}
+
+With the arm means translated by the first arm's printed value, $d_i = \bar{x}_i - \bar{x}_1$, and their $N$-weighted centre $\bar{d} = \sum_i N_i d_i / N$, the statistic is the unweighted sum of squared deviations
+\begin{equation}
+T = \sum_{i=1}^{k} (d_i - \bar{d})^2 .
+\label{eq:Tcont}
+\end{equation}
+The translation is arithmetically inert (the statistic is translation-invariant) and exists so that identical printed means give a structurally exact zero in the observed row and in every replicate, at any magnitude and arm count; each replicate is translated by its own first arm for the same reason. Before 9 September 2026 replicates were translated by the observed constant instead, which left floating-point dust that at fine printed precision caused about $18\%$ of genuine ties to be dropped.
+
+\subsection{The null model}
+
+Each replicate draws a synthetic trial as follows.
+
+\paragraph{The dispersion.} Each arm's printed SD is an interval, not a number: ``1'' at integer precision denotes a sample SD anywhere in $[0.5, 1.5)$. The replicate first draws every arm's sample SD uniformly within its printed interval, $s_i^{*} \sim U(s_i - h_s/2,\; s_i + h_s/2)$ truncated at zero (a supplied SD of exactly zero is kept at zero by an explicit convention; a rounded zero need not establish that the unrounded sample SD was zero). It pools the drawn variances by degrees of freedom,
+\begin{equation}
+s_p^{2} = \frac{\sum_i (N_i - 1)\, s_i^{*2}}{N - k},
+\end{equation}
+the usual within-arm pooled variance of the one-way analysis of variance \citep{fisher1925}, with $\nu=N-k$. Its textbook unbiasedness applies to unrounded normal sample variances under a common variance, not automatically to independently imputed rounded SDs. The implementation then draws a reference population variance by
+\begin{equation}
+\sigma^{2} = \frac{s_p^{2}\,\nu}{\chi^{2}_{\nu}},
+\label{eq:sigma}
+\end{equation}
+This is an inverse-chi-square reference draw based on the normal within-arm residual-variance pivot $\nu s_p^2/\sigma^2\sim\chi^2_\nu$ \citep{helmert1876,johnson1970}. In the corresponding normal residual likelihood with the scale-invariant prior $\pi(\sigma^2)\propto1/\sigma^2$ \citep{jeffreys1961}, it also has a posterior interpretation \citep{gelman2013}. The complete procedure, including uniform imputation of printed SDs and the common-location draw below, is not derived here as a joint posterior conditional on the whole rounded baseline table under one common-mean null. A fixed estimate, $\widehat\sigma=\sqrt{\sum_i(N_i-1)s_i^2/\nu}/c_4(\nu)$, where $c_4(\nu)=\sqrt{2/\nu}\,\Gamma((\nu+1)/2)/\Gamma(\nu/2)$ is the expectation of a normal sample SD on $\nu$ degrees of freedom in units of $\sigma$, a consequence of the same chi distribution \citep{helmert1876}, is used to select the direct-draw route; the replicate simulation uses the random $\sigma$.
+
+\paragraph{The common location.} Each replicate uses one common location $\mu\sim\mathcal N(\bar x_p,\sigma^2/\bar N)$, where $\bar x_p=\sum_iN_i\bar x_i/N$ and $\bar N=N/k$. Without rounding this shift cancels from \eqref{eq:Tcont}; with rounding it changes the phase of the locations on the grids. The scale $\sigma/\sqrt{\bar N}$ is inherited from the simulation, rather than the $\sigma/\sqrt N$ standard error of a pooled mean under independent sampling. Historical paired comparisons found small but nonzero changes in individual results and similar aggregate summaries. They support retaining the choice in the tested scenarios; they do not prove equivalence of the two models (Section~\ref{sec:decisions}). Unequal allocation does not decide between the scales: under $2{:}1$ allocation $\bar N$ is still $N/k$, so the ratio between the two is $\sqrt{k}$ whatever the imbalance. The per-arm standard error $\sigma/\sqrt{N_i}$ is a different quantity from either: the draw represents uncertainty about the one mean the arms share, and the derivable scale of that uncertainty given the pooled data is $\sigma/\sqrt N$. The inherited scale would be replaced by the derivable one if a measured difference at the $0.01$ threshold, on the honest null or on the corpus, ever exceeded Monte Carlo noise; none has, and the cost of the change is a re-pinning of the seeded known answers.
+
+\paragraph{The observations and their rounding.} For each arm, $N_i$ observations are drawn, $x_{ij} \sim \mathcal{N}(\mu, \sigma^2)$, each rounded to the observation grid $h_o$; their mean is taken and rounded to the printed precision $h_{\mu}$:
+\begin{equation}
+\bar{x}_i^{(r)} = \Big\lfloor \frac{1}{N_i}\sum_{j=1}^{N_i} \lfloor x_{ij} \rceil_{h_o} \Big\rceil_{h_\mu}.
+\end{equation}
+The statistic \eqref{eq:Tcont} is then computed from the rounded synthetic means.
+
+\paragraph{The direct draw for large arms.} For arm $i$, the direct route is used only if $N_i\ge100$, the row-level point estimate $\widehat\sigma$ is at least $3h_{o i}$, and the mean lattice $g_i=h_{o i}/N_i$ is representable at the row's magnitude. The implemented representability test requires $g_i\ge 8\epsilon\max_i|\bar x_i|$, with $\epsilon$ the double-precision machine epsilon. Qualifying arms draw a mean from $\mathcal N(\mu,(\sigma^2+h_{o i}^2/12)/N_i)$, snap it to $g_i$, and then round to $h_{\mu i}$. Other arms generate and round all their observations; a row may use both routes. The $h_{o i}^2/12$ term is a small-grid quantisation approximation related to Sheppard's correction \citep{sheppard1898}, not a universal exact variance identity for a rounded normal variable. The normal mean approximation and the two thresholds were assessed in synthetic experiments recorded in the method history. An independent full-observation reference at $N_i=100$, SD 3, integer observations and six-decimal means gave mid-p 0.004815 with reference interval 0--0.0102547 (100,000 draws, seed 1927), versus the direct engine's 0.0047 with displayed interval 0--0.01 (100,000 draws, seed 42) \citep{audit2026full}. The lattice snap is necessary to retain attainable mean ties; agreement in this check is not an exactness proof for every qualifying input.
+
+\subsection{Why the variance is drawn}
+
+Drawing $\sigma^2$ introduces uncertainty in the within-arm variance rather than conditioning on a plug-in estimate. In finely rounded two-arm cases, and in balanced multi-arm cases with the appropriate scaling, the resulting location-disagreement reference can be checked against an $F$ distribution \citep{fisher1924}. This does not make the unweighted statistic in \eqref{eq:Tcont} an $F$ statistic for every unequal-size multi-arm configuration. Historical synthetic experiments found improved small-sample calibration under the tested models; an independent audit also checked the applicable $F$ references \citep{audit2026full}. These are model-specific checks, not evidence that a normal model represents every baseline variable.
+
+Uniform draws within the printed SD intervals add a second source of uncertainty. This is a modelling choice, not a distribution identified by rounding alone. For an untruncated symmetric interval, $\E(s_i^{*2})=s_i^2+h_{s i}^2/12$; truncation and the zero-SD convention change that identity. The effect on a row or trial mid-p need not be uniformly conservative because rounding, variance mixing and score transformation are nonlinear. Location precision is handled by rounding simulated summaries; the algorithm does not independently draw each observed arm mean uniformly inside its printed interval.
+
+\section{Median rows}
+\label{sec:median}
+
+A median row is modelled by an unbounded three-term metalog distribution \citep{keelin2016}, a quantile-parameterised family that permits asymmetry and reduces to a logistic distribution when symmetric. ``Pooled'' medians and quartiles below are $N_i/N$-weighted averages of the reported arm quantiles, not quantiles recomputed from pooled individual observations. Before clipping, the three coefficients interpolate those three target quantiles. The quantile function is
+\begin{equation}
+Q(u)=a_1+a_2\ell(u)+a_3(u-\tfrac12)\ell(u),\qquad \ell(u)=\log\frac{u}{1-u},
+\end{equation}
+and matching the target median $\tilde x$ and quartiles $Q_1,Q_3$ gives
+\begin{equation}
+a_1=\tilde x,\qquad a_2=\frac{Q_3-Q_1}{2\ln3},\qquad a_3=\frac{2(Q_1+Q_3-2\tilde x)}{\ln3}.
+\end{equation}
+For $a_2>0$, monotonicity of this three-term quantile function requires a bound on $|a_3|/a_2$, approximately 1.66711 \citep{keelin2016}. The implementation clips the fitted ratio to 1.66. It then retains a valid quantile function but no longer exactly matches all three target quantiles; ``closest'' is not claimed under an unspecified distance. The reported row note records clipping in the fit to the printed pooled summaries. Additional replicate-specific clipping and scale floors are also part of the algorithm below. Historical experiments motivated retaining noisy small-sample rows with a clipped fit rather than refusing all infeasible point fits.
+
+\subsection{The statistic}
+
+The statistic is \eqref{eq:Tcont} applied to the arm medians, with the medians translated by the first arm's printed value exactly as the means are.
+
+\subsection{The null model}
+
+\paragraph{The quartiles' printed intervals.} A printed quartile stands for an interval half a printed unit either side, as a printed SD does. Each replicate draws every arm's $Q_1$ and $Q_3$ uniformly within their intervals, orders the drawn pair, pools the ordered pairs by $N$ and fits that replicate's metalog. Quartiles that print the same value are therefore admissible; only quartiles printed in the wrong order are refused, per arm. Fitting the printed values as if exact mattered where quartiles print coarsely relative to their spread: integer quartiles of a variable with interquartile range near $0.7$ print the same integer half the time, and the row was refused or fitted to a spuriously skewed metalog in $45$--$85\%$ of honest tables.
+
+\paragraph{The scale draw.} Let $h_{Q,\min}=\min_i h_{Q i}$. After drawing and pooling the quartiles, the replicate fit uses
+\begin{equation}
+a_{2q}=\max\!\left(\frac{Q_{3q}-Q_{1q}}{2\ln3},\frac{0.01h_{Q,\min}}{2\ln3}\right),
+\end{equation}
+and clips its skew coefficient to $|a_{3q}|\le1.66a_{2q}$. Every arm is bootstrapped \citep{efron1979,efron1993} from this fit, its observations rounded to $h_{o i}$, and its type-7 sample quartiles \citep{hyndman1996} rounded to $h_{Q i}$. The bootstrap quartiles are pooled by $N_i$ to give $Q_{1b},Q_{3b}$. The scale update is
+\begin{equation}
+a_{2b}=\max\!\left(\frac{Q_{3b}-Q_{1b}}{2\ln3},\frac{h_{Q,\min}}{2\ln3}\right),\qquad
+a_2^{\rm rep}=\frac{a_{2q}^2}{a_{2b}}.
+\end{equation}
+The skew coefficient is $a_{3q}$ clipped again to $|a_3^{\rm rep}|\le1.66a_2^{\rm rep}$, and the common location is drawn about the $N_i$-weighted mean of the printed medians with SD $2a_2^{\rm rep}/\sqrt{\bar N}$. The latter uses the large-sample standard error of a sample median, $1/(2f(\tilde x)\sqrt{n})$ \citep{cramer1946}, at the metalog density $f(a_1)=1/(4a_2)$ and the inherited mean-arm-size scale. The inverse bootstrap ratio is motivated by a scale-pivot analogy with \eqref{eq:sigma}; with fitted skew, clipping, finite sample quartiles and rounding, it is not an exact pivot or an established posterior distribution. Historical calibration experiments favoured it over a point fit and a forward bootstrap in the tested normal, lognormal, uniform and heavy-tailed scenarios. The complete construction still needs validation for the population and printing regimes in which it is used.
+
+\paragraph{The observations.} For each arm, $N_i$ observations are drawn from the replicate's metalog by inversion, $Q(u)$ with $u \sim U(10^{-12}, 1 - 10^{-12})$, rounded to $h_o$; the sample median is taken and rounded to $h_\mu$. Median rows always draw their observations; the direct draw of Section~\ref{sec:continuous} is not applied to them.
+
+The metalog's adequacy near the median is an assumption to assess, not a consequence of fitting three quantiles. Its unbounded form may assign mass outside a measurement's possible support. The algorithm also assumes type-7 quartiles for its bootstrap, even when the source paper's convention is unknown. A dispersion-side observation-grid consistency check for median rows, analogous to the mean/SD check in Section~\ref{sec:precision}, is absent and remains an open decision.
+
+\section{Categorical rows}
+\label{sec:categorical}
+
+For an arms-by-categories table $n_{ic}$ with row totals $N_i$ and column totals $n_{\cdot c}$, the statistic is Pearson's \citep{pearson1900}
+\begin{equation}
+T = \sum_{i,c} \frac{(n_{ic} - E_{ic})^2}{E_{ic}}, \qquad E_{ic} = \frac{N_i\, n_{\cdot c}}{N},
+\end{equation}
+and the null is random allocation conditional on both margins, the reference table distribution used in Fisher-type conditional tests \citep{fisher1935}. Patefield's algorithm AS~159 \citep{patefield1981}, via \R's \texttt{r2dtable}, samples that distribution. This is not the usual upper-tail or probability-ordered Fisher test: the screen uses the lower Pearson tail with half weight on ties. The table probability is
+\begin{equation}
+P(n\mid\hbox{margins})=\frac{\prod_i N_i!\,\prod_c n_{\cdot c}!}{N!\,\prod_{i,c}n_{ic}!}.
+\end{equation}
+Zero-total categories are removed; fewer than two remaining categories, empty arms and missing counts prevent simulation. The arm totals used here are the sums of the supplied counts. The model requires mutually exclusive categories for the counted individuals; overlapping levels or an omitted population are not corrected merely by passing the numerical validator.
+
+\section{Combining the rows of one trial}
+\label{sec:trial}
+
+\subsection{Stouffer's sum judged against its own simulated null}
+
+The rows' evidence is combined by Stouffer's method \citep{stouffer1949,liptak1958}: each row's p is converted to $z = \Phi^{-1}(1 - p)$ and the $z$'s are summed. The closed form takes the sum to be $\mathcal{N}(0, J)$ for $J$ independent rows, which presumes each row's $p$ is uniform under the null. Here it is not: a row whose means are printed coarsely relative to their standard error has a handful of attainable statistics, its mid-p is discrete, and the closed form reads a lumpy sum off a smooth table. Measured before the change: $1.4\%$ of honest trials fell below $p = 0.05$ at $N = 1{,}000$ with integer means, and a fabricated table with identical integer means was capped near $p = 0.01$ however many rows agreed.
+
+The sum is compared with a simulated reference distribution. For each recognised group $g$ of $G_g$ rows sharing a law, pool their $m$ statistics into $B_g=G_gm$ values; a unique-law row has $G_g=1$. Define the raw empirical mapping and its clipped version by
+\begin{align}
+\widehat F^{\rm mid}_g(t)&=\frac{\#\{x\in g:x<t\}+\tfrac12\#\{x\in g:x=t\}}{B_g},\\
+f_g(t)&=\min\!\left(0.9999,\max\!\left(\frac{1}{B_g+1},\widehat F^{\rm mid}_g(t)\right)\right).
+\end{align}
+The comparisons use the numerical rules in Section~\ref{sec:row}. For a simulated value, the implementation uses its average rank in the sorted pool, $(\mathrm{rank}-1/2)/B_g$, before applying the same clip. Thus the two scores are
+\begin{equation}
+S^{(r)}=\sum_{j=1}^{J}\Phi^{-1}\!\left(1-f_{g(j)}(T_j^{(r)})\right),\qquad
+S_{\rm obs}=\sum_{j=1}^{J}\Phi^{-1}\!\left(1-f_{g(j)}(T_{j,\rm obs})\right).
+\end{equation}
+Each row retains its own draws. Its displayed variable-level p and interval still use those $m$ draws, so the displayed p need not equal the pooled score entering $S_{\rm obs}$. The trial raw mid-p is $[\#\{S^{(r)}>S_{\rm obs}\}+\tfrac12\#\{S^{(r)}=S_{\rm obs}\}]/m$, with the trial reporting floor $1/(m+1)$ and the inclusive-count small-p rule. When $J>1$, a trial interval is displayed only if the numerical trial estimate is below 0.001, using lower strict-count and upper inclusive-count Clopper--Pearson endpoints. A single usable variable supplies its own p and interval to the trial summary; no usable variable yields ``No values''.
+
+Simulation replaces a normal approximation to the combined statistic; it does not establish calibration at every sample size and rounding. The mappings are estimated from the same draws subsequently scored, so the replicate sums are not independent Bernoulli tail trials with a fixed externally specified mapping. Consequently the reported trial endpoints are not established exact binomial confidence bounds for the complete fitted procedure. Discreteness, fitted parameters, adaptive stopping and dependence also remain relevant. The known discrepancies in Section~\ref{sec:buildstatus} directly rule out an unconditional calibration claim for the audited build.
+
+\subsection{Rows that share a null law share one mapping}
+
+Rows recognised as sharing a law use one empirical mapping to avoid assigning different finite-simulation scores to equivalent outcomes. For binary tables with ordinary rows $(1,99)/(1,99)$ and one extreme row $(0,100)/(2,98)$, the homogeneous state has exact probability $q=100/199$. With $J$ independent variables and one extreme, the exact reference trial mid-p is
+\begin{equation}
+q^J+\tfrac12J(1-q)q^{J-1}=0.0111459494027611\quad(J=9).
+\end{equation}
+Earlier independent row mappings split genuine trial ties; pooling fixed the original fixtures. A categorical key is the \emph{unordered pair} of the table's two margin vectors, each sorted. A continuous or median key carries the $N$-weighted pooled mean and, per arm in a canonical order, the size, the dispersion (the SD, or both quartiles), the three precisions and, for a continuous row, whether the arm takes the direct draw: exactly what the simulation reads, and never the individual arm means, which enter the observed statistic but not the null (the common location is drawn about the pooled mean, and each replicate's arms are measured about their own centre). A fourth audit found the earlier key listing the arm means, so that rows printed $(0,0)$ and $(-1,1)$ with the same $N$, SD and precision were one law with two mappings. These are \emph{multisets}: repeated margins or arm tuples retain their multiplicity. The categorical key therefore recognises any permutation of the arms, any permutation of the categories, and the transposition that exchanges the two: the fixed-margin probability above and the Pearson statistic are both symmetric in the roles of the two margins, so a transposed table is the same law. Since the pair of margins is every input \texttt{r2dtable} reads, the key names exactly the law and nothing about its printing. The second audit found the ordered key splitting genuine ties under a relabelling of one variable's categories, the third found the sorted-but-ordered pair splitting them under a transposition, and the fourth found the arm means splitting them under a shift that leaves the pooled mean unchanged (Section~\ref{sec:buildstatus}); each was fixed the day it was reported, with the auditor's fixtures as the tests. The bounded relative criterion is also used for the trial sum. Shared-row storage is refused before simulation if the planned final stage would require more than $10^7$ held draws. This resource bound is an implementation limit, not a claim that a legitimate baseline table can never exceed it.
+
+\subsection{Independence}
+
+Accumulation across distinct variables is useful only to the extent that the reference joint model is appropriate. The engine simulates variables independently and does not reconstruct correlations from the summary table. Weight and BMI, a measurement and its categorisation, or repeated copies of a variable can repeat evidence. Dependence can invalidate the independence-based reference. Positive correlations, above all redundant measurements of one characteristic, can produce anti-conservative homogeneity probabilities; but the direction and size depend on the joint distribution, not on the covariance alone, and negative correlation is not a universal converse. A finite counterexample with two ten-point rows and a positive score covariance makes the $0.01$ screen more conservative, not less \citep{paperaudit2026}. Dependence should be addressed through a justified joint model or a prespecified sensitivity analysis over nonredundant variables. The synthetic null cannot show this, because its rows are independent, and agreement with Carlisle does not test it, because that method makes the same assumption. Estimating typical between-row correlations from a corpus of published baseline tables is the stated future work. Such variables should be identified before analysis, and sensitivity to a prespecified selection of nonredundant variables reported. A closed-form Stouffer calculation on a list of displayed row p-values is not a substitute for the implemented simulated combination.
+
+\section{Combining trials across a file}
+\label{sec:overall}
+
+When a file holds several trials, the trial p-values are combined by the closed-form Stouffer sum against the normal table,
+\begin{equation}
+Z = \frac{1}{\sqrt{L}} \sum_{l=1}^{L} \Phi^{-1}(1 - p_l), \qquad p_{\mathrm{overall}} = 1 - \Phi(Z),
+\end{equation}
+This normal reference is exact when independent trial inputs are uniform under the null; independence and continuity alone are insufficient. The actual trial inputs are generally discrete mid-p estimates under fitted models, so across-trial calibration is an additional approximation not repaired by the within-trial simulation. The implementation converts the reported trial p strings to numbers: ``$<0.0001$'' becomes $10^{-4}$, and ordinary values enter with their reported precision. Trials without a computable result are omitted; their coverage must remain visible. No overall Monte Carlo interval is supplied. Substituting $10^{-4}$ reduces the influence of a small reported trial result, but its conservatism still depends on the model and the small-p reporting rule. The trial set and handling of duplicate publications should be specified before inspecting results. Stable trial identity is also essential; the third audit found a reader bound merging two trials, fixed the same day (Section~\ref{sec:buildstatus}).
+
+\section{Consistency checks on the printed precision}
+\label{sec:precision}
+
+The precision checks are safeguards against inconsistent or numerically unrepresentable inputs. They are not a proof that a complete raw dataset with all the reported moments exists. The following describes the checks in the audited implementation.
+
+\begin{itemize}
+\item \textbf{Values and dispersion grids.} A supplied precision must be compatible with the relevant printed values, subject to the implementation's numerical tolerance and inference rules. For example, quartiles 45 and 55 are incompatible with rounding each to the nearest ten. The validator may infer or normalise precision; the accepted normalised values are what the simulation uses.
+\item \textbf{Observation-lattice reachability.} The interval represented by a printed mean must contain a value on the lattice $h_o/N_i$; the printed number itself need not lie on that finer lattice. For a median the corresponding lattice is $h_o$ for odd $N_i$ or $h_o/2$ for even $N_i$. The implementation includes numerical tolerance in these necessary checks.
+\item \textbf{SD and observation grid.} For mean/SD rows with an explicitly coarser observation grid, let $\alpha$ be the minimum distance to an integer over the printed mean's interval after scaling by $h_o$. For nonzero SD the implemented lower bound is $h_o\max(\alpha,1/\sqrt{N_i})$; the reported SD interval must permit it. The zero-SD convention is admitted only if the mean interval contains an observation-lattice point. This is a necessary safeguard, not the sharp feasible-variance bound for every fixed sample mean.
+\item \textbf{All-zero inputs.} The precision-consistency rule for an all-zero location-and-dispersion tuple compares the supplied precision columns, because zero alone does not identify a scale. It can refuse a legitimate constant variable if the dispersion grid is coarser than the location grid. That refusal is an implementation policy and an acknowledged limitation, not a mathematical impossibility of the data.
+\item \textbf{Numerical resolution.} The code requires the relevant printed steps to be at least $8\epsilon$ times the relevant magnitude, with double-precision $\epsilon$, before simulation. This is a conservative relative-resolution test, not a computation of the exact local unit in the last place at every magnitude. The direct mean lattice has an additional gate described in Section~\ref{sec:continuous}.
+\item \textbf{Disclosed precision assumptions.} Explicit location precision is not generally identifiable from a numeric cell that has lost trailing zeros. The software accepts some finer or coarser claims and adds a note under its implemented conditions, including fine-precision warnings for identical locations where the claim affects the floor. A note is disclosure of the assumption, not independent confirmation of the source precision; original printed values and supplied precision should remain available for review.
+\end{itemize}
+
+\section{Counts rebuilt from percentages}
+\label{sec:percent}
+
+A percentage and an arm size define an admissible integer-count bracket under the assumed percentage-rounding rule. At $N_i\le100$ with integer percentages, or $N_i\le1{,}000$ with one decimal, there is at most one compatible count for an internally consistent report; a report may still have no compatible count. Larger arms can have multiple counts in the bracket. Replacing every bracket by its midpoint can create artificial agreement between arms. The reconstruction therefore searches permissible readings, rather than treating the midpoint as observed data.
+
+Subject to five work bounds, the algorithm completely enumerates the admitted count vectors. It does not infer that arbitrary levels partition an arm; a sum-to-$N_i$ constraint requires an explicit construction, such as a binary complement. Candidate tables are grouped by margins. Within a fixed-margin law, the exact lower mid-p is nondecreasing in the Pearson statistic, so statistic extremes identify that group's candidate extremes. The algorithm orders groups by these extrema and simulates the fifty groups at each end (or all available groups if fewer). Ordering different-margin groups by their statistic is a heuristic: their null distributions differ. Across groups the algorithm shortlists up to fifty candidates on each side by their extreme statistics, estimates their probabilities with $2{,}000$ draws, refines up to six on each side with $20{,}000$ draws, and selects the largest refined estimate on the maximising side, with a sensitivity note when the scored extremes straddle $0.01$. Complete enumeration of the readings therefore does not certify the maximum probability over all admissible tables: a largest Monte Carlo estimate is not a bound, and a group scored for its minimum has not been scored for its maximum. The selection errs toward the null by construction, which is what a screen should do when the paper did not print the counts, but it is a heuristic and is described as one. Absence of a note does not exclude threshold straddling among readings that were not scored; the ordinary analysis of the selected counts does not include reconstruction or selection uncertainty; and the procedure never maximises the combined trial p. The selected estimate is data- and simulation-dependent; an ordinary row simulation interval does not account for reconstruction or selection uncertainty. Beyond the enumeration, working-cell, arm-size, scoring-cell or grand-total bounds, reconstruction is declined and the unanalysed row is disclosed. The intention is to avoid inventing evidence of homogeneity, not to claim a universally conservative selected p.
+
+\section{Design decisions and their rationale}
+\label{sec:decisions}
+
+The choices below could each be made differently. For each, the alternative considered, the reason for the choice made and the measurement that informed it are stated; the dates refer to the package's method history, which records every change since the original Carlisle--Shafer simulation.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.26\textwidth} >{\raggedright\arraybackslash}p{0.66\textwidth}}
+\toprule
+Decision & Alternative, reason, measurement \\
+\midrule
+\endhead
+One-sided toward homogeneity; no heterogeneity alarm &
+Both tails can reveal departures from a reference model \citep{carlisle2017}. This instrument chooses excessive similarity as its target and reports no heterogeneity alarm. The choice limits what it detects; it does not establish that all heterogeneous tables are harmless or that every homogeneity flag is fabrication. \\
+\addlinespace
+Mid-p rather than the inclusive tail &
+For an exact fixed null, the inclusive tail is super-uniform, while an unmodified exact mid-p has mean one-half but need not be super-uniform. Neither fact alone proves calibration of a fitted, floored, staged simulation procedure. Mid-p retains sensitivity to discrete agreement; the inclusive tail was the original convention and loses, at coarse printing, exactly the power the fabrication signature needs (identical printed arms), while a randomised p would be exactly uniform but make the reported number depend on a coin toss. The measured calibration is in Appendix~\ref{app:null}: on the synthetic honest null of the 6 September build the rejection rate at $0.05$ was $4.5$ to $5.6\%$ and at $0.01$ was $0.65$ to $1.40\%$ in every cell; with $2{,}000$ trials per cell the binomial intervals of the smallest and largest $0.01$ cells are $0.35$--$1.11\%$ and $0.93$--$2.02\%$, so these are consistent with the nominal rates, not tight estimates of them. Inclusive counts are used in the displayed upper bound. \\
+\addlinespace
+The floor $1/(m+1)$ and the cap $0.9999$ &
+The lower floor avoids zero point estimates and the upper clip avoids infinite normal scores. Flooring an empirical mid-p is not the exchangeable plus-one rank test and does not prove exact validity \citep{phipson2010}. Shared-group score floors use $G_gm$, while row displays and the final trial estimate use $m$. \\
+\addlinespace
+``$<0.0001$'' licensed by the $97.5\%$ upper bound &
+The inclusive-count upper bound must clear $10^{-4}$ before the label is shown. Ties count fully, and a sufficiently small nonzero tied count can still meet the rule. Fixed-batch binomial coverage and the complete staged procedure are different claims. \\
+\addlinespace
+Staging at $1{,}000$ / $10{,}000$ / $100{,}000$ with thresholds $0.1$ and $0.01$ &
+A fixed 100,000 draws per variable is expensive for unremarkable trials. At $m=1,000$ and a probability near 0.05, the binomial standard error is about 0.0069 and a normal 95\% half-width about 0.0135; $\pm0.007$ describes roughly one standard error, not a 95\% interval. Staging saves work but sacrifices fixed-sample coverage and uses fresh, rather than cumulative, batches. \\
+\addlinespace
+The exact combination rather than the closed-form Stouffer sum within a trial &
+Discrete row mid-p values need not have the normal-score null presumed by closed-form Stouffer. A simulated reference for the sum models that discreteness more directly. Measured on synthetic honest trials with integer means: the closed form put $1.4\%$ of trials below $0.05$ at $N=1{,}000$ and capped a fabricated table of identical integer means near $0.01$ however many rows agreed; the simulated null puts $4.8$ to $5.8\%$ below $0.05$ in every integer cell. It still requires calibration checks for fitted parameters, dependence, estimated mappings and stopping; ``calibrated by construction'' is not justified. \\
+\addlinespace
+The shared mapping for rows with one law, and its $10^7$-draw bound &
+Separate empirical mappings for equivalent outcomes can split genuine trial ties. Recognised shared-law groups therefore pool their draws. The $10^7$ ceiling limits memory use and can exclude legitimate large tables; its empirical suitability should be evaluated on the intended workload. The third audit found the key missing transposition; the key now names the unordered pair of sorted margins, and the auditor's transposed fixtures are the regression tests. \\
+\addlinespace
+The tie tolerance $10^{-10}$ and the zero snap $10^{-12}h_\mu^2$ &
+The two tolerances address reproduced numerical discrepancies and are regression-tested. They are engineering choices, not proven separators of every attainable pair of values. The zero snap is based on the location grid alone; the complete observed-comparison and replicate-rank rules are stated in Section~\ref{sec:row}. \\
+\addlinespace
+Round-half-to-even &
+The source convention is often unknown. Half-to-even is retained and documented; historical comparisons found small changes in the tested cases, without proving a universal conservative direction. Decimal representation is an additional numerical qualification. \\
+\addlinespace
+The printed SD and quartiles as uniform intervals &
+Uniform imputation gives equal weight to positions inside a rounding interval as a modelling convention. It is not an identified conditional distribution or a guarantee of conservatism. The supplied-zero SD exception is a separate policy; quartiles, including zero quartiles, still have printed intervals. \\
+\addlinespace
+Variances pooled by degrees of freedom; $\sigma^2$ drawn from the scaled inverse $\chi^2$ &
+The within-arm inverse-chi-square draw models normal residual-variance uncertainty and improves the applicable small-sample reference calculations. Exact $F$ comparisons require the stated arm configuration and negligible rounding. Uniform imputation of rounded SDs is an additional modelling step. \\
+\addlinespace
+The common location drawn with SD $\sigma/\sqrt{\bar{N}}$ &
+The pooled-mean standard error is $\sigma/\sqrt N$ under the working independent normal model. Historical paired runs of that scale and the inherited $\sigma/\sqrt{\bar N}$ had similar aggregate summaries but nonzero individual differences and threshold crossings. Retaining the inherited scale is a compatibility and empirical choice (the paired row p's differed by a median of $0.0015$ at coarse printing and under $0.0005$ at fine; on the corpus, $419$ against $420$ alarms, seven crossing downward and six upward); imbalance between arms does not bear on it, and the criterion for changing it is a measured difference at $0.01$ beyond Monte Carlo noise. \\
+\addlinespace
+Direct draw at $N \ge 100$ and SD $\ge 3$ grid steps, with the $h_o/N$ snap &
+The thresholds were chosen from comparisons with full observation simulation. The SD threshold uses the row's pooled point estimate, and the direct route additionally requires the $h_o/N_i$ lattice to be representable. The snap retains mean-grid ties; the normal and quantisation approximations remain approximations. \\
+\addlinespace
+The metalog, and clipping its skew at $1.66$ &
+An unbounded three-term metalog uses the reported median and quartiles and includes a symmetric logistic case. Clipping preserves monotonicity while changing the target fit; the scale floors also change near-degenerate fits. Historical experiments support the choice in tested scenarios, not all population shapes. \\
+\addlinespace
+The quartile scale drawn by inverting a bootstrap ratio &
+The inverse ratio was motivated by a scale-pivot argument and outperformed a point fit and forward bootstrap in recorded experiments. For this rounded, fitted and clipped metalog procedure it is an approximation, not an exact analogue of a chi-square pivot. Include the numerical floors when reproducing it. \\
+\addlinespace
+Counts from percentages by maximisation over the readings scored &
+Selecting the largest estimated row p among scored readings avoids choosing a convenient midpoint. Cross-margin scoring is a bounded heuristic, and its selection uncertainty is not represented by the ordinary row interval. It is the largest refined estimate among up to fifty groups shortlisted by their extreme statistics and six refined at $20{,}000$ draws: a heuristic that errs toward the null, not a certified maximum over all admissible tables, and never a trial-level maximisation. \\
+\addlinespace
+Rows the engine refuses are counted, not silently dropped &
+The results table discloses the number of variables analysed when any are excluded, and entirely excluded trials remain listed. Readers must inspect those disclosures in the result artifact; one numerical p does not certify that all rows or the original source table were analysed. \\
+\bottomrule
+\end{longtable}
+
+\section{Validation}
+\label{sec:validation}
+
+\paragraph{Agreement with a published comparator.} The validation ledger identifies a citable 6 September 2026 run of the sigma-draw build: 5,041 usable trials, a 10,000-replicate ceiling, correlation 0.9929, median absolute p difference 0.0142, 89.1\% within 0.05, and 98.5\% alarm concordance at the historical threshold 0.05 \citep{validationledger}. These are agreement measures against Carlisle's calculations on the same tables, not sensitivity to fabrication or a false-positive rate. They predate the audited build's later changes, and the 0.05 concordance is not a 0.01 performance estimate. The ledger's statement that a particular build-to-build change was confined to small arms does not imply that all residual disagreement with Carlisle is confined to those arms. A new, version-specific run is needed for publication claims about the final release.
+
+\paragraph{Synthetic null calibration.} The method history reports experiments spanning selected sample sizes, population shapes and printing grids; Appendix~\ref{app:null} tabulates the honest-null rejection rates of the 6 September 2026 build by arm size and printing; the same design is to be rerun at the final commit before any calibration claim is made for it. Their results are useful evidence within those designs. Discrete mid-p values are not expected to be exactly uniform in every fixed-margin or coarse-grid setting. A publication validation table should name the generating model, allocation design, dependence structure, number of trials simulated, engine commit, seeds and replicate ceiling, and report flagging frequencies at 0.01 with uncertainty. Results at 0.05 or a Kolmogorov--Smirnov distance alone do not establish performance at the operational threshold.
+
+\paragraph{Independent implementation checks.} Repository regression tests and independent audits use exact categorical enumeration, applicable fine-grid $F$ references, integer-sample-sum checks for the direct mean draw, an independently coded median simulation, and quadrature for across-trial Stouffer arithmetic. Exact reference values, finite Monte Carlo reference estimates and seeded regression values are different kinds of evidence. The third full audit at commit \texttt{6db32ee} executed 1,896 assertions across 48 selected files, with no failures, and the fourth at \texttt{7c6583f} 1,979 across 50, with independent calculations (including six million independent row simulations in a second language) and actual loopback HTTP requests \citep{audit2026full,audit2026full2}. Each found two numerical P2 discrepancies, described in Section~\ref{sec:buildstatus}, all fixed the same day and verified through the audits' own fixtures and routes. Passing the regression cases does not establish that a build is free of consequential numerical errors; the audits are diligence, and the rule under which they stop is stated there.
+
+\section{What the method does not measure}
+\label{sec:limits}
+
+\begin{itemize}
+\item \textbf{Eligibility.} A baseline variable measured before allocation in a trial that randomised individuals. Covariate-adaptive allocation, matching, cluster randomisation, or a table restricted to completers changes the reference distribution and is not modelled.
+\item \textbf{Dependence} among variables within a trial and among trials within a file (Section~\ref{sec:trial}).
+\item \textbf{Between-arm dispersion differences.} The main statistic tests locations or category proportions; it is not a direct test of agreement between arm SDs. SDs influence the simulated location distribution through the pooled variance and the interval-imputation scheme, so an arbitrary replacement preserving the printed pooled variance need not preserve the complete current simulation law or the seeded result. There is nevertheless no dedicated arm-SD discrepancy statistic. The separate Barnett instrument \citep{barnett2022} examines dispersion of standardised between-arm contrasts. In the package, its continuous contrasts also use pooled variances; it does not fill the blind spot for disagreement between the individual arm SDs \citep{audit2026sep08}. Its output is not statistically independent evidence merely because it is produced by a different method.
+\item \textbf{The printed values, the rounding columns and the extraction.} A misread digit, a standard error entered as a standard deviation, or a wrongly inferred precision changes the answer; the Monte Carlo interval does not include these.
+\end{itemize}
+
+\section{Software and reproducibility}
+\label{sec:software}
+
+The description is tied to \pkg\ 0.2.0, commit \texttt{ba6f5ea}, the build after the fourth audit's two findings were fixed (11 September 2026); the third audit was run against \texttt{6db32ee} and the fourth against \texttt{7c6583f}. The computational environment is R 4.5.3 with runtime dependencies recorded in \texttt{renv.lock} \citep{rcore,shafer2026}. The engine uses both base-R generators (including normal and chi-square draws and \texttt{r2dtable}) and \texttt{dqrng} for bulk uniform and normal draws. The pinned \texttt{dqrng} 0.4.1 default is Xoroshiro128++ \citep{blackman2021}, not a PCG generator \citep{oneill2014,dqrng}; the package seeds both base R and dqrng. Matrix operations use \texttt{Rfast}. Reproduction should record the normalised input and its order, seed, maximum and actual replicate counts, build, RNG configuration, R/package versions and platform. Identical results are expected in the recorded computational environment; bitwise equality on every machine is not established because floating-point libraries, platform and collation can differ. Source code, tests, audit evidence and the dated method history accompany the implementation.
+
+\subsection{The audited builds' findings and their resolution}
+\label{sec:buildstatus}
+
+The third full audit, against commit \texttt{6db32ee}, and the fourth, against \texttt{7c6583f}, each found two numerical discrepancies \citep{audit2026full,audit2026full2}. All four were fixed the same day, each with the auditor's fixture as the regression test through the route the report named, and each test was confirmed to fail on the audited commit before passing on the fix. The third audit's two:
+\begin{enumerate}
+\item \textbf{A missed equivalent categorical law.} Transposing one categorical variable exchanges its arm and category margins but preserves the Pearson statistic's conditional law; the key at \texttt{6db32ee} sorted within each margin but kept the two in order. In the nine-variable example of Section~\ref{sec:trial}, transposing only the extreme table gave $0.003285$ at seed 42 against the exact $0.0111459494027611$; with fourteen variables, $0.00013$ (displayed interval $0.000022$--$0.00031$) against the exact $0.000519194541114$. The key is now the unordered pair of the sorted margins (Section~\ref{sec:trial}); the transposed fixtures read within $0.003$ of the nine-variable exact value and hold the fourteen-variable exact value inside the displayed interval, through the upload reader, the analysis and a real HTTP request.
+\item \textbf{Loss of trial identity in a reader.} Two distinct journal-table marker ids sharing their first 200 bytes were clipped to one id, merging two trials before analysis: an audited synthetic case changed from two trial results $0.1405$ and $0.16$ (combined $0.07139$) to one result $0.005275$ at seed 42. A long id now keeps its first 184 bytes and gains twelve hexadecimal digits of the SHA-1 of the whole, so it stays bounded and two ids that differ anywhere stay two trials; the fixture keeps two trials through the parse and analysis routes. Correct equations do not protect against analysing the wrong experimental units, which is why the reader is in the audit's scope.
+\end{enumerate}
+The fourth audit's two, found on the build that carried those fixes:
+\begin{enumerate}
+\item \textbf{A missed equivalent continuous or median law.} The continuous and median keys listed each arm's mean, which no simulation reads: the common location is drawn about the $N$-weighted pooled mean and each replicate's arms are measured about their own centre. Five continuous rows of two arms ($N=30$, SD $6$, integer means), four printed $(0,0)$ and one $(-1,1)$, are one law; the engine gave the odd row its own mapping and read $0.008575$ at seed 42 (100,000 replicates) where the same draws through one law give $0.010285$ and an independent two-million-replicate reference gives $0.0107$ (bounds $0.0105$--$0.0110$); seven median rows read $0.01074$ for a same-draw $0.009825$ (reference $0.0096$). The keys now carry the pooled mean and the per-arm inputs (Section~\ref{sec:trial}); the continuous fixture reads above $0.01$ and the median fixture below it, through the upload reader, the analysis and a real HTTP request.
+\item \textbf{A literal id equal to a generated spelling.} A short trial id supplied literally as the bounded label of a long id in the same file shortened to the same label, merging two trials into one four-arm trial ($0.005275$ where the file's two trials combine to $0.07139$), with no digest collision needed. A file's labels are now assigned together: an id within the bound is its own label, and a longer id whose spelling is taken in the file gets a shorter prefix and a counter, so distinct ids in one file are never one trial; the fixture keeps two trials through the parse and analysis routes.
+\end{enumerate}
+The audits stop under a stated rule: a pass that returns no P1 finding and no numerical P2 finding declares the engine done, and a pass that returns either is followed by another full pass. The pass after these fixes, the fifth, was run the same day against commit \texttt{32de737} \citep{auditreadme2026}: 2,181 passing regression assertions, an independent two-million-replicate continuous reference, three median implementations, exact Barnett integration and loopback HTTP; two P2 findings and no P1. One was fixed the same day (the Barnett dispersion instrument's likelihood is now evaluated in log space, so a table of many identical arm means no longer crashes it); the other --- the shared-law key recognises permutation, transposition and aggregation but not every equivalence, for instance an even-grid translation of three or more arms' locations --- was accepted as a documented limitation, a second-order false-positive effect on an unusual table shape. With that, the stopping condition was met and the effort moved to corpus validation.
+
+\appendix
+\section{Honest-null calibration of the row p}
+\label{app:null}
+
+A historical experiment, not a calibration of the build this document describes: one mean/SD row, two equal arms of $n$ each, $2{,}000$ honest trials per arm-size and printing cell ($20{,}000$ in all), measured on 6 September 2026 with commit \texttt{fa2bbbd}, the build that introduced the per-replicate variance draw and precedes the printed-SD interval draw and every later change. The engine ran its ordinary adaptive staging: the final batches were $1{,}000$ draws for $17{,}951$ trials, $10{,}000$ for $1{,}855$ and $100{,}000$ for $194$. The data are honest normal observations ($\mathcal{N}(55, 13^2)$), rounded and summarised as the row states. ``Fine'' prints the mean and SD to one decimal beyond the observation grid; ``coarse'' prints them at the grid. The standard error of a rate near $5\%$ with $2{,}000$ trials is $0.5$ points and near $1\%$ is $0.22$ points. The Kolmogorov--Smirnov column \citep{kolmogorov1933,smirnov1948} is the distance of the $2{,}000$ row p's from the uniform distribution; ``at floor'' is the share of trials at the attainable floor.
+
+\begin{center}
+\begin{tabular}{llrrrrr}
+\toprule
+printing & $n$ per arm & $p\le0.05$ & $p\le0.01$ & mean $p$ & at floor & KS \\
+\midrule
+coarse & 3  & 5.3\% & 1.00\% & 0.496 & 1\% & 0.016 \\
+coarse & 5  & 5.6\% & 0.90\% & 0.493 & 1\% & 0.020 \\
+coarse & 10 & 5.2\% & 0.65\% & 0.494 & 0\% & 0.019 \\
+coarse & 20 & 5.0\% & 0.70\% & 0.499 & 1\% & 0.014 \\
+coarse & 50 & 4.7\% & 1.40\% & 0.503 & 1\% & 0.013 \\
+fine   & 3  & 4.5\% & 0.75\% & 0.497 & 0\% & 0.015 \\
+fine   & 5  & 5.0\% & 0.90\% & 0.501 & 0\% & 0.016 \\
+fine   & 10 & 5.1\% & 0.80\% & 0.508 & 0\% & 0.019 \\
+fine   & 20 & 4.9\% & 1.05\% & 0.507 & 0\% & 0.024 \\
+fine   & 50 & 5.2\% & 1.25\% & 0.509 & 0\% & 0.024 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Before the per-replicate variance draw the tails were the same but the body was not: at three per arm the mean row p was $0.52$ and the Kolmogorov--Smirnov distance $0.07$ (Section~\ref{sec:continuous}). The same design with the derivable location scale $\sigma/\sqrt N$ gives every cell within $0.2$ points of the table above (Section~\ref{sec:decisions}). These are rejection rates at $0.05$ and $0.01$ for one row; the trial-level combination was measured separately (Section~\ref{sec:decisions}), and the categorical and median branches have their own records in the method history. A publication table should add the generating population, the allocation design, the engine commit and seeds, and rates at $0.01$ with their uncertainty for each branch.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

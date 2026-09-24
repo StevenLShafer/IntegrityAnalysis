@@ -44,7 +44,10 @@ exactly what is sent, what Anthropic keeps, and for how long).
   toward homogeneity, exact combination across rows; measured against
   Carlisle's 2017 analysis run by run (the current engine: r = 0.993 and
   98.5% alarm concordance over 5,041 usable trials; every run in
-  [docs/validation-ledger.md](docs/validation-ledger.md)).
+  [docs/validation-ledger.md](docs/validation-ledger.md)). The method
+  as equations, with citations to the original sources, is the
+  [methods paper](docs/methods/methods.pdf) (LaTeX source in
+  `docs/methods/`; published at <https://integrityanalysis.io/methods.pdf>).
 - **The REST API** (`R/apiService.R`, `inst/api/`, `Dockerfile`) — the
   same analysis for editorial systems: bearer-token auth, round-trip
   failure payloads, per-request AI assist, nothing retained.

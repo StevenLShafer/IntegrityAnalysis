@@ -34,7 +34,12 @@ command in its header comment; never edit `inst/extdata/IntegrityAnalysis.html`
 directly, and keep the two in sync in the same commit. The guide's
 "Data handling" section is `docs/data-handling.md`, spliced in at build
 time by `docs/include.lua` (`--lua-filter`); edit that file for data
-handling, and regenerate the guide's HTML whenever it changes.
+handling, and regenerate the guide's HTML whenever it changes. The
+statistical method as equations is the methods paper, `docs/methods/`
+(`methods.tex` + `refs.bib`; `build.sh` builds `methods.pdf`, which is
+COMMITTED and published by `pages.yaml` as `/methods.pdf`, linked from
+the guide): a change to the engine's statistics changes the paper's
+section in the same PR, and the rebuilt PDF goes with it.
 The environment is renv-pinned — see the "renv" section below (the
 early no-renv stance was reversed 2026-08-20; this line was stale
 until the 2026-08-26 repo audit caught the contradiction). Since the

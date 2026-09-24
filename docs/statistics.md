@@ -4,7 +4,11 @@ This is the method as it runs today. How it came to be — every change
 from the original Carlisle–Shafer Monte Carlo, dated, with what was
 measured — is in [method-history.md](method-history.md), and every
 corpus figure quoted here traces to a row of
-[the validation ledger](validation-ledger.md).
+[the validation ledger](validation-ledger.md). The same method written
+as equations, with citations to the original sources of each technique,
+is the methods paper: [`docs/methods/methods.pdf`](methods/methods.pdf),
+published at <https://integrityanalysis.io/methods.pdf> (LaTeX source
+and bibliography beside it; it names the build it describes).
 
 Provenance: first written by Claude Code (model Claude Fable 5) on
 2026-08-17 with the adaptive-replicates implementation; restructured

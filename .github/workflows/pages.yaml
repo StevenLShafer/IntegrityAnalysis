@@ -15,6 +15,7 @@ on:
     paths:
       - "site/**"
       - "inst/extdata/IntegrityAnalysis.html"
+      - "docs/methods/methods.pdf"
       - ".github/workflows/pages.yaml"
   workflow_dispatch:
 
@@ -43,6 +44,9 @@ jobs:
           # the user guide, served as /guide.html (same file the app's
           # Download Documentation button serves)
           cp inst/extdata/IntegrityAnalysis.html _site/guide.html
+          # the methods paper (docs/methods/, built by its build.sh and
+          # committed), served as /methods.pdf; the guide links to it
+          cp docs/methods/methods.pdf _site/methods.pdf
 
       - uses: actions/upload-pages-artifact@v3
         with:
