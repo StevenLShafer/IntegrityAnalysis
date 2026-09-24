@@ -325,12 +325,28 @@ row preserved**. Down from 58 contaminated rows.
   shrinks and the fully-corroborated bucket grows — holds, by one file
   each: this layout is rare in the Carlisle-2017 corpus, which is human
   RCTs, not the animal stratum where it failed.
-  **AFTER, with the review fixes** (scorer penalty restored, Baseline
-  column bounded by the next header, unmatched lines reported — each of
-  which can move candidate selection): *a second run on the fixed code's
-  snapshot was launched at merge time and is recorded here by follow-up.
-  The merge was not held for it: the suite, the real-article check and
-  the first AFTER run are the gates, and this is the confirmation.*
+  **AFTER, with the review fixes, `e41609c`**
+  (`.NewCarlisle/misparse-after-issue34-e41609c/`; scorer penalty
+  restored, Baseline column bounded by the next header, unmatched lines
+  reported — each of which can move candidate selection; run from that
+  commit's own installed snapshot after the merge, recorded here by
+  this follow-up): 1,017 parsed, 81 with no pairs; of the 936 with
+  pairs, **417 fully corroborated (44.6%)**, 519 with ≥1 uncorroborated
+  pair; 12,795 pairs of ours, 7,285 corroborated (56.9%); **4,457 of
+  Carlisle's pairs missed (38.0%)**. Against BEFORE: the same two files
+  change bucket (`PMID_18292675` zero → full, `PMID_16531446` zero →
+  partial), no regressions, 1,010 of 1,017 triples identical. Against
+  the first AFTER run: **no file changes bucket**; 1,014 of 1,017
+  triples identical, and the three that moved are the restored penalty
+  doing its work — `PMID_15087630` 14 uncorroborated pairs → 2;
+  `PMID_16189334` 24 pairs (17 uncorroborated) → 9 (2 uncorroborated),
+  the 7 corroborated pairs kept; `PMID_16670112` 15 → 17 pairs, 2 → 3
+  corroborated, one more of Carlisle's pairs found. The penalty's return
+  removed 27 uncorroborated pairs and added one (net 26: 5,536 → 5,510)
+  at the cost of no corroborated pair. So the scorer change
+  as merged is: no credit for `Unnamed` rows, penalty as before — and
+  measured on the corpus it moves three files of 1,017, all toward
+  Carlisle's values.
 - `corpus/validateCarlisle2017.R` cannot move: it reads Carlisle's
   hand-entered spreadsheet straight into `validateData` → `P_Calc` and
   contains no call to any parser (`grep -c "parseBaseline|ppParse"` = 0).
