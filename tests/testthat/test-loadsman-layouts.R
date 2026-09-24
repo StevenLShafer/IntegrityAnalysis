@@ -86,6 +86,35 @@ test_that("a capitalised next line is the next variable, not a continuation", {
   expect_true(any(grepl("^Male|^Sex", r$data$ROW)))
 })
 
+test_that("a lower-case category header with indented children is a header, not a continuation", {
+  # CodeRabbit on PR #336: "sex, n (%)" in a manuscript that does not
+  # capitalise passes the typography test; eaten as the continuation of
+  # the row above, its indented children would lose their header and be
+  # skipped as bare numbers. The indented data line beneath it says it
+  # is a header.
+  f  <- file.path(tempdir(), "lowerHeader.pdf")
+  vx <- c(300, 400)
+  cells <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Baseline", adj = 0)),
+    rowCells(110, "", c("Control", "Treatment"), vx),
+    rowCells(128, "", c("(n = 15)", "(n = 17)"), vx),
+    rowCells(150, "weight, kg", c("63 ± 13", "68 ± 12"), vx),
+    list(list(x = 72, y = 168, text = "sex, n (%)", adj = 0)),
+    rowCells(186, "male",   c("10 (67)", "12 (71)"), vx, labelX = 82),
+    rowCells(204, "female", c("5 (33)",  "5 (29)"),  vx, labelX = 82),
+    list(list(x = 72, y = 240, text = "Values are mean ± SD or n (%).", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  d <- r$data
+  expect_true(any(grepl("^weight", d$ROW)))
+  expect_false(any(grepl("^weight, kg sex", d$ROW)))
+  # the header survived and its children are counts under it
+  sexRows <- d[grepl("^sex", d$ROW), ]
+  expect_true(nrow(sexRows) >= 2)
+  expect_true(all(is.na(sexRows$MEAN)))
+  expect_identical(nrow(r$skipped), 0L)
+})
+
 # ---- 3. counts and percentages with no "%" anywhere on the page -------------
 countsNoPercentPdf <- function(file = file.path(tempdir(), "countsNoPct.pdf"),
                               withN = TRUE) {

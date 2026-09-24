@@ -465,7 +465,8 @@ was already caught on current code by the merge's value-signature dedupe of
   row falls to the vocabulary rules as before.
 
 And one flag rather than a rule: a table in which **half or more of the mean (SD)
-cells print an SD larger than the mean** is reported by `reviewFlags()` ("counts
+cells print an SD larger than the mean** — with at least three such cells, so a one-
+or two-row table cannot trip it — is reported by `reviewFlags()` ("counts
 with their percentages read as mean (SD)?"), which consults the AI under
 `ai = "fallback"`. One such row is ordinary — a skewed quantity prints an SD above
 its mean and is analysed as it stands — so the per-row invariant the finding asked

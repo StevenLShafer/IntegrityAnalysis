@@ -185,13 +185,8 @@ from a colleague) is valid input to the next. What the cells may hold:
 the interval is an IQR** (a median with a min–max range, or with an
 unlabeled interval, is flagged for hand entry instead — the analysis
 needs quartiles, and the app will not guess); "n (%)" counts, which
-become a category with its complement — recognised by the table's
-notation, and also by the numbers themselves: "18 (90)" in an arm of 20
-is a count and its percentage even when no "%" is printed anywhere,
-because the bracketed number is the first as a percentage of the arm
-size in every arm; and bare counts indented under a category header
-("Sex, n"). A variable name that wraps onto a second line ("Amount of
-intraoperative" over "fluid (ml)") is read whole. A row the app cannot read arrives as a
+become a category with its complement; and bare counts indented under a
+category header ("Sex, n"). A row the app cannot read arrives as a
 red-flagged grid row with the reason on hover, exactly like an
 imperfect PDF extraction. Mean and SD in *separate columns* is the
 template format above, not this one.
@@ -215,6 +210,14 @@ extraction is deterministic — the same PDF always yields the same table
 > a real limitation of the deterministic reader rather than a bug — it
 > has no way to decide that three tables describe the same arms in the
 > same order — and splitting baseline data this way is unusual.
+
+> **Two things the PDF reader works out for itself.** A count with its
+> percentage is recognised by the table's notation — "n (%)" in a header or
+> a label — and also by the numbers: "18 (90)" in an arm of 20 is a count
+> and its percentage even when no "%" is printed anywhere, because the
+> bracketed number is the first as a percentage of the arm size in every
+> arm. And a variable name that wraps onto a second line ("Amount of
+> intraoperative" over "fluid (ml)") is read whole.
 
 > **Repeated-measures tables.** Laboratory and crossover papers often print
 > the *arms as rows* — a `Group` column running 1, 2, 3 beneath each

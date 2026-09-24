@@ -70,7 +70,9 @@ chk(sum(contRows(d) & d$SD > d$MEAN) == 0L,
            sum(contRows(d) & d$SD > d$MEAN), ")"))
 chk(sum(contRows(d)) < 48L,
     paste0("not 48 continuous rows (got ", sum(contRows(d)), ")"))
-catCols <- setdiff(names(d), c(.ppBaseColumns(), "Q1", "Q3"))
+# namespace-qualified: unexported, so library(IntegrityAnalysis) alone would
+# not see it (CodeRabbit on PR #336)
+catCols <- setdiff(names(d), c(IntegrityAnalysis:::.ppBaseColumns(), "Q1", "Q3"))
 chk(length(catCols) > 0, paste0("the counts are categories (", length(catCols), " level columns)"))
 
 cat("\n=== 10.17826-cumj.1221051-2839894: ASA I and ASA II stay two variables ===\n")
@@ -82,19 +84,26 @@ chk(any(grepl("^ASA I$|^I$", lab)) && any(grepl("^ASA II$|^II$", lab)),
 
 cat("\n=== corpus invariant: a table that is mostly SD > MEAN is flagged ===\n")
 pdfs <- list.files(DIR, "[.]pdf$", full.names = TRUE)
-bad <- character(0); parsed <- 0L
+bad <- character(0); unparsed <- character(0)
 for (f in pdfs) {
   r <- tryCatch(parseBaselineTableHeuristics(f, quiet = TRUE), error = function(e) NULL)
-  if (is.null(r) || nrow(r$data) == 0) next
-  parsed <- parsed + 1L
+  if (is.null(r) || nrow(r$data) == 0) { unparsed <- c(unparsed, basename(f)); next }
   d <- r$data; cont <- contRows(d)
   if (sum(cont) >= 3 && sum(cont & d$MEAN >= 0 & d$SD > d$MEAN) >= 0.5 * sum(cont) &&
       !any(grepl("SD larger than the mean", reviewFlags(r))))
     bad <- c(bad, basename(f))
 }
+parsed <- length(pdfs) - length(unparsed)
+# COVERAGE IS ASSERTED, not just reported (CodeRabbit on PR #336): a paper
+# that stops parsing drops out of the invariant silently, so the invariant
+# could pass while the corpus shrank. 46 of 52 parsed deterministically on
+# 2026-09-24; fewer is a regression and the names say which.
+chk(parsed >= 46L,
+    paste0(parsed, " of ", length(pdfs), " PDFs parse deterministically (baseline 46)",
+           if (length(unparsed)) paste0("; not parsed: ", paste(unparsed, collapse = ", ")) else ""))
 chk(length(bad) == 0L,
-    paste0(parsed, " of ", length(pdfs), " PDFs parsed; every table with SD > MEAN on ",
-           "half or more of its mean (SD) cells carries the flag",
+    paste0("every parsed table with SD > MEAN on half or more of its mean (SD) ",
+           "cells carries the flag",
            if (length(bad)) paste0(" - EXCEPT: ", paste(bad, collapse = ", ")) else ""))
 
 cat("\n", if (fails == 0L) "ALL CHECKS PASSED" else paste(fails, "CHECK(S) FAILED"), "\n")

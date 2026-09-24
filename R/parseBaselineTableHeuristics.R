@@ -635,9 +635,21 @@
     # branch above, so it cannot also become the open block header.
     # (the last data row's continuation lies just BEYOND lastData, so the
     # look-ahead runs to the end of the classified lines, not the block)
+    # A lower-case CATEGORY HEADER ("sex, n (%)" in a manuscript that
+    # does not capitalise) would pass the typography test and be eaten,
+    # orphaning its indented children into skipped bare numbers
+    # (CodeRabbit on PR #336). A header has children; a continuation does
+    # not: when the line after the candidate is a data line whose label
+    # starts to the RIGHT of the candidate's first word - indented under
+    # it - the candidate is a header and is left to the label branch.
     if (i < length(kind) && kind[i + 1] == "label") {
       nxt <- .ppSquish(lineTexts[i + 1])
-      if (grepl("^[a-z(]", nxt, perl = TRUE) && nchar(nxt) <= 40 &&
+      xNext  <- lines[[i + 1]]$x[1]
+      xChild <- if (i + 2L <= length(kind) && kind[i + 2L] == "data")
+        lines[[i + 2L]]$x[1] else NA_real_
+      indentedChild <- !is.na(xChild) && !is.na(xNext) && xChild > xNext + 4
+      if (!indentedChild &&
+          grepl("^[a-z(]", nxt, perl = TRUE) && nchar(nxt) <= 40 &&
           !grepl("[0-9]", gsub("\\([^)]*\\)", "", nxt))) {
         rawLabel <- paste(rawLabel, nxt)
         consumedLabel <- c(consumedLabel, i + 1L)
