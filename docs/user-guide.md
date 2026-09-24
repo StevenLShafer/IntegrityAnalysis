@@ -12,11 +12,14 @@
   Zipped multi-file upload added 2026-08-20; journal-style wide tables
   as INPUT (issue 17) added 2026-08-21.
 
-  TO REGENERATE THE SERVED HTML after editing this file:
+  TO REGENERATE THE SERVED HTML after editing this file (or after editing
+  docs/data-handling.md, which docs/include.lua splices in as the
+  "Data handling" section):
     "C:\Program Files\Quarto\bin\tools\pandoc.exe" docs/user-guide.md
-      -s --embed-resources --toc --metadata title="IntegrityAnalysis"
+      -s --embed-resources --toc --lua-filter docs/include.lua
+      --metadata title="IntegrityAnalysis"
       -c docs/user-guide.css -o inst/extdata/IntegrityAnalysis.html
-  (one line; see AGENTS.md). The same file is published by
+  (one line, from the repository root; see AGENTS.md). The same file is published by
   .github/workflows/pages.yaml as https://integrityanalysis.io/guide.html,
   which the app's sidebar "View Documentation" link opens.
 -->
@@ -1288,6 +1291,13 @@ curl -X POST https://<service-host>/analyze \
 Publishers can run the service inside their own infrastructure from the
 open source — `IntegrityAnalysis::runApiService()` starts it, and the
 endpoint definitions are `inst/api/plumber.R` in the repository.
+
+<!-- The next section is docs/data-handling.md, spliced in at build time by
+     docs/include.lua (2026-09-24, Steve's request). Edit THAT file, not
+     this one, for anything about data handling; the two cannot drift
+     because there is only one copy of the text. -->
+
+{{include: docs/data-handling.md}}
 
 # Notes and roadmap
 

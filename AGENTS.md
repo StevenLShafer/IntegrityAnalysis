@@ -31,7 +31,10 @@ Bundled assets live in `inst/www`; `Template.xlsx`, `Example.xlsx`, and
 The user documentation's MASTER is `docs/user-guide.md` (issue 14) —
 edit the Markdown, then regenerate the served HTML with the pandoc
 command in its header comment; never edit `inst/extdata/IntegrityAnalysis.html`
-directly, and keep the two in sync in the same commit.
+directly, and keep the two in sync in the same commit. The guide's
+"Data handling" section is `docs/data-handling.md`, spliced in at build
+time by `docs/include.lua` (`--lua-filter`); edit that file for data
+handling, and regenerate the guide's HTML whenever it changes.
 The environment is renv-pinned — see the "renv" section below (the
 early no-renv stance was reversed 2026-08-20; this line was stale
 until the 2026-08-26 repo audit caught the contradiction). Since the
