@@ -766,6 +766,16 @@ m <- 100000
   set.seed(seed); dqrng::dqset.seed(seed)
   invisible(seed)
 }
+# The seed as the page's query string spells it, in any case: ?seed=42,
+# ?SEED=42, ?Seed=42 (Steve, 2026-09-24 - the natural way to type it is
+# upper-case, and a silently ignored SEED= would send a colleague a
+# link that does not do what it says). The first such key wins; the
+# value is validated by .iaSeedValue() as before.
+.iaQuerySeed <- function(qs) {
+  if (is.null(qs) || !length(qs) || is.null(names(qs))) return(NULL)
+  i <- which(tolower(trimws(names(qs))) == "seed")
+  if (!length(i)) NULL else qs[[i[1]]]
+}
 
 # After normalizing, two source columns can collapse onto one name (a
 # frame carrying both NUMBER and N ends with two called N). R's $ and

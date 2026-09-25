@@ -60,6 +60,28 @@ test_that(".iaSeedValue accepts a whole number in range and nothing else", {
   expect_null(f(1.5)); expect_null(f(2147483648)); expect_identical(f(c("1", "2")), 1L)   # the first value only
 })
 
+test_that("the page's seed parameter is read in any case, and the site wrapper forwards it (Steve, 2026-09-24)", {
+  q <- IntegrityAnalysis:::.iaQuerySeed
+  expect_identical(q(list(seed = "42")), "42")
+  expect_identical(q(list(SEED = "42")), "42")
+  expect_identical(q(list(Seed = "42", other = "x")), "42")
+  expect_identical(q(list(other = "x", " seed " = "7")), "7")
+  expect_null(q(list(other = "x")))
+  expect_null(q(list()))
+  expect_null(q(NULL))
+  # through the validator: ?SEED=12345 seeds; ?SEED=abc does not
+  expect_identical(IntegrityAnalysis:::.iaSeedValue(q(shiny::parseQueryString("?SEED=12345"))), 12345L)
+  expect_null(IntegrityAnalysis:::.iaSeedValue(q(shiny::parseQueryString("?SEED=abc"))))
+  # the integrityanalysis.io/app/ wrapper appends the page's query string
+  # to the iframe, so the short address carries a seed too; the file is
+  # not part of the installed package, so this runs from a checkout only
+  wrapper <- file.path(testthat::test_path(), "..", "..", "site", "app", "index.html")
+  skip_if_not(file.exists(wrapper), "site/ is not in the installed package")
+  html <- paste(readLines(wrapper, warn = FALSE), collapse = "\n")
+  expect_match(html, "window.location.search", fixed = TRUE)
+  expect_match(html, 'f.src = "https://steveshafer.shinyapps.io/IntegrityAnalysis/" + q + h', fixed = TRUE)
+})
+
 test_that("the same seed reproduces the analysis exactly; different seeds differ; unseeded runs vary within the interval", {
   d <- data.frame(TRIAL = "T", ROW = "Weight", N = 6, MEAN = c(77, 78), SD = c(30, 30),
                   ROUND_MEAN = 0, ROUND_OBSERVATION = 0, stringsAsFactors = FALSE)
