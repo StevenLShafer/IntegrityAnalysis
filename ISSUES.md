@@ -221,6 +221,47 @@ CJA 1997;44:390, page 3, four arms 40/40/40/10).
   code). On the real page Age, Height and Weight are unchanged and Sex
   M:F is skipped.
 
+## 90. The sign set as a digit ("47.357.9"), and a soup word glued to the SD alone ("50.1 k8.0")
+
+**Status: fixed on `feat/digit-fused-sign`, 2026-09-25**, from the
+corpus session's batch 23 on AAS1998_851 (Saitoh, Acta Anaesthesiol
+Scand 1998;42:851): after issue 85 Height read four arms, but Age
+("48.4k7.2 46.9Z7.7 47.357.9 44 50.1 k8.0") and Weight ("56.429.2
+56.7?9.0 57.8Z9.4 66 58.527.8") were still skipped as bare numbers
+with no SD.
+
+- **The defect.** Issue 85 reads a cell word with a LETTER where the
+  sign was, two or more to a line. Three cells on this page set the
+  sign as a digit, and one line splits its last cell into a bare
+  number and a soup word glued to the SD. The digit form is ambiguous
+  on its own ("47.357.9" could split three ways), so no rule read it.
+- **What changed.** A line with two or more sign cells (letter-fused
+  or the plus-minus glyph itself) fixes the precision of its cells:
+  one decimal count for the means, one for the SDs. With that settled,
+  `.ppRepairFusedSigns()` also reads (a) a word of two decimal points
+  as mean, one stray digit, SD - "47.3" "5" "7.9" is the only split at
+  one decimal each side - and (b) a soup word glued to an SD alone
+  ("k8.0") that follows a bare number of the line's mean precision
+  ("50.1"). Neither form is read on a line with fewer than two sign
+  cells; the digit form needs a decimal on each side; where the
+  line's sign cells disagree on precision only the letter form is
+  read. The letter form itself now also counts the line's true glyphs
+  toward its two-cell floor.
+- **On the page.** Age reads 48.4/46.9/47.3/50.1 (SD 7.2/7.7/7.9/8.0)
+  and Weight 56.4/56.7/57.8/58.5 (9.2/9.0/9.4/7.8), n 40/40/40/15,
+  beside Height as before; the volunteers flag still fires.
+- **Tests** (`tests/testthat/test-digit-fused-sign.R`): the helper on
+  the Age and Weight lines, a glyph line with one digit-fused cell, a
+  line with no sign cell (untouched) and a line whose precisions
+  disagree (letters only), with the split words' extents; a rebuilt
+  Saitoh page reads Age, Height and Weight across four arms (11
+  expectations fail on the unfixed code). The sign-repair and layout
+  tests still pass.
+
+---
+
+---
+
 ## 89. Three more ways a paper states its arm sizes, and the power statement that is not one
 
 **Status: fixed on `feat/size-sentence-shapes`, 2026-09-25**, from the
