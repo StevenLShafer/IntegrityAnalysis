@@ -44,3 +44,22 @@ test_that("a label that merely begins with a count word is a variable, not the N
   r <- parseBaselineTableHeuristics(nRowPdf("Number of previous operations", c("2", "1", "3", "2")), quiet = TRUE)
   expect_true(all(is.na(r$arms$N)) || !identical(r$arms$N, c(2L, 1L, 3L, 2L)))
 })
+
+# ---- CodeRabbit on PR #351 -------------------------------------------------
+test_that("a printed N row outranks a size recovered from the document text, and clears its provenance", {
+  f  <- file.path(tempdir(), "nrow3.pdf")
+  vx <- c(230, 310, 390)
+  cells <- c(
+    list(list(x = 60, y = 50, text = "Dogs were allocated to the saline (n = 8), ketamine (n = 8) and propofol (n = 8) groups.", adj = 0)),
+    list(list(x = 60, y = 80, text = "TABLE I Demographic data", adj = 0)),
+    rowCells(100, "", c("Saline", "Ketamine", "Propofol"), vx),
+    rowCells(118, "Number", c("10", "10", "10"), vx),
+    rowCells(136, "Age (yr)", c("48.8 ± 10.0", "47.0 ± 9.1", "45.7 ± 8.8"), vx),
+    rowCells(154, "Weight (kg)", c("54.8 ± 6.0", "58.0 ± 6.1", "58.5 ± 5.8"), vx))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_identical(r$arms$N, rep(10L, 3))
+  expect_true(all(is.na(r$armNSource)))
+  expect_false(any(grepl("recovered from the document text", reviewFlags(r))))
+})
+

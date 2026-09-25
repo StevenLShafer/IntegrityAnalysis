@@ -974,7 +974,14 @@
 
     if (grepl(nRowPattern, label, perl = TRUE) && identical(mainType, "plain")) {
       for (j in seq_len(nArms))
-        if (!is.null(armTok[[j]])) armN[arms[j]] <- as.integer(armTok[[j]]$num1)
+        if (!is.null(armTok[[j]])) {
+          armN[arms[j]] <- as.integer(armTok[[j]]$num1)
+          # a PRINTED N outranks one recovered from n (%) cells or the
+          # document text, and its provenance goes with it: the source
+          # is cleared so the report and the parse score treat the arm
+          # as printed (CodeRabbit on PR #351)
+          armNSource[arms[j]] <- NA_character_
+        }
       next
     }
     if (is.na(mainType)) next
