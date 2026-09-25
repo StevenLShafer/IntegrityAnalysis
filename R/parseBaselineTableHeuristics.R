@@ -701,6 +701,46 @@
     }
   }
 
+  # A COLUMN FED BY ONE TOKEN IS NOT AN ARM COLUMN (2026-09-26, ISSUES.md
+  # issue 113; CJA 1998, PMID 9717598, and 10193218, the corpus session's
+  # batch 26 AE7). On the scan the level "-Lower extremity" prints as
+  # "-Lower extremit 3," - the OCR shears the label's last letter into a
+  # digit - and that "3," at the label's right edge, on a labelled line,
+  # seeded a fourth column; the table read four arms with the first
+  # nameless and N-less and every row flagged "3 of 4". An arm column is
+  # fed on most rows: across a block of four or more data lines, a column
+  # that holds one token while every other column holds three or more is
+  # a stray, and it goes with its token and word, as issue 46's columns
+  # do.
+  if (cols$n > 1 && length(dataIdx) >= 4L) {
+    colOf  <- cols$assign(allToks$mid)
+    counts <- tabulate(colOf, nbins = cols$n)
+    stray  <- counts <= 1L & counts < max(counts)
+    if (any(stray) && all(counts[!stray] >= 3L)) {
+      say("  ", sum(stray), " column(s) fed by a single token across ", length(dataIdx),
+          " data lines dropped - not arm columns.")
+      keep <- !stray
+      for (i in dataIdx) {
+        t <- tokensByLine[[i]]
+        if (nrow(t) == 0) next
+        gone <- t[!keep[cols$assign(t$mid)], , drop = FALSE]
+        if (nrow(gone) == 0) next
+        L <- lines[[i]]
+        wMid <- L$x + L$width / 2
+        inGone <- vapply(wMid, function(m) any(m >= gone$x0 - 1 & m <= gone$x1 + 1), logical(1))
+        L <- L[!inGone, , drop = FALSE]
+        if (nrow(L) == 0) { kind[i] <- "junk"; tokensByLine[[i]] <- t[0, , drop = FALSE]; next }
+        lines[[i]]        <- L
+        lineTexts[i]      <- .ppLineText(L)
+        tokensByLine[[i]] <- .ppTokenizeLine(L)
+        if (nrow(tokensByLine[[i]]) == 0) kind[i] <- "junk"
+      }
+      allToks <- do.call(rbind, tokensByLine[dataIdx])
+      if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
+      cols <- clusterCols(allToks$mid)
+    }
+  }
+
   # A STRATUM LINE (issue 55): a labelled "(n = k)" line after the first
   # header line - "Young patients (n = 75) (n = 25) (n = 25) (n = 25)" under
   # the column header's "(n = 50)" - is not the header, wherever it sits:
