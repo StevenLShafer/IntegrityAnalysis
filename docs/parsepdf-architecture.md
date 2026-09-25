@@ -235,6 +235,8 @@ wrong entry would corrupt numbers invisibly.
 - **Gutters widest first, no band dropped** (2026-09-25, issue 72): `.ppPageBands()` keeps a
   low-coverage run as a gutter only if every band it leaves is at least a fifth of the page
   wide, taking the widest runs first; every word of the page lies in exactly one band.
+- **A stratum's name is at the row-label margin** (2026-09-25, issue 73): a labelled "(n = k)"
+  line whose name begins inside an arm column is a wrapped arm name's second line, not a stratum.
 
 ### 05 — Parsing one block
 
