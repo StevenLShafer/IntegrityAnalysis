@@ -183,6 +183,47 @@ corpus session's batch 4b (Fujii 2002, PMID 12182258, Carlisle-168: the
 
 ---
 
+## 42. A model-read table with no arm sizes gets the document-text ladder
+
+**Status: fixed on `feat/model-arm-n-from-text`, 2026-09-25**, from the
+corpus session's batch 4b finding J1 (Carlisle-168 on `bf9245b`).
+
+- **The defect.** Nine of the eleven trials that failed validation
+  failed on `N missing` in every row, all model-read on the retry
+  (12933396, 15281514, 9806685, 11004073, 12088956, 8055614, 7889590,
+  11132748, 8513526 — Fujii's canine papers). Their sizes are stated in
+  the Methods ("Dogs were randomly divided into three groups of eight
+  each", "In Group Ia (n = 5) ... In Groups IIa, IIb, and IIc (n = 8 in
+  each)") and nowhere in the table; the model transcribes the page it is
+  shown, so its arms came back with no N, and the text ladder of
+  `armNRecovery.R` ran only inside the deterministic block parser.
+- **What changed.** `.ppArmNFromDocument()` runs the two sources the
+  deterministic engine and the repeated-measures reader already use, in
+  the same order — the "into k groups of n" statement for exactly this
+  many arms, then the "(n = k)" mentions matched to the arm names — and
+  `parseBaselineTableAI()` applies it to the model's arms under the same
+  gate: only when no arm has an N; a table that printed any size keeps
+  the model's reading as it is. Each N carries its sentence in
+  `armNSource`, the result carries the "verify against the CONSORT flow
+  diagram" flag, and the fallback route keeps that flag behind its
+  "deterministic parse failed" note. In the name match a roman group
+  tag ("Ia", "IIb") now counts as a distinctive word, matched whole, so
+  "Group I" does not claim "Group Ia"'s mention.
+- **What it does not do.** 8513526 states three different sizes (two
+  abstracts and the Methods disagree); the ladder's name match takes a
+  mention only when every matching mention agrees, so a self-contradicting
+  paper is left with N missing rather than a guess — the sentence used,
+  when one is, is in the flag.
+- **Tests** (`tests/testthat/test-model-arm-n-from-text.R`, the model
+  mocked at the HTTP boundary so the whole route runs): the groups-of-n
+  sentence sizes every arm, with the sentence in the flag and in
+  `reviewFlags()`; per-group "(n = k)" mentions reach the right arms by
+  their roman tags; a table that printed any size is left alone, and a
+  document that states nothing leaves N missing; the fallback route
+  keeps the model result's flags.
+
+---
+
 ## 39. A paper's only table, captioned "TABLE" with no numeral, is found
 
 **Status: fixed on `feat/unnumbered-caption`, 2026-09-25**, from the
