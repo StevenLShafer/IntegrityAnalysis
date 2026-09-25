@@ -506,6 +506,16 @@
 # How much does this caption look like a baseline-characteristics table?
 # Used to choose between "Table 1 Patient characteristics" and "Table 2
 # Intraoperative drug usage" on the same page.
+# The number a caption carries - "Table 1", "TABLE II", "Tab. 3" - as an
+# integer, or Inf when it carries none (issue 102).
+.ppTableNumber <- function(txt) {
+  if (is.null(txt) || !length(txt) || is.na(txt[1])) return(Inf)
+  m <- regmatches(txt[1], regexpr("(?i)^\\s*(table|tab\\.?)\\s+([0-9]+|[IVX]+)\\b", txt[1], perl = TRUE))
+  if (!length(m) || !nzchar(m)) return(Inf)
+  num <- sub("(?i)^\\s*(table|tab\\.?)\\s+", "", m, perl = TRUE)
+  if (grepl("^[0-9]+$", num)) as.numeric(num) else as.numeric(utils::as.roman(toupper(num)))
+}
+
 .ppCaptionScore <- function(txt) {
   s <- 0
   s <- s + 4 * grepl("(?i)baseline", txt, perl = TRUE)
@@ -568,6 +578,18 @@
     !(grepl("(?i)baseline|demographic", gsub(cfbRe, "", txt, perl = TRUE), perl = TRUE) ||
         grepl(qualChar, txt, perl = TRUE))
   if (changesFromBaseline) s <- s - 4
+  # "CHANGES IN PDI, % EDI-CRU, AND % EDI-COST" (2026-09-25, ISSUES.md
+  # issue 102; Fujii, Anesth Analg 2001;92:762, PMID 11226115, the corpus
+  # session's batch 25 AD3): a caption that announces changes in something,
+  # with no word for baseline, heads a time-course table - baseline in one
+  # column, later timepoints in the rest. Issue 80 penalised "changes ...
+  # from"; the bare "changes in" of that paper's Table 2 scored nought
+  # while its Table 1, "Hemodynamic Data and Changes", paid the
+  # hemodynamic penalty, and with equal parse scores Table 2 won. One
+  # point off, so that the two stand level and the table-number
+  # tie-break in the candidate contest decides.
+  if (!saysBaseline && grepl("(?i)^\\s*(table|tab\\.?)?\\s*[0-9IVX]*\\.?\\s*changes?\\s+(in|of)\\b", txt, perl = TRUE))
+    s <- s - 1
   if (!saysBaseline || changesFromBaseline)
     s <- s - 3 * grepl(paste0("(?i)\\bchanges?\\s+(in|of)\\b.*\\bfrom\\b",
                               "|\\bchanges?\\s+from\\s+(the\\s+)?(baseline|pre[- ]?\\w+|initial|control)",

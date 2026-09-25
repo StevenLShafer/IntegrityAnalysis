@@ -155,6 +155,39 @@ diagonal RETRACTED watermark).
   code). The slot, glued-soup, junk-row and Loadsman layout tests still
   pass.
 
+---
+
+## 106. Long layout: a heading line carrying a bare number is a heading
+
+**Status: fixed on `fix/heading-with-bare-digit`, 2026-09-25**, from the
+corpus session's batch 25 AD7 (Fujii, PMID 10589648) and the "2"
+suffixes on 11573601 and 11004073.
+
+- **The defect.** "Pdi (cm H2O)" prints its subscript as a word of its
+  own, "CO (L/min-1)" its superscript as "21", so the heading line
+  carries a bare number and the classifier calls it data. The
+  repeated-measures reader took its headings from label-only lines
+  (issue 91), so the rows beneath such a heading took the heading
+  ABOVE: the cardiac output rows came out as "PAOP (mm Hg) 2" (the
+  previous variable's name plus a dedupe suffix), 11573601's Pdi rows
+  as "Haemodynamics: 20 Hz stimulation".
+- **What changed.** A data line whose every token is a bare integer,
+  none of them a value under the Baseline column, with letters among
+  its words, is a heading; the bare numbers are dropped from its text
+  ("CO (L/min )", "Pdi (cm H O)").
+- **On the pages.** 10589648: HR, MAP, RAP, MPAP, PAOP, CO, three arms
+  of 10. 11573601: the Pdi rows under "P di (cm H O)". 12933396 and
+  11004073 unchanged. One residue: on 11004073 the subscript "2" sits
+  on the first Pdi row's own line, not the heading's, and stays as a
+  suffix on that row's name ("20-Hz stimulation 2").
+- **Tests** (`tests/testthat/test-heading-with-bare-digit.R`): a
+  rebuilt page with a "21" superscript and a "2" subscript on heading
+  lines names the rows beneath each (3 expectations fail on the
+  unfixed code). The long-layout, legend, canine, heading, letter-group
+  and Loadsman layout tests still pass.
+
+---
+
 ## 103. "Divided into three groups of Methods D 10 each": the running head inside the sentence
 
 **Status: fixed on `feat/groups-of-n-past-running-head`, 2026-09-25**,
@@ -177,6 +210,40 @@ from the corpus session's batch 25 AD8 (Fujii, PMID 11004073).
   the interleaved sentence, the plain sentence, a sentence whose "each"
   belongs to a dose, and one with four stray words (3 expectations fail
   on the unfixed code). The arm-size and layout tests still pass.
+
+---
+
+## 102. A "Changes in X" caption heads a time-course table, and on equal scores the lower table number wins
+
+**Status: fixed on `fix/changes-in-caption-tiebreak`, 2026-09-25**, a
+regression found by the corpus session's batch 25 (AD3: Fujii, Anesth
+Analg 2001;92:762, PMID 11226115).
+
+- **The defect.** On 366548d the trial read Table 1 "Hemodynamic Data
+  and Changes" (six variables, four arms of 8). On e4a00ea, with the
+  long-layout reader naming rows (issues 91, 95), Table 2 "Changes in
+  Pdi, % Edi-cru, and % Edi-cost" parses to the same score, and its
+  caption scores nought while Table 1's pays the hemodynamic penalty of
+  the caption scorer; the candidate contest kept the higher total and
+  the hemodynamic table was gone from the result.
+- **What changed.** Two rules. A caption that announces changes in
+  something, with no word for baseline, heads a time-course table -
+  baseline in one column, later timepoints in the rest - and loses a
+  point (`.ppCaptionScore()`); issue 80 penalised "changes ... from",
+  this is the bare "changes in". And in the candidate contest, on
+  equal totals the candidate whose caption carries the lower table
+  number wins (`.ppTableNumber()`): the first table is where a trial's
+  baseline data conventionally sit. Before this the earlier candidate
+  in caption-score order kept a tie.
+- **On the pages.** 11226115 reads Table 1 again (HR, MAP, RAP, MPAP,
+  PAOP, CO; four arms of 8). 10589648, whose Table 2 is also "Changes
+  in Pdi", keeps Table 1.
+- **Tests** (`tests/testthat/test-changes-in-caption-tiebreak.R`): the
+  table number from "Table 1", "TABLE II", "Tab. 3" and none; the
+  caption penalty and its absence beside a baseline word; a rebuilt
+  page with both tables reads Table 1 (4 expectations fail on the
+  unfixed code). The change-from-baseline caption and Loadsman layout
+  tests still pass.
 
 ---
 
