@@ -70,3 +70,31 @@ test_that("a bare (n = k) line under a row is still that row's own n, not a stra
   expect_identical(d$N[grepl("^Duration", d$ROW)], rep(20L, 4))
   expect_false(any(grepl(":", d$ROW)))
 })
+
+# ---- the first size line as a stratum (batch 8, N2: Fujii & Shiga 2006, PMID 17163298) ----
+test_that("a first size line naming a population with one size, the arm names on their own line above, is a stratum", {
+  vx <- c(240, 340, 440)
+  f <- file.path(tempdir(), "stratumFirst.pdf")
+  cells <- c(
+    list(list(x = 40, y = 60, text = "Table I. Patient demographics", adj = 0)),
+    rowCells(84,  "Variable", c("Placebo", "Metoclopramide 2.5", "Metoclopramide 5"), vx),
+    list(list(x = 40, y = 104, text = "Younger patients (20-40y) [n = 60]", adj = 0)),
+    rowCells(122, "n", c("20", "20", "20"), vx),
+    rowCells(140, "Age (y)", c("31 ± 5", "30 ± 6", "31 ± 5"), vx),
+    rowCells(158, "Weight (kg)", c("56 ± 9", "57 ± 8", "55 ± 9"), vx),
+    list(list(x = 40, y = 180, text = "Older patients (60-80y) [n = 60]", adj = 0)),
+    rowCells(198, "n", c("20", "20", "20"), vx),
+    rowCells(216, "Age (y)", c("70 ± 4", "71 ± 5", "71 ± 4"), vx),
+    rowCells(234, "Weight (kg)", c("54 ± 10", "53 ± 9", "54 ± 10"), vx))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_identical(nrow(r$arms), 3L)
+  expect_identical(r$arms$N, rep(20L, 3))
+  d <- r$data[!is.na(r$data$MEAN), ]
+  rows <- unique(gsub(intToUtf8(0x2212), "-", d$ROW, fixed = TRUE))
+  expect_setequal(rows, c("Younger patients (20-40y): Age", "Younger patients (20-40y): Weight",
+                          "Older patients (60-80y): Age", "Older patients (60-80y): Weight"))
+  expect_true(all(d$N == 20L))
+  expect_identical(d$MEAN[grepl("^Younger.*Age", d$ROW)], c(31, 30, 31))
+  expect_identical(d$MEAN[grepl("^Older.*Age", d$ROW)], c(70, 71, 71))
+})

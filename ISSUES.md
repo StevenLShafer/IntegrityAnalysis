@@ -272,6 +272,15 @@ session's batch 7 finding M1 (Fujii & Nakayama 2006, Clin Ther; PMID
   reads both strata with N 25, prefixed names, no " 2" suffix, the
   fraction categories per stratum, the footnote as no heading, the arms
   table at 50; a bare "(n = k)" line under a row is still that row's n.
+- **Follow-up (batch 8, N2: Fujii & Shiga 2006, PMID 17163298).** A
+  first size line that names a population and states ONE size
+  ("Younger patients (20–40y) [n = 60]"), the arm names standing on a line
+  of their own above it, is a stratum too - taken for the column header
+  it gave every arm the stratum's 60 and left the first stratum's rows
+  unprefixed; a "[" before the size is cut like a "("; and the arms table
+  falls back to the sizes the walk found (an N row inside a stratum) where
+  the column header printed none. That page now reads both strata of three
+  arms of 20 with prefixed names.
 
 ---
 

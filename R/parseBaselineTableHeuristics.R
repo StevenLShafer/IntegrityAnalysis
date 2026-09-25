@@ -587,14 +587,29 @@
   # the first one often stands ABOVE the first data row. Marked here so
   # the header reads its arm sizes from the column header alone, and the
   # block walker opens the stratum when it reaches the line.
+  # The FIRST size line is a stratum too when it states ONE size under a
+  # population label and the arm names stand on a line of their own
+  # above it: "Variable Placebo Metoclopramide ..." / "Younger patients
+  # (20-40y) [n = 60]" / "n 20 20 20" (Fujii & Shiga 2006, PMID 17163298,
+  # corpus batch 8, N2). Taken for the column header, that line gave every
+  # arm the stratum's 60 and the first stratum's rows went unprefixed.
+  # A "[" before the size is cut like a "(".
   hdrAll <- which(kind == "header"); hdrAll <- hdrAll[hdrAll > capIdx]
-  if (length(hdrAll) >= 2) for (h in hdrAll[-1]) {
-    m1 <- regexpr("(?i)\\(?\\s*n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)
+  for (h in hdrAll) {
+    m1 <- regexpr("(?i)[(\\[]?\\s*n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)
     if (m1 < 1) next
-    lead <- .ppSquish(sub("\\(\\s*$", "", substr(lineTexts[h], 1, m1 - 1)))
-    if (nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
-        !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
-               lead, perl = TRUE))
+    nSizes <- length(gregexpr("(?i)n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)[[1]])
+    lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(lineTexts[h], 1, m1 - 1)))
+    isLabel <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
+      !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
+             lead, perl = TRUE)
+    if (!isLabel) next
+    if (h != hdrAll[1]) { kind[h] <- "stratum"; next }
+    # the first size line: a stratum only when it names a population and
+    # states a single size, with the arm names elsewhere
+    if (nSizes == 1L &&
+        grepl("(?i)patients|subjects|participants|women|men|children|infants|adults|elderly|younger|older|\\d+\\s*[-–]\\s*\\d+\\s*y",
+              lead, perl = TRUE))
       kind[h] <- "stratum"
   }
 
@@ -1040,7 +1055,7 @@
       wordEnd   <- wordStart + nchar(d$text) - 1
       m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
       if (m[1] != -1) {
-        lead <- .ppSquish(sub("\\(\\s*$", "", substr(joined, 1, m[1] - 1)))
+        lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(joined, 1, m[1] - 1)))
         # the per-arm sizes on the line; a match left of the first arm column
         # (a stratum's own total, "(n = 75)") is not an arm's
         gapHalf <- if (cols$n > 1) min(diff(sort(cols$centers))) / 2 else 100
@@ -2063,7 +2078,9 @@
 
   list(data       = DATA,
        arms       = data.frame(arm = armName[arms][keep],
-                               N = (if (length(stratumStarts)) armNHeader else armN)[arms][keep],
+                               # with strata the column header's sizes, where it printed
+                               # any; else what the walk found (an N row inside a stratum)
+                               N = (if (length(stratumStarts)) ifelse(is.na(armNHeader), armN, armNHeader) else armN)[arms][keep],
                                stringsAsFactors = FALSE),
        armNSource = armNSource[arms][keep],
        derivedCounts = unique(pctDerived),
