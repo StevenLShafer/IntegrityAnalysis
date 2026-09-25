@@ -75,6 +75,42 @@
 # of step 3 applies to the numbers.
 .ppLongGroupLabel <- "^([A-Z]{1,2}|I{1,3}|IV|V|VI{1,3})$"
 
+# THE ROW'S LABEL, AND THE HEADING ABOVE ITS BLOCK (2026-09-25, ISSUES.md
+# issue 91; Fujii 2003, PMID 12933396, the corpus session's batch 23).
+# Two things went wrong with the names of this layout's rows.
+#   - The label used to be the text before the row's FIRST TOKEN. On
+#     "20-Hz stimulation I 15.9 +/- 1.5" the tokenizer reads the "20" of
+#     "20-Hz" as a plain number, so the label was empty and the row was
+#     "Unnamed". The label is now the text before the first token that
+#     sits in or beyond the Group column (the group index, or the value):
+#     a number inside the label's own words is part of the label.
+#   - A variable can be printed as a HEADING on a line of its own above
+#     its group rows - "Pdi (cm H2O)" over "20-Hz stimulation" / "100-Hz
+#     stimulation", each with its I / II / III rows - and the reader
+#     skipped label-only lines altogether. The most recent short heading
+#     (five words or fewer) is kept, and it names the rows beneath it:
+#     alone when a row has no label of its own ("HR (bpm)" over "I 142
+#     +/- 11"), and as a prefix when the row's label starts with a digit
+#     and cannot stand alone ("Pdi: 20-Hz stimulation"). A row whose
+#     label is a name in itself ("HR (bpm)") keeps it, as the wide reader
+#     keeps a continuous row's label under a category heading.
+.ppLongRowLabel <- function(d, t, xGroup, tol, gLabel, heading) {
+  joined <- paste(d$text, collapse = " ")
+  inCol  <- which(t$mid >= xGroup - tol)
+  cut    <- if (length(inCol)) min(t$start[inCol]) else min(t$start)
+  lbl <- .ppSquish(substr(joined, 1, cut - 1L))
+  if (!is.na(gLabel)) lbl <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lbl, perl = TRUE)
+  lbl <- .ppCleanLabel(lbl)
+  if (!is.na(heading)) {
+    h <- .ppCleanLabel(heading)
+    if (nzchar(h)) {
+      if (!nzchar(lbl)) lbl <- h
+      else if (grepl("^[0-9]", lbl)) lbl <- paste0(h, ": ", lbl)
+    }
+  }
+  lbl
+}
+
 .ppParseRepeatedMeasures <- function(lines, lineTexts, kind, tokensByLine, capIdx,
                               lastData, trial, roundObsDelta,
                               footnoteInfo = character(0),
@@ -177,9 +213,16 @@
     rw <- d$text[abs(wm - xGroup) <= tol & grepl("^(I{1,3}|IV|V|VI{1,3})$", d$text, perl = TRUE)]
     if (length(rw)) kRoman <- max(kRoman, as.integer(utils::as.roman(rw)))
   }
+  heading <- NA_character_     # the variable printed above its group rows (issue 91)
   for (i in seq(hdr + 1L, lastData)) {
     if (kind[i] == "stop") break
-    if (kind[i] != "data") next
+    if (kind[i] != "data") {
+      if (kind[i] == "label") {
+        ht <- .ppSquish(paste(lines[[i]]$text, collapse = " "))
+        if (nzchar(ht) && length(strsplit(ht, " ", fixed = TRUE)[[1]]) <= 5L) heading <- ht
+      }
+      next
+    }
     nDataSeen <- nDataSeen + 1L
     t <- tokensByLine[[i]]
     if (is.null(t) || nrow(t) == 0) next
@@ -259,18 +302,15 @@
       # the row still names (or continues) its variable for the emit step:
       # without this, RAP's C row lost to a fused "5+2" left RAP's N row to
       # be filed under the variable above it (PMID 8055614, issue 76)
-      lblNV <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
-      if (!is.na(gLabel)) lblNV <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lblNV, perl = TRUE)
       rowsFound[[length(rowsFound) + 1L]] <-
-        list(i = i, g = gIdx, label = .ppCleanLabel(lblNV), tok = NULL)
+        list(i = i, g = gIdx, tok = NULL,
+             label = .ppLongRowLabel(lines[[i]], t, xGroup, tol, gLabel, heading))
       next
     }
     v <- v[which.min(abs(t$mid[v] - xBase))]
     # the row's label is whatever precedes its first token; blank on the
     # second and later group rows of a variable, which inherit the last one
-    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
-    if (!is.na(gLabel)) lbl <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lbl, perl = TRUE)
-    lbl <- .ppCleanLabel(lbl)
+    lbl <- .ppLongRowLabel(lines[[i]], t, xGroup, tol, gLabel, heading)
     rowsFound[[length(rowsFound) + 1L]] <-
       list(i = i, g = gIdx, label = lbl, tok = t[v, , drop = FALSE])
   }
