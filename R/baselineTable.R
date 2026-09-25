@@ -97,14 +97,23 @@ buildBaselineTables <- function(DATA, CategoryNames = NULL) {
         all(is.na(d$MEAN[g])) &&
         any(!is.na(d[g, CategoryNames, drop = FALSE]))
       if (isCat) {
-        # header line, then one indented line per category column that
-        # holds a count anywhere in this variable's arms
+        # header line, then one line per category column that holds a
+        # count anywhere in this variable's arms, named for the variable
         addRow(paste0(v, ", n"), character(0))
         for (cn in CategoryNames) {
           counts <- d[[cn]][g]
           if (all(is.na(counts))) next
-          addRow(paste0("    ", cn),
-                 vapply(counts, .fmtAt, character(1), digits = 0))
+          # A LEVEL ROW CARRIES ITS VARIABLE (2026-09-25, ISSUES.md issue
+          # 81; Steve: a sheet reading "MALE, FEMALE, 1, 2, 3, 1, 2, 6, 7"
+          # does not say that 1-3 are ASA classes and 1, 2, 6, 7 are pain
+          # categories). The grid's level columns are shared across
+          # variables, so the level's own name is not enough once the
+          # indent is lost to a spreadsheet or a CSV: "Sex: MALE",
+          # "ASA: 1", "Pain score: 6". A column that already starts with
+          # the variable's name is not prefixed twice.
+          lvl <- if (grepl(paste0("^\\s*", gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", v), "\\s*:"),
+                           cn, ignore.case = TRUE, perl = TRUE)) cn else paste0(v, ": ", cn)
+          addRow(lvl, vapply(counts, .fmtAt, character(1), digits = 0))
         }
       } else {
         medVar <- hasQ && any(!is.na(d$Q1[g]) | !is.na(d$Q3[g]))
