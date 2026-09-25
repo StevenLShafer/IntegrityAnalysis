@@ -180,6 +180,16 @@ read off surrounding context in the corpus — `U+2AFE` from "Data are presented
 as mean ⫾ SD", `U+2D1D` from "20% mannitol (n ⴝ 20)" — never guessed, because a
 wrong entry would corrupt numbers invisibly.
 
+- **Three more plus-minus spellings** (2026-09-25, issue 45). A bullet between two numbers
+  ("56.7 • 6.9", the OCR of a scanned CJA page) tokenizes as mean ± SD. Two announced
+  notations join the "mean − SD" dash re-read: "mean + SD" (a pair of plain numbers separated
+  only by "+" is one cell; read unannounced too on a line that already holds two mean ± SD
+  cells), and "mean2SD" (Acta 1997's font maps the glyph to the digit 2, so "49.527.9" is one
+  token: it is split at the 2 that leaves both halves with equal decimals, and only when exactly
+  one split qualifies). A data line whose numbers are 1..k each behind the same word ("Group 1
+  Group 2 Group 3 Group 4") is the arm-name line; a caption whose anchor line is the bare
+  "Table 1" takes the numberless line beneath as its title.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
