@@ -132,6 +132,29 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 107. "_+" is soup too
+
+**Status: fixed on `fix/underscore-plus-is-soup`, 2026-09-25**, from the
+corpus session's batch 25 AD5 (CJA 1996, PMID 8665632, a scan under a
+diagonal RETRACTED watermark).
+
+- **The defect.** Three second-arm cells set the sign as "_+" - an
+  underscore for the lower stroke - and went unread: Duration of
+  operation 52.6 +/- 20.7, Acetaminophen 252.0 +/- 82.3, Pentazocine
+  1.4 +/- 2.9. The slot repair of issue 65 knows strokes and
+  stroke-like letters; the underscore was not among them.
+- **What changed.** The underscore joins the soup class
+  (`.ppSoupGlyph`), so "_+" at a slot the block's other rows mark with
+  the bullet or the sign is the plus-minus.
+- **On the page.** Duration of operation and Acetaminophen read in
+  both arms. Pentazocine's second SD is absent from the text layer
+  altogether (the line ends at the sign), so that cell stays unread.
+- **Tests** (`tests/testthat/test-underscore-plus-is-soup.R`): the helper
+  on a block whose bullets mark the slot; a rebuilt page reads both
+  arms of the rows set with "_+" (6 expectations fail on the unfixed
+  code). The slot, glued-soup, junk-row and Loadsman layout tests still
+  pass.
+
 ## 103. "Divided into three groups of Methods D 10 each": the running head inside the sentence
 
 **Status: fixed on `feat/groups-of-n-past-running-head`, 2026-09-25**,
