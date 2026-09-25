@@ -135,6 +135,13 @@ d$PMC.file   <- ifelse(is.na(im), "", mf$file[im])
 # corpus/fileDownloads.R) appear only as files. Without this the queue
 # would never shrink as he works it.
 d$Have.new <- file.exists(file.path(outDir, paste0("PMID_", d$PMID, ".pdf")))
+# ... and so is the hand-download folder the Carlisle download session
+# fills (C:/dev/Corpus/CarlisleDownload by default, INTEGRITY_DOWNLOADS to
+# point elsewhere; requested by that session 2026-09-24): a paper fetched
+# there is in hand even before corpus/fileDownloads.R files it.
+dlDir <- Sys.getenv("INTEGRITY_DOWNLOADS", "C:/dev/Corpus/CarlisleDownload")
+d$Have.dl <- dir.exists(dlDir) &
+  file.exists(file.path(dlDir, paste0("PMID_", d$PMID, ".pdf")))
 
 # What the licensed-OA pass tried and could not get. A CC license is
 # permission, not access: Wiley, JAMA and the ASA front their licensed
@@ -172,18 +179,19 @@ d$Local.exists <- nzchar(d$Local.PDF) &
 # manual queue.
 d$Status <- ifelse(
   d$Have.new, "have PDF (.NewCarlisle)",
+  ifelse(d$Have.dl, "have PDF (download folder)",
   ifelse(nzchar(d$Local.PDF), "have PDF (local corpus)",
   ifelse(grepl("^downloaded", d$PMC.status), "have PDF (PMC open access)",
   ifelse(d$Licensed.failed, "manual: openly licensed, needs a browser",
   ifelse(d$Licensed, "auto-eligible: licensed open access",
   ifelse(nzchar(d$OA.status) & d$OA.status != "closed",
          "manual: free copy online",
-         "manual: subscription (Lane proxy)"))))))
+         "manual: subscription (Lane proxy)")))))))
 # Trials the census could not speak to - no DOI in the master sheet, or a
 # DOI not yet queried - are unclassified rather than "subscription"; say
 # so instead of guessing. With the census complete these are exactly the
 # 132 trials that carry no DOI, so the label names that reason.
-unresolved <- !d$queried & !d$Have.new & !nzchar(d$Local.PDF) &
+unresolved <- !d$queried & !d$Have.new & !d$Have.dl & !nzchar(d$Local.PDF) &
   !grepl("^downloaded", d$PMC.status)
 d$Status[unresolved] <- ifelse(nzchar(d$DOI[unresolved]),
                                "manual: license unknown (not yet queried)",
@@ -303,6 +311,8 @@ notes <- data.frame(Notes = c(
   "p          = Carlisle's raw one-sided trial p-value; small = baseline",
   "             tables more homogeneous than chance.",
   "Status     = have PDF (.NewCarlisle - downloaded or filed by hand) /",
+  "             have PDF (download folder - C:/dev/Corpus/CarlisleDownload,",
+  "             fetched by the download session, not yet filed) /",
   "             have PDF (local corpus) / have PDF (PMC open access) /",
   "             auto-eligible: licensed open access (leave to a script) /",
   "             manual: openly licensed, needs a browser (free - the",
