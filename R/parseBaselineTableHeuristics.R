@@ -1397,6 +1397,26 @@
       catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
       catHeaderAt <- NA_integer_
     }
+    # A LABEL'S FIRST LINE ABOVE ITS SECOND (2026-09-26, ISSUES.md issue 112;
+    # CJA 1998, PMID 9717598, and 11240988, 8825534, the corpus session's
+    # batch 26 AE6). "Duration of" on a line of its own, "surgery (min)
+    # 150 +/- 59 ..." beneath it: the value line HAS a label, so the rule
+    # above did not apply, and "Duration of" was taken for a category
+    # heading over a row called "surgery". A heading read from the line
+    # directly above whose row's own label begins with a lowercase letter,
+    # or with a bracket ("(min)", "(days) [n]"), or which itself ends in a
+    # joining word ("of", "and", "in", "for", "after", "to"), is the
+    # label's first line: joined in front, and the heading closed. A true category heading is a noun phrase and the
+    # levels beneath it are capitalised or numeric.
+    if (nzchar(.ppSquish(rawLabel)) && !is.na(catHeaderAt) && catHeaderAt == i - 1L &&
+        !is.na(catHeader) && i - 1L > capIdx &&
+        (grepl("^[[a-z(]", .ppSquish(rawLabel), perl = TRUE) ||
+           grepl("(?i)\\b(of|and|in|for|after|to|the)$", .ppSquish(lineTexts[i - 1L]), perl = TRUE))) {
+      rawLabel <- paste(.ppSquish(lineTexts[i - 1L]), .ppSquish(rawLabel))
+      say("  Row label \"", rawLabel, "\": its first line stood above the values.")
+      catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
+      catHeaderAt <- NA_integer_
+    }
     # A ROW LABEL THAT WRAPS ONTO THE NEXT LINE (2026-09-24, Loadsman
     # corpus, Polat 2015 DA). "Amount of intraoperative  561.67 +/- ..."
     # with "fluid (ml)" on the line beneath, "Infusion duration of
