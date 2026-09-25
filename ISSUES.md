@@ -132,6 +132,55 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 38. A table printed sideways is read upright
+
+**Status: fixed on `feat/rotated-table-page`, 2026-09-25**, from the
+corpus session's finding I1 (`RezkHiF2020`, *Hypertens Pregnancy* 2020,
+Loadsman corpus).
+
+- **The defect.** The baseline table — Table 1 "Maternal
+  characteristics", three arms of 164/160/162 — is printed rotated 90°
+  on page 5. `pdf_data()` reports every one of its words with the box
+  swapped (a few points wide, as tall as the word is long): exactly the
+  signature the watermark-rail stripper (2026-08-22) removes, so the
+  whole table vanished from the deterministic engine, and the caption
+  page-chooser handed the model the *outcomes* page. Both engines scored
+  Tables 2 and 3 (severe hypertension, NICU admission, neonatal
+  mortality…) as the baseline table: 46 categorical rows, P_FULL = 1.0.
+- **What changed.** `.ppRotatedBlock()` (pageLayout.R) finds a page's
+  rotated words — a multi-character word taller than it is wide — and,
+  when there are enough to be a table rather than a rail (at least 30,
+  and a fifth of the page's multi-character words; that page has 142 of
+  457), takes every rotated word plus the short words inside their box
+  (a "±" or "162)" is square and cannot show its rotation) and
+  transposes them into an upright page. The reading direction is read
+  from the caption: on a table rotated counter-clockwise (the usual
+  case) the word after "Table" sits *above* it on the page, so
+  x′ = pageHeight − (y + height); clockwise, x′ = y. The block is
+  appended to the document's pages before the rail stripper runs;
+  `pageSource` maps it back to the real page for the report ("Table on
+  page 5 (printed sideways; read upright)"), for the model's page image
+  and for the `pages` argument, and a sideways page has no look-ahead
+  and no continuation page.
+- **On the article.** "Table 1. Maternal characteristics." wins; SBP
+  152.12/151.13/151.1 (5.62/5.24/5.33), DBP, gestational age and
+  duration of hypertension read with n = 164/160/162 — the numbers the
+  corpus session read from the page — and `validateData` accepts the
+  table. Two residues: the three categorical rows print their levels
+  across the line ("20–30 31-40 78 (47.6%) 86 (52.4%) …"), a layout the
+  engine does not model, so they are skipped with a reason; and the arm
+  names are fragments until issue 37's header fix is in the same tree.
+- **Tests** (`tests/testthat/test-rotated-table-page.R`): the pdf()
+  device sets text sideways with `srt = 90` (`makeTablePdf()` now takes
+  it) and poppler reports it exactly as it reports the real page, so a
+  synthetic page with a rotated three-arm table beside upright prose
+  exercises the whole route — the block is found and transposed without
+  the prose, the caption and cells read in order, and the parse returns
+  the caption, the values, the three arm sizes and the *real* page
+  number; an upright page yields no block.
+
+---
+
 ## 37. The hybrid merge compares continuous variables arm by arm; a header's "(n = k)" belongs to the name on its left
 
 **Status: fixed on `fix/hybrid-merge-and-header-n`, 2026-09-25**, from
@@ -383,6 +432,10 @@ other way were each read on both snapshots:
   `corpus/checkCaptionStraddle.R`. The remaining movers are the known
   noise (16311286, 16480346) and 16792606's genuine "Duration of
   anaesthesia" row that Carlisle did not enter.
+  *Fourth misparse run (`fix/straddle-selection` at `42db921`, the tree
+  #339 merged):* **429 of 937 fully corroborated (45.8%)**, 5,006
+  uncorroborated pairs, 4,441 of Carlisle's missed — the best of the
+  series (baseline `e41609c`: 417 / 5,510 / 4,457).
 - `PMID_16311286` (3 → 0 corroborated): scorer noise on a broken page.
   Both readings — Table 1 as one arm with no N, ten "variables" mostly
   fragments, and Table 3, an outcome table — fail validation; the
