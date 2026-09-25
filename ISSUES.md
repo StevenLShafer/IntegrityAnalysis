@@ -132,6 +132,33 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 109. A variable's own n printed per cell, in brackets
+
+**Status: fixed on `feat/per-cell-n-in-brackets`, 2026-09-25**, from the
+corpus session's batch 25 AD6 (Fujii, thyroidectomy, PMID 9924225).
+
+- **The defect.** "Last menstrual cycle(days)[n] 15.3(3.2)[17]
+  16.2(2.9)[16] 16.1(3.6)[17] 15.4(3.8)[16]": the bracket after each
+  cell is the number of patients that cell summarises - the
+  premenopausal ones - not the arm's 25, and the row read with N 25 in
+  every arm. The tokenizer read the bracket as a stray plain number.
+- **What changed.** In the block walker's continuous rows, a bracketed
+  integer that ends the cell's own word, or stands within a few points
+  to its right, is that cell's N; where the arm N is known it must not
+  exceed it, and a bracketed range ("[33-63]", issue 63) never matches.
+  The other form of the same thing - 19358990's "16 (3)b" with a
+  footnote "b: for the 25 patients not in menopause" - is prose and is
+  not read.
+- **On the page.** The menstrual-cycle row carries N 17/16/17/16;
+  every other row keeps 25.
+- **Tests** (`tests/testthat/test-per-cell-n-in-brackets.R`): a rebuilt
+  page with the bracketed row, a bracket larger than the arm N (ignored)
+  and a range row (untouched) (1 expectation fails on the unfixed
+  code). The header, row-N, range, stratum, partial-arm, column-count,
+  gutter and Loadsman layout tests still pass.
+
+---
+
 ## 107. "_+" is soup too
 
 **Status: fixed on `fix/underscore-plus-is-soup`, 2026-09-25**, from the
