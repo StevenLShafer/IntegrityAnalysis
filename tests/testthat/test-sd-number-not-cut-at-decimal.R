@@ -29,12 +29,12 @@ test_that("a refused decimal SD leaves a bare mean, not a cell cut at the decima
   t <- tokLine(paste("40.1", pm, "7.5 45.3", pm, "43.2", pm, "8.3 42.5", pm, "9.4"))
   expect_identical(t$type, c("meanSD", "plain", "meanSD", "meanSD"))
   expect_identical(t$num2[t$type == "meanSD"], c(7.5, 8.3, 9.4))
-  # whole numbers were already safe; a comma decimal is refused the same way
   # a stray sign after a whole SD with no cell behind it: the cell stands
   # (the short-variable fixture's Height line as the glyph repair leaves it)
   t <- tokLine(paste("167.1", pm, "10.0", pm, "66.9 + l0.2 165.5", pm, "10.9"))
   expect_identical(t$type, c("meanSD", "plain", "meanSD"))
   expect_identical(t$num2[1], 10)
+  # whole numbers were already safe; a comma decimal is refused the same way
   t <- tokLine(paste("62", pm, "61", pm, "62", pm, "9"))
   expect_identical(t$type, c("plain", "plain", "meanSD"))
   t <- tokLine(paste("45,3", pm, "43,2", pm, "8,3"))
