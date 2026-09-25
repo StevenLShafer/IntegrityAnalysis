@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 114. A minus and one digit as the sign ("-6"), under an announced notation
+
+**Status: fixed on `fix/minus-digit-sign-at-slot`, 2026-09-26**, from
+the corpus session's batch 26 AE8 (CJA 1995, PMID 7534216, a scan under
+a RETRACTED watermark; Table I "Demographic data in normotensive and
+hypertensive patients").
+
+- **The defect.** "All values are expressed as mean + SD." over "59 -6
+  14  59 -6 11  56 + 11  56 + 10" and "154 -6 9  154 -6 9": the OCR
+  sets the plus-minus as a minus and a digit, the tokenizer reads "-6"
+  as a negative number, the cells fell apart, and the table read one
+  arm (Age and Height, first column only) and no Weight.
+- **What changed.** Under an announced notation, a word that is a minus
+  and a single digit, standing between two numbers at a slot the
+  block's other rows mark, is the sign (`.ppRepairPlusMinusGlyphs()`);
+  a "-6" off the slot, or without the announcement, stays a number, so
+  "-6 to -2" in a change row is untouched.
+- **On the page.** Four arms of 12/12/11/11 - Normotensive ET, LMA,
+  Hypertensive ET, LMA - with Age, Height and Weight in all four, every
+  cell as printed. The second-level names "LMA" carry no stratum prefix
+  (the two-level header names only its first column per stratum): a
+  naming residue, noted.
+- **Tests** (`tests/testthat/test-minus-digit-sign-at-slot.R`): the
+  helper under the announcement with a negative range left alone, its
+  refusal without the announcement, and a rebuilt page reading all four
+  arms of every row (8 expectations fail on the unfixed code). The
+  announced-soup, zero-repair, slot, glued-soup, junk-row and Loadsman
+  layout tests still pass.
+
 ## 113. A column fed by one token is not an arm column
 
 **Status: fixed on `fix/single-token-column-not-arm`, 2026-09-26**, from

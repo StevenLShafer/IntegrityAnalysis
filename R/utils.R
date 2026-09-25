@@ -1026,9 +1026,21 @@
     nextNum <- c(isNum(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
     gluedDigit <- glued & grepl("^[0-9]:", s, perl = TRUE)   # "5:5.4": a slot's evidence only
-    isSign <- isSoup(s) | (announced & s == annGlyph)
+    # A MINUS AND ONE DIGIT AS THE SIGN (2026-09-26, ISSUES.md issue 114; CJA
+    # 1995, PMID 7534216, the corpus session's batch 26 AE8): "All values
+    # are expressed as mean + SD." over "59 -6 14  59 -6 11  56 + 11  56 +
+    # 10" and "154 -6 9" - the OCR sets the plus-minus as "-6", which the
+    # tokenizer reads as a negative number, so the cell fell apart and the
+    # table read one arm. Under an announced notation, a word that is a
+    # minus and a single digit, standing between two numbers at a slot the
+    # block's other rows mark, is the sign. A negative single-digit value
+    # between two positive numbers at the sign column of a baseline table
+    # is not a thing a page prints.
+    minusDigit <- announced & grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & prevNum & nextNum & atSlot
+    isSign <- isSoup(s) | (announced & s == annGlyph) | minusDigit
     base <- prevNum & ((isSign & nextNum) | glued) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph))
+    base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
     # (a) a plain "+" between two numbers at a slot two or more lines mark
     # with the sign itself, or at any slot under an announced soup (issue 77)
