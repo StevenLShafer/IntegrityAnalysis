@@ -551,6 +551,23 @@
     }
   }
 
+  # A STRATUM LINE (issue 55): a labelled "(n = k)" line after the first
+  # header line - "Young patients (n = 75) (n = 25) (n = 25) (n = 25)" under
+  # the column header's "(n = 50)" - is not the header, wherever it sits:
+  # the first one often stands ABOVE the first data row. Marked here so
+  # the header reads its arm sizes from the column header alone, and the
+  # block walker opens the stratum when it reaches the line.
+  hdrAll <- which(kind == "header"); hdrAll <- hdrAll[hdrAll > capIdx]
+  if (length(hdrAll) >= 2) for (h in hdrAll[-1]) {
+    m1 <- regexpr("(?i)\\(?\\s*n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)
+    if (m1 < 1) next
+    lead <- .ppSquish(sub("\\(\\s*$", "", substr(lineTexts[h], 1, m1 - 1)))
+    if (nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
+        !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
+               lead, perl = TRUE))
+      kind[h] <- "stratum"
+  }
+
   # ---- Header: arm names and arm N ----------------------------------------
   headerIdx <- which(kind %in% c("header", "label"))
   headerIdx <- headerIdx[headerIdx > capIdx & headerIdx < firstData]
@@ -851,6 +868,8 @@
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
   rowNLines    <- character(0) # rows whose N came from their own "(n = k)" line (issue 47)
+  stratumStarts <- list()      # where each stratum begins in outRows, and its name (issue 55)
+  armNHeader    <- armN        # the column header's arm sizes, for the arms table
   pctApproxRows <- character(0) # rows using the opt-in approximation
   # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
   # counts a printed percentage allows are decided for the whole
@@ -919,7 +938,8 @@
     }
   }
 
-  for (i in seq(firstData, lastData)) {
+  loopStart <- min(c(firstData, which(kind == "stratum")))   # a stratum may open above the first row
+  for (i in seq(loopStart, lastData)) {
     if (kind[i] == "label") {
       if (i %in% consumedLabel) next
       lbl <- .ppCleanLabel(lineTexts[i])
@@ -932,6 +952,12 @@
       # 1995;42:1096) opened a heading and the ticks beneath became its
       # levels (issue 46).
       if (grepl("|", lbl, fixed = TRUE)) next
+      # A FOOTNOTE never opens a heading: a label line that begins with a
+      # footnote marker (*, dagger, double dagger, section sign) is the
+      # table's note, and on Fujii 2006 (PMID 16982288, issue 55) "*No
+      # significant between-group differences were found." became a
+      # category heading for the stray numbers beneath it.
+      if (grepl("^[*\u2020\u2021\u00a7]", lbl, perl = TRUE)) next
       # A journal watermark ("Downloaded from http://...") or copyright
       # rail interleaves with the table's own lines on some published
       # PDFs; taken as a label line it OVERWRITES the open block header
@@ -967,33 +993,63 @@
     # the printed 12/13/12/12, kept both and double-counted the variable.
     # A "(n = k)" line directly under a continuous row, with each count
     # under one of the row's cells, is that row's N, arm by arm.
-    if (kind[i] == "header" && i > firstData && length(outRows) > 0 &&
-        identical(outRows[[length(outRows)]]$type, "continuous")) {
+    # ... and a LABELLED "(n = k)" line is a STRATUM HEADER (2026-09-25,
+    # ISSUES.md issue 55; the corpus session's M1, Fujii & Nakayama 2006,
+    # PMID 16982288): "Young patients (n = 75) (n = 25) (n = 25) (n = 25)"
+    # and, half-way down, "Older patients (n = 75) (n = 25) (n = 25) (n =
+    # 25)", each followed by the same variables; the column header says
+    # (n = 50). The rows beneath a stratum line carry that line's arm
+    # sizes, and the stratum's name prefixes their names ("Young patients:
+    # Age, y"), so the two strata are two sets of variables rather than
+    # one set read twice with " 2" suffixes. A bare line - no label before
+    # its first "(n =" - is the row above's own n (issue 47), as before.
+    if ((kind[i] == "header" && i > firstData) || kind[i] == "stratum") {
       d      <- lines[[i]]
       joined <- paste(d$text, collapse = " ")
       wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
       wordEnd   <- wordStart + nchar(d$text) - 1
       m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
       if (m[1] != -1) {
-        last <- outRows[[length(outRows)]]
-        set  <- integer(0)
+        lead <- .ppSquish(sub("\\(\\s*$", "", substr(joined, 1, m[1] - 1)))
+        # the per-arm sizes on the line; a match left of the first arm column
+        # (a stratum's own total, "(n = 75)") is not an arm's
+        gapHalf <- if (cols$n > 1) min(diff(sort(cols$centers))) / 2 else 100
+        nOf <- rep(NA_integer_, nArms)
         for (q in seq_along(m)) {
           s0 <- m[q]; e0 <- s0 + attr(m, "match.length")[q] - 1
           wFirst <- which(wordEnd >= s0)[1]; wLast <- rev(which(wordStart <= e0))[1]
           xMid <- (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
+          if (xMid < min(cols$centers[arms]) - gapHalf) next
           j    <- match(cols$assign(xMid), arms)
           nval <- suppressWarnings(as.integer(gsub("\\D", "", substr(joined, s0, e0))))
-          if (is.na(j) || is.na(nval) || is.null(last$perArm[[j]])) next
-          last$perArm[[j]]$N <- nval
-          set <- c(set, j)
+          if (!is.na(j) && !is.na(nval)) nOf[j] <- nval
         }
-        if (length(set)) {
-          outRows[[length(outRows)]] <- last
-          rowNLines <- c(rowNLines, last$row)
-          say("  row \"", last$row, "\": its own (n = k) line gives N = ",
-              paste(vapply(last$perArm[set], function(v) as.character(v$N), character(1)),
-                    collapse = "/"), " for arm(s) ", paste(set, collapse = ","),
-              " (the printed row-level n).")
+        isStratum <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
+          !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
+                 lead, perl = TRUE)
+        if (isStratum) {
+          stratumStarts[[length(stratumStarts) + 1]] <- list(at = length(outRows), name = lead)
+          for (j in which(!is.na(nOf))) armN[arms[j]] <- nOf[j]
+          catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
+          say("  stratum \"", lead, "\": arm N = ",
+              paste(ifelse(is.na(nOf), "?", nOf), collapse = "/"), " for the rows beneath.")
+        } else if (length(outRows) > 0 &&
+                   identical(outRows[[length(outRows)]]$type, "continuous")) {
+          last <- outRows[[length(outRows)]]
+          set  <- integer(0)
+          for (j in which(!is.na(nOf))) {
+            if (is.null(last$perArm[[j]])) next
+            last$perArm[[j]]$N <- nOf[j]
+            set <- c(set, j)
+          }
+          if (length(set)) {
+            outRows[[length(outRows)]] <- last
+            rowNLines <- c(rowNLines, last$row)
+            say("  row \"", last$row, "\": its own (n = k) line gives N = ",
+                paste(vapply(last$perArm[set], function(v) as.character(v$N), character(1)),
+                      collapse = "/"), " for arm(s) ", paste(set, collapse = ","),
+                " (the printed row-level n).")
+          }
         }
       }
       next
@@ -1669,6 +1725,25 @@
     }
   }
 
+  # The rows of a stratum carry its name (issue 55). A name .ppUniqueName()
+  # had to suffix because an earlier stratum already used it ("Age, y 2")
+  # takes its base back: the prefix now tells the two apart.
+  if (length(stratumStarts) && length(outRows)) {
+    earlier <- character(0)
+    bounds  <- c(vapply(stratumStarts, function(s) s$at, integer(1)), length(outRows))
+    if (bounds[1] > 0) earlier <- vapply(outRows[seq_len(bounds[1])], function(r) r$row, character(1))
+    for (k in seq_along(stratumStarts)) {
+      idx <- seq_len(length(outRows))
+      idx <- idx[idx > bounds[k] & idx <= bounds[k + 1]]
+      for (r in idx) {
+        nm   <- outRows[[r]]$row
+        base <- sub("\\s+\\d+$", "", nm)
+        if (base != nm && base %in% earlier) nm <- base
+        outRows[[r]]$row <- paste0(stratumStarts[[k]]$name, ": ", nm)
+      }
+      earlier <- c(earlier, vapply(outRows[idx], function(r) sub("\\s+\\d+$", "", sub("^.*?: ", "", r$row)), character(1)))
+    }
+  }
   if (length(outRows) == 0) return(NULL)
 
   # ---- THE JOINT FAIL-SAFE FILL -------------------------------------------
@@ -1957,7 +2032,8 @@
   if (!any(keep)) keep <- rep(TRUE, nArms)
 
   list(data       = DATA,
-       arms       = data.frame(arm = armName[arms][keep], N = armN[arms][keep],
+       arms       = data.frame(arm = armName[arms][keep],
+                               N = (if (length(stratumStarts)) armNHeader else armN)[arms][keep],
                                stringsAsFactors = FALSE),
        armNSource = armNSource[arms][keep],
        derivedCounts = unique(pctDerived),
