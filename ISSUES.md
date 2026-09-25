@@ -146,14 +146,21 @@ a scan; three arms of 13, 12 and 12).
   as "I1", has no route.)
 - **What changed.** `.ppDashIDash` accepts a one for the I. Between two
   numbers on a table line "-1-" can be nothing else: a hyphenated code
-  begins with a letter and a range has no second hyphen.
+  begins with a letter and a range has no second hyphen. But an address
+  has the shape too - "2-1-1, Hongo, Toride City" on the title page of
+  BJA1999_340 (Loadsman corpus) read as a cell "2 +/- 1" and made a
+  one-cell table of an affiliation line on the first cut - so the digit
+  form is held to a cell's numbers: two digits or a decimal on each
+  side, and no comma on the number after the sign. A one-digit SD after
+  "-1-" is missed and left to the slot rule.
 - **On the page.** Age reads 63 +/- 8 and 62 +/- 11 in the first and
   third arms (the "+" of the first by the slot rule once the third's
   sign is genuine); the second arm's Age stays unread.
 - **Tests** (`tests/testthat/test-dash-i-dash-is-the-sign.R`): the
-  helper on that line, on "-1-" and "--1-" standing alone, and the
-  rebuilt page with one "-1-" cell (4 expectations fail on the unfixed
-  code). The slot and Loadsman layout tests still pass.
+  helper on that line, on "-1-" and "--1-" standing alone, on three
+  address-shaped lines (untouched), and the rebuilt page with one "-1-"
+  cell (4 expectations fail on the unfixed code). The slot and Loadsman
+  layout tests still pass; the Loadsman count is unchanged at 81.
 
 ## 123. "-I-" between two numbers is the plus-minus sign
 

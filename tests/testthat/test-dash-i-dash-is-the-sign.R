@@ -40,6 +40,11 @@ test_that("the helper restores the sign alone, glued before, after, and both, an
   expect_identical(r$lines[[1]]$text, c("Age", "(yr)", "63+8", "60", "-k", "I1", "62", pm, "11"))
   r <- .ppRepairDashIDash(list(words("HR", "72", "-1-", "11", "75", "--1-", "10")))
   expect_identical(r$lines[[1]]$text, c("HR", "72", pm, "11", "75", pm, "10"))
+  # ... but not an address: the digit form needs a cell's numbers on both
+  # sides and no comma after (BJA1999_340's "2-1-1, Hongo" read as "2 +/- 1")
+  r <- .ppRepairDashIDash(list(words("Hospital,", "2-1-1,", "Hongo,", "Toride"), words("at", "12-1-1", "Hongo"),
+                               words("5", "-1-", "3", "ratio")))
+  expect_identical(r$repaired, 0L)
   # prose forms are not signs: no number on both sides
   r <- .ppRepairDashIDash(list(words("ASA-I-", "bis", "II"), words("HS-I-IES"), words("ROCHA-I-SILVA", "1990")))
   expect_identical(r$repaired, 0L)
