@@ -155,6 +155,46 @@ from the corpus session's batch 25 AD8 (Fujii, PMID 11004073).
   belongs to a dose, and one with four stray words (3 expectations fail
   on the unfixed code). The arm-size and layout tests still pass.
 
+---
+
+## 101. Long layout: the group count from the legend, and a caption sentence is not the header
+
+**Status: fixed on `feat/long-layout-k-from-legend`, 2026-09-25**, from
+the corpus session's batch 24 AC1's fifth paper (Fujii, Br J Anaesth
+2001, PMID 11573601).
+
+- **The defect.** Two things. The caption's legend sentence - "study
+  drug, group II received propofol ... different from baseline
+  (P<0.05)" - carries both a Group word and a Baseline word, and the
+  reader's gate took it for the header line: a Group column at the
+  sentence's "group", a tolerance of two hundred points, and the arm
+  names filled with caption text ("=integrated di-cost", "of the costal
+  part"). And on this page only the first row's "I" survives in the
+  text layer, so the largest numeral seen was I and the rule of issue
+  95, which indexes a value row without a numeral by its place in the
+  run, had no run to fill.
+- **What changed.** A header line is a row of column names: twelve
+  words at most, none ending in a comma, a semicolon or a full stop; a
+  sentence with both words is skipped. And when the block shows a
+  numeral but no numeral above I, the legend - the caption lines, the
+  footnote, the ten lines beneath the block - is read for "group
+  <numeral>" and the largest bounds the run (two to eight); a legend
+  with no numeral in the block licenses nothing.
+- **On the page.** Three arms of 10 (Group I, II, III), eight variables:
+  Heart rate, MAP, and the 20-Hz and 100-Hz rows of Pdi, %Edi-cru and
+  %Edi-cost. One residue: the "P di (cm H 2 O)" heading line carries a
+  bare "2" and so counts as data, and its rows are prefixed with the
+  heading above it ("Haemodynamics: 20 Hz stimulation") - the numbers
+  are right and the rows are distinct.
+- **Tests** (`tests/testthat/test-long-layout-k-from-legend.R`): a
+  rebuilt page whose caption carries the legend sentence and whose
+  rows keep only the first "I" reads three arms of ten and three
+  variables from the Baseline column (9 expectations fail on the
+  unfixed code). The long-layout, canine, heading, letter-group and
+  Loadsman layout tests still pass.
+
+---
+
 ## 100. "(n =3o)": the letter o for a zero after a glued equals sign
 
 **Status: fixed on `fix/size-zero-after-equals`, 2026-09-25**, from the
