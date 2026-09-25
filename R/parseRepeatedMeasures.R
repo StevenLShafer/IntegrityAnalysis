@@ -73,7 +73,15 @@
 # letter or two ("C", "N", "A", "B"), or a roman numeral (issue 76). The
 # labels are numbered in the order they first appear, and the run rule
 # of step 3 applies to the numbers.
-.ppLongGroupLabel <- "^([A-Z]{1,2}|I{1,3}|IV|V|VI{1,3})$"
+# ... OR A ROMAN NUMERAL WITH A LETTER SUFFIX (2026-09-26, ISSUES.md issue
+# 110; Fujii, CJA 2000, PMID 11132748, the corpus session's batch 26 AE1):
+# "Ia" and "Ib" under Group, the arms of one experiment among four
+# ("Groups Ia (n=6), Ib (n=8), IIa (n=8) and IIb (n=8)"). Neither a
+# capital-letter label nor a plain numeral, so the reader stood aside and
+# the wide reader took Baseline and 30 min for the arms and each group
+# row for a variable. Such a label is a LETTER label: indexed in the
+# order it first appears, the arm named "Group Ia".
+.ppLongGroupLabel <- "^([A-Z]{1,2}|I{1,3}|IV|V|VI{1,3}|(?:I{1,3}|IV|V|VI{1,3})[a-d])$"
 
 # THE ROW'S LABEL, AND THE HEADING ABOVE ITS BLOCK (2026-09-25, ISSUES.md
 # issue 91; Fujii 2003, PMID 12933396, the corpus session's batch 23).
@@ -433,27 +441,23 @@
   # .ppGroupNFor() gives the size only when every "into k groups of n"
   # statement for THIS arm count agrees; a pilot of eight and a study of
   # ten leave N missing rather than guessed.
-  stated <- .ppGroupNFor(textGroupN, k)
-  if (!is.na(stated$n)) {
-    armN[]      <- stated$n
-    armSource[] <- paste0("document text (\"...", stated$snippet, "...\")")
-  }
-  if (any(is.na(armN)) && !is.null(textCands) && nrow(textCands) > 0) {
-    fill  <- .ppFillArmNFromText(armN, armName, textCands,
-                                 if (is.null(textTotals)) integer(0) else textTotals)
-    newly <- is.na(armN) & !is.na(fill$N)
-    armN[newly]      <- fill$N[newly]
-    armSource[newly] <- fill$source[newly]
-  }
+  # THE NAMED SIZE FIRST (2026-09-26, issue 110; PMID 11132748): "Groups Ia
+  # (n=6), Ib (n=8), IIa (n=8) and IIb (n=8)" names each arm's size, while
+  # "In Groups IIa, IIb, and IIc (n=8 each)" - a statement for every group
+  # of ANOTHER experiment on the same page - is the count-less kind that
+  # serves any arm count (issue 89), and it used to be applied first, giving
+  # Ia eight. A size that names the group wins; the statements fill what
+  # the names leave.
   # a letter group's size is often stated as "(Group C, n = 10)" in the
   # text (issue 76): a size mention whose preceding words END with "Group
   # C" is that arm's, when every such mention agrees
-  if (length(letterSeen) && any(is.na(armN)) && !is.null(textCands) && nrow(textCands) > 0 &&
+  if (length(letterSeen) && !is.null(textCands) && nrow(textCands) > 0 &&
       !is.null(textCands$before)) {
     for (kk in which(is.na(armN))) {
       L <- letterSeen[kk]
       if (is.na(L)) next
-      hit <- grepl(paste0("(?i)\\bgroup\\s+", L, "\\s*[,;:]?\\s*\\(?\\s*$"), textCands$before, perl = TRUE)
+      hit <- grepl(paste0("(?i)\\bgroups?\\s+(?:[A-Za-z]{1,4}\\s*\\([^()]{0,12}\\)\\s*,\\s*)*", L,
+                          "\\s*[,;:]?\\s*\\(?\\s*$"), textCands$before, perl = TRUE)
       ns  <- unique(textCands$n[hit])
       if (length(ns) == 1L) {
         armN[kk]      <- as.integer(ns)
@@ -462,6 +466,19 @@
     }
   }
 
+  stated <- .ppGroupNFor(textGroupN, k)
+  if (!is.na(stated$n) && any(is.na(armN))) {
+    blank <- is.na(armN)
+    armN[blank]      <- stated$n
+    armSource[blank] <- paste0("document text (\"...", stated$snippet, "...\")")
+  }
+  if (any(is.na(armN)) && !is.null(textCands) && nrow(textCands) > 0) {
+    fill  <- .ppFillArmNFromText(armN, armName, textCands,
+                                 if (is.null(textTotals)) integer(0) else textTotals)
+    newly <- is.na(armN) & !is.na(fill$N)
+    armN[newly]      <- fill$N[newly]
+    armSource[newly] <- fill$source[newly]
+  }
   ## ---- 6. SD or SE: the same footnote rule the wide path uses -------------
   footTxt <- paste(footnoteInfo, collapse = " ")
   footSaysSE <- grepl("(?i)\\bs\\.?e\\.?m\\.?\\b|\\bs\\.?e\\.?\\b|standard\\s+error",
