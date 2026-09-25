@@ -105,3 +105,34 @@ test_that("the helper: a slot needs two lines, a negative number is never a glue
   one[[2]]$text[5] <- "n"
   expect_identical(.ppRepairPlusMinusGlyphs(one, 1L)$repaired, 0L)
 })
+
+test_that("the evidence is this table's alone, and a lone hyphen is a range unless announced", {
+  mk <- function(text, x) data.frame(text = text, x = x, width = rep(8, length(text)),
+                                     y = 0, stringsAsFactors = FALSE)
+  soupRows <- list(
+    mk(c("Age", "46.7", ":i:", "7.7", "46.3", "-t-", "11.8"), c(60, 180, 200, 210, 240, 260, 270)),
+    mk(c("Height", "152.9", "-I-", "5.4", "154.4", "4-", "4.9"), c(60, 180, 200, 210, 240, 260, 270)))
+  # a LATER table's announcement licenses nothing here (CodeRabbit on PR #370)
+  later <- c(list(mk(c("Table", "1", "Patient", "data"), c(60, 90, 100, 140))), soupRows,
+             list(mk(c("Table", "2", "Outcomes"), c(60, 90, 100)),
+                  mk(c("Values", "are", "mean", "-t-", "SD."), c(60, 90, 110, 130, 150))))
+  expect_identical(.ppRepairPlusMinusGlyphs(later, capIdx = 1L)$repaired, 0L)
+  # a later table's sign columns are not evidence either
+  laterSigns <- c(list(mk(c("Table", "1", "Patient", "data"), c(60, 90, 100, 140))), soupRows,
+                  list(mk(c("Table", "2", "Outcomes"), c(60, 90, 100)),
+                       mk(c("Pain", "3.1", "±", "1.0", "2.9", "±", "1.1"), c(60, 180, 200, 210, 240, 260, 270)),
+                       mk(c("Nausea", "1.1", "±", "0.4", "1.3", "±", "0.5"), c(60, 180, 200, 210, 240, 260, 270))))
+  expect_identical(.ppRepairPlusMinusGlyphs(laterSigns, capIdx = 1L)$repaired, 0L)
+  # this table's own caption line announces the notation
+  own <- c(list(mk(c("Table", "1", "Patient", "data", "(mean", "-t-", "SD)"), c(60, 90, 100, 140, 160, 190, 210))), soupRows)
+  expect_identical(.ppRepairPlusMinusGlyphs(own, capIdx = 1L)$repaired, 4L)
+  # a lone hyphen between two numbers is a range, not a sign - even under an announcement
+  ranges <- c(own, list(mk(c("Range", "20", "-", "30", "40", "-", "50"), c(60, 180, 200, 210, 240, 260, 270))))
+  rep <- .ppRepairPlusMinusGlyphs(ranges, capIdx = 1L)
+  expect_identical(rep$repaired, 4L)
+  expect_identical(rep$lines[[4]]$text, c("Range", "20", "-", "30", "40", "-", "50"))
+  # unless the hyphen IS the announced glyph
+  dash <- c(list(mk(c("Table", "1", "Patient", "data", "(mean", "-", "SD)"), c(60, 90, 100, 140, 160, 190, 210))),
+            list(mk(c("Age", "46", "-", "7", "45", "-", "8"), c(60, 180, 200, 210, 240, 260, 270))))
+  expect_identical(.ppRepairPlusMinusGlyphs(dash, capIdx = 1L)$repaired, 2L)
+})

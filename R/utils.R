@@ -749,7 +749,13 @@
 # or announce the notation with a soup glyph ("All values are expressed
 # as mean -t- SD." - then every line with two or more soup cells is
 # repaired, slot or no slot); and a glued soup must be at least two
-# characters, so a negative number ("-32") is never touched.
+# characters, so a negative number ("-32") is never touched. Two more
+# (CodeRabbit on PR #370): the evidence is this table's alone - the lines
+# stop at the next caption, so a later table's announcement or sign
+# columns license nothing here, while this table's own caption line does
+# count for the announcement; and a one-character word ("-" between "20"
+# and "30" is a range, not a sign) is repaired only when it IS the
+# announced glyph.
 #
 # `lines` is the block's list of word data frames (text, x, width, ...);
 # the lines from `capIdx + 1` on are read. Returns the lines with the
@@ -758,8 +764,14 @@
 .ppSoupGlyph <- "^[-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
 .ppRepairPlusMinusGlyphs <- function(lines, capIdx = 0L, tol = 6) {
   n <- length(lines)
-  if (n <= capIdx + 1L) return(list(lines = lines, repaired = 0L))
+  none <- list(lines = lines, repaired = 0L)
+  if (n <= capIdx) return(none)
   idx <- seq(capIdx + 1L, n)
+  # this table's lines end where the next caption starts
+  texts <- vapply(lines, function(L) paste(L$text, collapse = " "), character(1))
+  later <- idx[vapply(texts[idx], .ppCaptionStart, logical(1))]
+  if (length(later)) idx <- idx[idx < later[1]]
+  if (!length(idx)) return(none)
   isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
   true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "+/-", "+-")
   # a soup word is not a number and carries at least one stroke
@@ -776,12 +788,17 @@
     nTrue <- nTrue + sum(true(s))
     if (any(g)) { markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g))) }
   }
-  # "mean -t- SD" announces the soup glyph as the notation
-  announced <- any(vapply(lines[idx], function(L) {
-    txt <- paste(L$text, collapse = " ")
+  # "mean -t- SD" announces the soup glyph as the notation - in the
+  # table's own caption line or its footnote
+  annGlyph <- NA_character_
+  for (txt in texts[c(if (capIdx >= 1L) capIdx, idx)]) {
     m <- regmatches(txt, regexpr("(?i)\\bmean\\s+(\\S{1,4})\\s+s\\.?d\\b", txt, perl = TRUE))
-    length(m) == 1L && isSoup(strsplit(m, "\\s+")[[1]][2])
-  }, logical(1)))
+    if (length(m) == 1L) {
+      g <- strsplit(m, "\\s+")[[1]][2]
+      if (isSoup(g)) { annGlyph <- g; break }
+    }
+  }
+  announced <- !is.na(annGlyph)
   # (ii) slots: clusters of marker left edges set on two or more lines
   slots <- numeric(0)
   if (length(markX) > 0L) {
@@ -791,8 +808,7 @@
       if (length(unique(ml[k])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
     slots <- slots[!is.na(slots)]
   }
-  if (!announced && (nTrue < 2L || length(slots) == 0L))
-    return(list(lines = lines, repaired = 0L))
+  if (!announced && (nTrue < 2L || length(slots) == 0L)) return(none)
   # (iii) the repair, line by line
   repaired <- 0L
   soupGlued <- "^([-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{2,4})(\\d+(?:[.,]\\d+)*)$"
@@ -803,7 +819,8 @@
     prevNum <- c(FALSE, isNum(s[-length(s)]))
     nextNum <- c(isNum(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
-    base <- prevNum & ((isSoup(s) & nextNum) | glued) & !true(s) & s != "+"
+    base <- prevNum & ((isSoup(s) & nextNum) | glued) & !true(s) & s != "+" &
+      (nchar(s) > 1L | (announced & s == annGlyph))
     hit  <- base & (atSlot | (announced & sum(base) >= 2L))
     if (!any(hit)) next
     out <- vector("list", nrow(L))
