@@ -530,6 +530,23 @@ a contract decision held for Steve (issue 35).
 
 Real-article checks: `corpus/checkLoadsman.R` (skips when the corpus is absent).
 
+### 05g — A table printed sideways (2026-09-25, issue 38)
+
+A wide table is often set rotated 90° on a portrait page. `pdf_data()` reports each of
+its words with the box swapped — a few points wide, as tall as the word is long — which
+is exactly the signature §05b's watermark-rail stripper removes, so the whole table
+vanished from the deterministic engine and the caption page-chooser handed the model the
+outcomes page (RezkHiF2020, the corpus session's I1). `.ppRotatedBlock()` finds a page's
+rotated words and, when there are enough to be a table rather than a rail (≥ 30 and a
+fifth of the page's multi-character words), transposes every rotated word plus the short
+words inside their box into an upright page, reading direction taken from the caption
+(the word after "Table" sits above it when the table was rotated counter-clockwise, the
+usual case). The block is appended to the document's pages **before** the rail stripper
+runs; `pageSource` maps it back to the real page for the report, the model's page image
+and the `pages` argument, and a sideways page has no look-ahead and no continuation. Test:
+`test-rotated-table-page.R`, a synthetic sideways table set with the pdf() device's
+`srt = 90`.
+
 ## Files
 
 | File | Role |

@@ -1711,6 +1711,26 @@ parseBaselineTableHeuristics <- function(pdfFile,
   allPages <- if (isImage) .ppImageData(pdfFile)
               else if (isTRUE(ocr)) .ppOcrPagesAt(pdfFile, ocrDpi, pages)
               else .ppPdfData(pdfFile)
+  # A TABLE PRINTED SIDEWAYS becomes an extra, upright page (2026-09-25,
+  # issue 38, .ppRotatedBlock in pageLayout.R): pageSource maps every
+  # page index back to the real page it came from - the first nReal are
+  # themselves - for the report and for the model's page image. Done
+  # BEFORE the rail stripper, which would otherwise remove the table.
+  nReal      <- length(allPages)
+  pageSource <- seq_len(nReal)
+  if (!isImage && !isTRUE(ocr) && nReal > 0) {
+    pageH <- tryCatch(pdftools::pdf_pagesize(pdfFile)$height, error = function(e) NULL)
+    if (!is.null(pageH) && length(pageH) == nReal)
+      for (p in seq_len(nReal)) {
+        rb <- .ppRotatedBlock(allPages[[p]], pageH[p])
+        if (!is.null(rb)) {
+          allPages[[length(allPages) + 1L]] <- rb
+          pageSource <- c(pageSource, p)
+          say("Page ", p, " carries a table printed sideways (", nrow(rb),
+              " words): read as an upright page.")
+        }
+      }
+  }
   # Submitted manuscripts number every line down the left margin; strip the
   # rail before anything downstream sees it (2026-08-20, see pageLayout.R).
   allPages <- lapply(allPages, .ppStripLineNumberRail)
@@ -1733,7 +1753,10 @@ parseBaselineTableHeuristics <- function(pdfFile,
          if (isTRUE(ocr)) " (OCR produced no words either)."
          else " - it is a scanned image. Re-run with ocr = TRUE.")
   pageIdx <- if (is.null(pages)) seq_along(allPages) else
-    intersect(pages, seq_along(allPages))
+    intersect(pages, seq_len(nReal))
+  # a requested real page brings its sideways-table page along
+  if (!is.null(pages))
+    pageIdx <- c(pageIdx, which(seq_along(pageSource) > nReal & pageSource %in% pageIdx))
   if (length(pageIdx) == 0)
     stop("No such page in ", pdfFile, ".")
 
@@ -1798,7 +1821,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
               page = p, mode = mode, band = b, lines = cLines,
               lineTexts = cTexts, capIdx = li,
               caption = cCap, capScore = cs)
-          if (isTRUE(anchors$startsBlock[a]) && p < length(allPages)) {
+          if (isTRUE(anchors$startsBlock[a]) && p < nReal) {   # only a real page has a next page
             # Fewer than two data-looking lines (two or more printed
             # numbers) below the caption: the table is not on this page.
             below <- if (li < length(cTexts))
@@ -1941,7 +1964,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
     # reported only "No usable baseline table" with no way to see WHY
     # each table was rejected. The label identifies the candidate the
     # way the winner is announced below: page, layout, caption snippet.
-    whoIs <- paste0("Candidate ", i, "/", length(cand), " (page ", cc$page,
+    whoIs <- paste0("Candidate ", i, "/", length(cand), " (page ", pageSource[cc$page],
+                    if (cc$page > nReal) " sideways" else "",
                     ", ", if (cc$mode == "columns")
                       paste0("column ", cc$band) else "full width",
                     if (!is.na(cc$caption))
@@ -2017,12 +2041,12 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # Only a full-width winner is extended: appending full-width lines to a
   # column band would mix two different readings of the page, and journal
   # two-column tables repeat their caption when they continue anyway.
-  bestPages <- bestCand$page
-  if (bestCand$mode == "single") {
+  bestPages <- pageSource[bestCand$page]
+  if (bestCand$mode == "single" && bestCand$page <= nReal) {   # a sideways table has no next page
     extLines <- bestCand$lines
     extTexts <- bestCand$lineTexts
     p2 <- bestCand$page
-    while (p2 < length(allPages)) {
+    while (p2 < nReal) {
       p2 <- p2 + 1
       w2 <- allPages[[p2]]
       if (is.null(w2) || nrow(w2) < 10) break
@@ -2050,7 +2074,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
     }
   }
 
-  say("Table on page ", bestCand$page,
+  say("Table on page ", pageSource[bestCand$page],
+      if (bestCand$page > nReal) " (printed sideways; read upright)" else "",
       if (bestCand$mode == "columns")
         paste0(" (column ", bestCand$band, ")") else " (full width)",
       if (!is.na(bestCand$caption))

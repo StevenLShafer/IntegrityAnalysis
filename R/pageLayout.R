@@ -212,6 +212,71 @@
   pageWords[!drop, , drop = FALSE]
 }
 
+# A TABLE PRINTED SIDEWAYS (2026-09-25, ISSUES.md issue 38; the corpus
+# session's I1, RezkHiF2020). A wide table is often set rotated 90 degrees
+# on a portrait page. pdf_data() reports each rotated word with its box
+# swapped - a few points wide, as tall as the word is long - exactly the
+# signature the watermark-rail stripper above removes, so the whole table
+# vanished from the deterministic engine, and the caption page-chooser
+# handed the model the OUTCOMES page instead. Here the rotated words of a
+# page are found (a multi-character word taller than it is wide), and
+# when there are enough of them to be a table rather than a rail - at
+# least 30, and a fifth of the page's multi-character words - every word
+# in their x-band (short words such as "8.21" or "±" are square and would
+# not show as rotated) is transposed into an upright page: x' runs along
+# the reading direction, y' across it. The block's reading direction is
+# read from its caption: on a table rotated counter-clockwise (the usual
+# case - the top of the table faces the left margin) the word after
+# "Table" sits ABOVE it on the page, so x' = pageHeight - (y + height);
+# clockwise, below, so x' = y. The result is appended to the document's
+# pages as an extra page that reads through the ordinary pipeline; the
+# driver maps it back to the real page for reporting and for the model's
+# page image.
+.ppRotatedBlock <- function(w, pageHeight) {
+  if (is.null(w) || nrow(w) < 30) return(NULL)
+  multi <- nchar(w$text) >= 3
+  rot   <- multi & w$height > w$width
+  if (sum(rot) < 30 || mean(rot[multi]) < 0.2) return(NULL)
+  # the block: every rotated word, plus the short words (a "±", a "162)")
+  # inside the rotated words' box - a short word is as wide as it is tall
+  # and cannot show its rotation; upright prose in the same x-band but
+  # outside the box is left out
+  x0 <- min(w$x[rot]) - 6; x1 <- max(w$x[rot] + w$width[rot]) + 6
+  y0 <- min(w$y[rot]) - 6; y1 <- max(w$y[rot] + w$height[rot]) + 6
+  inBox <- w$x >= x0 & w$x + w$width <= x1 & w$y >= y0 & w$y + w$height <= y1
+  keep  <- rot | (!multi & inBox)
+  blk <- w[keep, , drop = FALSE]
+  rot <- rot[keep]
+  if (nrow(blk) < 30) return(NULL)
+  # reading direction from a caption anchor: the word that follows
+  # "Table" in the same column of text
+  ccw <- TRUE
+  ti <- which(rot & grepl("(?i)^tab(le|\\.)$", blk$text))
+  if (length(ti)) {
+    i <- ti[1]
+    same <- which(abs(blk$x - blk$x[i]) <= 2 & seq_len(nrow(blk)) != i)
+    if (length(same)) {
+      # nearest neighbour in that column, by gap from the anchor's box
+      gapAbove <- blk$y[i] - (blk$y[same] + blk$height[same])
+      gapBelow <- blk$y[same] - (blk$y[i] + blk$height[i])
+      above <- same[gapAbove >= 0]; below <- same[gapBelow >= 0]
+      dA <- if (length(above)) min(gapAbove[gapAbove >= 0]) else Inf
+      dB <- if (length(below)) min(gapBelow[gapBelow >= 0]) else Inf
+      ccw <- dA <= dB
+    }
+  }
+  out <- blk
+  if (ccw) {
+    out$x <- pageHeight - (blk$y + blk$height)
+  } else {
+    out$x <- blk$y
+  }
+  out$y      <- blk$x
+  out$width  <- blk$height
+  out$height <- blk$width
+  out[order(out$y, out$x), , drop = FALSE]
+}
+
 # ---------------------------------------------------------------------------
 # Table captions: "Table 1", "TABLE I", "Tab. 2"
 # ---------------------------------------------------------------------------

@@ -25,7 +25,11 @@ makeTablePdf <- function(file, cells) {
   graphics::plot.window(xlim = c(0, 612), ylim = c(0, 792))
   for (cell in cells) {
     adj <- if (is.null(cell$adj)) 0 else cell$adj
-    graphics::text(cell$x, 792 - cell$y, cell$text, adj = c(adj, 1), cex = 0.85)
+    # srt = 90 sets a cell sideways (a table printed rotated, issue 38);
+    # poppler then reports the word with its box swapped, as it does for
+    # a real rotated table
+    srt <- if (is.null(cell$srt)) 0 else cell$srt
+    graphics::text(cell$x, 792 - cell$y, cell$text, adj = c(adj, 1), cex = 0.85, srt = srt)
   }
   graphics::par(op)
   grDevices::dev.off()
