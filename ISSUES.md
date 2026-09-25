@@ -132,6 +132,47 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 50. An arm-name line of ordinals that goes on to head the statistic columns; arm sizes stated only in a CONSORT flow
+
+**Status: fixed on `feat/ordinal-header-trailing`, 2026-09-25**, from the
+corpus session's batch 5 finding K1 (RezkJMFNM2014, J Matern Fetal
+Neonatal Med 2015;28:93), lost on `dc39659` after issue 39 let the
+deterministic engine claim its unnumbered "Table Maternal characteristics
+…".
+
+- **The defect.** Three things. The header "Group 1 Group 2 Group 3 ANOVA
+  test p value" was a data line to the classifier - issue 45's ordinal
+  rule wanted nothing after the last number - so the arms went unnamed
+  and the line was skipped as a bare number. The only sizes are in the
+  flow diagram, "Assessed for eligibility (n=109) … Excluded (n=19) …
+  Randomized (n=90) … Analyzed (n=30) Analyzed (n=30) Analyzed (n=30)",
+  and the same "N = 30" under every arm of Tables 2-4: fourteen mentions
+  for three arms, which the position rule (exactly k mentions summing
+  to the total) refused. And the "ANOVA test" F column clustered as a
+  fourth arm, so even the right count of mentions could not make "3 ×
+  30 = 90".
+- **What changed.** (1) The ordinal rule requires only the run of "word
+  number" pairs from the line's start; what follows the last number is
+  left to name the columns beyond the arms. (2) The position rule, when
+  the mentions outnumber the arms, sets aside those that state a
+  randomized total or sit in the flow's screening vocabulary (eligible,
+  assessed, excluded, enrolled, lost, withdrawn, discontinued …); if
+  exactly k remain they are tried by position as before, and if more
+  remain but every one states the same n and k × n is the stated total,
+  that n is every arm's, with its sentence. (3) "Randomized (n=90)", the
+  flow's own box, counts as a stated total. (4) The text ladder sees only
+  the arms that carry value cells (mean ± SD, mean (SD), n (%), a
+  fraction, a median); a statistic column gets no N there and, having
+  neither N nor cell, is dropped at assembly.
+- **On the page.** Group 1/2/3 of 30 each; Age, Parity*, Gestational age
+  and IAI with the printed values; validates.
+- **Tests** (`tests/testthat/test-ordinal-header-consort.R`): the
+  rebuilt page names its arms from the ordinal header, fills them from
+  the flow, and reports no "ANOVA" arm; the position rule still refuses
+  when the remaining mentions disagree or when k × n is not the total.
+
+---
+
 ## 49. A categorical variable printed as one line, its levels named after the colon and every arm's counts side by side
 
 **Status: fixed on `feat/levels-across-line`, 2026-09-25**, from the corpus

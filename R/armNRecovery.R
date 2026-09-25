@@ -213,6 +213,8 @@
                    "children|women|men|volunteers|adults)?\\s*(were\\s+)?",
                    "(randomi[sz]ed|enrolled|recruited|included)"),
             "(?i)randomi[sz]ed\\s+(\\d[\\d,]*)",
+            # the CONSORT flow's own box, "Randomized (n=90)" (issue 50)
+            "(?i)randomi[sz]ed\\s*\\(\\s*n\\s*=\\s*(\\d[\\d,]*)\\s*\\)",
             "(?i)total\\s+of\\s+(\\d[\\d,]*)")
   tot <- integer(0)
   for (p in pats) {
@@ -313,6 +315,38 @@
   open <- which(is.na(armN))
   if (length(open) > 0 && !any(!is.na(source))) {
     firstMention <- cand[!duplicated(cand$pos), , drop = FALSE]
+    # A CONSORT flow states more sizes than the arms: "Assessed for
+    # eligibility (n=109) ... Excluded (n=19) ... Randomized (n=90) ...
+    # Analyzed (n=30) Analyzed (n=30) Analyzed (n=30)" (RezkJMFNM2014,
+    # corpus batch 5, K1; arms named "Group 1/2/3", which no name match
+    # can place). When the mentions outnumber the arms, those that state
+    # a randomized TOTAL, or sit in the flow's screening vocabulary, are
+    # not arm sizes; what remains is tried by position as before, still
+    # confirmed by the total (issue 50).
+    if (nrow(firstMention) > length(armN)) {
+      screening <- grepl("(?i)eligib|assessed|screened|excluded|approached|enrol|declined|refused|lost|withdr|discontinu",
+                         firstMention$near, perl = TRUE)
+      isTotal   <- firstMention$n %in% totals
+      keep      <- !screening & !isTotal
+      if (sum(keep) == length(armN)) firstMention <- firstMention[keep, , drop = FALSE]
+      else if (sum(keep) > length(armN)) {
+        # every remaining mention states ONE size, restated table after
+        # table ("N = 30" under each arm of Tables 1-4 as well as the
+        # flow's "Analyzed (n=30)"), and k of them make the stated total:
+        # that size is every arm's
+        left <- firstMention[keep, , drop = FALSE]
+        n1   <- unique(left$n)
+        if (length(n1) == 1L && length(totals) > 0 && (length(armN) * n1) %in% totals) {
+          for (k in open) {
+            armN[k]   <- n1
+            source[k] <- paste0("document text (every per-arm mention states n = ", n1,
+                                ", and ", length(armN), " x ", n1, " is the stated total of ",
+                                length(armN) * n1, "): ", snip(left$context[1]))
+          }
+          open <- integer(0)
+        }
+      }
+    }
     if (nrow(firstMention) == length(armN) &&
         length(totals) > 0 && sum(firstMention$n) %in% totals) {
       agree <- TRUE
