@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 108. Under an announced notation the soup itself marks the slots
+
+**Status: fixed on `fix/announced-soup-marks-slots`, 2026-09-25**, from
+the corpus session's batch 25 AD4 (CJA 1994, PMID 8004733, a scan;
+three arms of 20).
+
+- **The defect.** "All values are expressed as mean ~ SD." over a page
+  whose signs are "4-", "-t-" and, in three cells, the glued digit-colon
+  form "5:34", "5:38", "5:5.1". The announcement repairs the soup words
+  two or more to a line, but the glued digit form is a slot's evidence
+  only (issue 70), and the slots were built from genuine glyphs and
+  plain pluses alone - this page sets none - so "81 5:34" stayed three
+  words and the first arm's Duration of operation and Duration of
+  anaesthesia went unread; Height's third cell likewise.
+- **What changed.** Once the notation is announced, every soup word set
+  between two numbers marks its column (`.ppRepairPlusMinusGlyphs()`):
+  "4-" at one x on four lines is a slot, and "5:34" at that x is the
+  sign and its SD. Without the announcement the glued digit form still
+  needs a genuine slot.
+- **On the page.** Both duration rows read in all three arms (81/82/81
+  +/- 34/29/39; 108/108/104 +/- 38/34/40). Height's third cell, "153.5
+  5: 5. I", now has its sign but its SD is set as "5." and "I" - an OCR
+  break the repair does not reach - and stays unread.
+- **Tests** (`tests/testthat/test-announced-soup-marks-slots.R`): the
+  helper under the announcement, and its refusal without it; a rebuilt
+  page under "mean ~ SD" reads all three arms of both duration rows (7
+  expectations fail on the unfixed code). The zero-repair, slot,
+  glued-soup, junk-row and Loadsman layout tests still pass.
+
 ## 103. "Divided into three groups of Methods D 10 each": the running head inside the sentence
 
 **Status: fixed on `feat/groups-of-n-past-running-head`, 2026-09-25**,
