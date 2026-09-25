@@ -320,7 +320,12 @@
   if (is.null(pageWords) || nrow(pageWords) == 0) return(empty)
   w    <- pageWords[order(pageWords$y, pageWords$x), ]
   isTb <- grepl("^(?i)(table|tab\\.?)$", w$text, perl = TRUE)
-  isNo <- grepl("^([0-9]{1,2}|[IVXLivxl]{1,4})[.:)]?$", w$text)
+  # ... or a SUPPLEMENTARY table's, "S1" (2026-09-25, ISSUES.md issue 58;
+  # 2018RezkIJGO in the Loadsman corpus files its baseline table as "Table
+  # S1. Characteristics of the study participants" while Table 1 is an
+  # outcome; the anchor knew only a plain numeral and the paper's only
+  # baseline table was never a candidate)
+  isNo <- grepl("^(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:)]?$", w$text)
   sameLine <- c(abs(diff(w$y)) <= 3, FALSE)
   # "Table" immediately followed by a numeral on the same visual line
   hit  <- which(isTb & c(utils::tail(isNo, -1), FALSE) & sameLine)
@@ -370,7 +375,7 @@
 # the same numbered-only question before, and an unnumbered caption on
 # the next page would have been swallowed as that page's data.
 .ppCaptionStart <- function(txt) {
-  grepl("(?i)^\\s*(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt, perl = TRUE) |
+  grepl("(?i)^\\s*(table|tab\\.?)\\s+(S?[0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt, perl = TRUE) |
     grepl("^\\s*(TABLE|Table)\\s+[A-Z][a-z]+", txt, perl = TRUE)
 }
 
@@ -503,7 +508,7 @@
 # full-width block that straddles two side-by-side tables (issue 35).
 .ppCaptionAnchorList <- function(txt) {
   if (is.null(txt) || length(txt) != 1L || is.na(txt)) return(character(0))
-  m <- regmatches(txt, gregexpr("(?i)\\btab(le|\\.)\\s+([0-9]+|[ivx]+)\\b", txt, perl = TRUE))[[1]]
+  m <- regmatches(txt, gregexpr("(?i)\\btab(le|\\.)\\s+(s?[0-9]+|[ivx]+)\\b", txt, perl = TRUE))[[1]]
   tolower(gsub("\\s+", " ", m))
 }
 

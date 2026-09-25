@@ -134,7 +134,8 @@ promising ones.
 
 - Captions are matched as **adjacent words** ("Table" + a numeral), not by a regex over joined
   line text — on a two-column page that joined text contains the other column's prose. Roman
-  numerals are matched too; they are the house style of *Anaesthesia* and *CJA*.
+  numerals are matched too; they are the house style of *Anaesthesia* and *CJA*; and a
+  supplementary table's "S1" (2026-09-25, issue 58).
 - **An unnumbered caption is matched too** (2026-09-25, issue 39). A paper with a single table
   may print it as "TABLE Demographic data" (*CJA* 1997 and 2003, the Saitoh papers of the
   Loadsman corpus), and requiring a numeral lost the whole table. A bare "TABLE" or "Table"

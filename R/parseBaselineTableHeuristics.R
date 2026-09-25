@@ -2349,7 +2349,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
           # any vocabulary at all outranks it. The numberless line below
           # is the caption's continuation and joins it for scoring and
           # for the report; the block itself starts where it did.
-          if (grepl("^\\s*(?i:table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})[.:]?\\s*$",
+          if (grepl("^\\s*(?i:table|tab\\.?)\\s+(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:]?\\s*$",
                     cCap, perl = TRUE) &&
               li < length(cTexts) && !grepl("[0-9]", cTexts[li + 1L]))
             cCap <- .ppSquish(paste(cCap, cTexts[li + 1L]))

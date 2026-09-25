@@ -161,6 +161,27 @@ the corpus session's batch 8 finding N1 (Fujii 1999, PMID 10475325).
 
 ---
 
+## 58. A supplementary table's caption, "Table S1", is a caption anchor
+
+**Status: fixed on `feat/supplementary-table-anchor`, 2026-09-25**, from
+the Loadsman corpus's 2018RezkIJGO, which files its baseline table as
+"Table S1. Characteristics of the study participants" while its Table 1
+is an outcome.
+
+- **The defect.** The caption anchor knew only a plain or Roman numeral
+  after "Table", so "Table S1" was no caption and a paper whose baseline
+  table is supplementary had no candidate for it. (That paper's
+  supplement is not in its PDF - page 5 holds the captions alone - so it
+  remains unparsed; the rule stands for the supplements that are.)
+- **What changed.** "S" followed by one or two digits is a table number
+  for `.ppCaptionAnchors()`, `.ppCaptionStart()`, `.ppCaptionAnchorList()`
+  and the bare-caption rule of issue 45.
+- **Tests** (`tests/testthat/test-supplementary-table-anchor.R`): the
+  anchor, the caption-start test and the anchor list accept "Table S1";
+  a rebuilt page whose only table is "Table S1" parses.
+
+---
+
 ## 57. A gutter no line of the page crosses is a column boundary at eight points wide
 
 **Status: fixed on `feat/narrow-gutter-band`, 2026-09-25**, from the
