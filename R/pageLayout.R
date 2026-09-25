@@ -245,7 +245,16 @@
   pageSpan <- max(bot) - min(top)
   for (x0 in unique(pageWords$x[narrow])) {
     g <- which(narrow & abs(pageWords$x - x0) <= 1)
-    if (length(g) >= 4 &&
+    # A RAIL IS ROTATED TEXT (2026-09-25, ISSUES.md issue 96; a regression
+    # of issue 93 caught by its own fixture): a column of upright "II"s -
+    # five points wide, eight tall, one to a row of a long table - is four
+    # narrow words at one x spanning a third of the page, and it was
+    # taken for a rail; with issue 93 every "I" and "III" at that x went
+    # with it, and the long layout lost its group column. A rail's words
+    # are set sideways, so at least two of the stack must be far taller
+    # than wide (twice or more); upright short words never are.
+    tall <- pageWords$height[g] >= 2 * pageWords$width[g]
+    if (length(g) >= 4 && sum(tall) >= 2 &&
         max(bot[g]) - min(top[g]) > 0.3 * pageSpan) {
       drop[g] <- TRUE
       # THE RAIL'S SHORT WORDS GO WITH IT (2026-09-25, issue 93; BJA
