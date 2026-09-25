@@ -755,6 +755,46 @@
   list(lines = lines, repaired = repaired)
 }
 
+# THE SIGN FUSED INSIDE THE CELL WORD (2026-09-25, ISSUES.md issue 85;
+# Saitoh, Acta Anaesthesiol Scand 1998;42:851, the corpus session's batch
+# 20 Z1). The scanned page's text layer sets each mean +/- SD cell as ONE
+# word with a letter or symbol where the sign was: "48.4k7.2",
+# "46.9Z7.7", "168.0?8.5", "166.9k8.4" - and, once, the digit 5
+# ("47.357.9"), which no rule can settle without a legend. The tokenizer
+# reads none of them: its number pattern refuses a digit run that a
+# letter touches on either side, so the row held no cell and Table 1
+# read as Gender alone. A word of the shape NUMBER, one or two glyphs
+# that are not digits, NUMBER - the glyphs not "e"/"E" (an exponent) and
+# not "x"/"X" (a dimension, "10x20") - is a mean +/- SD cell when the line
+# holds two or more of them: it is split into its three words, the sign
+# written as the plus-minus glyph, the widths shared by character count.
+.ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
+.ppRepairFusedSigns <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  for (i in seq(capIdx + 1L, n)) {
+    L <- lines[[i]]; s <- L$text
+    hit <- grepl(.ppFusedSign, s, perl = TRUE)
+    if (sum(hit) < 2L) next
+    out <- vector("list", nrow(L))
+    for (k in seq_len(nrow(L))) {
+      if (!hit[k]) { out[[k]] <- L[k, , drop = FALSE]; next }
+      m  <- regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]]
+      nc <- nchar(s[k]); w <- L$width[k]; x0 <- L$x[k]
+      f1 <- nchar(m[2]) / nc; f2 <- nchar(m[3]) / nc
+      w1 <- L[k, , drop = FALSE]; w2 <- w1; w3 <- w1
+      w1$text <- m[2]; w1$width <- w * f1
+      w2$text <- .ppPLUSMINUS; w2$x <- x0 + w * f1; w2$width <- w * f2
+      w3$text <- m[4]; w3$x <- x0 + w * (f1 + f2); w3$width <- w * (1 - f1 - f2)
+      out[[k]] <- rbind(w1, w2, w3)
+      repaired <- repaired + 1L
+    }
+    lines[[i]] <- do.call(rbind, out)
+    rownames(lines[[i]]) <- NULL
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # OCR PLUS-MINUS GLYPHS, REPAIRED BY THEIR COLUMN (2026-09-25, ISSUES.md
 # issue 65; Fujii 1994, CJA 41:291, PMID 7954995 - the corpus session's
 # batch 12 finding Q1). A scanned page's text layer sets the plus-minus
@@ -834,7 +874,7 @@
   if (length(later)) idx <- idx[idx < later[1]]
   if (!length(idx)) return(none)
   isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
-  true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "+/-", "+-")
+  true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "\u2afe", "+/-", "+-")
   # a soup word is not a number and carries at least one stroke
   isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
     grepl("[-+:~\u2212\u2013\u00b7\u2022\u00b1]", s, perl = TRUE)

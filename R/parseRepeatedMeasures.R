@@ -123,6 +123,16 @@
   unmatched <- list()      # data lines this reader could not use (reported)
   groupSeq  <- integer(0)  # every group index seen, value or no value
   letterSeen <- character(0)   # letter labels in order of first appearance (issue 76)
+  romanMode <- FALSE           # roman numerals are their own index (issue 88)
+  prevIdx   <- NA_integer_     # the last group index seen, for a lost label (issue 88)
+  # the largest roman numeral under the Group column anywhere in the block
+  # bounds a lost label's index: a gap is filled, the run is never extended
+  kRoman <- 0L
+  for (i in seq(hdr + 1L, lastData)) {
+    d  <- lines[[i]]; wm <- d$x + d$width / 2
+    rw <- d$text[abs(wm - xGroup) <= tol & grepl("^(I{1,3}|IV|V|VI{1,3})$", d$text, perl = TRUE)]
+    if (length(rw)) kRoman <- max(kRoman, as.integer(utils::as.roman(rw)))
+  }
   for (i in seq(hdr + 1L, lastData)) {
     if (kind[i] == "stop") break
     if (kind[i] != "data") next
@@ -140,8 +150,23 @@
       lw <- which(abs(wm - xGroup) <= tol & grepl(.ppLongGroupLabel, d$text, perl = TRUE))
       if (length(lw)) {
         gLabel <- d$text[lw[which.min(abs(wm[lw] - xGroup))]]
-        if (!gLabel %in% letterSeen) letterSeen <- c(letterSeen, gLabel)
-        gIdx <- match(gLabel, letterSeen)
+        if (grepl("^(I{1,3}|IV|V|VI{1,3})$", gLabel, perl = TRUE)) {
+          # A ROMAN NUMERAL IS ITS OWN INDEX (2026-09-25, ISSUES.md issue
+          # 88; Fujii's canine tables, PMID 12933396): "I", "II", "III"
+          # under Group name groups 1, 2, 3 whatever order they appear
+          # in, so a lost "II" leaves a gap the run rule can see and the
+          # arms are named Group I..III
+          gIdx <- as.integer(utils::as.roman(gLabel)); romanMode <- TRUE
+        } else {
+          if (!gLabel %in% letterSeen) letterSeen <- c(letterSeen, gLabel)
+          gIdx <- match(gLabel, letterSeen)
+        }
+      } else if (romanMode && !is.na(prevIdx) && prevIdx + 1L <= kRoman && min(t$start) == 1L) {
+        # THE LABEL THE TEXT LAYER LOST (issue 88): on those pages the
+        # middle group's "II" is missing from the text layer, and its
+        # row is a value line with nothing before its first number,
+        # between the I and III rows. It is the next group.
+        gIdx <- prevIdx + 1L; gLabel <- as.character(utils::as.roman(gIdx))
       }
     } else {
       g <- g[which.min(abs(t$mid[g] - xGroup))]
@@ -153,6 +178,7 @@
       next
     }
     groupSeq <- c(groupSeq, gIdx)
+    prevIdx  <- gIdx
     nearestIsBase <- vapply(t$mid, function(x) which.min(abs(hx - x)), integer(1)) ==
       which.min(abs(hx - xBase))
     v <- which(t$type %in% c("meanSD", "numParen") & abs(t$mid - xBase) <= tol &
@@ -203,6 +229,8 @@
     if (!identical(seg, seq_len(length(seg)))) return(NULL)
   }
   k <- max(g)
+  # roman groups are named by their numerals, gaps and all (issue 88)
+  if (romanMode) letterSeen <- as.character(utils::as.roman(seq_len(k)))
 
   ## ---- 4. arm names, from the stacked "(Group k)" legend above the header
   # Manuscripts print the legend as a stack - "No study drug" / "(Group 1)" /
@@ -239,9 +267,11 @@
     for (kk in seq_len(k)) {
       L  <- letterSeen[kk]
       if (is.na(L)) next
-      m  <- regmatches(legend, regexpr(paste0("(?<![A-Za-z])", L, "\\s*=\\s*([A-Za-z][A-Za-z -]{1,30}?)(?=\\s*(?:[,;.]|$))"),
+      # "Group I = no study drug" - the "=" is U+2AFD in the font of Fujii's
+      # canine tables (issue 88), and "Group" may precede the letter
+      m  <- regmatches(legend, regexpr(paste0("(?<![A-Za-z])(?:Group\\s+)?", L, "\\s*[=\u2afd]\\s*([A-Za-z][A-Za-z -]{1,30}?)(?=\\s*(?:[,;.]|$))"),
                                        legend, perl = TRUE))
-      nm <- if (length(m) && nzchar(m)) .ppSquish(sub("^[A-Za-z]{1,2}\\s*=\\s*", "", m)) else ""
+      nm <- if (length(m) && nzchar(m)) .ppSquish(sub("^(?:Group\\s+)?[A-Za-z]{1,3}\\s*[=\u2afd]\\s*", "", m, perl = TRUE)) else ""
       armName[kk] <- if (nzchar(nm)) paste0(nm, " (Group ", L, ")") else paste("Group", L)
     }
   }

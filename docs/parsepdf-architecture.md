@@ -222,7 +222,8 @@ wrong entry would corrupt numbers invisibly.
   A glued soup holds no digit and no dot, so "+4.9" is never "+4." and "9" (issue 70); "5:" glued
   to the SD is the sign at a slot. A plain "+" is the sign at a slot two lines mark with the sign
   itself, a sign dropped entirely is inserted between two numbers straddling such a slot, and the
-  legend may spell "S D" (issue 77).
+  legend may spell "S D" (issue 77). A cell word with the sign fused inside it, "48.4k7.2", is
+  split into mean, sign and SD when the line holds two or more (`.ppRepairFusedSigns()`, issue 85).
   to the SD is the sign at a slot. A letter O among the digits of an "(n = k)" group is a zero
   (`.ppRepairSizeZeros()`, issue 75).
 
@@ -247,6 +248,9 @@ wrong entry would corrupt numbers invisibly.
   "Pre-fatigue" as the baseline column, names the arms from the legend "C = control", and takes a
   group's size from "(Group C, n = 10)" in the text.
 
+- **A table of changes from baseline is not the baseline table** (2026-09-25, issue 80): the
+  caption scorer marks down "changes ... from ...", "changes from baseline", "responses to" and
+  "during/after surgery" captions like outcome captions, unless the caption says baseline elsewhere.
 - **The OUP download rail** (2026-09-25, issue 86): a word up to eight points wide and at least
   twice as tall as it is wide is a rotated-rail candidate, so the seven-point OUP rail is stripped
   like the six-point LWW rail.
@@ -254,6 +258,10 @@ wrong entry would corrupt numbers invisibly.
   every arm lacks N after the block walker's own ladder, the "k groups of n" statement and then
   the document-text ladder (`.ppArmNFromDocument()`) fill them, with the sentence as source and
   the CONSORT flag - the model route's recovery of issue 42, under the same gate.
+
+- **Fujii's canine long layout** (2026-09-25, issue 88): roman numerals under Group are their own
+  index, a value line with nothing before its first number fills a lost numeral's gap, the legend's
+  "=" may be U+2AFD, and U+2AFE is the sign.
 
 ### 05 — Parsing one block
 
