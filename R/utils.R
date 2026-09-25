@@ -768,6 +768,23 @@
   letters > 0 && letters * 2 < nchar(chars)
 }
 
+# The level names a "levels across the line" row prints between its
+# label's colon and its first cell (ISSUES.md issue 49, 2026-09-25):
+# "20-30 31-40" gives two, "P1-2 >= P3" two (a lone comparison sign is
+# glued to the token after it), "18-25 25.1-29.9 >= 30" three.
+.ppSpreadLevels <- function(txt) {
+  w <- strsplit(.ppSquish(txt), " ", fixed = TRUE)[[1]]
+  w <- w[nzchar(w)]
+  if (!length(w)) return(character(0))
+  out <- character(0); glue <- ""
+  for (t in w) {
+    if (grepl("^[<>≤≥=]+$", t)) { glue <- paste0(glue, t); next }
+    out  <- c(out, paste0(glue, t)); glue <- ""
+  }
+  if (nzchar(glue)) out <- c(out, glue)
+  out
+}
+
 # Make `nm` unique against `existing` by appending " 2", " 3", ...
 .ppUniqueName <- function(nm, existing) {
   base <- nm
