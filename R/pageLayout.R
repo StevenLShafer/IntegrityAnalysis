@@ -212,6 +212,25 @@
   pageWords[!drop, , drop = FALSE]
 }
 
+# A STRETCHED GLYPH (2026-09-25, ISSUES.md issue 44; Fujii 2002, PMID
+# 12182258, Carlisle-168). Some PDFs carry a watermark or running head
+# whose letters pdf_data() reports one at a time, each with a box a
+# hundred points and more wide: "C", "A", "R", "ET" at 130 points each,
+# with normal height, threaded between the table's lines and even off
+# the page's left edge (x = -62). The rail stripper above looks for the
+# opposite shape - a narrow, tall, rotated word - so these stayed, and
+# each became a label line: "A" between "Age, y" and its "Mean +/- SD"
+# line, "R" glued to "Duration of anesthesia" as "R Duration ...". No
+# printed word is 30 points wide per character (body text runs 5-7, a
+# display heading under 15), so the ratio alone identifies them.
+.ppStripStretchedGlyphs <- function(pageWords) {
+  if (is.null(pageWords) || nrow(pageWords) == 0) return(pageWords)
+  perChar   <- pageWords$width / pmax(1L, nchar(pageWords$text))
+  stretched <- !is.na(perChar) & perChar > 30 & pageWords$width > pageWords$height
+  if (!any(stretched)) return(pageWords)
+  pageWords[!stretched, , drop = FALSE]
+}
+
 # A TABLE PRINTED SIDEWAYS (2026-09-25, ISSUES.md issue 38; the corpus
 # session's I1, RezkHiF2020). A wide table is often set rotated 90 degrees
 # on a portrait page. pdf_data() reports each rotated word with its box
@@ -222,7 +241,7 @@
 # page are found (a multi-character word taller than it is wide), and
 # when there are enough of them to be a table rather than a rail - at
 # least 30, and a fifth of the page's multi-character words - every word
-# in their x-band (short words such as "8.21" or "±" are square and would
+# in their x-band (short words such as "8.21" or "+/-" are square and would
 # not show as rotated) is transposed into an upright page: x' runs along
 # the reading direction, y' across it. The block's reading direction is
 # read from its caption: on a table rotated counter-clockwise (the usual
@@ -237,7 +256,7 @@
   multi <- nchar(w$text) >= 3
   rot   <- multi & w$height > w$width
   if (sum(rot) < 30 || mean(rot[multi]) < 0.2) return(NULL)
-  # the block: every rotated word, plus the short words (a "±", a "162)")
+  # the block: every rotated word, plus the short words (a "+/-", a "162)")
   # inside the rotated words' box - a short word is as wide as it is tall
   # and cannot show its rotation; upright prose in the same x-band but
   # outside the box is left out

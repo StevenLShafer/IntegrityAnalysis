@@ -621,10 +621,50 @@
   # label-kind lines already absorbed into the row ABOVE them as the
   # wrapped second line of its label (see the data branch below)
   consumedLabel <- integer(0)
+
+  # ---- THE HEADING ABOVE THE FIRST DATA LINE (issue 44, 2026-09-25) ----
+  # The loop below starts at the first data line, so a variable printed
+  # as a heading line with its statistics on legend-labelled lines
+  # beneath - "Age, y" / "Mean +/- SD 46 +/- 8 ..." / "Range 33-57 ..."
+  # (Fujii 2002, PMID 12182258, whose every variable is set this way) -
+  # lost the name of its FIRST variable: the "Mean +/- SD" line went out
+  # under that legend as its name, while "Height, cm", whose heading lies
+  # inside the loop, was named correctly by the statRow rule below. The
+  # label lines directly above the first data line are read here for a
+  # heading, with the label branch's own test and two of their own: the
+  # line must lie LEFT of the first value column (an arm-name line
+  # without "(n = k)" is a label line too, and sits over the columns),
+  # and it must not be the caption's legend sentence ("Values are mean +/-
+  # SD or number (%)"), which manuscripts print between caption and body.
+  if (cols$n > 0 && firstData > capIdx + 1L) {
+    pre <- integer(0)
+    j   <- firstData - 1L
+    while (j > capIdx && kind[j] == "label") { pre <- c(j, pre); j <- j - 1L }
+    for (j in pre) {
+      lbl <- .ppCleanLabel(lineTexts[j])
+      L   <- lines[[j]]
+      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L || nrow(L) > 6) next
+      if (max(L$x + L$width) >= min(cols$centers) - 20) next
+      if (grepl(paste0("(?i)\\b(values?|data|results?|numbers?)\\s+(are|were|is)\\b|",
+                       "\\bexpressed\\b|\\bpresented\\b|\\bshown\\b"),
+                lineTexts[j], perl = TRUE)) next
+      catHeader     <- lbl
+      catHeaderNPct <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)",
+                             lineTexts[j], perl = TRUE)
+      catHeaderPct  <- !catHeaderNPct &&
+        (grepl("%", lineTexts[j], fixed = TRUE) ||
+           grepl("(?i)\\bpercent", lineTexts[j], perl = TRUE))
+    }
+  }
+
   for (i in seq(firstData, lastData)) {
     if (kind[i] == "label") {
       if (i %in% consumedLabel) next
       lbl <- .ppCleanLabel(lineTexts[i])
+      # A line of ONE letter or glyph names nothing - a level "I" whose
+      # counts went missing, a stray watermark letter the strippers
+      # let through - and must not replace the open heading (issue 44).
+      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L) next
       # A journal watermark ("Downloaded from http://...") or copyright
       # rail interleaves with the table's own lines on some published
       # PDFs; taken as a label line it OVERWRITES the open block header
@@ -1021,6 +1061,12 @@
         paste0("(?i)[\\s,;\u2013\u2014-]+mean",
                "(\\s*\\(\\s*sd\\s*\\)|\\s*\u00b1\\s*sd)?\\s*$"),
         "", label, perl = TRUE))
+      # A first-arm cell the tokenizer could not read - "20l +/- 40", the
+      # digit 1 set as a letter l (PMID 12182258) - leaves its unread
+      # half in the label: "Duration of anesthesia, min 20l +/-". The
+      # trailing "<word> +/-" is not part of any name; the arm's value is
+      # lost either way, and the row keeps its readable arms (issue 44).
+      label <- .ppSquish(sub("\\s+\\S+\\s*\u00b1\\s*$", "", label, perl = TRUE))
       # A row labelled just "Mean" / "Mean (SD)" is a summary-statistic
       # line under a variable heading ("Weight (kg)" sits on the line
       # above): the variable's name is that heading, and the heading
@@ -1193,6 +1239,16 @@
                            collapse = " "),
                 paste("median without quartiles - enter median/Q1/Q3 by",
                       "hand if an IQR is printed"), txt)
+        next
+      }
+      # "Range 33-57 34-63 ..." under a variable heading is the spread of
+      # the "Mean +/- SD" line above it, not the counts of a level (issue
+      # 44): taken as counts it became a category row named "<heading> 2"
+      # with the range's endpoints as its cells. Skipped with its reason;
+      # the heading stays open for the variable's remaining lines.
+      if (grepl("(?i)^(range|min(imum)?\\s*[-\u2013/]\\s*max(imum)?)$", label, perl = TRUE)) {
+        addSkip(paste(c(catHeader[!is.na(catHeader)], label), collapse = " "),
+                "range without mean or SD - the analysis needs mean and SD", txt)
         next
       }
       if (!is.na(catHeader)) {
@@ -1735,6 +1791,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # Published PDFs carry a rotated "Downloaded from ..." watermark rail
   # whose fragments interleave with the table's lines (2026-08-22, see
   # pageLayout.R).
+  allPages <- lapply(allPages, .ppStripStretchedGlyphs)   # issue 44
   allPages <- lapply(allPages, .ppStripRotatedText)
   # Arm-N recovery candidates are document-level constants: the "(n = 24)"
   # mentions with allocation-flavoured context, and the stated randomized

@@ -555,6 +555,21 @@ and the `pages` argument, and a sideways page has no look-ahead and no continuat
 `test-rotated-table-page.R`, a synthetic sideways table set with the pdf() device's
 `srt = 90`.
 
+### 05h — A heading above the first data line, and stretched watermark letters (2026-09-25, issue 44)
+
+Fujii 2002 (PMID 12182258) sets every variable as a heading line with its statistics on
+legend-labelled lines beneath — "Age, y" / "Mean ± SD 46 ± 8 …" / "Range 33-57 …". The block
+walker starts at the first data line, so the first variable's heading was never seen (its row
+went out named "Mean ± SD"), and each "Range" line was taken for the counts of a level. Now the
+label lines directly above the first data line are read for a heading — one that lies *left of
+the first value column* (an arm-name line without "(n = k)" is a label line too, and sits over
+the columns) and is not the caption's legend sentence — and a "Range"/"Min–max" line under a
+heading is skipped with its reason, the heading staying open. The same page carries a watermark
+whose letters `pdf_data()` reports one at a time with boxes 130 points wide: no printed word is
+30 points wide per character, so `.ppStripStretchedGlyphs()` drops them beside the rail
+stripper. A one-letter label line never replaces the open heading, and a trailing "<word> ±"
+fragment (an unreadable first cell, "20l ± 40") is cut from a row's label.
+
 ## Files
 
 | File | Role |
