@@ -269,9 +269,7 @@ parseBaselineTableTatr <- function(pdfFile, tatrXml,
     while (nrow(mat) > 0) {
       nz <- which(nzchar(.ppSquish(mat[1, ])))
       first <- if (length(nz) == 1) .ppSquish(mat[1, nz[1]]) else ""
-      if (nzchar(first) &&
-          grepl("(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b",
-                first, perl = TRUE)) {
+      if (nzchar(first) && .ppCaptionStart(first)) {
         cs <- .ppCaptionScore(first)
         if (cs >= capScore || is.na(caption)) { capScore <- cs; caption <- first }
         mat <- mat[-1, , drop = FALSE]

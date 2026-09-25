@@ -131,6 +131,14 @@ promising ones.
 - Captions are matched as **adjacent words** ("Table" + a numeral), not by a regex over joined
   line text — on a two-column page that joined text contains the other column's prose. Roman
   numerals are matched too; they are the house style of *Anaesthesia* and *CJA*.
+- **An unnumbered caption is matched too** (2026-09-25, issue 39). A paper with a single table
+  may print it as "TABLE Demographic data" (*CJA* 1997 and 2003, the Saitoh papers of the
+  Loadsman corpus), and requiring a numeral lost the whole table. A bare "TABLE" or "Table"
+  followed by a Capitalised word is an anchor, provided it *starts its block* (the gap to its
+  left is the only evidence that the word is a caption at all); a lower-case "table" in a
+  sentence and "Table shows" are not. `.ppCaptionStart()` is the one place that asks whether a
+  line begins a caption — numbered or not — for the block walker, the continuation-page
+  extender and the Table Transformer adapter.
 - `.ppCaptionScore()` rewards "baseline", "demographic", *qualified* "characteristics", and the
   table being number 1; it penalises outcome vocabulary, unless the caption also says baseline.
 - A cross-reference inside a sentence ("as demonstrated in Table 3 B and C") is demoted, not

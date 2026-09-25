@@ -165,9 +165,7 @@
   if (capIdx >= length(lines)) return(NULL)
   for (i in seq(capIdx + 1, length(lines))) {
     txt <- lineTexts[i]
-    newCaption <- grepl(
-      "(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt,
-      perl = TRUE)
+    newCaption <- .ppCaptionStart(txt)
     if (grepl(stopPattern, txt, perl = TRUE) || newCaption) {
       # FIX (2026-08-25): BEFORE the first data line, a footnote-shaped
       # line is the caption's own continuation, not the table's end. Long
@@ -2057,8 +2055,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
       nNum  <- vapply(head6, function(t)
         sum(gregexpr("[0-9]+", t)[[1]] > 0), integer(1))
       if (sum(nNum >= 2) < 2) break
-      if (any(grepl("(?i)^(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b",
-                    utils::head(lt2, 3), perl = TRUE))) break
+      if (any(.ppCaptionStart(utils::head(lt2, 3)))) break
       resExt <- tryCatch(
         .ppParseBlock(c(extLines, lines2), c(extTexts, lt2), bestCand$capIdx,
                       trial, parenIsSD, roundObsDelta,
