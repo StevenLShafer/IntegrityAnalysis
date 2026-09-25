@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 99. "(n = 20 of each)" is the size of every arm, and fills the arms a scanned header left blank
+
+**Status: fixed on `feat/n-of-each-statement`, 2026-09-25**, from the
+corpus session's batch 24: the four CJA scans (PMIDs 9717598, 9350368,
+9512856, 9836028) that print one arm's "(n = 20)" and lose the other's.
+
+- **The defect.** Issue 87 fills a blank arm by NAME from a "(n = 20)"
+  beside that name in the text, and these papers name no arm beside a
+  size: they say "diltiazem or saline (n = 20 of each)". That shape was
+  not one the size-statement reader (`.ppGroupsOfN()`) knew, and with
+  some sizes printed the deterministic ladder asked nothing else.
+- **What changed.** Shape (d) of `.ppGroupsOfN()`: "(n = 20 of each)",
+  "(n = 40 per group)", "(n = 15 in each group)" is a statement for
+  every arm with the group count unstated, like the sentence of issue
+  89; a parenthesis that follows "one of three groups" belongs to shape
+  (a) and is not read twice, and a power statement is refused. In the
+  block walker, with some arms printed and some blank, a statement for
+  every arm (count unstated, or naming this table's arm count) fills the
+  blanks when its size is the size every printed arm already shows; a
+  statement that disagrees with the page fills nothing.
+- **On the pages.** 9717598 and 9836028 now fill (their third arm from
+  the text, agreeing with the printed 20s). 9350368 does not: its
+  statement is "(n=40 of each)" for the strata, not the four arms of
+  20, and the reader refuses it as it should. 9512856 prints "(n = 3o)"
+  with a letter o, across three words, which issue 75's zero repair
+  does not reach - a separate matter.
+- **Tests** (`tests/testthat/test-n-of-each-statement.R`): the shapes
+  at the helper level, a lone "(n = 20)" and a power statement refused;
+  a rebuilt page with one arm's size printed gets the other from the
+  statement, and a disagreeing statement leaves it blank (5 expectations
+  fail on the unfixed code). The arm-size and layout tests still pass.
+
+---
+
 ## 98. "(n ~ 20)": a tilde for the equals sign in the header
 
 **Status: fixed on `feat/header-n-tilde`, 2026-09-25**, from the corpus
@@ -152,6 +186,8 @@ session's batch 24 (the CJA scans PMIDs 9717598, 9350368, 9836028).
   (2 expectations fail on the unfixed code). The colon-header, row-N,
   stratum, ordinal-header, partial-arm, header-count, gutter and
   Loadsman layout tests still pass.
+
+---
 
 ## 97. "(n:25)" under the arm names is the arm-size line
 
