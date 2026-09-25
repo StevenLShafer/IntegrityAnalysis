@@ -1127,6 +1127,16 @@
   if (is.na(label)) return(TRUE)
   if (nchar(label) > 40) return(TRUE)
   if (grepl("^[IVXivx]+[a-d]?$", label)) return(FALSE)
+  # A SHORT CODE IS A NAME (2026-09-25, ISSUES.md issue 111; Kilic 2023,
+  # Cukurova Med J, the corpus session's batch 25 AD1). "L2-3", "L3-4",
+  # "L4-5" - a vertebral level, one letter and its numbers, hyphenated -
+  # are the levels under "Surgical Level", and once that heading gathered
+  # them (issue 111) the letters-are-half rule below, written for OCR
+  # noise like ". T", threw all three out as unreadable. One to three
+  # letters, then digits, then optionally a hyphen (or the en dash / minus
+  # sign a PDF sets it as) and a second code: "T10-11", "C5-6", "S1".
+  if (grepl("^[A-Za-z]{1,3}[0-9]{1,3}([-–−][A-Za-z]{0,2}[0-9]{1,3})?$", label, perl = TRUE))
+    return(FALSE)
   chars   <- gsub("\\s", "", label)
   letters <- nchar(gsub("[^A-Za-z]", "", chars))
   letters > 0 && letters * 2 < nchar(chars)

@@ -1114,6 +1114,7 @@
   rowNLines    <- character(0) # rows whose N came from their own "(n = k)" line (issue 47)
   stratumStarts <- list()      # where each stratum begins in outRows, and its name (issue 55)
   pctApproxRows <- character(0) # rows using the opt-in approximation
+  npctBlocks   <- character(0) # blocks holding an n (%) level gathered under a plain heading (issue 111)
   # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
   # counts a printed percentage allows are decided for the whole
   # arms-by-levels block at once, and a block is only complete after
@@ -1724,15 +1725,44 @@
             " - check, or set parenIsSD.")
     }
 
-    # Children of an "N (%)" block header are the levels of ONE category
-    # variable: accumulate them as counts under that header (the plain
+    # Children of a category heading are the levels of ONE category
+    # variable: accumulate them as counts under that heading (the plain
     # branch below) rather than emitting a separate binary category -
     # with a double-counting complement - per level. A row announcing
     # its OWN "n (%)" in its label is a standalone binary variable even
     # while a block is open.
-    if (mainType == "nPct" && !is.na(catHeader) && catHeaderNPct &&
-        !grepl("(?i)\\(\\s*%\\s*\\)|percent", rawLabel, perl = TRUE))
+    #
+    # A PLAIN HEADING GATHERS ITS LEVELS TOO (2026-09-25, ISSUES.md issue
+    # 111; CodeRabbit's reading of PR #412, on Kilic 2023, Cukurova Med J,
+    # the corpus session's batch 25 AD1). Until this change the gathering
+    # required the heading ITSELF to announce the notation ("Race, N (%)",
+    # vocacapsaicin corpus, 2026-08-22), so under a label-only heading -
+    # "Surgical level" over "L2-3 12 (57.1)", "L3-4 8 (38.1)", "L4-5 1
+    # (4.8)" - every level went out as a binary variable of its own with a
+    # complement ("Lumbar / Not Lumbar", "Thoracic / Not Thoracic", ...):
+    # three two-level tables where the page prints one three-level table,
+    # each complement counting the other levels' patients again. The
+    # heading is the variable and the indented rows beneath it are its
+    # levels whether or not the heading names the notation - the cells
+    # said "n (%)" already, which is how the row came to be nPct here -
+    # and percent-only children ("Caucasian 45" under "Race, %") have
+    # taken this path all along (the pctGenre branch above). A lone n (%)
+    # row with no heading open keeps the binary path, and a row whose
+    # own label says "(%)" or "percent" is its own variable, as before.
+    # A heading that gathers only ONE level this way is given back its
+    # binary form after the walk (below): a section heading ("Demographic
+    # data") over a single "Sex (male) 12 (57)" line is not a variable
+    # with one level. What this rule cannot tell apart: non-exclusive
+    # binary rows under a heading ("Comorbidities" over "Diabetes",
+    # "Hypertension"), which now gather as an announced "Comorbidities,
+    # n (%)" heading always did; the ISSUES entry records that.
+    fromNPct <- FALSE
+    if (mainType == "nPct" && !is.na(catHeader) &&
+        !grepl("(?i)\\(\\s*%\\s*\\)|percent", rawLabel, perl = TRUE)) {
       mainType <- "plain"
+      fromNPct <- TRUE
+      say("  \"", label, "\": an n (%) level of \"", catHeader, "\".")
+    }
 
     if (mainType == "meanSD") {
       # A trailing stat tag on a NAMED variable - "Age (years)-Mean
@@ -2005,6 +2035,9 @@
         catName <- .ppUniqueName(.iaSafeColumnName(label), catColumns)
         catColumns <- unique(c(catColumns, catName))
         key <- paste0("__cat__", catHeader)
+        # remembered so a heading that gathers only one such level can
+        # be given back its binary form after the walk (issue 111)
+        if (fromNPct) npctBlocks <- union(npctBlocks, key)
         existing <- which(vapply(outRows, function(r) identical(r$key, key),
                                  logical(1)))
         counts <- lapply(seq_len(nArms), function(j) {
@@ -2039,6 +2072,49 @@
         addSkip(label, "bare number with no category header and no SD - not usable",
                 txt)
       }
+    }
+  }
+
+  # ---- A HEADING THAT GATHERED ONE LEVEL IS NOT A VARIABLE (issue 111) ----
+  # The rule above gathers every n (%) row under a plain heading as a
+  # level of it. A section heading ("Demographic data", "Patient
+  # characteristics") over a single "Sex (male) 12 (57)" line, followed
+  # by the continuous rows that close it, is not a variable with one
+  # level - a one-column category is degenerate to the chi-square and
+  # would be dropped at validation, where before this rule the row was
+  # a binary variable with its complement. So a block that took exactly
+  # one level THIS way, with every present arm's N known, is put back in
+  # the form the nPct branch would have given it: the row named by the
+  # level, the count under that name, and "Not <level>" as the arm N
+  # minus the count. Nothing derived from a percentage reaches here (the
+  # nPct path carries no pendingDerive), so no derived cell or bracket
+  # needs re-keying. Blocks gathered by an announced heading or from
+  # bare counts are left as they were.
+  if (length(npctBlocks) && length(outRows)) {
+    for (k in seq_along(outRows)) {
+      r <- outRows[[k]]
+      if (!identical(r$type, "category") || is.null(r$key) ||
+          !r$key %in% npctBlocks) next
+      lv <- unique(unlist(lapply(r$perArm, names)))
+      if (length(lv) != 1L) next
+      present <- !vapply(r$perArm, is.null, logical(1))
+      if (!any(present) || any(is.na(armN[arms[present]]))) next
+      complementName <- .ppUniqueName(paste("Not", lv), catColumns)
+      catColumns <- unique(c(catColumns, complementName))
+      rowName <- .ppUniqueName(lv, usedRowNames)
+      usedRowNames <- c(usedRowNames, rowName)
+      perArm <- lapply(seq_len(nArms), function(j) {
+        v <- r$perArm[[j]]
+        if (is.null(v)) return(NULL)
+        cnt <- as.integer(v[[lv]])
+        out <- stats::setNames(list(cnt), lv)
+        out[[complementName]] <- armN[arms[j]] - cnt
+        out
+      })
+      say("  \"", r$row, "\" gathered only \"", lv, "\": a binary n (%) row - ",
+          "complement column \"", complementName, "\" computed as arm N minus the count.")
+      outRows[[k]] <- list(row = rowName, type = "category", perArm = perArm,
+                           key = paste0("__npct__", rowName))
     }
   }
 
