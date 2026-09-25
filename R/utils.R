@@ -1022,7 +1022,18 @@
     s <- L$text
     prevNum <- c(FALSE, isNum(s[-length(s)]))
     nextNum <- c(isNum(s[-1L]), FALSE)
-    g <- (isSoup(s) | s == annGlyph) & prevNum & nextNum & !true(s) & s != "+"
+    # ... AND SO DOES THE GLUED DIGIT-COLON FORM (2026-09-26, ISSUES.md issue
+    # 119; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3): "All
+    # values are expressed as mean + SD." over "154.0 5:3.8 154.9 5:4.8
+    # 156.3 5:6.2 154.4 5:4.9" - the sign set as "5:" glued to every SD of
+    # the middle arms, with a plain "+" in the outer ones. The glued digit
+    # form is a slot's evidence only (issue 70), and the middle columns had
+    # no other marker on two lines, so their cells stayed unread and the
+    # table read two arms of four. Under an announced notation a glued
+    # digit-colon word standing after a number marks its column as the
+    # soup words above do; "5:" then repairs at that column on every line.
+    gd <- grepl("^[0-9]:[0-9]", s, perl = TRUE) & prevNum & !true(s)
+    g <- ((isSoup(s) | s == annGlyph) & prevNum & nextNum & !true(s) & s != "+") | gd
     if (any(g)) {
       markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g)))
       markTrue <- c(markTrue, rep(FALSE, sum(g)))
