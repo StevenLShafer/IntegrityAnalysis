@@ -132,6 +132,30 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 92. A colon between two integers is a ratio, not the sign ("19:21" under "Sex M:F")
+
+**Status: fixed on `fix/colon-ratio-not-fused-sign`, 2026-09-25**, a
+regression of issue 85 found by the corpus session's batch 23b (AB2:
+CJA 1997;44:390, page 3, four arms 40/40/40/10).
+
+- **The defect.** Issue 85's fused-sign glyph set included the colon,
+  so a "Sex M:F" row printing "19:21 19:21 19:21 5:5" was split into
+  three cells of 19 +/- 21 and one of 5 +/- 5: a continuous variable
+  that did not exist, which moved the trial's P_FULL from 0.013 to
+  0.125.
+- **What changed.** The colon is out of the fused-sign set. An OCR
+  sign of that shape ("5:9", issue 77) is still read by the slot rule,
+  which needs the column's other rows to set a genuine glyph there.
+  The "Sex M:F" row is skipped as before issue 85 (a bare number with
+  no SD); reading "19:21" as a two-level count is a separate reading,
+  not made here.
+- **Tests** (`tests/testthat/test-colon-ratio-not-fused-sign.R`): the
+  helper leaves a line of colon ratios alone while still splitting the
+  letter forms; a rebuilt page with a "Sex M:F" row reads Age, Height
+  and Weight and no continuous Sex (4 expectations fail on the unfixed
+  code). On the real page Age, Height and Weight are unchanged and Sex
+  M:F is skipped.
+
 ## 89. Three more ways a paper states its arm sizes, and the power statement that is not one
 
 **Status: fixed on `feat/size-sentence-shapes`, 2026-09-25**, from the
