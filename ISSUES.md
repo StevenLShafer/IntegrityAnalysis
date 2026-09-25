@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 63. A mean ± SD cell with a bracketed range appended, a "+" as its plus-minus, and a "[ranges]" label suffix
+
+**Status: fixed on `feat/meansd-with-range`, 2026-09-25**, from the corpus
+session's batch 11 finding P1 (Fujii 1998, Eur J Anaesthesiol 15:287; PMID
+9649986).
+
+- **The defect.** Rows print as "Height (cm) [ranges] 153.3 + 6.7[147-171]
+  157.8 +6.5[145-172] …" across four arms of 30: the plus-minus set as a
+  plain "+", and the range in brackets straight after the SD. The
+  tokenizer took the mean as a plain number and the "6.7[147-171]" as a
+  median with a range, so every such row was skipped; only Age survived
+  on `e8c145d`, and p moved from 0.057 to 0.60.
+- **What changed.** A mean ± SD token may carry a bracketed range, and a
+  "+" between two numbers is a plus-minus when a bracketed range follows
+  (without the range it stays two numbers for the announced rules of
+  issue 45); the range's separator may be a hyphen, an en dash, the
+  Unicode minus or "to". A trailing "[ranges]" / "[range]" / "[min-max]"
+  on a label is notation and is removed before the unit.
+- **On the page.** Age, Height and the two durations read deterministically
+  with four arms of 30. Residues: the Weight row is interleaved with the
+  page's upside-down running head ("ueadoing … sickness"), and the arm
+  names are lost to a mangled header; Height's third cell prints
+  "157.346.1" with the glyph dropped entirely.
+- **Tests** (`tests/testthat/test-meansd-with-range.R`): the tokenizer on
+  both cell forms and on a rangeless "5 + 2"; the label suffix; a rebuilt
+  page reads its three variables and three arms of 30 and validates.
+
+---
+
 ## 62. A column of a different population beside the randomised arms is a review flag
 
 **Status: fixed on `feat/other-population-arm-flag`, 2026-09-25**, from

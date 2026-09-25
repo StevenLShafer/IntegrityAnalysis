@@ -211,6 +211,10 @@ wrong entry would corrupt numbers invisibly.
   with cells "141 6 9" - three plain tokens whose middle one is the announced digit are one
   mean ± SD cell (two or more on the line).
 
+- **A range after the SD** (2026-09-25, issue 63): "48.4 ± 7.6 [33-63]" is one mean ± SD cell,
+  and "48.4 +7.6[33-63]" too - a "+" is a plus-minus once a bracketed range follows; a label's
+  "[ranges]" suffix is notation.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
