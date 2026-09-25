@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 119. Under an announced notation the glued digit-colon form marks its column
+
+**Status: fixed on `fix/glued-digit-colon-marks-slot`, 2026-09-26**, from
+the corpus session's batch 27 AF3 (CJA 1995, PMID 7614644, a scan; four
+arms of 22).
+
+- **The defect.** "All values are expressed as mean + SD." over "154.0
+  5:3.8 154.9 5:4.8 156.3 5:6.2 154.4 5:4.9": the sign set as "5:" glued
+  to every SD of the middle arms, with a plain "+" in the outer ones.
+  The glued digit form is a slot's evidence only (issue 70), and the
+  middle columns had no other marker on two lines, so their cells stayed
+  unread and the table read the outer arms alone.
+- **What changed.** Under an announced notation a glued digit-colon word
+  standing after a number marks its column, as the soup words of issue
+  108 do; "5:" then repairs at that column on every line.
+- **On the page.** The second arm's Height, Weight, both durations and
+  Morphine read (154.9 +/- 4.8, 53.2 +/- 8.0, 81 +/- 24, 109 +/- 26, 4.9
+  +/- 0.9). The third arm is still merged into a neighbour by the
+  header-count cut, whose column spreads are inflated by the plain
+  tokens of the "+" rows - issue 120. Age's second cell is lost in the
+  text layer.
+- **Tests** (`tests/testthat/test-glued-digit-colon-marks-slot.R`): the
+  helper on the Height, Weight and Duration lines under "mean + SD"; a
+  rebuilt page with aligned "5:" signs reads all four arms of every row
+  (6 expectations fail on the unfixed code). The announced-soup, minus-
+  digit, zero-repair, slot, glued-soup, junk-row and Loadsman layout
+  tests still pass.
+
 ## 116. A look-alike letter among the digits of an SD after the sign ("58 <bullet> l0")
 
 **Status: fixed on `fix/letter-l-in-sd-after-sign`, 2026-09-26**, from
