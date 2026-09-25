@@ -581,8 +581,12 @@
       data.frame(label = label, reason = reason, text = txt,
                  stringsAsFactors = FALSE)
 
+  # label-kind lines already absorbed into the row ABOVE them as the
+  # wrapped second line of its label (see the data branch below)
+  consumedLabel <- integer(0)
   for (i in seq(firstData, lastData)) {
     if (kind[i] == "label") {
+      if (i %in% consumedLabel) next
       lbl <- .ppCleanLabel(lineTexts[i])
       # A journal watermark ("Downloaded from http://...") or copyright
       # rail interleaves with the table's own lines on some published
@@ -615,6 +619,42 @@
     if (nrow(toks) == 0) next
     joined   <- paste(lines[[i]]$text, collapse = " ")
     rawLabel <- substr(joined, 1, min(toks$start) - 1)
+    # A ROW LABEL THAT WRAPS ONTO THE NEXT LINE (2026-09-24, Loadsman
+    # corpus, Polat 2015 DA). "Amount of intraoperative  561.67 +/- ..."
+    # with "fluid (ml)" on the line beneath, "Infusion duration of
+    # study" over "drug (min)": the second line carries no value, so it
+    # is a label-kind line, and the row went out as "Amount of
+    # intraoperative" - a truncated name that the AI merge then could
+    # not match to its own "Amount of intraoperative fluid" by label
+    # (the value signature caught it; the name was still wrong). The
+    # continuation is recognised by its typography, not its words: it
+    # begins with a lower-case letter or a bracketed unit, and journals
+    # capitalise the first line of a variable's name. A line that starts
+    # with a capital is the NEXT variable's heading or a block header
+    # and is left alone. The absorbed line is skipped by the label
+    # branch above, so it cannot also become the open block header.
+    # (the last data row's continuation lies just BEYOND lastData, so the
+    # look-ahead runs to the end of the classified lines, not the block)
+    # A lower-case CATEGORY HEADER ("sex, n (%)" in a manuscript that
+    # does not capitalise) would pass the typography test and be eaten,
+    # orphaning its indented children into skipped bare numbers
+    # (CodeRabbit on PR #336). A header has children; a continuation does
+    # not: when the line after the candidate is a data line whose label
+    # starts to the RIGHT of the candidate's first word - indented under
+    # it - the candidate is a header and is left to the label branch.
+    if (i < length(kind) && kind[i + 1] == "label") {
+      nxt <- .ppSquish(lineTexts[i + 1])
+      xNext  <- lines[[i + 1]]$x[1]
+      xChild <- if (i + 2L <= length(kind) && kind[i + 2L] == "data")
+        lines[[i + 2L]]$x[1] else NA_real_
+      indentedChild <- !is.na(xChild) && !is.na(xNext) && xChild > xNext + 4
+      if (!indentedChild &&
+          grepl("^[a-z(]", nxt, perl = TRUE) && nchar(nxt) <= 40 &&
+          !grepl("[0-9]", gsub("\\([^)]*\\)", "", nxt))) {
+        rawLabel <- paste(rawLabel, nxt)
+        consumedLabel <- c(consumedLabel, i + 1L)
+      }
+    }
     label    <- .ppCleanLabel(rawLabel)
     txt      <- lineTexts[i]
 
@@ -845,9 +885,58 @@
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
+      # THE NUMBERS THEMSELVES CAN SAY "n (%)" (2026-09-24, Loadsman
+      # corpus, Akkaya 2015 EJA). A table of counts and percentages with
+      # no "%" anywhere - no "(%)" in a label, no "n (%)" header, a
+      # footnote silent on notation - reads "18 (90)" as a mean of 18
+      # with an SD of 90, and 31 of that paper's 48 rows went to the
+      # engine as continuous variables whose SD exceeded their mean. But
+      # a count with its percentage has a signature no mean (SD) pair
+      # has: the second number IS the first, as a percentage of the
+      # arm's N, at the printed precision, in every arm. Two cells of
+      # one row agreeing on that by chance would need a genuine SD to
+      # equal 100 x mean / N to the printed decimal in each arm - so
+      # when every cell of the row that has a value satisfies it, at
+      # least two do, and at least one count is nonzero, the row is
+      # counts. Only whole, in-range first numbers qualify; an arm with
+      # no N cannot vouch and disqualifies the row from this rule (the
+      # vocabulary rules below still apply). Checked ahead of the label
+      # rules because it is evidence from the cells, not from the words.
+      #
+      # HOW MUCH EVIDENCE IS ENOUGH (misparse measurement, 2026-09-24).
+      # At integer precision the identity is loose - any SD within 0.5
+      # of 100 x mean / N passes - and two arms that print the same
+      # values are one check, not two: "Age 43 (15)" in arms of 280 and
+      # 279 (100 x 43 / 280 = 15.4) read as counts and lost a genuine
+      # mean (SD) row (PMID 16792606). So the cells are counted as
+      # DISTINCT (count, bracket, N) tuples, and the row needs three of
+      # them at integer precision, two when the bracketed number carries
+      # a decimal (a tolerance of 0.05 is ten times as sharp). A
+      # two-arm integer table with no "%" anywhere is left to the
+      # vocabulary rules and, if it is mostly SD > MEAN, to the review
+      # flag; Akkaya's twelve arms pass with room to spare.
+      cellsSayPct <- local({
+        sig <- character(0); nz <- 0L; minDec <- Inf
+        for (j in seq_len(nArms)) {
+          t <- armTok[[j]]
+          if (is.null(t) || !identical(t$type, "numParen")) next
+          Nj <- armN[arms[j]]
+          if (is.na(Nj) || Nj <= 0 || is.na(t$num1) || is.na(t$num2) ||
+              t$num1 %% 1 != 0 || t$num1 < 0 || t$num1 > Nj) return(FALSE)
+          dec2 <- if (is.na(t$dec2)) 0 else t$dec2
+          tol <- 0.5 * 10^-dec2 + 1e-9
+          if (abs(t$num2 - 100 * t$num1 / Nj) > tol) return(FALSE)
+          sig <- c(sig, paste(t$num1, t$num2, Nj))
+          minDec <- min(minDec, dec2)
+          if (t$num1 > 0) nz <- nz + 1L
+        }
+        need <- if (is.finite(minDec) && minDec >= 1) 2L else 3L
+        length(unique(sig)) >= need && nz >= 1L
+      })
       decision <-
         if (parenIsSD == "sd") "sd"
         else if (parenIsSD == "percent") "percent"
+        else if (cellsSayPct) "percent"
         else if (labelSaysPct || nextLabelPct) "percent"
         # Under an open "N (%)" block header ("Race, N (%)"), an "a (b)"
         # child is a count and its percentage, whatever the footnote says
@@ -861,7 +950,10 @@
         else if (footSaysPercent) "percent"
         else "sd"
       mainType <- if (decision == "sd") "meanSD" else "nPct"
-      if (parenIsSD == "auto" && !labelSaysPct && !labelContinuous)
+      if (parenIsSD == "auto" && cellsSayPct)
+        say("  \"", label, "\": read \"a (b)\" as n (%) - in every arm the ",
+            "bracketed number is the first as a percentage of the arm N.")
+      else if (parenIsSD == "auto" && !labelSaysPct && !labelContinuous)
         say("  \"", label, "\": read \"a (b)\" as ",
             if (decision == "sd") "mean (SD)" else "n (%)",
             " - check, or set parenIsSD.")
@@ -962,7 +1054,8 @@
       }
       partNames <- ifelse(nchar(partNames) <= 3 & !partNames %in% c("Male", "Female"),
                           paste(label, partNames), partNames)
-      partNames <- vapply(partNames, .ppUniqueName, character(1),
+      # never a spelling the normaliser reads as a header (.iaSafeColumnName)
+      partNames <- vapply(.iaSafeColumnName(partNames), .ppUniqueName, character(1),
                           existing = setdiff(catColumns, partNames))
       catColumns <- unique(c(catColumns, partNames))
       rowName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
@@ -981,9 +1074,13 @@
       # The variable's name: the row label; failing that, an open block
       # header (a bare "N (%)" label under "NSAID use" names the NSAID
       # variable, not "Category"); failing both, "Category".
-      catName <- .ppUniqueName(
-        if (nchar(label) > 0) label
-        else if (!is.na(catHeader)) catHeader else "Category", catColumns)
+      # the variable's printed name is the ROW label as printed; only the
+      # COLUMN spelling is sanitised (.iaSafeColumnName), so the row still
+      # matches what the model calls it in the hybrid merge (CodeRabbit on
+      # PR #336)
+      varName <- if (nchar(label) > 0) label
+        else if (!is.na(catHeader)) catHeader else "Category"
+      catName <- .ppUniqueName(.iaSafeColumnName(varName), catColumns)
       catHeader <- NA_character_
       catHeaderPct <- FALSE
       catHeaderNPct <- FALSE
@@ -997,7 +1094,7 @@
       present <- !vapply(armTok, is.null, logical(1))
       haveN <- any(present) && all(!is.na(armN[arms[present]]))
       catColumns <- unique(c(catColumns, catName, if (haveN) complementName))
-      rowName <- .ppUniqueName(catName, usedRowNames)
+      rowName <- .ppUniqueName(varName, usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
       if (haveN)
         say("  \"", label, "\": binary n (%) row - complement column \"",
@@ -1073,7 +1170,7 @@
                         "not counts; enter by hand"), txt)
           next
         }
-        catName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
+        catName <- .ppUniqueName(.iaSafeColumnName(if (nchar(label) > 0) label else "Category"),
                                  catColumns)
         catColumns <- unique(c(catColumns, catName))
         key <- paste0("__cat__", catHeader)
@@ -1749,6 +1846,34 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # "Table 1 Patient characteristics". So: if any caption clearly announces a
   # baseline table, only those candidates are considered, and the parse score
   # merely breaks ties among them.
+  # A CAPTION THAT NAMES TWO TABLES IS TWO TABLES - WHEN A SPLIT READING
+  # EXISTS (2026-09-24/25, issue 35). On a two-column page the full-width
+  # candidate joins the two columns' caption lines into one: "TABLE I
+  # Baseline characteristics TABLE III Treatment outcomes". Its block
+  # mixes the two tables' rows, and when that block yields one more
+  # usable row than the single-column reading it wins on score - PMID
+  # 16738291 filed Table III's outcome values under Age and Height once
+  # the wrapped-label rule made one of its lines usable. The caption
+  # vocabulary cannot see the straddle (the joined caption still says
+  # "Baseline"); the second anchor can. The straddle is docked below what
+  # its single-column twin earns, so the split reading wins.
+  #
+  # ONLY when that twin exists. An unconditional dock (the first version)
+  # moved two corpus files the wrong way: on PMID 15681941 the page is a
+  # single full-width layout with Table 1 beside Table 3 and no column
+  # split, so the straddle was the only reading holding Table 1 and an
+  # outcome table won; on PMID 12193491 the second anchor was prose that
+  # ran onto the caption line ("... (Table II)"). So: a candidate whose
+  # caption names two or more tables is set aside only if a TWIN exists -
+  # another candidate on the same page whose caption BEGINS with the same
+  # first table and names no other (a prose candidate "... presented in
+  # table 1. The CSF ..." is not a twin: its anchor is mid-sentence, and
+  # it has no rows). And "set aside" rather than "docked": the halves
+  # are on the page, so the whole is read only if nothing else parses. A
+  # fixed dock was not enough - four phantom arms each with a printed N
+  # out-score two real ones by more than any caption bonus - and the
+  # straddle's rows are two tables' rows, which no score should prefer.
+  cand <- .ppSetAsideStraddles(cand)
   capScores <- vapply(cand, function(x) x$capScore, numeric(1))
   pageOf    <- vapply(cand, function(x) x$page, numeric(1))
   isStrong  <- capScores >= 3

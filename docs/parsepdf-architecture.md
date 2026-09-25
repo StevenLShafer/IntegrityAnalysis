@@ -427,6 +427,85 @@ carries nine variables from two tables; the engine reads one (see the user guide
 published 1.2×10⁻⁶ needs Table 2's two variables as well. Both are recorded in
 `docs/validation-ledger.md`.
 
+### 05f — Three rules from the Loadsman corpus (2026-09-24, issue 35)
+
+A Cowork session ran the batch script over 52 randomised trials supplied by John
+Loadsman and found three defects (`docs/audits/2026-09-24-duplicate-rows-and-percent-as-sd-cowork.md`).
+Its checkpoints had been produced by a library built 2026-08-21, so the first —
+one variable emitted twice, under a truncated label and the model's full one —
+was already caught on current code by the merge's value-signature dedupe of
+2026-08-25 (§08). What was still wrong, and is now fixed:
+
+- **A row label that wraps onto the next line is read whole.** "Amount of
+  intraoperative" over "fluid (ml)": the second line carries no value, so it is a
+  label-kind line, and the row went out under its first line only. The
+  continuation is recognised by typography, not vocabulary — it begins with a
+  lower-case letter or a bracketed unit, and journals capitalise the first line of
+  a variable's name — and the absorbed line cannot also become a block header. A
+  line beginning with a capital is the next variable or a block header and is left
+  alone; the look-ahead runs past the block's last data row, where the last
+  variable's continuation sits.
+- **The rotated download rail is measured by its extent.** `.ppStripRotatedText()`
+  (§05b) drops a column of narrow words that spans a third of the page — but it
+  measured the span between the words' *tops*. A rotated word's y is where its box
+  starts and its text runs on for `height` points (the URL alone is 120 tall), so
+  on Akkaya 2015 EJA the five-word rail spanned 184 of a 700-point page by tops and
+  340 by extent, was kept, and "Downloaded" straddled the table's "Mild" line: the
+  engine returned a row named `Downloaded Mild`. The span is now top-of-first to
+  bottom-of-last.
+- **The cells themselves can say "n (%)".** A table of counts and percentages with
+  no "%" anywhere — no "(%)" in a label, no "n (%)" header, a silent footnote — read
+  "18 (90)" as mean 18, SD 90, and 31 of that paper's 48 rows reached the engine as
+  continuous variables whose SD exceeded their mean. A count with its percentage has
+  a signature no mean (SD) pair has: the bracketed number *is* the first as a
+  percentage of the arm's N, at the printed precision, in every arm. When every cell
+  of the row that has a value satisfies that, at least two do, and at least one
+  count is nonzero, the row is counts — checked ahead of the vocabulary rules,
+  because it is evidence from the cells. An arm without an N cannot vouch, and the
+  row falls to the vocabulary rules as before. *How much evidence is enough* was
+  set by the misparse measurement: at integer precision the identity is loose
+  (any SD within 0.5 of 100 × mean / N passes) and two arms that print the same
+  values are one check, not two — "Age 43 (15)" in arms of 280 and 279 read as
+  counts and lost a genuine mean (SD) row (PMID 16792606). The cells are therefore
+  counted as *distinct* (count, bracket, N) tuples: three are needed at integer
+  precision, two when the bracket carries a decimal. A two-arm integer table with
+  no "%" anywhere is left to the vocabulary rules and, if it is mostly SD > MEAN,
+  to the review flag.
+- **A caption that names two tables is two tables.** On a two-column page the
+  full-width candidate joins the two columns' caption lines — "TABLE I Baseline
+  characteristics TABLE III Treatment outcomes" — and its block mixes the two
+  tables' rows; once the wrapped-label rule made one of those rows usable, that
+  block outscored the correct single-column reading on PMID 16738291 and filed
+  outcome values under Age and Height. `.ppSetAsideStraddles()` sets a candidate
+  whose caption names two tables aside (read only if nothing else on the page
+  parses) **when a twin exists** — a candidate on the same page whose caption
+  begins with the same first table and names no other. Only then: on PMID 15681941
+  the page is one full-width layout with no column split, so the straddle is the
+  only reading holding Table 1 and is kept; on PMID 12193491 the second anchor is
+  prose that ran onto the caption line and is not a straddle. The four pages are
+  `corpus/checkCaptionStraddle.R`.
+- **A category column never spells a header word the normaliser renames
+  unconditionally.** `.iaNormalizeNames()` turns the *first* column whose name
+  contains NUMBER into `N` (and TRIAL, MEASURE, DECM likewise), whatever else the
+  name says — the spellings a hand-made spreadsheet uses for its headers. Reading
+  a label whole exposed the consequence: the two parts of a "12/30" cell under
+  "Need for rescue medication (number of patients)" became a second `N`, and the
+  table was refused structurally (Peker 2020 IJMS, the corpus session's F4 on
+  PR #336). `.iaSafeColumnName()` respells those four words (number → no., trial →
+  trl, measure → meas., decm → dec.) in every category column either engine names;
+  the conditional tokens resolve to the real base column and are left alone.
+
+And one flag rather than a rule: a table in which **half or more of the mean (SD)
+cells print an SD larger than the mean** — with at least three such cells, so a one-
+or two-row table cannot trip it — is reported by `reviewFlags()` ("counts
+with their percentages read as mean (SD)?"), which consults the AI under
+`ai = "fallback"`. One such row is ordinary — a skewed quantity prints an SD above
+its mean and is analysed as it stands — so the per-row invariant the finding asked
+for belongs in the validator as a *non-fatal* issue, which needs a new issue code:
+a contract decision held for Steve (issue 35).
+
+Real-article checks: `corpus/checkLoadsman.R` (skips when the corpus is absent).
+
 ## Files
 
 | File | Role |

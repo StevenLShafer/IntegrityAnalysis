@@ -211,6 +211,19 @@ extraction is deterministic — the same PDF always yields the same table
 > has no way to decide that three tables describe the same arms in the
 > same order — and splitting baseline data this way is unusual.
 
+> **Two things the PDF reader works out for itself.** A count with its
+> percentage is recognised by the table's notation — "n (%)" in a header or
+> a label — and also by the numbers: a row whose bracketed number is the
+> first as a percentage of the arm size *in every arm* is read as counts
+> even when no "%" is printed anywhere. That takes more than one cell:
+> three distinct (count, percentage, arm size) cells when the percentages
+> are whole numbers, two when they carry a decimal, and at least one
+> nonzero count — so a two-arm row of whole-number percentages is left to
+> the table's notation. And a variable name that wraps onto a second line
+> is read whole when the second line begins with a lower-case letter or a
+> bracketed unit ("Amount of intraoperative" over "fluid (ml)"); a
+> second line that begins with a capital is taken as the next variable.
+
 > **Repeated-measures tables.** Laboratory and crossover papers often print
 > the *arms as rows* — a `Group` column running 1, 2, 3 beneath each
 > variable — with the *timepoints as columns*: `Baseline`, then one or more

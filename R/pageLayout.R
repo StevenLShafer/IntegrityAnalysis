@@ -188,13 +188,24 @@
   if (sum(narrow) < 4) return(pageWords)
   # the rail: four or more narrow words sharing one x position and
   # spanning a third of the page's height - running text never stacks
-  # words in a perfect vertical line
+  # words in a perfect vertical line.
+  # THE SPAN IS MEASURED FROM THE TOP OF THE FIRST WORD TO THE BOTTOM OF
+  # THE LAST, not between their y's (2026-09-24, Loadsman corpus, Akkaya
+  # 2015 EJA). A rotated word's y is where its box STARTS; its text runs
+  # on for `height` points - the URL alone is 120 points tall. Measured by
+  # y only, the five words of that page's rail (Downloaded / from / the
+  # URL / by / a token) spanned 184 of a 700-point page and the rail was
+  # kept; "Downloaded" then straddled the table's "Mild" line and the
+  # engine returned a row named "Downloaded Mild". By extent the same
+  # rail spans 340 points.
   drop <- rep(FALSE, nrow(pageWords))
-  pageSpan <- diff(range(pageWords$y))
+  top  <- pageWords$y
+  bot  <- pageWords$y + pageWords$height
+  pageSpan <- max(bot) - min(top)
   for (x0 in unique(pageWords$x[narrow])) {
     g <- which(narrow & abs(pageWords$x - x0) <= 1)
     if (length(g) >= 4 &&
-        diff(range(pageWords$y[g])) > 0.3 * pageSpan)
+        max(bot[g]) - min(top[g]) > 0.3 * pageSpan)
       drop[g] <- TRUE
   }
   if (!any(drop)) return(pageWords)
@@ -352,6 +363,46 @@
                               "|recovery|haemodynamic|hemodynamic"),
                        txt, perl = TRUE)
   s
+}
+
+# The "Table N" anchors a caption line names, lower-cased and squished:
+# "TABLE I Baseline characteristics TABLE III Treatment outcomes" gives
+# c("table i", "table iii"). Used by the candidate scorer to recognise a
+# full-width block that straddles two side-by-side tables (issue 35).
+.ppCaptionAnchorList <- function(txt) {
+  if (is.null(txt) || length(txt) != 1L || is.na(txt)) return(character(0))
+  m <- regmatches(txt, gregexpr("(?i)\\btab(le|\\.)\\s+([0-9]+|[ivx]+)\\b", txt, perl = TRUE))[[1]]
+  tolower(gsub("\\s+", " ", m))
+}
+
+# A candidate whose caption names two tables is a full-width block that
+# STRADDLES two side-by-side tables, and its rows are two tables' rows.
+# When the page also offers the halves - a TWIN: a candidate on the same
+# page whose caption BEGINS with the same first table and names no other -
+# the whole is set aside (capScore -100: read only if nothing else on the
+# page parses). A prose candidate "... presented in table 1. The CSF ..."
+# is not a twin (its anchor is mid-sentence, and it has no rows), and a
+# page with no split at all keeps its straddle, because it is the only
+# reading holding the baseline table. Each element of `cand` carries
+# $page, $caption and $capScore; the list comes back with capScore
+# adjusted and nothing else touched. Tested with hand-built candidate
+# lists in test-loadsman-layouts.R; the corpus pages that decided the
+# rule are in corpus/checkCaptionStraddle.R.
+.ppSetAsideStraddles <- function(cand) {
+  if (length(cand) < 2) return(cand)
+  anchorsOf <- lapply(cand, function(x) .ppCaptionAnchorList(x$caption))
+  nAnch  <- lengths(anchorsOf)
+  firstA <- vapply(anchorsOf, function(a) if (length(a)) a[1] else NA_character_, character(1))
+  capLow <- vapply(cand, function(x) tolower(.ppSquish(as.character(x$caption))), character(1))
+  startsWithAnchor <- !is.na(firstA) &
+    mapply(function(cp, a) !is.na(a) && startsWith(cp, a), capLow, firstA)
+  pageOfC <- vapply(cand, function(x) as.numeric(x$page), numeric(1))
+  for (k in which(nAnch >= 2)) {
+    twin <- pageOfC == pageOfC[k] & nAnch == 1 & startsWithAnchor &
+      !is.na(firstA) & firstA == firstA[k]
+    if (any(twin)) cand[[k]]$capScore <- -100
+  }
+  cand
 }
 
 # Which page carries the most baseline-like table caption?

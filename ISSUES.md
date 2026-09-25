@@ -132,6 +132,214 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 35. Duplicated variables, counts read as mean (SD), a banner word in a label — and the month-old library that produced the finding
+
+**Status: fixed on `fix/loadsman-parse-defects`, 2026-09-24, from
+`docs/audits/2026-09-24-duplicate-rows-and-percent-as-sd-cowork.md`** — a
+finding delivered by a Cowork session running `author_batch.R` over 52
+randomised trials supplied by John Loadsman (editor, *Anaesthesia and
+Intensive Care*). One decision is held for Steve (below).
+
+**First, what produced the finding.** The batch scripts run from
+`C:/dev/Fujii Boldt Reuben`, outside the repository's renv, so
+`library(IntegrityAnalysis)` resolves to the R user library — and the
+copy installed there is **0.1.0, built 2026-08-21**. Every Loadsman
+checkpoint, the Carlisle-168 workbook of 2026-09-24 and the figures in
+the finding were produced by an engine that predates the value-signature
+dedupe of the AI merge (2026-08-25), the repeated-measures reader
+(issue 34) and every fix between. This is the fourth instance of the
+stale-library trap in the memory file `snapshot-library-provenance`; the
+standing remedy — reinstalling the user-library copy from the repository
+— has been Steve's call since 2026-09-02 and still is. Both batch scripts
+now print the library they load (path, version, build date, repository
+HEAD), store it in every checkpoint as `provenanceLib`, and **stop** on a
+copy older than 0.2.0. Their seeds were already set by the Cowork
+session (re-seeded inside `score()`, so a resumed run matches an
+uninterrupted one).
+
+**The three defects, re-measured on current `main` (841648d) before
+anything was changed:**
+
+1. *The same variable twice, under a truncated and a full label* (Polat
+   2015 DA, 18 papers). **Already fixed on `main`** by the 2026-08-25
+   value-signature dedupe: the hybrid run of Polat on current code prints
+   "Dropping 2 model variable(s) whose values duplicate deterministic rows
+   under another name: Amount of intraoperative fluid, Infusion duration
+   of study drug" and returns 15 rows — 9 continuous (3 variables × 3
+   arms of 30), Gender, and the model's Septoplasty. What remained wrong
+   was the *truncation*: "Amount of intraoperative" is the first line of
+   a label whose second line, "fluid (ml)", carries no value and so was a
+   label-kind line the row never saw. **Fixed**: a label-kind line right
+   after a data row that begins with a lower-case letter or a bracketed
+   unit is the row's continuation (journals capitalise a variable's first
+   line), joined to the label and never a block header; the look-ahead
+   runs past the block's last data row, where the last variable's
+   continuation sits. Polat now reads "Amount of intraoperative fluid"
+   and "Infusion duration of study drug".
+2. *"n (%)" read as mean and SD* (Akkaya 2015 EJA: 31 of 48 rows with
+   SD > MEAN; p = 0.0029). **Reproduced on `main`** — the page's only
+   candidate is an outcome table of counts with no "%" printed anywhere,
+   and "18 (90)" fell to the vocabulary rules' default, mean (SD).
+   **Fixed** by evidence from the cells: when, in every arm that has a
+   value, the bracketed number is the first as a percentage of the arm's
+   N at the printed precision (first number a whole count within N; at
+   least two arms; at least one nonzero), the row is "n (%)" — checked
+   ahead of the vocabulary rules. Akkaya now returns 0 continuous count
+   rows and 8 level columns; its VAS rows are medians. A table whose
+   mean (SD) cells are *mostly* SD > MEAN (half or more, three or more
+   cells) raises a review flag, which consults the AI under
+   `ai = "fallback"`.
+3. *"Downloaded Mild"* (same paper). **Reproduced on `main`.** The
+   rotated-rail stripper (`.ppStripRotatedText`, 2026-08-22) measured a
+   rail's span between its words' *tops*; a rotated word's text runs on
+   for `height` points (the URL is 120 tall), so this five-word rail
+   spanned 184 of 700 points by tops and was kept, and "Downloaded"
+   (36 points tall, starting 4 above "Mild") joined the Mild line.
+   **Fixed**: the span is top-of-first to bottom-of-last (340 here).
+
+**Held for Steve — the per-row validator issue.** The finding asks that
+"a scored continuous row with SD > MEAN raises an issue". Every issue
+code the validator has (`missing`, `unreadable`, `incongruent`,
+`too_large`, `too_much_compute`, `error`, `structural`) is a defect
+that fails the table; a skewed variable — opioid consumption 3.2 ± 5.1,
+previous operations 0.4 ± 0.8 — legitimately prints SD > MEAN and must
+be analysed as it stands. A non-fatal advisory needs a **new issue
+code** (say `suspect`, painted amber, never blocking), which is a change
+to the API contract (docs/api-users-guide.md's table of seven codes) and
+the grid legend. Until that decision, the invariant lives at the parse
+(the table-level flag above) and in the corpus check.
+
+**Tests (committed):** `tests/testthat/test-loadsman-layouts.R` — the
+Akkaya rail geometry through the stripper; a wrapped label joined on a
+middle row and on the last row, and a capitalised next line *not*
+joined; "a (b)" cells that satisfy the identity read as counts while
+"Age 40 (12)" beside them stays a mean; the same table with no arm N
+falling to mean (SD) and raising the flag; and the hybrid merge with a
+canned model reply (mocked `parseBaselineTableAI`) dropping the fuller-
+label duplicate by value while keeping "ASA I" and "ASA II" as two
+variables — the regression the finding warned a careless fix would
+cause. `corpus/checkLoadsman.R` — the real articles, skips when absent:
+Polat 9 continuous rows, N = 30, no repeated tuple, no truncated twin,
+both wrapped labels whole; Akkaya no banner word, 0 continuous rows with
+SD > MEAN, 8 level columns; the cumj paper keeps ASA I and ASA II; and
+over the corpus (46 of 52 parse deterministically) every table with
+SD > MEAN on half its mean (SD) cells carries the flag. All pass.
+
+**Nothing else moves — measured.** `runMassTest.R`, 61 PDFs, each side
+from its own installed snapshot under `Rscript --vanilla`: 60 parsed / 1
+failed on both, the same file. 50 of 60 ROW vectors identical; the ten
+that differ are all the wrapped-label rule reading a name whole
+("Uterine incision–to–" → "Uterine incision–to– delivery time, s";
+"Cervical" → "Cervical dilation, cm") plus one variable *gained*
+(PMID_15915019: "Procedure during general anesthesia 38 (88) / 35
+(83)", counts by the identity rule; trial p 0.095 → 0.12). One trial
+crosses a threshold with an identical ROW vector — PMID_17197846,
+0.05012 → 0.0467, every row p within 0.004 — which is the unseeded
+Monte Carlo of the mass-test script, as issue 34 established. Suite:
+125 files / 4,106 passed / 0 failed / 33 skipped on the branch, with one ERROR in test-vocacapsaicin-layout.R whose expectation named the truncated label "Nonsteroidal anti-inflammatory"; the label is now read whole ("... drugs"), the expectation updated, and the file re-run clean. The misparse measurement (`measureMisparse.R`) can
+see the identity rule only as pairs *removed* — a count row that was a
+mean/SD pair is one no longer — so a misfire on a genuine mean (SD) row
+would show as a lost corroborated pair; a run on this branch's snapshot
+was launched at PR time against the `e41609c` baseline (no parser change
+between `e41609c` and `841648d`).
+
+**The misparse measurement found two more defects before the merge
+(2026-09-24, on the branch at `3cc107c`).** Against the `e41609c`
+baseline: 426 of 938 files fully corroborated (45.4%, was 417 of 936),
+5,018 uncorroborated pairs (was 5,510), 4,443 of Carlisle's pairs missed
+(was 4,457), corroborated pairs unchanged at 7,285; 968 of 1,016 triples
+identical, 16 files changed bucket, 13 of them for the better
+(`PMID_16508400` 48 pairs with 39 uncorroborated → 8, all corroborated;
+`PMID_15681945` 40 → 16, all corroborated). The three that went the
+other way were each read on both snapshots:
+
+- `PMID_16792606` (2 pairs, both lost): **the identity rule misfired.**
+  "Age 43 (15)" in arms of 280 and 279 satisfies 100 × 43 / 280 = 15.4
+  → "15" at integer precision, and the two arms print the same values,
+  so they were one check counted twice. The rule now counts *distinct*
+  (count, bracket, N) tuples and needs three of them at integer
+  precision, two when the bracket carries a decimal (a tolerance ten
+  times as sharp). Akkaya's twelve arms pass with room to spare; a
+  two-arm integer table with no "%" is left to the vocabulary rules and
+  the flag. The page is a committed test; the Age row is a mean again.
+- `PMID_16738291` (8 corroborated → 6, plus 4 wrong): **a candidate
+  switch.** The full-width candidate joins the two columns' captions —
+  "TABLE I Baseline characteristics TABLE III Treatment outcomes" — and
+  its block mixes the two tables; once the wrapped-label rule made one
+  of its lines usable it outscored the single-column reading by three
+  and filed Table III's outcome values under Age and Height. A caption
+  naming two tables is two tables — *when the page also offers the
+  halves.* A first version docked every two-anchor caption by 8 and the
+  second misparse run showed both ways that is wrong: on `PMID_15681941`
+  the page is one full-width layout with Table 1 beside Table 3 and no
+  column split, so the straddle was the only reading holding Table 1
+  and an outcome table won; on `PMID_12193491` the second anchor was
+  prose that ran onto the caption line ("… (Table II)"). And a dock was
+  not enough anyway: four phantom arms each with a printed N out-score
+  two real ones by more than any caption bonus. Now
+  `.ppSetAsideStraddles()` sets a two-anchor candidate aside
+  (`capScore` −100: read only if nothing else on the page parses) only
+  when a *twin* exists — a candidate on the same page whose caption
+  begins with the same first table and names no other. Table I wins on
+  16738291 and Table 1 on 16179044; 15681941 keeps its straddle; 12193491
+  keeps TABLE I. The four pages are `corpus/checkCaptionStraddle.R`; the
+  rule is unit-tested on hand-built candidate lists, and a synthetic
+  side-by-side page that the column splitter does *not* split pins the
+  rule's documented limit (no twin, straddle read).
+- `PMID_16311286` (3 → 0 corroborated): scorer noise on a broken page.
+  Both readings — Table 1 as one arm with no N, ten "variables" mostly
+  fragments, and Table 3, an outcome table — fail validation; the
+  wrapped-label rule merged one fragment, Table 1 lost a point, and the
+  tie that had favoured it broke the other way. Neither reading was ever
+  analysable; the pairs it "lost" were mean (range) cells that happened
+  to match. Left as it is.
+
+One file stopped parsing (`PMID_12594136`): it had "parsed" one valueless
+row from an outcome table; now no usable rows, which is the honest
+result. A second misparse run on the corrected branch is recorded here
+by follow-up.
+
+**Mass test on the corrected branch (`206c5c6` snapshot vs `main`
+841648d):** 60/61 parsed on both; 49 of 60 ROW vectors identical. The
+eleven that differ: nine are labels read whole and the variable gained
+by the identity rule (above); one is the two-anchor rule correcting a
+straddle — on `main`, `PMID_16179044` was read from a full-width block
+captioned "Table 1 Patient characteristics … Table 4 Induction time of
+sedation, intra-operative propofol", four phantom arms, "Propofol target
+concentration" and a nonsense "ASA grade 12 (12)" filed as baseline, trial
+p 0.992; the branch reads the real Table 1 — Age, Weight, Height, two
+arms of 55 with identical printed means — and p = 0.026 is the genuine
+result on the genuine table; and one is the unseeded Monte Carlo wobble
+across 0.05 with identical rows (`PMID_17197846`), as before. Suite on the
+corrected branch: 125 files / 4,121 passed / 0 failed / 33 skipped.
+
+**A regression the corpus session found on the pushed branch (its batch
+1, 2026-09-25; the merge was stopped for it).** Peker 2020 IJMS validated
+on `main` and failed on the branch: the wrapped label "Need for rescue
+medication (number of patients)" — now read whole, correctly — named the
+two parts of its "12/30" cells "… (number of patients) 1" and "… 2", and
+`.iaNormalizeNames()` renames the *first* column containing NUMBER to
+`N` unconditionally (as it does TRIAL, MEASURE and DECM: a hand-made
+spreadsheet's header spellings, and the rule cannot know a column is a
+category), so the table was refused structurally as two columns
+normalising to `N`. On `main` the truncated label had no bracket and no
+collision. **Fixed**: `.iaSafeColumnName()` respells those four words
+(number → no., trial → trl, measure → meas., decm → dec.) in every
+category column either engine names — the heuristics' three naming sites
+and the AI route's `.iaLevelColumnName()` — so a level can never collapse
+onto a reserved column; the conditional tokens (GROUP, ROW, MEAN, OBS)
+resolve to the real base column, which the template carries leftmost,
+and are left alone. Peker is asserted in `corpus/checkLoadsman.R` (label
+read whole, no category column spells NUMBER, `validateData` accepts)
+and on a synthetic page in the test file. The corpus session's other
+findings of that batch (a cell set half a line above its row filed as
+Unnamed; a median row pinned at its floor in every arm; MALE/FEMALE and
+male/female both surviving the merge; a third header's N not read and
+NA-N heuristic rows not deduped against the model's) are follow-up
+issues, not this one.
+
+---
+
 ## 34. The baseline block ran into the follow-up timepoints — and the page was the transpose of what the finding assumed
 
 **Status: fixed on `fix/long-layout-issue-34`, 2026-09-24, from
