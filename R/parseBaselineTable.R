@@ -773,6 +773,41 @@ parseBaselineTable <- function(pdfFile,
   # A model level column that differs from a deterministic one only by
   # case or spacing is that column ("male" beside "Male" made two columns
   # that normalise to one, and the table was refused; Sener 2008 EJA).
+  # A MODEL-ADDED VARIABLE THAT IS AN OUTCOME (2026-09-25, ISSUES.md issue
+  # 54; the corpus session's L2: on Polat 2018 the model, asked for the
+  # baseline table, also returned Tables 2-3 - "Time to T10", "Time to first
+  # analgesic request", Bradycardia / Hypotension / Nausea / Pruritus - and
+  # on Akkaya 2016 the VAS and ODI at every follow-up). The call is not
+  # reproducible (thinking on), so a run may read every table on the page.
+  # The deterministic table is the baseline table by caption; a variable
+  # the model adds to it whose label carries outcome vocabulary is refused
+  # with its reason, so a reviewer sees it in $skipped rather than in the
+  # analysis. The vocabulary is the caption scorer's, plus the words of
+  # block onset, analgesia, follow-up and adverse events.
+  if (nrow(newRows) > 0) {
+    outcomeRe <- paste0("(?i)\\btime to\\b|\\bonset\\b|first analgesic|rescue analges|",
+                        "\\bvas\\b|\\bodi\\b|\\b(st|nd|rd|th)\\s+(week|month|day)\\b|",
+                        "\\b(week|month|day)s?\\s+(after|post)|\\bpost-?op|\\bintra-?op|",
+                        "bradycardia|hypotension|nausea|vomit|pruritus|shivering|",
+                        "satisfaction|complication|adverse|side.?effect|recovery|",
+                        "extubation|emergence|success\\b|\\bat\\s+\\d+\\s*(h|min|hours?|minutes?)\\b|",
+                        # the operative-management table (Fujii 9542558, corpus batch 7, M3)
+                        "duration of (surgery|an(a)?esthesia|operation)|\\binterval\\b|",
+                        "ephedrine|phenylephrine|atropine|neostigmine|consumption|\\btotal\\b.*\\bdose\\b")
+    isOutcome <- grepl(outcomeRe, newRows$ROW, perl = TRUE)
+    if (any(isOutcome)) {
+      bad <- unique(newRows$ROW[isOutcome])
+      say("Refusing ", length(bad), " model variable(s) whose label names an ",
+          "outcome, not a baseline characteristic: ", paste(bad, collapse = ", "))
+      het$skipped <- rbind(het$skipped,
+                           data.frame(label = bad,
+                                      reason = "model-added variable with outcome vocabulary - not a baseline characteristic; enter by hand if it is one",
+                                      text = "", stringsAsFactors = FALSE))
+      flags <- c(flags, paste0(length(bad), " model-added variable(s) refused as ",
+                               "outcomes (see $skipped): ", paste(bad, collapse = ", ")))
+      newRows <- newRows[!isOutcome, , drop = FALSE]
+    }
+  }
   hetCols <- names(het$data)
   for (cn in setdiff(names(newRows), hetCols)) {
     jj <- match(tolower(.ppSquish(cn)), tolower(.ppSquish(hetCols)))

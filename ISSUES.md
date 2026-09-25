@@ -132,6 +132,39 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 54. A variable the model adds to the baseline table is refused when its label names an outcome
+
+**Status: fixed on `feat/refuse-model-outcome-rows`, 2026-09-25**, from
+the corpus session's batch 6 finding L2 (Polat 2018 CMJ, Akkaya 2016) and
+batch 7 finding M3 (Fujii 9542558).
+
+- **The defect.** Asked for the baseline table beside the deterministic
+  reading, the model on some runs returned the page's other tables too:
+  "Time to T10", "Time to first analgesic request", Bradycardia /
+  Hypotension / Nausea / Pruritus (Tables 2-3 of Polat), VAS and ODI at
+  every follow-up (Akkaya), the operative-management table - duration of
+  surgery, intervals, ephedrine and fentanyl doses - appended to Fujii
+  9542558's five rows (p 0.059 → 6e-05). The call is not reproducible
+  (thinking on), so a run may read every table on the page; the
+  deterministic table is the baseline table by caption.
+- **What changed.** In the hybrid merge a model-added variable whose
+  label carries outcome vocabulary - time to, onset, first or rescue
+  analgesia, VAS, ODI, a week/month/day of follow-up, post- or
+  intra-operative, bradycardia, hypotension, nausea, vomiting, pruritus,
+  shivering, satisfaction, complication, adverse, side effect, recovery,
+  extubation, emergence, success, "at 24 h", duration of
+  surgery/anaesthesia/operation, interval, ephedrine, phenylephrine,
+  atropine, neostigmine, consumption, a total dose - is refused with its
+  reason: it goes to `$skipped` and a flag names it, so a reviewer can
+  bring it back by hand if the page files it as a baseline
+  characteristic. The deterministic rows are never touched.
+- **Tests** (`tests/testthat/test-refuse-model-outcome-rows.R`): with a
+  mocked model returning a baseline variable, two outcome variables and
+  an adverse-event category, the hybrid result adds the baseline
+  variable, refuses the three others with the reason, and flags them.
+
+---
+
 ## 50. An arm-name line of ordinals that goes on to head the statistic columns; arm sizes stated only in a CONSORT flow
 
 **Status: fixed on `feat/ordinal-header-trailing`, 2026-09-25**, from the

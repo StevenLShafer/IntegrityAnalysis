@@ -380,6 +380,11 @@ inert without the model.
 
 ### 08 — The AI fallback
 
+- **Model-added outcomes are refused** (2026-09-25, issue 54). A variable the model adds to
+  the deterministic baseline table whose label names an outcome (time to, VAS, follow-up
+  week/month, nausea, hypotension, duration of surgery, ephedrine …) goes to `$skipped` with
+  its reason and a flag, never into the analysis; the model's reply is not reproducible, and a
+  run may read every table on the page.
 - **The reply rides along verbatim** (2026-09-25, issue 43). The call runs with thinking on,
   which fixes the temperature at 1, so two runs can disagree; `parseBaselineTableAI()` now
   returns the reply text as `aiReply` so a corpus checkpoint can keep it and a disagreement can
