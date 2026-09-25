@@ -19,7 +19,7 @@
 # pattern.
 #
 # Token types, tried in priority order (first alternative wins in PCRE):
-#   meanSD    45.3 \u00b1 12.1   |  45.3 +/- 12.1
+#   meanSD    45.3 \u00b1 12.1   |  45.3 +/- 12.1  |  45.3 \u2022 12.1 (OCR bullet)
 #   medianRng 45 [30-60]    |  45 [30, 60] |  45 (30 to 60)
 #             -> Q1/Q3 when the text says IQR, else skipped (issue 18)
 #   nPct      15 (60%)      |  15 (60.0 %)
@@ -40,7 +40,10 @@
   NUM <- .ppNUM
   paste0(
     "(?<![A-Za-z0-9_.])(?:",
-    "(?<meanSD>",    NUM, "\\s*(?:\u00b1|\\+/-|\\+-)\\s*", NUM, ")",
+    # the BULLET (U+2022) is what a scanned CJA page's plus-minus becomes
+    # in its OCR text layer ("56.7 \u2022 6.9", CJA 1995 and 1997, ISSUES.md
+    # issue 45); a bullet between two numbers means nothing else
+    "(?<meanSD>",    NUM, "\\s*(?:\u00b1|\\+/-|\\+-|\u2022)\\s*", NUM, ")",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what
     # PDF fonts often use for "-"), the word "to" (ranges as journals
     # print them), plus comma/semicolon - the "median [Q1, Q3]" form

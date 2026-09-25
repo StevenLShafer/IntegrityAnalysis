@@ -255,6 +255,84 @@
     t$mid[pair]  <- (t$x0[pair] + t$x1[pair]) / 2
     tokensByLine[[i]] <- t[-(pair + 1), , drop = FALSE]
   }
+  # TWO MORE ANNOUNCED NOTATIONS (2026-09-25, ISSUES.md issue 45, both from
+  # the Loadsman corpus's Saitoh papers):
+  #
+  # (a) "mean + SD": a scanned page's OCR text layer sets the plus-minus
+  #     as a plain plus - the caption reads "(Number or mean + SD)" and the
+  #     cells "45.5 + 11.4" (CJA 1995;42:1096). The tokenizer reads two
+  #     plain numbers with nothing between them; when the block announces
+  #     the notation, a pair of non-negative plain tokens whose only
+  #     separator in the printed line is a "+" is one mean +/- SD cell.
+  # (b) "mean2SD": Acta 1997's font maps the plus-minus glyph to the digit
+  #     2, so the legend says "Values are number or mean2SD." and a cell
+  #     reads "49.527.9" - ONE token to the tokenizer, 49.5 fused to 7.9
+  #     across the glyph. Announced by a legend with a digit between "mean"
+  #     and "SD", a token holding two decimal points is split at an
+  #     occurrence of that digit where both halves are decimal numbers
+  #     with the same number of decimals ("49.5|27.9" and "49.52|7.9" are
+  #     both readable; only the first has equal decimals). A token that
+  #     allows exactly one such split is read as mean +/- SD; anything
+  #     ambiguous, or an integer cell ("5729"), is left as it was.
+  # Both need at least two repaired cells on the line, as the dash rule
+  # does, so that a lone annotation cannot fabricate a baseline value.
+  # The "+" pair is also read on a line that ALREADY holds two mean +/- SD
+  # cells, announced or not: "45.6 • 8.2  47.7 + 7.7  48.0 • 7.1" (CJA
+  # 1997;44:390, the OCR of one cell's glyph differing from its neighbours')
+  # cannot be anything but a fourth such cell, and left as two plain
+  # numbers it seeded a phantom column and cost the table an arm.
+  plusSD <- any(grepl("(?i)mean\\s*\\+\\s*s\\.?d\\b", lineTexts, perl = TRUE))
+  for (i in which(kind == "data")) {
+    t <- tokensByLine[[i]]
+    if (is.null(t) || nrow(t) < 2) next
+    if (!plusSD && sum(t$type == "meanSD") < 2) next
+    joined <- paste(lines[[i]]$text, collapse = " ")
+    j <- seq_len(nrow(t) - 1)
+    between <- vapply(j, function(k)
+      .ppSquish(substr(joined, t$start[k] + nchar(t$text[k]), t$start[k + 1] - 1)),
+      character(1))
+    pair <- j[t$type[j] == "plain" & t$type[j + 1] == "plain" & between == "+" &
+              !is.na(t$num1[j]) & t$num1[j] >= 0 &
+              !is.na(t$num1[j + 1]) & t$num1[j + 1] >= 0]
+    pair <- pair[!(pair - 1) %in% pair]          # a token joins one pair only
+    if (length(pair) < (if (plusSD) 2 else 1)) next
+    t$type[pair] <- "meanSD"
+    t$text[pair] <- paste(t$text[pair], "+", t$text[pair + 1])
+    t$num2[pair] <- t$num1[pair + 1]
+    t$dec2[pair] <- t$dec1[pair + 1]
+    t$x1[pair]   <- t$x1[pair + 1]
+    t$mid[pair]  <- (t$x0[pair] + t$x1[pair]) / 2
+    tokensByLine[[i]] <- t[-(pair + 1), , drop = FALSE]
+  }
+  digitSD <- regmatches(lineTexts, regexpr("(?i)mean\\s*([0-9])\\s*s\\.?d\\b", lineTexts, perl = TRUE))
+  digitSD <- unique(gsub("[^0-9]", "", digitSD))
+  if (length(digitSD) == 1L) for (i in which(kind == "data")) {
+    t <- tokensByLine[[i]]
+    if (is.null(t) || nrow(t) == 0) next
+    fused <- which(t$type == "plain" & grepl("^[0-9]+\\.[0-9]+\\.[0-9]+$", t$text))
+    if (length(fused) < 2) next
+    split <- lapply(t$text[fused], function(txt) {
+      at <- gregexpr(digitSD, txt, fixed = TRUE)[[1]]
+      ok <- list()
+      for (p in at) {
+        a <- substr(txt, 1, p - 1); b <- substr(txt, p + 1, nchar(txt))
+        if (grepl("^[0-9]+\\.[0-9]+$", a) && grepl("^[0-9]+\\.[0-9]+$", b) &&
+            .ppDecimals(a) == .ppDecimals(b)) ok[[length(ok) + 1]] <- c(a, b)
+      }
+      if (length(ok) == 1L) ok[[1]] else NULL
+    })
+    good <- fused[!vapply(split, is.null, logical(1))]
+    if (length(good) < 2) next
+    for (k in seq_along(fused)) {
+      if (is.null(split[[k]])) next
+      f <- fused[k]
+      t$type[f] <- "meanSD"
+      t$num1[f] <- .ppAsNumeric(split[[k]][1]); t$num2[f] <- .ppAsNumeric(split[[k]][2])
+      t$dec1[f] <- .ppDecimals(split[[k]][1]);  t$dec2[f] <- .ppDecimals(split[[k]][2])
+      t$text[f] <- paste(split[[k]][1], "\u00b1", split[[k]][2])
+    }
+    tokensByLine[[i]] <- t
+  }
   # ---- Manuscript-genre repairs (2026-08-20) -------------------------------
   # Both patterns below were found on the A&A submitted-manuscript corpus;
   # journal typography rarely produces either. See test-manuscript-layouts.R.
@@ -288,6 +366,24 @@
         kind[i] <- "label"
         tokensByLine[[i]] <- tokensByLine[[i]][0, , drop = FALSE]
       }
+  }
+  # (2b) "Group 1 Group 2 Group 3 Group 4" (CJA 1997;44:390, issue 45): arm
+  #     names that end in ordinals are a data line to the tokenizer - the
+  #     label "Group" with the values 1, 2, 3, 4 - so the line was skipped
+  #     as a bare number and the arms had no names. A line whose numbers
+  #     are exactly 1..k in order, each preceded by the same word, is the
+  #     arm-name line; reclassified as a label, its words name the arms.
+  for (i in which(kind == "data")) {
+    toks <- tokensByLine[[i]]
+    if (nrow(toks) < 2 || !all(toks$type == "plain")) next
+    if (!identical(as.numeric(toks$num1), as.numeric(seq_len(nrow(toks))))) next
+    words <- lines[[i]]$text
+    isNum <- grepl("^[0-9]+$", words)
+    if (sum(isNum) != nrow(toks) || sum(!isNum) != nrow(toks)) next
+    if (length(unique(tolower(words[!isNum]))) != 1L) next
+    if (!all(which(isNum) == which(!isNum) + 1L)) next   # word, number, word, number ...
+    kind[i] <- "label"
+    tokensByLine[[i]] <- toks[0, , drop = FALSE]
   }
   # (3) "Body mass index, kg/m 2": a superscript unit exponent set as its
   #     own word turns a variable heading into a "data" line with one bare
@@ -1867,6 +1963,17 @@ parseBaselineTableHeuristics <- function(pdfFile,
             cCap   <- side$caption
             cTexts[li] <- cCap
           }
+          # A caption whose anchor line is the bare "Table 1", its title
+          # set on the line beneath ("Patient characteristics in the two
+          # groups", Acta 1997, issue 45): scored on the anchor line
+          # alone, "Table 1" is worth nothing and a results table with
+          # any vocabulary at all outranks it. The numberless line below
+          # is the caption's continuation and joins it for scoring and
+          # for the report; the block itself starts where it did.
+          if (grepl("^\\s*(?i:table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})[.:]?\\s*$",
+                    cCap, perl = TRUE) &&
+              li < length(cTexts) && !grepl("[0-9]", cTexts[li + 1L]))
+            cCap <- .ppSquish(paste(cCap, cTexts[li + 1L]))
           # A "Table N" inside a sentence is worth trying only as a last
           # resort, so it is penalised rather than dropped.
           cs <- .ppCaptionScore(cCap) -

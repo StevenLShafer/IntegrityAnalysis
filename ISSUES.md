@@ -132,6 +132,55 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 45. Three more ways a page prints its plus-minus, an arm-name line of ordinals, and a caption whose title sits under a bare "Table 1"
+
+**Status: fixed on `feat/plusminus-glyphs`, 2026-09-25**, from the corpus
+session's junk-label findings G2/G3 on the Saitoh papers of the Loadsman
+corpus: CJA 1995;42:1096 (scanned), CJA 1997;44:390, Acta 1997;41:741.
+
+- **The defect.** On each page the real Table 1 parsed to nothing and a
+  results table or the model won. CJA 1995's OCR text layer sets the
+  plus-minus as a plain "+" ("45.5 + 11.4", caption "(Number or mean +
+  SD)") or a bullet ("56.7 • 6.9"); CJA 1997 mixes the bullet with a "+"
+  in one row ("45.6 • 8.2 47.7 + 7.7 …") and names its arms "Group 1
+  Group 2 Group 3 Group 4", a line the tokenizer read as the label
+  "Group" with the values 1–4; Acta 1997's font maps the plus-minus to
+  the digit 2, so the legend says "mean2SD" and a cell reads "49.527.9",
+  one token to the tokenizer, and its caption line is the bare "Table 1"
+  with the title on the line beneath, worth nothing to the caption score
+  against Table 2's "fade/total (%)" rows.
+- **What changed.** (1) A bullet between two numbers tokenizes as mean ±
+  SD (tokenize.R; a bullet there means nothing else). (2) Two more
+  announced notations beside the "mean − SD" dash re-read: "mean + SD"
+  announced, a pair of non-negative plain tokens whose only separator in
+  the printed line is "+" is one cell (at least two on the line); and a
+  "+" pair is read unannounced on a line that already holds two mean ±
+  SD cells. "mean2SD" announced (a digit between "mean" and "SD"), a
+  token holding two decimal points is split at the occurrence of that
+  digit where both halves are decimal numbers with the same number of
+  decimals — "49.5|27.9", not "49.52|7.9" — and only when exactly one
+  split qualifies; integer cells stay as they are. (3) A data line whose
+  numbers are exactly 1..k in order, each preceded by the same word, is
+  the arm-name line: reclassified as a label, its words name the arms.
+  (4) A caption whose anchor line is the bare "Table N" takes the
+  numberless line beneath as its title, for scoring and for the report.
+- **On the corpus.** `corpus/checkLoadsman.R`: 79 → 80 of 87 (CJA1997_390
+  now parses: four arms of 40/40/40/10, Age, Height, Weight). CJA1995_1096
+  reads Age, Height and Body weight with N = 15/15; its residue — arm
+  names taken from a prose sentence between caption and header, and two
+  rows from a figure's OCR'd axis beneath the table ("Sr", "Time") — is
+  the junk-label issue that follows. AAS1997_741 reads Table 1 with
+  three arms of 15; "Gender (MIF) 718 718 718" (the "/" glyph mapped to
+  "1") is not repairable and is skipped.
+- **Tests** (`tests/testthat/test-plusminus-glyphs.R`): the bullet
+  tokenizes; the announced "+" page parses with the bullet row; the
+  unannounced "+" is read only beside two mean ± SD cells, and a lone
+  "5 + 2" is not; "Group 1..4" names the arms; the "mean2SD" page splits
+  its fused cells and takes its title line into the caption, and the
+  same cells stay fused when nothing announces the notation.
+
+---
+
 ## 44. A variable's heading above the first data line, legend-labelled statistic lines, and stretched watermark letters
 
 **Status: fixed on `feat/heading-above-first-row`, 2026-09-25**, from the
