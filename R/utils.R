@@ -837,7 +837,13 @@
 # restores are the genuine glyphs the slot rule then leans on.
 # (a text layer may set the hyphens as the minus sign U+2212, as R's pdf
 # device does in the test fixture; both are accepted)
-.ppDashIDash <- "^([0-9]+(?:[.,][0-9]+)?)?([-\u2212]{1,2}I[-\u2212])([0-9]+(?:[.,][0-9]+)?[A-Za-z,]*)?$"
+# ... AND THE DIGIT ONE FOR THE I (2026-09-26, ISSUES.md issue 124; CJA
+# 1995, PMID 7497558, the corpus session's AF6): "Age (yr) 63+8 60 -k I1
+# 62-1-11" - the third arm's sign is "-1-", the same OCR family read with
+# a one for the capital I, and the cell was a bare number. Between two
+# numbers "-1-" can be nothing else on a table line: a hyphenated code
+# begins with a letter and a range has no second hyphen.
+.ppDashIDash <- "^([0-9]+(?:[.,][0-9]+)?)?([-\u2212]{1,2}[I1][-\u2212])([0-9]+(?:[.,][0-9]+)?[A-Za-z,]*)?$"
 .ppRepairDashIDash <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))

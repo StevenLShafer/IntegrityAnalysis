@@ -1,6 +1,7 @@
 # test-dash-i-dash-is-the-sign.R - "-I-" between two numbers is the
 # plus-minus sign, alone or glued to a number, on a page with no genuine
-# glyph for the slot rule to lean on (ISSUES.md issue 123, 2026-09-26).
+# glyph for the slot rule to lean on (ISSUES.md issue 123, 2026-09-26); and
+# "-1-", the digit one for the I, is the same sign (issue 124).
 #
 ############################################################################
 # Provenance                                                               #
@@ -32,6 +33,13 @@ test_that("the helper restores the sign alone, glued before, after, and both, an
   expect_equal(L$x[nrow(L)] + L$width[nrow(L)], 6 * (nchar("Weight 54.2 -I-7.1 18.0 --I-1.8 10141-I- 1977")))
   r <- .ppRepairDashIDash(list(words("MAP", "114.7", "-I-", "5.5a,b,c")))
   expect_identical(r$lines[[1]]$text[3], pm)
+  # the digit one for the I (issue 124; PMID 7497558's "62-1-11"): the same
+  # family; the "-k I1" cell of that line has no route and stays as it is
+  r <- .ppRepairDashIDash(list(words("Age", "(yr)", "63+8", "60", "-k", "I1", "62-1-11")))
+  expect_identical(r$repaired, 1L)
+  expect_identical(r$lines[[1]]$text, c("Age", "(yr)", "63+8", "60", "-k", "I1", "62", pm, "11"))
+  r <- .ppRepairDashIDash(list(words("HR", "72", "-1-", "11", "75", "--1-", "10")))
+  expect_identical(r$lines[[1]]$text, c("HR", "72", pm, "11", "75", pm, "10"))
   # prose forms are not signs: no number on both sides
   r <- .ppRepairDashIDash(list(words("ASA-I-", "bis", "II"), words("HS-I-IES"), words("ROCHA-I-SILVA", "1990")))
   expect_identical(r$repaired, 0L)
@@ -46,7 +54,7 @@ dashIDashPdf <- function(file = file.path(tempdir(), "dashIDash.pdf")) {
     list(list(x = 60, y = 70, text = "Table 1 Haemodynamic data", adj = 0)),
     rowCells(100, "", c("A (n = 20)", "B (n = 20)", "C (n = 20)"), vx),
     rowCells(130, "Heart rate (beats/min)", c("72 -I- 11", "75 -I- 10", "70 -I- 12"), vx),
-    rowCells(148, "MAP (mmHg)", c("94 -I- 12", "96 -I-11", "93 -I- 13"), vx),
+    rowCells(148, "MAP (mmHg)", c("94 -I- 12", "96 -I-11", "93 -1- 13"), vx),
     rowCells(166, "Weight (kg)", c("54.2 -I-7.1", "55.0 --I-6.8", "53.9 -I- 7.4"), vx),
     list(list(x = 60, y = 200, text = "Values are mean and SD.", adj = 0)))
   makeTablePdf(file, cells)

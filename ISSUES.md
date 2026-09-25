@@ -132,6 +132,29 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 124. "-1-" between two numbers is the plus-minus sign too
+
+**Status: fixed on `fix/dash-one-dash-is-the-sign`, 2026-09-26**, from the
+corpus session's AF6 on the build with issue 123 (CJA 1995, PMID 7497558,
+a scan; three arms of 13, 12 and 12).
+
+- **The finding.** With issue 123 the paper is newly analysed from its
+  Table I (Height and Weight in three arms, as printed), but its Age row
+  is not: the text layer reads "63+8 60 -k I1 62-1-11". The third arm's
+  sign is "-1-" - the OCR's digit one for the capital I of "-I-" - and
+  the cell was a bare number. ("60 -k I1", the sign as "-k" and the SD
+  as "I1", has no route.)
+- **What changed.** `.ppDashIDash` accepts a one for the I. Between two
+  numbers on a table line "-1-" can be nothing else: a hyphenated code
+  begins with a letter and a range has no second hyphen.
+- **On the page.** Age reads 63 +/- 8 and 62 +/- 11 in the first and
+  third arms (the "+" of the first by the slot rule once the third's
+  sign is genuine); the second arm's Age stays unread.
+- **Tests** (`tests/testthat/test-dash-i-dash-is-the-sign.R`): the
+  helper on that line, on "-1-" and "--1-" standing alone, and the
+  rebuilt page with one "-1-" cell (4 expectations fail on the unfixed
+  code). The slot and Loadsman layout tests still pass.
+
 ## 123. "-I-" between two numbers is the plus-minus sign
 
 **Status: fixed on `fix/dash-i-dash-is-the-sign`, 2026-09-26**, from the
