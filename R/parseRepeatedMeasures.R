@@ -130,6 +130,14 @@
     w <- d$text
     gi <- which(grepl(.ppLongGroupWord, w, perl = TRUE))
     bi <- which(grepl(.ppLongBaselineWord, w, perl = TRUE))
+    # A SENTENCE IS NOT THE HEADER (2026-09-25, issue 101; PMID 11573601):
+    # the caption's legend "study drug, group II received propofol ...
+    # different from baseline (P<0.05)" carries both words, and the gate
+    # took it for the header line - a Group column at the sentence's
+    # "group" and a tolerance of two hundred points. A header line is a
+    # row of column names: twelve words at most, none ending in a comma,
+    # a semicolon or a full stop.
+    if (length(gi) && length(bi) && (length(w) > 12L || any(grepl("[.,;]$", w)))) next
     if (length(gi) && length(bi)) {
       gi <- gi[1]; bi <- bi[bi > gi][1]
       if (is.na(bi)) next
@@ -212,6 +220,28 @@
     d  <- lines[[i]]; wm <- d$x + d$width / 2
     rw <- d$text[abs(wm - xGroup) <= tol & grepl("^(I{1,3}|IV|V|VI{1,3})$", d$text, perl = TRUE)]
     if (length(rw)) kRoman <- max(kRoman, as.integer(utils::as.roman(rw)))
+  }
+  # THE GROUP COUNT FROM THE LEGEND (2026-09-25, ISSUES.md issue 101;
+  # Fujii, Br J Anaesth 2001, PMID 11573601, the corpus session's batch
+  # 24 AC1's fifth paper). On that page only the first row's "I" survives
+  # in the text layer: every "II" and "III" is gone, so the largest
+  # numeral seen is I and the rule of issue 95 - which indexes a value
+  # row without a numeral by its place in the run - has no run to fill.
+  # The legend says how many groups there are: "Group I received no
+  # study drug, group II received propofol ... and group III received
+  # midazolam", in the caption above the table or the footnote beneath
+  # it. When the block itself shows at least one numeral, the largest
+  # "group <numeral>" the legend names bounds the run instead. A legend
+  # alone, with no numeral in the block, licenses nothing.
+  if (kRoman >= 1L && kRoman < 2L) {
+    below <- if (lastData < length(lineTexts))
+      lineTexts[seq(lastData + 1L, min(lastData + 10L, length(lineTexts)))] else character(0)
+    legendTxt <- paste(c(lineTexts[seq(max(1L, capIdx), hdr)], footnoteInfo, below), collapse = " ")
+    m <- regmatches(legendTxt, gregexpr("(?i)\\bgroups?\\s+(I{1,3}|IV|V|VI{1,3})\\b", legendTxt, perl = TRUE))[[1]]
+    if (length(m)) {
+      kLegend <- max(as.integer(utils::as.roman(toupper(sub("(?i)^groups?\\s+", "", m)))))
+      if (!is.na(kLegend) && kLegend >= 2L && kLegend <= 8L) kRoman <- kLegend
+    }
   }
   heading <- NA_character_     # the variable printed above its group rows (issue 91)
   for (i in seq(hdr + 1L, lastData)) {
