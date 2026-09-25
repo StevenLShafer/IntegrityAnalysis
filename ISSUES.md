@@ -132,6 +132,49 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 65. A scanned page's plus-minus soup is repaired by the column where the other rows set the sign
+
+**Status: fixed on `feat/ocr-plusminus-slots`, 2026-09-25**, from the corpus
+session's batch 12 finding Q1 (Fujii 1994, Can J Anaesth 41:291; PMID
+7954995).
+
+- **The defect.** The OCR text layer sets the plus-minus differently from
+  one cell to the next: "46.7 • 7.7 46.3 • 11.8 44.1 + 9.0 45.4 + 7.9",
+  then "152.9 • 5.4 154.4 :i: 4.9 153.8 + 4.8 152.8 -t- 5.1", "54.2 -I-
+  7.1", "82 4- 31 81 -t-32". The bullet and the plus are known (issue
+  45), the rest were not, and a row with fewer than two readable cells
+  lost every cell it had: four rows of five. The table spans both page
+  columns, and the half of it inside column 1 (4 variables x 2 arms)
+  then out-scored the whole of it read full width (2 variables x 4
+  arms), so the screen saw two arms of four and the model was consulted
+  for the rest.
+- **What changed.** Before a block is tokenized, its lines are read for
+  their plus-minus *slots*: x positions at which two or more lines set a
+  genuine sign (the glyph, the bullet, "+/-", or a "+" between two
+  numbers). In any line, a short glyph-soup word (up to four characters
+  of strokes, dots, colons, "i", "I", "l", "t" or "4") that starts at a
+  slot between two numbers is the sign; one glued to its SD ("-t-32") is
+  cut off. The block must show at least two genuine signs of its own, or
+  announce the notation with a soup glyph ("All values are expressed as
+  mean -t- SD." - then every line with two or more soup cells is
+  repaired, slot or no slot). A plain "+" is evidence for a slot but is
+  never repaired here; whether "5 + 2" is a cell stays with issue 45's
+  rules. A glued soup must be at least two characters, so a negative
+  number is never touched. `.ppRepairPlusMinusGlyphs()` in `R/utils.R`,
+  called at the head of `.ppParseBlock()`.
+- **On the page.** The full-width reading is now 5 variables x 4 arms of
+  25 with nothing skipped, and it wins (score 31 against 21 for the cut
+  half).
+- **Tests** (`tests/testthat/test-ocr-plusminus-slots.R`): a rebuilt page
+  with the paper's glyphs reads all five variables across four arms and
+  validates; all-soup rows with no genuine sign and no announcement are
+  left alone; the announcement alone licenses the repair; the helper on
+  hand-built lines (a slot needs two lines, a lone glyph at no slot is
+  not a sign, a negative number is never a glued sign, the plain "+" is
+  not repaired).
+
+---
+
 ## 64. The outcome refusal applies on the AI-only retry route too, by vocabulary alone
 
 **Status: fixed on `feat/refusal-on-ai-route`, 2026-09-25**, from the

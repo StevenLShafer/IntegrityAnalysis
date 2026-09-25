@@ -214,6 +214,10 @@ wrong entry would corrupt numbers invisibly.
 - **A range after the SD** (2026-09-25, issue 63): "48.4 ± 7.6 [33-63]" is one mean ± SD cell,
   and "48.4 +7.6[33-63]" too - a "+" is a plus-minus once a bracketed range follows; a label's
   "[ranges]" suffix is notation.
+- **OCR plus-minus soup is repaired by its column** (2026-09-25, issue 65): ":i:", "-t-",
+  "-I-", "4-" between two numbers, at an x where two or more of the block's lines set a
+  genuine sign, are the sign (`.ppRepairPlusMinusGlyphs()`, utils.R); a glued "-t-32" is cut.
+  A plain "+" is evidence for the column but is never repaired here (issue 45 decides it).
 
 ### 05 — Parsing one block
 

@@ -157,6 +157,19 @@
     "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]")
   footnoteInfo <- character(0)   # kept to help disambiguate "a (b)" cells
 
+  # A SCANNED PAGE'S PLUS-MINUS SOUP IS REPAIRED FIRST (2026-09-25,
+  # ISSUES.md issue 65; PMID 7954995): ":i:", "-t-", "-I-", "4-" between
+  # two numbers, at an x where other lines set a genuine plus-minus, are
+  # the sign - see .ppRepairPlusMinusGlyphs() in utils.R. The lines and
+  # their texts are replaced so that every rule below sees the sign.
+  rep <- .ppRepairPlusMinusGlyphs(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read ", rep$repaired, " OCR glyph(s) between two numbers as the plus-minus ",
+        "sign, by the column where the block's other rows set it.")
+  }
+
   # Walk the lines after the caption; classify each one.
   #   header - contains "n = 25"-style arm sizes
   #   data   - has at least one numeric token
