@@ -169,6 +169,42 @@ with no SD.
   expectations fail on the unfixed code). The sign-repair and layout
   tests still pass.
 
+---
+
+## 89. Three more ways a paper states its arm sizes, and the power statement that is not one
+
+**Status: fixed on `feat/size-sentence-shapes`, 2026-09-25**, from the
+corpus session's batch 22 spec of every size-stating sentence in the 48
+missing-N Carlisle trials (PMIDs 9861126, 9924225, 14749151, 10357343).
+
+- **The defect.** The "k groups of n" reader (`.ppGroupsOfN()`) knew
+  "divided into three groups of 20" and "(n = 20 each)" but not the
+  colon of "(n:50 each)", nor a total that the group count divides
+  ("150 female patients ... allocated randomly to one of three groups"),
+  nor a size on a sentence of its own with the group count unstated
+  ("Twenty patients were randomly assigned to each treatment group").
+  Its number words stopped at twenty. And a power statement ("60
+  patients per group would be sufficient") was at risk of being read as
+  an allocation.
+- **What changed.** `n\s*[=:]` accepts the colon; the number words
+  reach thirty to hundred; three sentence shapes are read: (a) "one
+  of/into K groups (n = N each)", (b) "T patients ... one of/into K
+  groups" giving N = T / K only when whole and T >= 2K, (c) "N patients
+  were [randomly] assigned/allocated to each [treatment] group" with the
+  group count recorded as NA. A shape whose sentence window mentions
+  sufficiency, power, sample size, detection, requirement or a
+  calculation is refused. `.ppGroupNFor()` prefers a statement naming
+  the table's arm count and falls back to a count-less one, which
+  serves any k. The duplicate test in `add()` copes with NA.
+- **Tests** (`tests/testthat/test-size-sentence-shapes.R`): each shape
+  at the helper level, the refusals (a total that does not divide, the
+  power statements), the number words, and a rebuilt page with no N in
+  the table filled from the count-less sentence while the power
+  statement alone leaves it empty (17 expectations fail on the unfixed
+  code). The arm-size and layout tests still pass.
+
+---
+
 ## 88. Fujii's canine tables: roman groups, a lost label, and the sign as U+2AFE
 
 **Status: fixed on `feat/canine-long-layout`, 2026-09-25**, from the
@@ -202,6 +238,31 @@ cleanest case, 12088956 identical in shape).
   legend and "three groups of eight each" reads three arms of eight from
   the Baseline column, named by the legend (fails on the unfixed code).
   The issue 34, 76 and sign tests still pass.
+
+---
+
+## 87. Some arms print an N, the rest do not: the ladder fills them by name
+
+**Status: fixed on `feat/partial-arm-n-by-name`, 2026-09-25**, from the
+corpus session's batch 22 (PMIDs 8004733, 9717598, 9350368, 9512856 on
+the deterministic Carlisle pass).
+
+- **The defect.** The arm-size ladder of issue 42 runs under one gate:
+  every arm without N. That is right for its positional rules, which
+  assume nothing is known, but it shut out the arm-NAME match too, so a
+  table that printed one arm's size beside a "(n = 20)" naming the other
+  arm in the text failed validation for the missing N.
+- **What changed.** With some sizes printed, the block walker asks the
+  ladder by name only (`namesOnly = TRUE` in `.ppFillArmNFromText()`):
+  a mention whose preceding words name a missing arm fills it, with the
+  sentence as source; the elimination and positional rules stay behind
+  the every-arm gate. A named arm whose name is a stop word of the match
+  ("control", "study") is not matched, as before.
+- **Tests** (`tests/testthat/test-partial-arm-n-by-name.R`): the ladder
+  by name on a hand-built mention frame, and its refusal to eliminate
+  under `namesOnly`; a rebuilt page printing one arm's size gets the
+  other from the text by name (fails on the unfixed code). The arm-size
+  and layout tests still pass.
 
 ---
 

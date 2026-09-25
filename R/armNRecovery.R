@@ -163,7 +163,8 @@
                       stringsAsFactors = FALSE)
   if (!length(txt)) return(empty)
   j <- .ppSquish(paste(txt, collapse = " "))
-  m <- gregexpr("(?i)\\bn\\s*=\\s*\\d[\\d,]*", j, perl = TRUE)[[1]]
+  # "(n:50 each)" - a colon for the equals sign (issue 89; PMIDs 9861126, 9924225)
+  m <- gregexpr("(?i)\\bn\\s*[=:]\\s*\\d[\\d,]*", j, perl = TRUE)[[1]]
   if (m[1] == -1) return(empty)
   lens <- attr(m, "match.length")
   out <- lapply(seq_along(m), function(k) {
@@ -246,7 +247,11 @@
 #      positional candidate, and why reviewFlags() reports the sentence.
 #
 # Returns list(N = the completed vector, source = per-arm character).
-.ppFillArmNFromText <- function(armN, armName, cand, totals) {
+# `namesOnly = TRUE` stops after the arm-name match (issue 87): when some
+# arms already print an N, a mention that NAMES a missing arm is safe to
+# take, while the positional rules below - which assume every arm is
+# unknown - are not.
+.ppFillArmNFromText <- function(armN, armName, cand, totals, namesOnly = FALSE) {
   source <- rep(NA_character_, length(armN))
   if (nrow(cand) == 0 || !any(is.na(armN)))
     return(list(N = armN, source = source))
@@ -301,6 +306,7 @@
       used[hits] <- TRUE
     }
   }
+  if (namesOnly) return(list(N = armN, source = source))   # issue 87
   # 2. elimination - requires the leftover to actually correspond: exactly
   # one open arm AND exactly one unused mention. Two unused mentions of
   # "n = 20" over one open arm means the mentions belong to the two arms
@@ -393,7 +399,9 @@
   w <- tolower(w)
   words <- c(one = 1, two = 2, three = 3, four = 4, five = 5, six = 6,
              seven = 7, eight = 8, nine = 9, ten = 10, eleven = 11,
-             twelve = 12, fifteen = 15, sixteen = 16, twenty = 20)
+             twelve = 12, fifteen = 15, sixteen = 16, twenty = 20,
+             thirty = 30, forty = 40, fifty = 50, sixty = 60, eighty = 80,
+             hundred = 100)
   if (grepl("^[0-9]+$", w)) return(as.integer(w))
   if (w %in% names(words)) return(as.integer(words[[w]]))
   NA_integer_
@@ -411,7 +419,7 @@
   add <- function(groups, n, snippet) {
     # one entry per distinct statement; a sentence repeated verbatim in the
     # Abstract and the Methods is one statement, not two
-    if (any(found$groups == groups & found$n == n)) return(invisible())
+    if (paste(groups, n) %in% paste(found$groups, found$n)) return(invisible())   # NA groups too (issue 89)
     found$groups  <<- c(found$groups, groups)
     found$n       <<- c(found$n, n)
     found$snippet <<- c(found$snippet, snippet)
@@ -460,6 +468,52 @@
       add(groups, n, .ppSquish(paste(left(ln[i]), left(ln[i + 1]))))
     }
   }
+  # THREE MORE SHAPES (2026-09-25, ISSUES.md issue 89; the corpus session's
+  # batch 22 spec of size-stating sentences from the 48 missing-N Carlisle
+  # trials). A window of the sentence that mentions sample size, power or
+  # sufficiency is a power statement, not an allocation ("60 patients per
+  # group would be sufficient", PMID 10357343), and is refused.
+  powerRe <- "(?i)sufficient|power|sample\\s+size|detect|required|calculat"
+  window  <- function(a, b) .ppSquish(substr(j, max(1, a - 60), min(nchar(j), b + 60)))
+  # (a) "one of three groups (n:50 each)" / "into four groups (n = 25 for each)"
+  pa <- paste0("(?i)\\b(?:one\\s+of|into)\\s+([a-z0-9-]+)\\s+(?:equal\\s+)?groups?\\s*",
+               "\\(\\s*n\\s*[=:]\\s*(\\d+)\\s*(?:each|per\\s+group|for\\s+each|in\\s+each)?\\s*\\)")
+  m <- gregexpr(pa, j, perl = TRUE)[[1]]
+  if (m[1] != -1) for (h in seq_along(m)) {
+    a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L
+    parts <- regmatches(substr(j, a, b), regexec(pa, substr(j, a, b), perl = TRUE))[[1]]
+    groups <- .ppNumberWord(parts[2]); n <- as.integer(parts[3])
+    if (!is.na(groups) && groups >= 2 && !is.na(n) && n >= 1 && !grepl(powerRe, window(a, b), perl = TRUE))
+      add(groups, n, window(a, b))
+  }
+  # (b) a total divided by the group count: "150 female patients were
+  #     allocated randomly to one of three groups" - n = 150 / 3 when whole
+  pb <- paste0("(?i)\\b(\\d{2,4}|[a-z]+)\\s+(?:[a-z-]+\\s+){0,2}",
+               "(?:patients|subjects|participants|women|men|children|infants|volunteers|adults|dogs|rats|pigs|rabbits)",
+               "\\b[^.;]{0,120}?\\b(?:one\\s+of|into|to)\\s+([a-z0-9-]+)\\s+(?:equal\\s+)?(?:treatment\\s+|study\\s+)?groups\\b")
+  m <- gregexpr(pb, j, perl = TRUE)[[1]]
+  if (m[1] != -1) for (h in seq_along(m)) {
+    a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L
+    parts <- regmatches(substr(j, a, b), regexec(pb, substr(j, a, b), perl = TRUE))[[1]]
+    total <- .ppNumberWord(parts[2]); groups <- .ppNumberWord(parts[3])
+    if (is.na(total) || is.na(groups) || groups < 2 || total < 2 * groups) next
+    if (total %% groups != 0 || grepl(powerRe, window(a, b), perl = TRUE)) next
+    add(groups, total %/% groups, window(a, b))
+  }
+  # (c) the size on a sentence of its own: "Twenty patients were randomly
+  #     assigned to each treatment group" - the group count unstated (NA)
+  pc <- paste0("(?i)\\b(\\d{1,4}|[a-z]+)\\s+(?:[a-z-]+\\s+){0,2}",
+               "(?:patients|subjects|participants|women|men|children|infants|volunteers|adults|dogs|rats|pigs|rabbits)",
+               "\\s+(?:were|was)\\s+(?:randomly\\s+)?(?:assigned|allocated|randomi[sz]ed|enrolled|studied)\\s+",
+               "(?:to|in)\\s+each\\s+(?:treatment\\s+|study\\s+)?group\\b")
+  m <- gregexpr(pc, j, perl = TRUE)[[1]]
+  if (m[1] != -1) for (h in seq_along(m)) {
+    a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L
+    parts <- regmatches(substr(j, a, b), regexec(pc, substr(j, a, b), perl = TRUE))[[1]]
+    n <- .ppNumberWord(parts[2])
+    if (!is.na(n) && n >= 1 && !grepl(powerRe, window(a, b), perl = TRUE))
+      add(NA_integer_, n, window(a, b))
+  }
   if (!length(found$groups)) return(NULL)
   found
 }
@@ -503,7 +557,11 @@
 # the size unknowable from the text, and NA is the honest answer.
 .ppGroupNFor <- function(textGroupN, k) {
   if (is.null(textGroupN)) return(list(n = NA_integer_, snippet = NA_character_))
-  sel <- which(textGroupN$groups == k & textGroupN$n > 0)
+  sel <- which(!is.na(textGroupN$groups) & textGroupN$groups == k & textGroupN$n > 0)
+  # "Twenty patients were assigned to each treatment group" names no
+  # group count (issue 89): such a statement serves any k, after the
+  # statements that name this k
+  if (!length(sel)) sel <- which(is.na(textGroupN$groups) & textGroupN$n > 0)
   if (!length(sel) || length(unique(textGroupN$n[sel])) != 1L)
     return(list(n = NA_integer_, snippet = NA_character_))
   list(n = as.integer(textGroupN$n[sel[1]]), snippet = textGroupN$snippet[sel[1]])
