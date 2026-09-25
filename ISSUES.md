@@ -132,6 +132,33 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 105. Identical n (%) cells under a category heading are evidence, not one echo
+
+**Status: fixed on `fix/identical-n-pct-cells-under-heading`, 2026-09-25**,
+from the corpus session's batch 25 AD1 (Kilic 2023, Cukurova Med J,
+Loadsman corpus, page 5).
+
+- **The defect.** "L2-3 12(57.1) 12(57.1)" under the heading "Surgical
+  Level", two arms of 21, read as a continuous row with mean 12 and
+  SD 57.1, while its sibling rows "L3-4 8(38.1) 7(33.3)" and "L4-5
+  1(4.8) 2(9.5)" were n (%). The rule that reads "a (b)" as n (%)
+  when b is a as a percentage of the arm N wants two distinct (n, %,
+  N) signatures - a guard against a coincidence in one arm echoed by
+  chance in another - and two arms printing the same cell are one.
+- **What changed.** Under a category heading, where the rows are the
+  levels of one variable, every arm's cell checking as n / N is
+  evidence enough, identical or not: the cells are counted, not the
+  distinct signatures. Elsewhere the rule stands, so a "Score 10
+  (50.0) 10 (50.0)" row under a mean (SD) footnote is still mean (SD).
+- **On the page.** With issue 104 (the label "L2-3" whole, no phantom
+  arm) the three level rows are n (%) rows in two arms of 21.
+- **Tests** (`tests/testthat/test-identical-n-pct-cells-under-heading.R`):
+  a rebuilt page with identical cells under a heading reads them as
+  counts (3 expectations fail on the unfixed code); the same cells with
+  no heading and a mean (SD) footnote stay continuous. The degenerate-
+  category, model count-row, stratum, row-N and Loadsman layout tests
+  still pass.
+
 ## 100. "(n =3o)": the letter o for a zero after a glued equals sign
 
 **Status: fixed on `fix/size-zero-after-equals`, 2026-09-25**, from the
