@@ -189,6 +189,39 @@ the corpus session's batch 26 AE7 (CJA 1998, PMID 9717598, a scan).
   still pass.
 
 ---
+## 112. A row label's first line above its second
+
+**Status: fixed on `fix/label-fragment-above-values`, 2026-09-26**, from
+the corpus session's batch 26 AE6 (CJA 1998, PMID 9717598; 11240988;
+8825534).
+
+- **The defect.** "Duration of" on a line of its own with "surgery
+  (min) 150 +/- 59 ..." beneath it; "Last menstrual cycle" over "(days)
+  [n] a 16 +/- 3 [22] a ..."; "Duration of operation" over "(min) 176
+  +/- 34 ...". The value line has a label, so issue 68's rule (a
+  label-less first row beneath a heading takes the heading) did not
+  apply, and the fragment above was taken for a category heading over
+  a row called "surgery", "loss", "replacement", "(days) [n] a", or -
+  once the unit alone was cleaned away - "Unnamed".
+- **What changed.** A heading read from the line directly above, whose
+  row's own label begins with a lowercase letter or a bracket, or which
+  itself ends in a joining word ("of", "and", "in", "for", "after",
+  "to", "the"), is the label's first line: joined in front, the heading
+  closed. A true category heading is a noun phrase and the levels
+  beneath it are capitalised or numeric, so "Types of surgery" over
+  "Upper extremity" stays a heading.
+- **On the pages.** 9717598: Duration of surgery, Duration of
+  anaesthesia, Peroperative blood loss, Peroperative fluid replacement
+  whole; 11240988: Last menstrual cycle (days) [n] a, Duration of
+  operation, Duration of anesthesia (the two "Unnamed" rows named);
+  8825534: Morphine administered (epidural) after operation.
+- **Tests** (`tests/testthat/test-label-fragment-above-values.R`): a
+  rebuilt page with all three shapes and a true heading over
+  capitalised levels (4 expectations fail on the unfixed code). The
+  label-above-values, label-wrap, category and Loadsman layout tests
+  still pass.
+
+---
 
 ## 110. Long layout: "Ia" and "Ib" are group labels, and a size that names the group comes first
 
