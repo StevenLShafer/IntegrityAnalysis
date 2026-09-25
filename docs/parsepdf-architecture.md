@@ -347,6 +347,10 @@ inert without the model.
 
 ### 08 — The AI fallback
 
+- **The reply rides along verbatim** (2026-09-25, issue 43). The call runs with thinking on,
+  which fixes the temperature at 1, so two runs can disagree; `parseBaselineTableAI()` now
+  returns the reply text as `aiReply` so a corpus checkpoint can keep it and a disagreement can
+  be attributed to the model or to the template step.
 - **A model-read table with no arm sizes gets the document-text ladder** (2026-09-25, issue 42).
   The model transcribes the page it is shown; a size printed only in the Methods ("randomly
   divided into three groups of eight each", "Group Ia (n = 5)") is not on it, and nine of the

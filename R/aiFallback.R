@@ -456,7 +456,13 @@ claudeAvailable <- function() {
   txt <- paste(txt[nzchar(txt)], collapse = "")
   if (!nzchar(txt))
     stop("The Claude API returned no text content.", call. = FALSE)
-  jsonlite::fromJSON(txt, simplifyVector = FALSE)
+  parsed <- jsonlite::fromJSON(txt, simplifyVector = FALSE)
+  # The reply as the model wrote it rides along (issue 43): two runs of
+  # the same page can disagree - the call runs with thinking on, which
+  # fixes temperature at 1 - and only the verbatim reply lets a reviewer
+  # say afterwards whether the model or the template step chose a value.
+  attr(parsed, "raw") <- txt
+  parsed
 }
 
 # --------------------------------------------------------------------------
@@ -816,6 +822,10 @@ parseBaselineTableAI <- function(pdfFile,
          # per-arm sentence for a text-recovered N (NULL when none was;
          # reviewFlags() reads this element on every route)
          armNSource = armNSource,
+         # the model's reply verbatim (JSON text), so a corpus checkpoint
+         # can keep it and a disagreement between runs can be attributed
+         # (issue 43; NULL when the reply was assembled by a test double)
+         aiReply    = attr(parsed, "raw"),
          flags      = if (!is.null(armNSource))
            paste0(sum(!is.na(armNSource)), " arm size(s) recovered from the ",
                   "document text - verify against the CONSORT flow diagram: ",
