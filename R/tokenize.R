@@ -72,8 +72,21 @@
     # followed by a sign glyph is the next cell's mean: the lookahead
     # refuses it, and the two signs without an SD leave two bare numbers,
     # which the walker skips, and two cells, which it reads.
+    # ... WHEN WHAT FOLLOWS IS A CELL (2026-09-26, ISSUES.md issue 121). The
+    # refusal is right when the sign after the SD starts another cell -
+    # "62 <pm> 61 <pm> 62 <pm> 9": the number after that sign is itself
+    # followed by a sign, or by a further number ("45.3 <pm> 43.2 <pm> 8.3
+    # 42.5 <pm> 9.4", where 8.3 is the SD of 43.2), or ends the line. It
+    # is wrong when the sign after the SD is a stray of the OCR's and what
+    # follows it is not a cell: "167.1 <pm> 10.0 <pm> 66.9 + l0.2" (the
+    # glyph repair's "<pm>" for the "l" of "l66.9") - refusing "167.1 <pm>
+    # 10.0" there built a cell "10.0 <pm> 66.9" that stood between two
+    # arm columns and seeded a phantom arm. So the SD is refused only
+    # when the sign, a number, and then a sign, a number or the line's
+    # end follow it.
     "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
-                     "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe))",
+                     "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
+                     "(?:\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)|\\s+", NUM, "|\\s*$))",
                      "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
                      "|\\+\\s*", NUM, "\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\]))",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what
@@ -90,7 +103,17 @@
     "|(?<fraction>", "\\d+(?:\\s*/\\s*\\d+)+)",
     "|(?<pctOnly>",  NUM, "\\s*%)",
     "|(?<plain>",    NUM, ")",
-    ")(?![A-Za-z0-9])"
+    # A TOKEN DOES NOT END INSIDE A NUMBER (2026-09-26, ISSUES.md issue
+    # 121; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3):
+    # the guard refused a digit after the token, so "62 <pm> 61 <pm>"
+    # could not shorten to "62 <pm> 6" when issue 118's lookahead refused
+    # the whole "61" - but it did not refuse a DECIMAL POINT, and "45.3
+    # <pm> 43.2 <pm> 8.3" backtracked to "45.3 <pm> 43", the ".2" left
+    # behind, and the Age row scored on an SD of 43. A token that would
+    # end before a decimal point and a digit ends inside a number and is
+    # refused with the digit; the regex then gives up the cell, as it
+    # does for whole numbers.
+    ")(?![A-Za-z0-9]|[.,\u00b7][0-9])"
   )
 })
 
