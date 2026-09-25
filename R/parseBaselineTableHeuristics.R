@@ -653,7 +653,17 @@
     isLabel <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
       !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
              lead, perl = TRUE)
-    if (!isLabel) next
+    # A STRATUM'S NAME STANDS AT THE ROW-LABEL MARGIN, LEFT OF THE ARM
+    # COLUMNS (2026-09-25, ISSUES.md issue 73; Akkus 2020, J Anesth,
+    # Loadsman corpus): an arm name that wraps - "Group stand-" over "ard
+    # (n = 49)" - puts a labelled "(n = k)" line under the header, and
+    # "ard" was taken for a stratum: arm 1 lost its N (a stratum's sole
+    # size is never an arm's) and every row was prefixed "ard: ". The
+    # wrapped name's second line begins INSIDE its arm's column; a
+    # stratum's name begins where the row labels do.
+    gapHalf  <- if (cols$n > 1) min(diff(sort(cols$centers))) / 2 else 100
+    leadLeft <- lines[[h]]$x[1] < min(cols$centers) - gapHalf
+    if (!isLabel || !leadLeft) next
     if (h != hdrAll[1]) { kind[h] <- "stratum"; next }
     # the first size line: a stratum only when it names a population and
     # states a single size, with the arm names elsewhere

@@ -132,6 +132,29 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 73. A stratum's name stands at the row-label margin, left of the arm columns
+
+**Status: fixed on `fix/stratum-lead-left-of-arms`, 2026-09-25**, from the
+corpus session's batch 16 finding V1 (Akkuş 2020, J Anesth 34:512; Loadsman
+corpus, page 4).
+
+- **The defect.** An arm name that wraps - "Group stand-" over "ard (n =
+  49)" beside "Group triple (n = 49)" - puts a labelled "(n = k)" line
+  under the header, and the stratum rule of issue 55 took "ard" for a
+  stratum: arm 1 lost its N (a stratum's sole size is never an arm's) and
+  every row went out prefixed "ard: ".
+- **What changed.** A labelled size line is a stratum only when its
+  name begins left of the first arm column (the row-label margin, where a
+  stratum's name is printed); a wrapped arm name's second line begins
+  inside its arm's column and is left to the header, which reads its
+  "(n = 49)" for that arm. The arm is named "Group stand- ard".
+- **Tests** (`tests/testthat/test-stratum-lead-left-of-arms.R`): a rebuilt
+  page with the wrapped arm name reads two arms of 49 with no prefix and
+  every cell (fails on the unfixed code); a stratum line at the margin is
+  still a stratum.
+
+---
+
 ## 71. The header's "(n = k)" count is a second opinion when the gap rule fuses two narrow columns
 
 **Status: fixed on `feat/columns-from-header-count`, 2026-09-25**, from the
