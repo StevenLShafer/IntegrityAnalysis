@@ -786,7 +786,8 @@
 # cells; where it does not, only the letter form is read.
 .ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
 .ppFusedSoup <- "^([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
-.ppDecimals  <- function(x) ifelse(grepl(".", x, fixed = TRUE), nchar(sub("^[^.]*\\.", "", x)), 0L)
+# (its own name: .ppDecimals() in text precision is a different helper)
+.ppFusedDecimals <- function(x) ifelse(grepl(".", x, fixed = TRUE), nchar(sub("^[^.]*\\.", "", x)), 0L)
 .ppRepairFusedSigns <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -805,7 +806,7 @@
       if (k > 1L && isNum(s[k - 1L])) means <- c(means, s[k - 1L])
       if (k < length(s) && isNum(s[k + 1L])) sds <- c(sds, s[k + 1L])
     }
-    dm <- unique(.ppDecimals(means)); ds <- unique(.ppDecimals(sds))
+    dm <- unique(.ppFusedDecimals(means)); ds <- unique(.ppFusedDecimals(sds))
     dm <- if (length(dm) == 1L) dm else NA_integer_
     ds <- if (length(ds) == 1L) ds else NA_integer_
     # (a) the digit-fused form, split by that precision (issue 90)
@@ -815,7 +816,7 @@
     # (b) a soup word glued to the SD alone, after a bare number of the line's
     #     mean precision ("50.1" "k8.0"; issue 90)
     shit <- grepl(.ppFusedSoup, s, perl = TRUE) & c(FALSE, isNum(s[-length(s)])) &
-      c(FALSE, !is.na(dm) & .ppDecimals(s[-length(s)]) == dm)
+      c(FALSE, !is.na(dm) & .ppFusedDecimals(s[-length(s)]) == dm)
     shit[is.na(shit)] <- FALSE
     if (!any(hit | dhit | shit)) next
     out <- vector("list", nrow(L))
