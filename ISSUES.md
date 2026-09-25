@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 106. Long layout: a heading line carrying a bare number is a heading
+
+**Status: fixed on `fix/heading-with-bare-digit`, 2026-09-25**, from the
+corpus session's batch 25 AD7 (Fujii, PMID 10589648) and the "2"
+suffixes on 11573601 and 11004073.
+
+- **The defect.** "Pdi (cm H2O)" prints its subscript as a word of its
+  own, "CO (L/min-1)" its superscript as "21", so the heading line
+  carries a bare number and the classifier calls it data. The
+  repeated-measures reader took its headings from label-only lines
+  (issue 91), so the rows beneath such a heading took the heading
+  ABOVE: the cardiac output rows came out as "PAOP (mm Hg) 2" (the
+  previous variable's name plus a dedupe suffix), 11573601's Pdi rows
+  as "Haemodynamics: 20 Hz stimulation".
+- **What changed.** A data line whose every token is a bare integer,
+  none of them a value under the Baseline column, with letters among
+  its words, is a heading; the bare numbers are dropped from its text
+  ("CO (L/min )", "Pdi (cm H O)").
+- **On the pages.** 10589648: HR, MAP, RAP, MPAP, PAOP, CO, three arms
+  of 10. 11573601: the Pdi rows under "P di (cm H O)". 12933396 and
+  11004073 unchanged. One residue: on 11004073 the subscript "2" sits
+  on the first Pdi row's own line, not the heading's, and stays as a
+  suffix on that row's name ("20-Hz stimulation 2").
+- **Tests** (`tests/testthat/test-heading-with-bare-digit.R`): a
+  rebuilt page with a "21" superscript and a "2" subscript on heading
+  lines names the rows beneath each (3 expectations fail on the
+  unfixed code). The long-layout, legend, canine, heading, letter-group
+  and Loadsman layout tests still pass.
+
+---
+
 ## 103. "Divided into three groups of Methods D 10 each": the running head inside the sentence
 
 **Status: fixed on `feat/groups-of-n-past-running-head`, 2026-09-25**,
