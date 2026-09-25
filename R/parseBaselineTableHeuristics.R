@@ -432,6 +432,54 @@
   allToks <- do.call(rbind, tokensByLine[dataIdx])
   cols    <- .ppClusterColumns(allToks$mid)
 
+  # A COLUMN FED ONLY BY LABEL-LESS LINES IS NOT AN ARM COLUMN (2026-09-25,
+  # ISSUES.md issue 46; CJA 1995;42:1096, a scanned page). Beneath that
+  # Table I the OCR of a figure's axis - "30", "20", "10" down the left,
+  # "15 20 25 30 35 40" along the bottom - runs on inside the block: the
+  # lines carry numbers and no label, so they are data to the classifier,
+  # and their x positions seeded three columns no table cell ever used.
+  # The arm count went to five, the fence that keeps prose out of the arm
+  # names (below) widened with it, and a footnote sentence named the arms.
+  # A real column is fed by a line that names its row: header Ns aside,
+  # every cell of a table sits on a labelled line. Columns fed only by
+  # label-less lines are dropped, with their tokens; what remains of a
+  # label-less line is judged by the block walker as before.
+  labelled <- unlist(lapply(dataIdx, function(i) {
+    t <- tokensByLine[[i]]
+    if (nrow(t) == 0) return(logical(0))
+    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
+    rep(nchar(lbl) > 0, nrow(t))
+  }))
+  if (cols$n > 1 && length(labelled) == nrow(allToks) && any(labelled)) {
+    colOf <- cols$assign(allToks$mid)
+    fed   <- vapply(seq_len(cols$n), function(k) any(labelled[colOf == k]), logical(1))
+    if (!all(fed)) {
+      say("  ", sum(!fed), " column(s) fed only by lines without a row label ",
+          "dropped - not arm columns.")
+      for (i in dataIdx) {
+        t <- tokensByLine[[i]]
+        if (nrow(t) == 0) next
+        gone <- t[!fed[cols$assign(t$mid)], , drop = FALSE]
+        if (nrow(gone) == 0) next
+        # the dropped tokens' WORDS leave the line too, and the line is
+        # tokenized afresh: kept in the text, "15 20 25" became the label
+        # of the tokens that stayed, and a level called "15 20 25"
+        L <- lines[[i]]
+        wMid <- L$x + L$width / 2
+        inGone <- vapply(wMid, function(m) any(m >= gone$x0 - 1 & m <= gone$x1 + 1), logical(1))
+        L <- L[!inGone, , drop = FALSE]
+        if (nrow(L) == 0) { kind[i] <- "junk"; tokensByLine[[i]] <- t[0, , drop = FALSE]; next }
+        lines[[i]]        <- L
+        lineTexts[i]      <- .ppLineText(L)
+        tokensByLine[[i]] <- .ppTokenizeLine(L)
+        if (nrow(tokensByLine[[i]]) == 0) kind[i] <- "junk"
+      }
+      allToks <- do.call(rbind, tokensByLine[dataIdx])
+      if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
+      cols <- .ppClusterColumns(allToks$mid)
+    }
+  }
+
   # ---- Header: arm names and arm N ----------------------------------------
   headerIdx <- which(kind %in% c("header", "label"))
   headerIdx <- headerIdx[headerIdx > capIdx & headerIdx < firstData]
@@ -451,6 +499,14 @@
     headerIdx <- headerIdx[headerIdx >= headerAt[1] |
                              (keepNameRow & headerIdx == nameRow)]
   }
+  # The same fence for EVERY label line that would name the arms (issue
+  # 46): with no "(n = k)" header on the page at all, the footnote
+  # sentence "were no differences in number of patients, age, sex, height,
+  # or body weight", set between caption and header on the OCR of CJA
+  # 1995;42:1096, named the arms "were no", "differences in", ... A line
+  # of more words than the columns could carry three apiece is prose.
+  headerIdx <- headerIdx[vapply(headerIdx, function(i)
+    kind[i] == "header" || nrow(lines[[i]]) <= cols$n * 3 + 2, logical(1))]
   armN    <- rep(NA_integer_, cols$n)
   armName <- rep(NA_character_, cols$n)
 
@@ -761,6 +817,11 @@
       # counts went missing, a stray watermark letter the strippers
       # let through - and must not replace the open heading (issue 44).
       if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L) next
+      # A "|" is a ruled border as OCR reads it, never a word of a heading:
+      # "i I | I I t" (the axis of a figure under a scanned table, CJA
+      # 1995;42:1096) opened a heading and the ticks beneath became its
+      # levels (issue 46).
+      if (grepl("|", lbl, fixed = TRUE)) next
       # A journal watermark ("Downloaded from http://...") or copyright
       # rail interleaves with the table's own lines on some published
       # PDFs; taken as a label line it OVERWRITES the open block header
@@ -1359,8 +1420,31 @@
                         "not counts; enter by hand"), txt)
           next
         }
-        catName <- .ppUniqueName(.iaSafeColumnName(if (nchar(label) > 0) label else "Category"),
-                                 catColumns)
+        # A level has a name. Counts on a line with no label under a
+        # heading were filed as a level called "Category" - on the OCR of
+        # CJA 1995;42:1096 the figure axis under the table ("30", "20",
+        # "10") became three levels of a heading "Sr" (issue 46). Skipped
+        # with the heading named, so a reviewer can look at the page.
+        if (nchar(label) == 0) {
+          addSkip(catHeader, paste("bare numbers under the heading with no level",
+                                   "name - not a level; enter by hand if the page",
+                                   "names one"), txt)
+          next
+        }
+        # ... and an UNREADABLE name is not a level either: ". T" (what an
+        # axis tick line leaves once its numbers are dropped) or the
+        # fifty-character OCR of the next table's caption. A level name is
+        # a word or a band: letters make up at least half of what it
+        # prints, or it has none ("<65", "0-1", a numeric ASA class) or is
+        # a roman numeral ("I", "IIb"); and it is forty characters or
+        # fewer (issue 46).
+        if (.ppUnreadableLevel(label)) {
+          addSkip(paste(catHeader, label),
+                  "unreadable level name (OCR noise) - enter by hand if the page names one",
+                  txt)
+          next
+        }
+        catName <- .ppUniqueName(.iaSafeColumnName(label), catColumns)
         catColumns <- unique(c(catColumns, catName))
         key <- paste0("__cat__", catHeader)
         existing <- which(vapply(outRows, function(r) identical(r$key, key),

@@ -132,6 +132,49 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 46. The OCR of a figure beneath a scanned table, and a footnote sentence between caption and header, stay out of the arms and the rows
+
+**Status: fixed on `feat/junk-ocr-rows`, 2026-09-25**, from the corpus
+session's junk-label finding G3 (CJA 1995;42:1096 = Fujii PMID 8595684, a
+scanned page with an OCR text layer).
+
+- **The defect.** Beneath that Table I the OCR of a figure's axis — "30",
+  "20", "10" down the left, "15 20 25 30 35 40" along the bottom, "i I |
+  I I t" for its ruled baseline — runs on inside the block. The lines
+  carry numbers and no label, so they were data to the classifier, and
+  their x positions seeded three columns no table cell ever used: the
+  arm count went to five, the fence that keeps prose out of the arm
+  names widened with it (three words per column), and the footnote
+  sentence set between caption and header — "were no differences in
+  number of patients, age, sex, height, or body weight" — named the arms
+  "were no", "differences in", …, "or body PTC". The ticks became levels
+  "Category" 1–3 of a heading "Sr", and "i I | I I t" a heading of its
+  own.
+- **What changed.** (1) A column fed only by label-less lines is not an
+  arm column: header Ns aside, every cell of a table sits on a labelled
+  line, so such columns are dropped with their tokens after clustering,
+  and the columns re-clustered. (2) The prose fence applies to every
+  label line that would name the arms, not only the one above a "(n =
+  k)" header. (3) Under a heading, counts on a line with no label — or
+  a "label" without a letter, what remains of a line whose tokens the
+  column rule dropped — are not a level; skipped with the heading
+  named. (4) A label line holding a "|" (a ruled border as OCR reads it)
+  never opens a heading.
+- **On the page.** With issue 45's "+"/bullet reading, CJA1995_1096 now
+  reads its FULL-WIDTH Table I - four arms (PTBC, PTC, PTBC-TOF, PTC-TOF),
+  Age, Height and Body weight, twelve cells that match the page, and
+  nothing else. Before, the junk columns sank the full-width reading and
+  the column-1 half (two arms) won. One residue: the fourth arm's N reads
+  5 where OCR set the printed "15" as "i 5" on the "Number of patients"
+  line, and a printed N outranks the text ladder's 15.
+- **Tests** (`tests/testthat/test-junk-ocr-rows.R`): the rebuilt layout
+  (footnote sentence, header without "(n = k)", the figure beneath) parses
+  to two named arms of 15 and three variables, the ticks skipped as
+  "no level name", no "Sr", "Time" or "|" row; a table whose every line is
+  labelled is untouched by the column rule.
+
+---
+
 ## 45. Three more ways a page prints its plus-minus, an arm-name line of ordinals, and a caption whose title sits under a bare "Table 1"
 
 **Status: fixed on `feat/plusminus-glyphs`, 2026-09-25**, from the corpus
