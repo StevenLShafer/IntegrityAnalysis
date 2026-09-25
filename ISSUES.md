@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 86. The OUP download rail, seven points wide, is a rotated rail
+
+**Status: fixed on `fix/oup-rail-rotated-words`, 2026-09-25**, from the
+corpus session's batch 21 finding AA1 (PMIDs 9389277 and 9861126, BJA).
+
+- **The defect.** "Downloaded from https://academic.oup.com/bja/article/
+  .../254374 by ... user on 25 September 2026" runs up the right margin
+  of every OUP page. The rotated-rail stripper of issue 35 took a word
+  for a rail candidate when its reported width was six points or less -
+  the LWW rail it was measured on - and the OUP rail is set one point
+  larger, so none of its words qualified. The URL's article number
+  became a fourth arm with N = 254996 (320553 on the other paper), and
+  the validator refused the table for its size.
+- **What changed.** A word up to eight points wide whose height is at
+  least twice its width is a rail candidate too - a rotated word is far
+  taller than wide, an upright two-letter word is about as wide as it is
+  tall - and the rail test (four or more such words on one x, spanning a
+  third of the page) decides as before. Both pages now read three arms
+  with no phantom.
+- **Tests** (`tests/testthat/test-oup-rail-rotated-words.R`): a page of
+  word boxes with the OUP rail's own geometry loses its four rail words
+  and keeps every upright word (fails on the unfixed code); a rebuilt
+  page with the rail beside its table reads two arms of 30 and no
+  phantom. The issue 35 and 38 rail tests and the Loadsman layout tests
+  still pass.
+
+---
+
 ## 85. The sign fused inside the cell word ("48.4k7.2")
 
 **Status: fixed on `feat/fused-sign-in-cell-word`, 2026-09-25**, from the
