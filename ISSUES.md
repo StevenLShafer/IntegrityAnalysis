@@ -284,6 +284,20 @@ row from an outcome table; now no usable rows, which is the honest
 result. A second misparse run on the corrected branch is recorded here
 by follow-up.
 
+**Mass test on the corrected branch (`206c5c6` snapshot vs `main`
+841648d):** 60/61 parsed on both; 49 of 60 ROW vectors identical. The
+eleven that differ: nine are labels read whole and the variable gained
+by the identity rule (above); one is the two-anchor rule correcting a
+straddle — on `main`, `PMID_16179044` was read from a full-width block
+captioned "Table 1 Patient characteristics … Table 4 Induction time of
+sedation, intra-operative propofol", four phantom arms, "Propofol target
+concentration" and a nonsense "ASA grade 12 (12)" filed as baseline, trial
+p 0.992; the branch reads the real Table 1 — Age, Weight, Height, two
+arms of 55 with identical printed means — and p = 0.026 is the genuine
+result on the genuine table; and one is the unseeded Monte Carlo wobble
+across 0.05 with identical rows (`PMID_17197846`), as before. Suite on the
+corrected branch: 125 files / 4,121 passed / 0 failed / 33 skipped.
+
 ---
 
 ## 34. The baseline block ran into the follow-up timepoints — and the page was the transpose of what the finding assumed
