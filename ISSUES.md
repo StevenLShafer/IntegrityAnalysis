@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 102. A "Changes in X" caption heads a time-course table, and on equal scores the lower table number wins
+
+**Status: fixed on `fix/changes-in-caption-tiebreak`, 2026-09-25**, a
+regression found by the corpus session's batch 25 (AD3: Fujii, Anesth
+Analg 2001;92:762, PMID 11226115).
+
+- **The defect.** On 366548d the trial read Table 1 "Hemodynamic Data
+  and Changes" (six variables, four arms of 8). On e4a00ea, with the
+  long-layout reader naming rows (issues 91, 95), Table 2 "Changes in
+  Pdi, % Edi-cru, and % Edi-cost" parses to the same score, and its
+  caption scores nought while Table 1's pays the hemodynamic penalty of
+  the caption scorer; the candidate contest kept the higher total and
+  the hemodynamic table was gone from the result.
+- **What changed.** Two rules. A caption that announces changes in
+  something, with no word for baseline, heads a time-course table -
+  baseline in one column, later timepoints in the rest - and loses a
+  point (`.ppCaptionScore()`); issue 80 penalised "changes ... from",
+  this is the bare "changes in". And in the candidate contest, on
+  equal totals the candidate whose caption carries the lower table
+  number wins (`.ppTableNumber()`): the first table is where a trial's
+  baseline data conventionally sit. Before this the earlier candidate
+  in caption-score order kept a tie.
+- **On the pages.** 11226115 reads Table 1 again (HR, MAP, RAP, MPAP,
+  PAOP, CO; four arms of 8). 10589648, whose Table 2 is also "Changes
+  in Pdi", keeps Table 1.
+- **Tests** (`tests/testthat/test-changes-in-caption-tiebreak.R`): the
+  table number from "Table 1", "TABLE II", "Tab. 3" and none; the
+  caption penalty and its absence beside a baseline word; a rebuilt
+  page with both tables reads Table 1 (4 expectations fail on the
+  unfixed code). The change-from-baseline caption and Loadsman layout
+  tests still pass.
+
 ## 99. "(n = 20 of each)" is the size of every arm, and fills the arms a scanned header left blank
 
 **Status: fixed on `feat/n-of-each-statement`, 2026-09-25**, from the
