@@ -652,6 +652,33 @@
       c2 <- if (length(full) >= 2L)
         .ppClusterColumns(unlist(lapply(full, function(i) tokensByLine[[i]]$mid)), k = kHeader)
       else NULL
+      # ... AND WHEN THOSE ROWS DISAGREE, THE ROWS OF WHOLE CELLS VOTE
+      # ALONE (2026-09-26, ISSUES.md issue 120; CJA 1995, PMID 7614644,
+      # the corpus session's batch 27 AF3; four arms of 22 in tight
+      # columns). A "full" row is one with as many tokens as arms, and
+      # the Age line of that scan has four: "62 <pm> 61 <pm> 62 <pm> 9
+      # 61 <pm> 11" - two SDs lost to the text layer leave two BARE
+      # numbers (issue 118) beside two cells. A bare mean sits left of
+      # where its cell's midpoint would be, so the columns' spreads
+      # (18, 33, 28, 18) grew past the narrowest cut gap (21), the cut
+      # was refused, and the table read three arms of four. When the
+      # cut fails, the rows whose every token is a whole cell (mean
+      # +/- SD, mean (SD), median [range]) are tried by themselves: a
+      # bare number is not a cell, and a row that carries one is a
+      # witness with a damaged eye. At least two such rows, as before.
+      if (is.null(c2) && length(full) >= 2L) {
+        whole <- full[vapply(full, function(i)
+          all(tokensByLine[[i]]$type %in% c("meanSD", "numParen", "medianRng")),
+          logical(1))]
+        if (length(whole) >= 2L && length(whole) < length(full)) {
+          c2 <- .ppClusterColumns(unlist(lapply(whole, function(i) tokensByLine[[i]]$mid)),
+                                  k = kHeader)
+          if (!is.null(c2))
+            say("  ", length(full) - length(whole), " full row(s) carry bare numbers ",
+                "beside their cells; the ", length(whole), " rows of whole cells cut ",
+                "the columns.")
+        }
+      }
       if (!is.null(c2)) {
         say("  The header names ", kHeader, " arms and the gap rule found ", c1$n,
             " column(s): the cells are cut at the ", kHeader - 1L, " widest gap(s) instead.")
