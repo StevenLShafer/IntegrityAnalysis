@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 113. A column fed by one token is not an arm column
+
+**Status: fixed on `fix/single-token-column-not-arm`, 2026-09-26**, from
+the corpus session's batch 26 AE7 (CJA 1998, PMID 9717598, a scan).
+
+- **The defect.** The level "-Lower extremity" prints as "-Lower
+  extremit 3," - the OCR shears the label's last letter into a digit -
+  and that "3," at the label's right edge, on a labelled line, seeded
+  a fourth column. Issue 46 keeps a column fed by a labelled line, so
+  the table read four arms with the first nameless and N-less and
+  every row flagged "3 of 4".
+- **What changed.** Across a block of four or more data lines, a column
+  that holds one token while every other column holds three or more is
+  a stray: it goes with its token and word, and the columns are cut
+  afresh, as issue 46's columns are.
+- **On the page.** Three arms of 20 (Group C, N, D), the rows as before.
+  10193218's nameless first arm (the same flag) has another cause - the
+  caption text "mean (SD) or median" runs to the left of the header
+  names on the same lines - and stays open.
+- **Tests** (`tests/testthat/test-single-token-column-not-arm.R`): a
+  rebuilt page with a stray "3," at a level label's edge reads three
+  named arms of 20 (3 expectations fail on the unfixed code). The
+  column-count, junk-row, stratum, gutter and Loadsman layout tests
+  still pass.
+
 ## 109. A variable's own n printed per cell, in brackets
 
 **Status: fixed on `feat/per-cell-n-in-brackets`, 2026-09-25**, from the
