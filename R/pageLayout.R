@@ -379,15 +379,23 @@
 # STRADDLES two side-by-side tables, and its rows are two tables' rows.
 # When the page also offers the halves - a TWIN: a candidate on the same
 # page whose caption BEGINS with the same first table and names no other -
-# the whole is set aside (capScore -100: read only if nothing else on the
-# page parses). A prose candidate "... presented in table 1. The CSF ..."
-# is not a twin (its anchor is mid-sentence, and it has no rows), and a
-# page with no split at all keeps its straddle, because it is the only
-# reading holding the baseline table. Each element of `cand` carries
-# $page, $caption and $capScore; the list comes back with capScore
-# adjusted and nothing else touched. Tested with hand-built candidate
-# lists in test-loadsman-layouts.R; the corpus pages that decided the
-# rule are in corpus/checkCaptionStraddle.R.
+# the straddle is MARKED ($straddleTwin = the shared first anchor, e.g.
+# "table 1") and the candidate loop defers it: it competes only if the
+# twin itself yields no usable reading. A prose candidate "... presented
+# in table 1. The CSF ..." is not a twin (its anchor is mid-sentence, and
+# it has no rows), and a page with no split at all keeps its straddle,
+# because it is the only reading holding the baseline table.
+#
+# Why a mark and not a score (2026-09-25, misparse run 3): setting the
+# straddle's capScore to -100 let a twin that parses to NOTHING still
+# knock it out - on PMID 20608923 the "Table 1" column candidate has no
+# usable rows, the straddle held Height and Weight, and an outcome table
+# (Table 2) won instead. Whether the twin delivers is known only after
+# it is parsed, so the decision belongs to the selection loop. Each
+# element of `cand` carries $page, $caption and $capScore; the list comes
+# back with $straddleTwin set on the straddles and nothing else touched.
+# Tested with hand-built candidate lists in test-loadsman-layouts.R; the
+# corpus pages that decided the rule are in corpus/checkCaptionStraddle.R.
 .ppSetAsideStraddles <- function(cand) {
   if (length(cand) < 2) return(cand)
   anchorsOf <- lapply(cand, function(x) .ppCaptionAnchorList(x$caption))
@@ -400,9 +408,19 @@
   for (k in which(nAnch >= 2)) {
     twin <- pageOfC == pageOfC[k] & nAnch == 1 & startsWithAnchor &
       !is.na(firstA) & firstA == firstA[k]
-    if (any(twin)) cand[[k]]$capScore <- -100
+    if (any(twin)) cand[[k]]$straddleTwin <- firstA[k]
   }
   cand
+}
+
+# The key under which a candidate counts as a parsed TWIN for the rule
+# above: its page and the single anchor its caption begins with, or NA
+# when it is not such a candidate.
+.ppTwinKey <- function(x) {
+  a <- .ppCaptionAnchorList(x$caption)
+  if (length(a) != 1L) return(NA_character_)
+  if (!startsWith(tolower(.ppSquish(as.character(x$caption))), a)) return(NA_character_)
+  paste(x$page, a)
 }
 
 # Which page carries the most baseline-like table caption?

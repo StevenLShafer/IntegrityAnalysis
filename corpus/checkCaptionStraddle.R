@@ -22,8 +22,11 @@
 #             -> no twin, no dock: TABLE I wins                             #
 ############################################################################
 
+#   20608923  twin exists but parses to NOTHING (the "Table 1" column reading   #
+#             has no usable rows) -> the straddle, which holds Height and     #
+#             Weight, is admitted; an outcome table must not win by default   #
 DIR <- Sys.getenv("INTEGRITY_CORPUS", "C:/temp/journals")
-need <- c("PMID_16738291", "PMID_16179044", "PMID_15681941", "PMID_12193491")
+need <- c("PMID_16738291", "PMID_16179044", "PMID_15681941", "PMID_12193491", "PMID_20608923")
 have <- file.exists(file.path(DIR, paste0(need, ".pdf")))
 if (!all(have)) {
   cat("SKIP: not present in ", DIR, ": ", paste(need[!have], collapse = ", "), "\n", sep = "")
@@ -64,6 +67,12 @@ cat("\n=== PMID_12193491: prose 'Table II' on the caption line is not a straddle
 r <- parse("PMID_12193491")
 chk(grepl("^TABLE I Patient characteristics", r$caption),
     paste0("TABLE I wins (", substr(r$caption, 1, 60), ")"))
+
+cat("\n=== PMID_20608923: the twin parses to nothing, so the straddle holding Table 1 is admitted ===\n")
+r <- parse("PMID_20608923")
+chk(grepl("^Table 1", r$caption), paste0("caption starts at Table 1 (", substr(r$caption, 1, 60), ")"))
+chk(all(c("Height; cm", "Weight; kg") %in% r$data$ROW), "Height and Weight are read")
+chk(!any(grepl("^pH$|Osmolality", r$data$ROW)), "no Table 2 (dose-response) row")
 
 cat("\n", if (fails == 0L) "ALL CHECKS PASSED" else paste(fails, "CHECK(S) FAILED"), "\n")
 quit(save = "no", status = if (fails == 0L) 0 else 1)

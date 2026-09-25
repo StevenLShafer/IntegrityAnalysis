@@ -321,6 +321,20 @@ other way were each read on both snapshots:
   rule is unit-tested on hand-built candidate lists, and a synthetic
   side-by-side page that the column splitter does *not* split pins the
   rule's documented limit (no twin, straddle read).
+  *Third misparse run (branch at `3c3f6d7`, after the merge):* 428 of
+  937 fully corroborated (45.7%), 5,009 uncorroborated pairs, 4,449 of
+  Carlisle's missed; 15681941 and 12193491 no longer move. One new
+  mover, `PMID_20608923` (8 corroborated → 3 wrong): the "Table 1" twin
+  exists on that page but parses to *nothing*, and the set-aside
+  straddle — which held Height and Weight — lost by default to an
+  outcome table. So the rule moved from caption time to selection time
+  (`fix/straddle-selection`): the straddle is *marked*, parsed like any
+  candidate, and deferred; it competes only if its twin produced no
+  usable rows. 16738291 and 16179044 still take the twin; 15681941 and
+  12193491 keep their readings; 20608923 reads Table 1. Five pages in
+  `corpus/checkCaptionStraddle.R`. The remaining movers are the known
+  noise (16311286, 16480346) and 16792606's genuine "Duration of
+  anaesthesia" row that Carlisle did not enter.
 - `PMID_16311286` (3 → 0 corroborated): scorer noise on a broken page.
   Both readings — Table 1 as one arm with no N, ten "variables" mostly
   fragments, and Table 3, an outcome table — fail validation; the

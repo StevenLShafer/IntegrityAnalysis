@@ -232,23 +232,29 @@ test_that("a caption's table anchors are listed, and the straddle loses only to 
   # (d) a caption running into prose ("... (Table II)") with no twin is
   # left alone
   mk <- function(page, caption, score = 8) list(page = page, caption = caption, capScore = score)
+  twinOf <- function(cl) vapply(cl, function(x) if (is.null(x$straddleTwin)) NA_character_ else x$straddleTwin, character(1))
   a <- .ppSetAsideStraddles(list(
     mk(4, "TABLE I Baseline characteristics TABLE III Treatment outcomes"),
     mk(4, "TABLE I Baseline characteristics"),
     mk(4, "TABLE III Treatment outcomes", 0)))
-  expect_identical(vapply(a, `[[`, numeric(1), "capScore"), c(-100, 8, 0))
+  expect_identical(twinOf(a), c("table i", NA, NA))
+  expect_identical(vapply(a, `[[`, numeric(1), "capScore"), c(8, 8, 0))   # scores untouched
   b <- .ppSetAsideStraddles(list(
     mk(4, "Table 1. Patient Characteristics Table 3. Findings of MRI"),
     mk(4, "sented in table 1. The CSF volume and velocity before", 3)))
-  expect_identical(vapply(b, `[[`, numeric(1), "capScore"), c(8, 3))
+  expect_true(all(is.na(twinOf(b))))
   cc <- .ppSetAsideStraddles(list(
     mk(4, "TABLE I Baseline characteristics TABLE III Treatment outcomes"),
     mk(5, "TABLE I Baseline characteristics")))
-  expect_identical(vapply(cc, `[[`, numeric(1), "capScore"), c(8, 8))
+  expect_true(all(is.na(twinOf(cc))))
   d <- .ppSetAsideStraddles(list(
     mk(4, "TABLE I Patient characteristics and preoperative risk score (Table II)."),
     mk(4, "TABLE III Patient outcome in ICU", -4)))
-  expect_identical(vapply(d, `[[`, numeric(1), "capScore"), c(8, -4))
+  expect_true(all(is.na(twinOf(d))))
+  # the key a parsed twin is recorded under: page + the anchor its caption begins with
+  expect_identical(.ppTwinKey(mk(4, "TABLE I Baseline characteristics")), "4 table i")
+  expect_identical(.ppTwinKey(mk(4, "sented in table 1. The CSF volume")), NA_character_)
+  expect_identical(.ppTwinKey(mk(4, "TABLE I Baseline characteristics TABLE III Treatment outcomes")), NA_character_)
 
   # and a page the column splitter does NOT split - a baseline table on
   # the left and an outcome table on the right, both under one full-width

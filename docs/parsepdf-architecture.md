@@ -476,13 +476,16 @@ was already caught on current code by the merge's value-signature dedupe of
   characteristics TABLE III Treatment outcomes" — and its block mixes the two
   tables' rows; once the wrapped-label rule made one of those rows usable, that
   block outscored the correct single-column reading on PMID 16738291 and filed
-  outcome values under Age and Height. `.ppSetAsideStraddles()` sets a candidate
-  whose caption names two tables aside (read only if nothing else on the page
-  parses) **when a twin exists** — a candidate on the same page whose caption
-  begins with the same first table and names no other. Only then: on PMID 15681941
-  the page is one full-width layout with no column split, so the straddle is the
-  only reading holding Table 1 and is kept; on PMID 12193491 the second anchor is
-  prose that ran onto the caption line and is not a straddle. The four pages are
+  outcome values under Age and Height. `.ppSetAsideStraddles()` *marks* a candidate
+  whose caption names two tables **when a twin exists** — a candidate on the same
+  page whose caption begins with the same first table and names no other — and the
+  candidate loop defers it: the straddle competes only if the twin yields no usable
+  reading. Each qualification came from a corpus page: on PMID 15681941 the page is
+  one full-width layout with no column split, so the straddle is the only reading
+  holding Table 1 and is kept; on PMID 12193491 the second anchor is prose that ran
+  onto the caption line and is not a straddle; on PMID 20608923 the "Table 1" twin
+  exists but parses to nothing, so the straddle (which holds Height and Weight) is
+  admitted rather than an outcome table winning by default. The five pages are
   `corpus/checkCaptionStraddle.R`.
 - **A category column never spells a header word the normaliser renames
   unconditionally.** `.iaNormalizeNames()` turns the *first* column whose name
