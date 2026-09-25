@@ -310,6 +310,32 @@
   }
   digitSD <- regmatches(lineTexts, regexpr("(?i)mean\\s*([0-9])\\s*s\\.?d\\b", lineTexts, perl = TRUE))
   digitSD <- unique(gsub("[^0-9]", "", digitSD))
+  # (c) The digit as a token of its own: "Values are mean 6 sd." and the
+  #     cells "141 6 9  139 6 10  141 6 7" (Fujii 1999, PMID 10475325, the
+  #     Symbol-font plus-minus set as the digit 6; the corpus session's N1,
+  #     issue 59). Three plain tokens in a row whose middle one is the
+  #     announced digit are one mean +/- SD cell - at least two such
+  #     triples on the line, as the other announced notations require.
+  if (length(digitSD) == 1L) for (i in which(kind == "data")) {
+    t <- tokensByLine[[i]]
+    if (is.null(t) || nrow(t) < 3L) next
+    j <- seq_len(nrow(t) - 2L)
+    triple <- j[t$type[j] == "plain" & t$type[j + 1L] == "plain" & t$type[j + 2L] == "plain" &
+                t$text[j + 1L] == digitSD & !is.na(t$num1[j]) & !is.na(t$num1[j + 2L]) &
+                t$num1[j] >= 0 & t$num1[j + 2L] >= 0]
+    # a token joins one triple only, left to right
+    keepT <- logical(0); last <- -Inf
+    for (q in triple) { if (q > last + 2L) { keepT <- c(keepT, TRUE); last <- q } else keepT <- c(keepT, FALSE) }
+    triple <- triple[keepT]
+    if (length(triple) < 2L) next
+    t$type[triple] <- "meanSD"
+    t$text[triple] <- paste(t$text[triple], .ppPLUSMINUS, t$text[triple + 2L])
+    t$num2[triple] <- t$num1[triple + 2L]
+    t$dec2[triple] <- t$dec1[triple + 2L]
+    t$x1[triple]   <- t$x1[triple + 2L]
+    t$mid[triple]  <- (t$x0[triple] + t$x1[triple]) / 2
+    tokensByLine[[i]] <- t[-c(triple + 1L, triple + 2L), , drop = FALSE]
+  }
   if (length(digitSD) == 1L) for (i in which(kind == "data")) {
     t <- tokensByLine[[i]]
     if (is.null(t) || nrow(t) == 0) next
