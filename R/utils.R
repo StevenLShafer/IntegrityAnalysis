@@ -930,7 +930,13 @@
 # the lines from `capIdx + 1` on are read. Returns the lines with the
 # repaired words (the sign written as the plus-minus glyph, a glued SD
 # split into its own word) and the count of repairs.
-.ppSoupGlyph <- "^[-+:~\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
+# "_+" IS SOUP TOO (2026-09-25, ISSUES.md issue 107; CJA 1996, PMID 8665632,
+# the corpus session's batch 25 AD5): a scanned page under a diagonal
+# RETRACTED watermark sets the sign as "_+" in three cells - an underscore
+# for the lower stroke - and the second arm's Duration of operation,
+# Acetaminophen and Pentazocine went unread. The underscore joins the
+# strokes and stroke-like letters of the soup class.
+.ppSoupGlyph <- "^[-+:~_\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
 .ppRepairPlusMinusGlyphs <- function(lines, capIdx = 0L, tol = 6) {
   n <- length(lines)
   none <- list(lines = lines, repaired = 0L)
