@@ -160,6 +160,38 @@ corpus session's batch 21 finding AA1 (PMIDs 9389277 and 9861126, BJA).
 
 ---
 
+## 85. The sign fused inside the cell word ("48.4k7.2")
+
+**Status: fixed on `feat/fused-sign-in-cell-word`, 2026-09-25**, from the
+corpus session's batch 20 finding Z1 (Saitoh, Acta Anaesthesiol Scand
+1998;42:851; Loadsman corpus, page 3).
+
+- **The defect.** The scanned page's text layer sets each mean ± SD cell
+  as one word with a letter or symbol where the sign was - "48.4k7.2",
+  "46.9Z7.7", "168.0?8.5", "166.9k8.4" - and once with the digit 5
+  ("47.357.9"). The tokenizer's number pattern refuses a digit run that a
+  letter touches on either side, so the rows held no cell: the
+  deterministic pass read Gender alone and scored a Gender-only table
+  (p 0.0029, meaningless).
+- **What changed.** `.ppRepairFusedSigns()` in `R/utils.R`, called after
+  the sign and size repairs at the head of `.ppParseBlock()`: a word of
+  the shape NUMBER, one or two glyphs that are not digits, NUMBER - the
+  glyphs not "e"/"E" (an exponent) nor "x"/"X" (a dimension) - is a mean
+  ± SD cell when the line holds two or more of them, and is split into
+  its three words with the sign as the plus-minus glyph, the widths
+  shared by character count. The digit-fused form ("47.357.9") is left as
+  it is: without a legend naming the digit it cannot be split, and the
+  row is reported as unusable rather than misread. On the page Height
+  now reads four arms; Age and Weight, each with a digit-fused cell,
+  stay reported for the reviewer or the model.
+- **Tests** (`tests/testthat/test-fused-sign-in-cell-word.R`): the helper
+  on fused cells, on an exponent, a dimension and a lone fused word; the
+  split words keep the cell's extent; a rebuilt page reads Age, Height
+  and Weight across four arms (fails on the unfixed code). The sign,
+  glyph, junk-row and Loadsman layout tests still pass.
+
+---
+
 ## 84. A deterministic table whose arms all lack N gets the model route's arm-size ladder
 
 **Status: implemented on `feat/deterministic-arm-n-from-text`,
