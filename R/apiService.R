@@ -275,6 +275,8 @@
 # The results CSV, sanitized the same way (M5): row labels parsed from
 # the manuscript ride into it too, and it is the file an editor opens.
 .apiResultsCsv <- function(results) {
+  # the internal numeric column stays out of the CSV (issue 78)
+  results <- results[, !startsWith(names(results), "."), drop = FALSE]
   con <- textConnection("out", "w", local = TRUE)
   utils::write.csv(.apiCsvSafe(results), con, row.names = FALSE, na = "")
   close(con)
@@ -1201,9 +1203,10 @@
   sm <- OUTPUT[!is.na(OUTPUT$KIND) & OUTPUT$KIND == "summary", , drop = FALSE]
   # "<0.0001" (the exact combination's licensed bound) combines as 1e-4
   # and passes through unchanged when it is the only trial
-  trialP <- .trialPNumeric(sm$P)
-  ok <- !is.na(trialP)
-  overall <- if (sum(ok) > 1) signif(sumz(trialP[ok])$p, 4)
+  ov     <- .iaOverallP(OUTPUT)   # the numeric trial p, not its display (issue 78)
+  trialP <- ov$p
+  ok     <- ov$ok
+  overall <- if (sum(ok) > 1) signif(ov$overall, 4)
              else if (sum(ok) == 1) {
                if (grepl("^\\s*<", as.character(sm$P[ok]))) as.character(sm$P[ok]) else trialP[ok]
              } else NA_real_
@@ -1250,8 +1253,15 @@
     })
   }, error = function(e) NULL)
 
+  # validation warnings (issue 79) travel beside the results: the table
+  # passed, and the caller is told which cells deserve a look
+  wi <- if (!is.null(v$issues)) v$issues[v$issues$code == "warning", , drop = FALSE] else NULL
+  apiWarnings <- if (!is.null(wi) && nrow(wi))
+    lapply(seq_len(nrow(wi)), function(i) list(row = wi$row[i], col = wi$col[i],
+                                               code = "warning", note = wi$note[i]))
+  else list()
   list(ok = TRUE, stage = "analysis",
-       results = OUTPUT, overallP = overall,
+       results = OUTPUT, overallP = overall, warnings = apiWarnings,
        trials = length(v$TRIALS),
        journalTables = journal,
        # say WHY they are absent rather than returning a bare null the

@@ -243,6 +243,22 @@ writeBaselineTablesXlsx <- function(tables, file) {
 #'   $CategoryNames), or NULL.
 #' @param file path of the xlsx to write.
 #' @noRd
+# THE P ACROSS TRIALS, FROM THE NUMBERS (2026-09-25, ISSUES.md issue 78).
+# The Summary lines' P column is a display; the numeric trial p rides in
+# .PNUM since issue 78. Both combinations - the workbook's Summary sheet
+# and the API's overallP - take the number when it is there and fall
+# back on the display (a results frame from an older build, or a P typed
+# by hand) otherwise. Returns the per-trial p's in Summary-line order,
+# which of them can combine, and the Stouffer p when two or more can.
+.iaOverallP <- function(results) {
+  sm   <- results[!is.na(results$KIND) & results$KIND == "summary", , drop = FALSE]
+  disp <- .trialPNumeric(sm$P)                  # "<0.0001" reads as 1e-4
+  num  <- if (".PNUM" %in% names(sm)) suppressWarnings(as.numeric(sm$.PNUM)) else rep(NA_real_, nrow(sm))
+  p    <- ifelse(!is.na(num), num, disp)
+  ok   <- !is.na(p)
+  list(p = p, ok = ok, overall = if (sum(ok) > 1) sumz(p[ok])$p else NA_real_)
+}
+
 writeResultsWorkbook <- function(results, validated, categoryNames,
                                  file, seed = NULL) {
   wb <- openxlsx::createWorkbook()
@@ -253,7 +269,7 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   ## 1 -- Test Results: the sheet exactly as the download always was
   # KIND (the structural line type P_Calc returns since 2026-09-07) is not
   # printed; the sheet keeps its six columns
-  out <- results[, setdiff(names(results), "KIND"), drop = FALSE]
+  out <- results[, setdiff(names(results), c("KIND", ".PNUM")), drop = FALSE]
   names(out) <- c("TRIAL", "ROW", "P (one-sided toward homogeneity)",
                   "95% Monte Carlo interval", "Replicates", "Note")
   openxlsx::addWorksheet(wb, "Test Results")
@@ -319,10 +335,11 @@ writeResultsWorkbook <- function(results, validated, categoryNames,
   # case: a trial p of exactly 0 or 1 maps to an infinite z; one sign of
   # infinity dominates legitimately, but both at once is 0/0 - reported
   # as not computable rather than silently dropped.
-  pAll <- .trialPNumeric(s$P)      # "<0.0001" combines as 1e-4
-  ok <- !is.na(pAll)
+  ov   <- .iaOverallP(results)    # the numeric trial p, not its display (issue 78)
+  pAll <- ov$p
+  ok   <- ov$ok
   if (sum(ok) > 1) {
-    overall <- sumz(pAll[ok])$p
+    overall <- ov$overall
     s <- rbind(s, data.frame(
       TRIAL = paste0("ALL ", sum(ok), " TRIAL",
                      if (sum(ok) > 1) "S" else "",

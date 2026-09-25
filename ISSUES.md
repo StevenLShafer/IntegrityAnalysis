@@ -158,6 +158,98 @@ Steve's direction of 2026-09-25.
 
 ---
 
+## 82. The announced "mean + SD" rule's two-cell floor counts the cells already read
+
+**Status: fixed on `fix/plus-rule-counts-read-cells`, 2026-09-25**, from
+the corpus session's batch 19 finding Y4 (Saitoh, Can J Anaesth
+1995;42:992; Loadsman corpus, the six-arm page of issue 65).
+
+- **The defect.** A regression of issue 77. The slot repair now turns a
+  plain "+" into the sign at any slot under an announced soup, and on
+  that page it read five of Age's six plus signs before the block
+  walker's announced "mean + SD" rule ran; the sixth, "49.4 + 5.9", sat
+  in a column no other line marked (its neighbours' signs were soup) and
+  was left to that rule, which requires at least two plus pairs on the
+  line. Counted alone it fell under the floor, its two numbers stayed
+  plain, and the fifth arm's Age was lost - on a page issue 65 had made
+  whole, with no flag but "Age (5 of 6)".
+- **What changed.** The floor counts the cells the line already holds:
+  a lone plus pair beside one or more mean +/- SD cells is one more cell,
+  while a lone pair on a line with no cell at all is still refused (the
+  lone annotation the floor exists for). A line with no pair is left as
+  it is, as before.
+- **Tests** (`tests/testthat/test-plus-rule-counts-read-cells.R`): a
+  rebuilt six-arm page whose fifth column no other line marks reads every
+  arm of Age (fails on the unfixed code); a lone "5 + 2" on a line with no
+  cell, off the sign columns, is still refused under an announced "mean +
+  SD". The issue 45, 65, 70 and 77 tests still pass.
+
+---
+
+## 79. A validator warning that lets the table pass
+
+**Status: implemented on `feat/validator-warning-code`, 2026-09-25**, to
+Steve's direction of 2026-09-25 ("implement a warning that allows the
+validator to pass ... A warning will allow comparisons to be made against
+ground truth, while also highlighting to validating software as well as
+human reviewers where there may be problems that need further scrutiny").
+
+- **The gap.** The validator passed a table or failed it. A row that
+  analyses but deserves a look - an SD larger than its mean, a variable
+  with the same value and no dispersion in every arm, two variables of
+  one trial with identical N, mean and SD in every arm - was either
+  flagged only by the PDF parser (and so invisible for a spreadsheet) or
+  cost the whole table, and the corpus session spent time working out
+  what had failed and why.
+- **What changed.** `.iaRowWarnings()` in `R/validateData.R` judges the
+  rows the analysis will see and files each finding as an issue with the
+  code `warning` - row, column, note - without setting `FAIL`. An SD is
+  judged against a non-negative mean only (a change score is not). The
+  app paints such cells lavender, explains the code in the legend and on
+  hover, and logs "Validation passed with n warning(s)" with the rows;
+  the analysis runs. The service returns `warnings` beside a successful
+  `/analyze` reply, each `{row, col, code, note}`, and the API guide
+  lists the code.
+- **Tests** (`tests/testthat/test-validator-warning-code.R`): the helper
+  on a table holding all three shapes and a clean pair of rows; a
+  negative mean is not judged; `validateData()` passes with eight
+  warnings and files none on the clean rows; `.apiAnalyze()` returns
+  them beside `ok = TRUE`; the app source paints and explains the code.
+
+---
+
+## 78. The P across trials is combined from the numeric trial p, not from its display
+
+**Status: fixed on `fix/stouffer-uses-numeric-trial-p`, 2026-09-25**, to
+Steve's direction of 2026-09-25 ("use the actual number, not the displayed
+number, for the P across trials").
+
+- **The defect.** A trial's Summary line carries its p as a display:
+  four significant figures, or "<0.0001" when the one-sided 97.5% Monte
+  Carlo bound licenses it. Both Stouffer combinations across trials - the
+  results workbook's Summary sheet and the API's `overallP` - read that
+  display back as a number, so a trial at 0.000003 entered the
+  combination as 0.0001 (z = 3.7 for z = 4.5) and a four-figure display
+  entered as its rounded value. The study-level p was conservative, and
+  most so for the trials a fraud screen cares about. Within a trial
+  nothing was lost: the trial p is the exact combination over the
+  replicates.
+- **What changed.** `P_Calc()` keeps the numeric p of every line in a
+  `.PNUM` column - on the Summary line, the trial p at full Monte Carlo
+  precision (still floored at 1/(m+1), the honest limit of the
+  simulation). One helper, `.iaOverallP()` in `R/baselineTable.R`, takes
+  the number when it is there and the display otherwise (a frame from an
+  older build, a P typed by hand), and both combinations call it. The
+  workbook's Test Results sheet and the API's CSV drop the column; the
+  displays are unchanged.
+- **Tests** (`tests/testthat/test-stouffer-numeric-trial-p.R`): the helper
+  on a hand-built frame combines 1e-6 rather than 1e-4 and falls back on
+  the display without the column or with an NA; the CSV carries no
+  internal column; `P_Calc()`'s Summary line carries a numeric p at or
+  below its display. The KIND test now expects the column.
+
+---
+
 ## 77. A plain "+" at a slot the sign itself marks, the sign dropped entirely, and a legend that spells "S D"
 
 **Status: fixed on `feat/slot-plus-and-dropped-sign`, 2026-09-25**, from
