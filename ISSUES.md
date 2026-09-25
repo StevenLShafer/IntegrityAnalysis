@@ -166,6 +166,29 @@ corpus session's batch 24: the four CJA scans (PMIDs 9717598, 9350368,
 
 ---
 
+## 98. "(n ~ 20)": a tilde for the equals sign in the header
+
+**Status: fixed on `feat/header-n-tilde`, 2026-09-25**, from the corpus
+session's batch 24 (the CJA scans PMIDs 9717598, 9350368, 9836028).
+
+- **The defect.** The scanned header reads "(n = 20)" over one arm and
+  "(n ~ 20)" or "(n~20)" over the next: the OCR of an equals sign in a
+  small font is a tilde. The header rules of the block walker accept
+  "n =" and, since issue 97, "n:"; the tilde-headed arm had no N while
+  its neighbour did, and its name kept the "(n ~ 20)".
+- **What changed.** The eight header-N patterns accept "n ~" beside
+  "n =" and "n:", and the header word cleaner strips the tilde.
+- **On the pages.** 9717598's Group D, 9350368's second ET and LMA and
+  9836028's Group D all read 20 with clean names; with issue 99 as well
+  the count-less "(n = 20 of each)" no longer has to fill them.
+- **Tests** (`tests/testthat/test-header-n-tilde.R`): a rebuilt page
+  headed "(n ~ 20)" and "(n~20)" reads two arms of 20 with clean names
+  (2 expectations fail on the unfixed code). The colon-header, row-N,
+  stratum, ordinal-header, partial-arm, header-count, gutter and
+  Loadsman layout tests still pass.
+
+---
+
 ## 97. "(n:25)" under the arm names is the arm-size line
 
 **Status: fixed on `feat/header-n-colon`, 2026-09-25**, from the corpus
