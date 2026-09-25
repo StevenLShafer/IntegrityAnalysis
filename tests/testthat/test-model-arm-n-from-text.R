@@ -107,3 +107,22 @@ test_that("the fallback route keeps the model result's own flags behind the fail
   expect_match(out$flags[1], "^deterministic parse failed")
   expect_match(out$flags[2], "recovered from the document text")
 })
+
+# ---- CodeRabbit on PR #343 -------------------------------------------------
+test_that("a packed '(n = k)' list names each arm by the text before its mention, not the next arm's label", {
+  pdf <- methodsPdf("Dogs were allocated to Group Ia (n = 5), Group Ib (n = 7), Group II (n = 8).")
+  r <- withModelReply(modelReply(),
+                      parseBaselineTableAI(pdf, trial = "T", quiet = TRUE))
+  expect_identical(r$arms$N, c(5L, 7L, 8L))
+})
+
+test_that("a scanned document with no text layer is read by OCR for its arm sizes", {
+  pdf <- methodsPdf("Twenty-four dogs were randomly divided into three groups of eight each.")
+  local_mocked_bindings(
+    .ppPdfText = function(...) character(0),
+    .ppOcrText = function(...) "Twenty-four dogs were randomly divided into three groups of eight each.")
+  r <- withModelReply(modelReply(),
+                      parseBaselineTableAI(pdf, trial = "T", quiet = TRUE))
+  expect_identical(r$arms$N, c(8L, 8L, 8L))
+  expect_match(r$flags, "three groups of eight")
+})

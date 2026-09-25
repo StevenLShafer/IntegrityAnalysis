@@ -769,9 +769,15 @@ parseBaselineTableAI <- function(pdfFile,
       integer(1))
     if (all(is.na(modelN))) {
       armNames <- vapply(parsed$arms, function(a) as.character(a$name), character(1))
-      docText  <- tryCatch(
-        if (isTRUE(ocr)) .ppOcrText(pdfFile, dpi = ocrDpi) else .ppPdfText(pdfFile),
-        error = function(e) character(0))
+      # a scanned document has no text layer: its table page was found
+      # by OCR and sent as an image, and its Methods can only be read the
+      # same way (CodeRabbit on PR #343). The OCR pass needs the optional
+      # tesseract package; without it the text is simply empty.
+      docText <- if (isTRUE(ocr)) character(0) else
+        tryCatch(.ppPdfText(pdfFile), error = function(e) character(0))
+      if (!any(nzchar(trimws(docText))))
+        docText <- tryCatch(.ppOcrText(pdfFile, dpi = ocrDpi),
+                            error = function(e) character(0))
       rec <- .ppArmNFromDocument(armNames, docText)
       if (any(!is.na(rec$N))) {
         for (i in which(!is.na(rec$N))) parsed$arms[[i]]$n <- rec$N[i]

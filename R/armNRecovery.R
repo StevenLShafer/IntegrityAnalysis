@@ -181,6 +181,11 @@
                # near context: whose mention is it, and is it a sample-size
                # calculation? The label sits immediately left of "(n = X)".
                near = substr(j, nearFrom, m[k] + lens[k] + 12),
+               # the text BEFORE the mention alone: in a packed list
+               # "Group Ia (n = 5), Group Ib (n = 7)" the near window's
+               # tail reaches the NEXT arm's label, and Ib then matched
+               # both mentions (CodeRabbit on PR #343)
+               before = substr(j, nearFrom, max(nearFrom, m[k] - 1)),
                pos = m[k], stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, out)
@@ -263,15 +268,28 @@
   # 1. name match - against the NEAR window only, because the arm's label
   # sits immediately left of its "(n = X)", while a 90-character context
   # regularly spans the other arm's mention too ("...the ketamine group
-  # (n = 24) or the saline group (n = 26)").
+  # (n = 24) or the saline group (n = 26)"). And within the near window,
+  # the text BEFORE the mention decides when it names any arm at all:
+  # the window's short tail exists for "(n = 24) received ketamine", but
+  # in a packed list "Group Ia (n = 5), Group Ib (n = 7)" it reaches the
+  # next arm's label, and Ib matched both mentions and got nothing
+  # (CodeRabbit on PR #343). The tail is consulted only for a mention
+  # whose preceding text names no arm.
+  if (is.null(cand$before)) cand$before <- cand$near
+  namesIn <- function(ctx) {
+    lc <- tolower(ctx)
+    which(vapply(armWords, function(ws)
+      length(ws) > 0 && any(vapply(ws, function(w)
+        grepl(paste0("\\b", w, if (isTag(w)) "\\b" else ""), lc, perl = TRUE),
+        logical(1))), logical(1)))
+  }
+  armsOf <- lapply(seq_len(nrow(cand)), function(c) {
+    a <- namesIn(cand$before[c])
+    if (length(a)) a else namesIn(cand$near[c])
+  })
   for (k in which(is.na(armN))) {
     if (length(armWords[[k]]) == 0) next
-    hits <- which(vapply(cand$near, function(ctx) {
-      lc <- tolower(ctx)
-      any(vapply(armWords[[k]], function(w)
-        grepl(paste0("\\b", w, if (isTag(w)) "\\b" else ""), lc, perl = TRUE),
-        logical(1)))
-    }, logical(1)))
+    hits <- which(vapply(armsOf, function(a) k %in% a, logical(1)))
     if (length(hits) == 0) next
     ns <- unique(cand$n[hits])
     if (length(ns) == 1) {
