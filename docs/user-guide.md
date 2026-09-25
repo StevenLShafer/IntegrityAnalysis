@@ -224,6 +224,16 @@ extraction is deterministic — the same PDF always yields the same table
 > bracketed unit ("Amount of intraoperative" over "fluid (ml)"); a
 > second line that begins with a capital is taken as the next variable.
 
+> **Rows the app flags for you to judge.** The parse log names a variable
+> that prints the same value with no dispersion in every arm, or a median
+> pinned at its own quartile in every arm: such a row is fixed by design or
+> by a floor, not a sample, and its perfect agreement across arms says
+> nothing — consider deleting it from the grid before analyzing. It also
+> names two variables that print identical N, mean and SD in every arm,
+> which is either one row read twice or the table as printed; check the
+> page, because both happen. Neither flag removes anything: the decision
+> is yours.
+
 > **Repeated-measures tables.** Laboratory and crossover papers often print
 > the *arms as rows* — a `Group` column running 1, 2, 3 beneath each
 > variable — with the *timepoints as columns*: `Baseline`, then one or more

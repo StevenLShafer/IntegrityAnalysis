@@ -57,6 +57,68 @@ reviewFlags <- function(x) {
                                "counts with their percentages read as ",
                                "mean (SD)? - check the table's notation"))
   }
+  # DEGENERATE ROWS (2026-09-25, ISSUES.md 36; the corpus session's
+  # proposal, Steve's instruction to flag at parse time). A variable that
+  # prints the SAME value with ZERO dispersion in every arm ("%Edi 100.0
+  # +/- 0.0" in every group of MTS2006_49, by construction), or a median
+  # pinned at its own quartile in every arm ("0 (0-20)" for intraoperative
+  # ephedrine in Akelma 2020: median = Q1 = 0 everywhere), carries no
+  # information about sampling: it is fixed by design or by a floor, and
+  # its agreement across arms is forced. Fed to a homogeneity test it
+  # sits at the attainable floor - Akelma's ephedrine row alone took a
+  # trial from 0.0084 to 0.00094. The engine still analyses it (a rule
+  # that removed rows is the validator's business, and a contract
+  # decision); the flag names it so a reader can remove it, and it
+  # consults the AI under ai = "fallback".
+  d <- x$data
+  byRow <- split(seq_len(nrow(d)), d$ROW)
+  hasQ  <- all(c("Q1", "Q3") %in% names(d))
+  isDegenerate <- function(i) {
+    if (length(i) < 2) return(FALSE)
+    m <- d$MEAN[i]; s <- d$SD[i]
+    if (all(!is.na(m)) && all(!is.na(s)) && all(s == 0) && length(unique(m)) == 1L)
+      return(TRUE)
+    if (hasQ) {
+      q1 <- d$Q1[i]; q3 <- d$Q3[i]
+      if (all(!is.na(m)) && all(!is.na(q1)) && all(!is.na(q3)) &&
+          (all(m == q1) || all(m == q3)))
+        return(TRUE)
+    }
+    FALSE
+  }
+  degenerate <- names(byRow)[vapply(byRow, isDegenerate, logical(1))]
+  if (length(degenerate))
+    flags <- c(flags, paste0(length(degenerate), " variable(s) print the same ",
+                             "value with no dispersion in every arm, or a ",
+                             "median pinned at its quartile in every arm - ",
+                             "fixed by design or by a floor, not a sample; ",
+                             "consider removing before analysis: ",
+                             paste(degenerate, collapse = ", ")))
+  # DUPLICATED TUPLES (same source). Two variables printing identical N,
+  # mean and SD in every arm are either one row read twice - which adds
+  # fabricated agreement to a homogeneity test - or the table as printed:
+  # in the retracted Saitoh trials BJA2001_814 and CJA2003_342, Age and
+  # Weight print the same numbers, faithfully. The corpus session showed
+  # both occur, so this is a flag and never an assertion: the reader is
+  # told which rows agree and decides. (The hybrid merge already drops a
+  # model row whose values duplicate a deterministic row's; this catches
+  # what one engine produced, and what the page itself printed.)
+  contI <- which(!is.na(d$MEAN) & !is.na(d$SD))
+  if (length(contI)) {
+    sig <- vapply(split(contI, d$ROW[contI]), function(i)
+      paste(sort(paste(d$N[i], d$MEAN[i], d$SD[i], sep = "/")), collapse = " | "),
+      character(1))
+    dupSig <- unique(sig[duplicated(sig)])
+    if (length(dupSig)) {
+      groups <- vapply(dupSig, function(s) paste(names(sig)[sig == s], collapse = " = "),
+                       character(1))
+      flags <- c(flags, paste0(length(groups), " set(s) of variables print ",
+                               "identical N, mean and SD in every arm - a row ",
+                               "read twice, or the table as printed (both ",
+                               "happen); check the page: ",
+                               paste(groups, collapse = "; ")))
+    }
+  }
   # Recovered arm sizes are usable but not the same thing as an N printed in
   # the table header: say where each one came from, so a human can verify it
   # - a text-recovered N against the CONSORT flow diagram in particular

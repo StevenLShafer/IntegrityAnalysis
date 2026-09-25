@@ -132,6 +132,41 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 36. Rows that carry no sampling information are flagged at parse time: same value with zero dispersion in every arm, a median pinned at its quartile, and identical tuples under two labels
+
+**Status: fixed on `feat/degenerate-row-flag`, 2026-09-25**, from the
+corpus session's batch-1 and batch-2 findings on the Loadsman corpus,
+at Steve's instruction ("add the degenerate-row flag at parse time").
+
+- **The cases.** `MTS2006_49` prints "%Edi 100.0 ± 0.0" in every group
+  by construction; `Akelma 2020 TJMS` prints intraoperative ephedrine
+  as "0 (0–20) | 0 (0–20) | 0 (0–10)" — median = Q1 = 0 in every arm — and
+  that one row scored p = 0.0039 and took the trial from 0.0084 to
+  0.00094. Agreement at a bound is forced by the bound. And the
+  retracted Saitoh trials `BJA2001_814` and `CJA2003_342` print Age and
+  Weight with identical numbers in every arm — faithfully read from the
+  page — so a duplicated (N, MEAN, SD) tuple across labels is sometimes
+  the data, not the parser: a flag, never an assertion.
+- **What changed.** `reviewFlags()` names (a) any variable whose every
+  arm prints the same value with zero dispersion, or whose median equals
+  its Q1 (or Q3) in every arm, as "fixed by design or by a floor, not a
+  sample; consider removing before analysis"; and (b) any set of
+  variables printing identical N, mean and SD in every arm, as "a row
+  read twice, or the table as printed; check the page". Neither removes
+  a row: removal is the validator's business and a contract decision
+  (the non-fatal `suspect` code, still held for Steve with issue 35's
+  SD > MEAN advisory). Both flags consult the AI under `ai =
+  "fallback"`, as every flag does.
+- **Tests** (`tests/testthat/test-degenerate-flags.R`, synthetic pages):
+  each flag asserted by name on its own page; the controls that must not
+  fire — zero SD in some arms only, the same mean with real SDs, an
+  ordinary median row beside the pinned one, a clean table; and the
+  duplicated pair still validates, because the engine does not refuse.
+- Documented in `docs/parsepdf-architecture.md` §05f and the user guide's
+  PDF section.
+
+---
+
 ## 35. Duplicated variables, counts read as mean (SD), a banner word in a label — and the month-old library that produced the finding
 
 **Status: fixed on `fix/loadsman-parse-defects`, 2026-09-24, from
