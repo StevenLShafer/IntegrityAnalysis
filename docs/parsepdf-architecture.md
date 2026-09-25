@@ -222,7 +222,8 @@ wrong entry would corrupt numbers invisibly.
   A glued soup holds no digit and no dot, so "+4.9" is never "+4." and "9" (issue 70); "5:" glued
   to the SD is the sign at a slot. A plain "+" is the sign at a slot two lines mark with the sign
   itself, a sign dropped entirely is inserted between two numbers straddling such a slot, and the
-  legend may spell "S D" (issue 77).
+  legend may spell "S D" (issue 77). A cell word with the sign fused inside it, "48.4k7.2", is
+  split into mean, sign and SD when the line holds two or more (`.ppRepairFusedSigns()`, issue 85).
   to the SD is the sign at a slot. A letter O among the digits of an "(n = k)" group is a zero
   (`.ppRepairSizeZeros()`, issue 75).
 

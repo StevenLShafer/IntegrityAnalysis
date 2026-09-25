@@ -177,6 +177,15 @@
     lineTexts <- vapply(lines, .ppLineText, character(1))
     say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
   }
+  # ... and the sign fused inside the cell word, "48.4k7.2" (issue 85;
+  # Saitoh 1998): see .ppRepairFusedSigns() in utils.R
+  rep <- .ppRepairFusedSigns(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Split ", rep$repaired, " cell word(s) with the plus-minus fused inside them ",
+        "(\"48.4k7.2\") into mean, sign and SD.")
+  }
 
   # Walk the lines after the caption; classify each one.
   #   header - contains "n = 25"-style arm sizes
