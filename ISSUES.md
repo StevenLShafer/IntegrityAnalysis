@@ -132,6 +132,76 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 39. A paper's only table, captioned "TABLE" with no numeral, is found
+
+**Status: fixed on `feat/unnumbered-caption`, 2026-09-25**, from the
+corpus session's Loadsman batch (CJA1997_390 and CJA2003_342, the Saitoh
+papers: "TABLE Demographic data", "TABLE Patient characteristics (number
+or mean ± SD)").
+
+- **The defect.** `.ppCaptionAnchors()` matched "Table" only when the
+  next word was a numeral, so a journal that leaves a paper's single
+  table unnumbered had no caption anchor at all, no candidate, and the
+  parse failed with "no usable baseline table". Both papers went to the
+  model, which read the outcomes.
+- **What changed.** A bare "TABLE" or "Table" — the word itself, not a
+  lower-case "table" inside a sentence — followed by a Capitalised word
+  (which a numeral "I"/"II" and a cross-reference "Table shows" are not)
+  is an anchor, provided it starts its block: unlike a numbered anchor,
+  which is kept and demoted when prose precedes it, the unnumbered one
+  has no evidence beyond the gap to its left. `.ppCaptionStart()` now
+  answers "does this line begin a caption?" for the block walker, the
+  continuation-page extender and the TATR adapter, so an unnumbered
+  caption on a following page ends a block exactly as a numbered one.
+  An unnumbered caption scores as a numbered one (`.ppCaptionScore`).
+- **On the corpus.** `corpus/checkLoadsman.R`: 76 → 79 of 87 parse
+  deterministically. CJA2003_342 reads its four arms (Sex 6/9, Age,
+  Weight, Height) — its arm sizes are printed nowhere but in the sex
+  fraction, which is issue 41. CJA1997_390 now finds its caption but
+  still yields no rows: the page's "±" glyph reaches poppler as "•" or
+  "+" ("45.6 • 8.2 47.7 + 7.7"), a font-encoding residue for a later
+  issue.
+- **Found on the way (issue 40).** The "first table" bonus in
+  `.ppCaptionScore()` — +2 for "Table 1" / "Table I" — is a
+  case-sensitive pattern, so it has never fired on a printed caption
+  (only on a lower-case "table 1"). Making it fire is a scoring change
+  across the whole corpus and is left for a measured PR of its own.
+- **Tests** (`tests/testthat/test-unnumbered-caption.R`): the anchor
+  forms that do and do not match (bare "TABLE" + capitalised word with
+  and without a gap, a numbered cross-reference kept but demoted, a
+  sentence's "table", "Table shows", "TABLE II" counted once);
+  `.ppCaptionStart()` on eight lines; a synthetic page whose only table
+  is "TABLE Demographic data" parses with its three arm sizes and
+  values.
+
+---
+
+## 40. The "first table" caption bonus never fires (open)
+
+**Status: open, 2026-09-25.** `.ppCaptionScore()` adds 2 for a caption
+that begins "Table 1" or "Table I", the reasoning being that baseline
+data is nearly always the first table. The pattern is case-sensitive,
+so it matches only a lower-case "table 1" — which no journal prints —
+and every printed caption has scored without it since the rule was
+written. Enabling it changes candidate scores across the corpus; it
+needs a before/after misparse run (`corpus/measureMisparse.R`) before
+it is switched on, and may need a smaller weight.
+
+---
+
+## 41. Arm sizes printed only as a sex fraction (open)
+
+**Status: open, 2026-09-25.** CJA2003_342 (Loadsman corpus) prints no
+"n =" anywhere in its table; the arm size is the sum of the "Sex
+(female/male) 6/9" fraction in every arm. The n (%) derivation of arm N
+(`.ppDeriveArmN`) has no counterpart for fraction cells, so the table
+parses with N missing in every arm and fails validation. The natural
+rule: when the header printed no arm size at all, and every fraction
+cell of an arm sums to the same value, that value is the arm's N
+(recorded with its source, as the n (%) derivation is).
+
+---
+
 ## 38. A table printed sideways is read upright
 
 **Status: fixed on `feat/rotated-table-page`, 2026-09-25**, from the

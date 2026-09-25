@@ -291,9 +291,23 @@
   w    <- pageWords[order(pageWords$y, pageWords$x), ]
   isTb <- grepl("^(?i)(table|tab\\.?)$", w$text, perl = TRUE)
   isNo <- grepl("^([0-9]{1,2}|[IVXLivxl]{1,4})[.:)]?$", w$text)
+  sameLine <- c(abs(diff(w$y)) <= 3, FALSE)
   # "Table" immediately followed by a numeral on the same visual line
-  hit  <- which(isTb & c(utils::tail(isNo, -1), FALSE) &
-                c(abs(diff(w$y)) <= 3, FALSE))
+  hit  <- which(isTb & c(utils::tail(isNo, -1), FALSE) & sameLine)
+  # An UNNUMBERED caption (issue 39, 2026-09-25): a paper with a single
+  # table may print it as "TABLE Demographic data" (CJA 1997, 2003 - the
+  # Saitoh papers of the Loadsman corpus), and requiring a numeral lost
+  # the whole table. The word is "TABLE" or "Table" itself - not "table"
+  # inside a sentence ("the table and the knee of the patient") - and the
+  # word after it is a Capitalised word, which a numeral ("I", "II") and
+  # a cross-reference ("Table shows") are not. Unlike a numbered anchor
+  # the unnumbered one must START its block: the only evidence that
+  # "Table" is a caption at all is the gap to its left.
+  isBare <- grepl("^(TABLE|Table)$", w$text)
+  isCap  <- grepl("^[A-Z][a-z]+", w$text)
+  hitU   <- which(isBare & c(utils::tail(isCap, -1), FALSE) & sameLine)
+  hitU   <- setdiff(hitU, hit)
+  hit    <- sort(c(hit, hitU))
   if (length(hit) == 0) return(empty)
 
   # A caption begins a block of text; a cross-reference sits inside a
@@ -314,7 +328,20 @@
     if (!any(same)) return(TRUE)
     (w$x[i] - max(w$x[same] + w$width[same])) >= 30
   }, logical(1))
-  data.frame(x = w$x[hit], y = w$y[hit], startsBlock = startsBlock)
+  keep <- startsBlock | !(hit %in% hitU)      # an unnumbered anchor must start its block
+  data.frame(x = w$x[hit][keep], y = w$y[hit][keep], startsBlock = startsBlock[keep])
+}
+
+# Does a line of text BEGIN a table caption? "Table 1", "TABLE II",
+# "Tab. 3" - or, since issue 39, the unnumbered "TABLE Demographic data"
+# (an all-caps or capitalised "Table" followed by a Capitalised word).
+# Used wherever a new caption ends the block being read: the block
+# walker, the continuation-page extender and the TATR adapter all asked
+# the same numbered-only question before, and an unnumbered caption on
+# the next page would have been swallowed as that page's data.
+.ppCaptionStart <- function(txt) {
+  grepl("(?i)^\\s*(table|tab\\.?)\\s+([0-9]{1,2}|[IVXLivxl]{1,4})\\b", txt, perl = TRUE) |
+    grepl("^\\s*(TABLE|Table)\\s+[A-Z][a-z]+", txt, perl = TRUE)
 }
 
 # A SIDE CAPTION shares its visual line with the table's own header row.
@@ -414,6 +441,10 @@
   # Baseline data is nearly always the first table, so its number is evidence
   # in its own right - enough to separate "Table 1 Patient data" from
   # "Table 4 Patient data at 24 h".
+  # NOTE (issue 39, 2026-09-25): this pattern is case-sensitive, so it
+  # has never fired on a printed "Table 1" or "TABLE I" (only on a
+  # lower-case "table 1"). Making it fire is a scoring change across the
+  # whole corpus and waits for its own measured PR (ISSUES.md issue 40).
   s <- s + 2 * grepl("^\\s*(table|tab\\.?)\\s+(1|I)\\b", txt, perl = TRUE)
   # Tables of results are not baseline tables, even when they tabulate people.
   # But the penalty must not override an explicit announcement: "Table 1
