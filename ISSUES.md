@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 118. A sign whose SD is lost does not reach the next cell's mean
+
+**Status: fixed on `fix/lost-sd-does-not-reach-next-cell`, 2026-09-26**,
+from the corpus session's batch 27 AF1 (CJA 1998, PMID 9350368, a scan;
+four arms of 20).
+
+- **The defect.** The Age line reads "62 +/- 61 +/- 62 +/- 9 61 +/- 11":
+  the first two SDs are absent from the text layer (page: 62 +/- 9 /
+  61 +/- 8 / 62 +/- 9 / 61 +/- 11). The tokenizer's mean +/- SD pattern
+  took "62 +/- 61" for a cell - the next cell's mean as this cell's SD -
+  and the trial scored p < 0.0001 on it. The same shape sits on
+  7614644's Age line ("45.3 +/- 43.2").
+- **What changed.** In `.ppTokenRegex` a lookahead refuses an SD that is
+  itself followed by a sign glyph: that number is the next cell's mean.
+  The two signs without an SD leave two bare numbers, which the walker
+  skips as before, and the two whole cells read. A bracketed range
+  after the SD ("[30-60]") is untouched.
+- **On the page.** Age 62 +/- 9 and 61 +/- 11 in the two arms whose SDs
+  survive; Height and Weight in all four; Duration of surgery in three
+  (its fourth cell is fused in the text layer, "57156", and stays
+  unread); Duration of anaesthesia in three, the first value being
+  printed in the label column on the page itself.
+- **Tests** (`tests/testthat/test-lost-sd-does-not-reach-next-cell.R`):
+  the tokenizer on the Age line, a range and a bullet cell; a rebuilt
+  page with two lost SDs reads the two whole cells and no cell with a
+  neighbour's mean as its SD (7 expectations fail on the unfixed code).
+  The tokenizer, range, slot and Loadsman layout tests still pass.
+
 ## 116. A look-alike letter among the digits of an SD after the sign ("58 <bullet> l0")
 
 **Status: fixed on `fix/letter-l-in-sd-after-sign`, 2026-09-26**, from
