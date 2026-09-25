@@ -428,8 +428,56 @@
     return(longRes)
   }
 
-  # ---- Column clustering --------------------------------------------------
+  # ---- LEVELS ACROSS THE LINE (2026-09-25, ISSUES.md issue 49) --------------
+  # A categorical variable printed as ONE line with its levels named after
+  # the label's colon and every arm's counts side by side: "Age (years):
+  # 20-30 31-40  78 (47.6%) 86 (52.4%)  70 (43.75%) 90 (56.25%)  74 (45.7%)
+  # 88 (54.3%)" (RezkHiF2020, the rotated table of issue 38; three such
+  # rows). Six n (%) cells on a three-arm table seeded six columns, the
+  # continuous rows' three cells fell into three of them, and the report
+  # carried three phantom arms holding category counts. The signature is
+  # exact: the arm count k is printed in the header ("(n = 164)" three
+  # times), the line holds m x k n (%) cells for an integer m >= 2, and
+  # the text between the colon and the first cell names exactly m levels.
+  # Such a line's cells feed no column: they are set aside here, and the
+  # block walker emits the row from them, arm by arm in printed order
+  # (cell i belongs to arm ceiling(i / m), level (i - 1) mod m + 1).
+  spreadRows <- list()
+  kHeader <- 0L
+  for (h in which(kind == "header")) {
+    if (h >= firstData) break
+    kHeader <- max(kHeader, length(gregexpr("(?i)n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
+    if (kHeader > 0L) break
+  }
+  if (kHeader >= 2L) for (i in dataIdx) {
+    t <- tokensByLine[[i]]
+    if (nrow(t) < 2L * kHeader) next
+    np <- which(t$type == "nPct")
+    if (length(np) < 2L * kHeader || length(np) %% kHeader != 0L) next
+    if (!identical(np, seq(np[1], np[1] + length(np) - 1L))) next   # one contiguous run
+    if (any(t$type[seq_len(np[1] - 1L)] != "plain")) next            # only level parts before it
+    trailing <- if (max(np) < nrow(t)) t[seq(max(np) + 1L, nrow(t)), , drop = FALSE] else t[0, ]
+    if (any(trailing$type != "plain")) next                          # p-values at most
+    m <- length(np) %/% kHeader
+    if (m < 2L) next
+    joined <- paste(lines[[i]]$text, collapse = " ")
+    head   <- substr(joined, 1, t$start[np[1]] - 1L)
+    colon  <- regexpr(":", head, fixed = TRUE)
+    if (colon < 1L) next
+    levels <- .ppSpreadLevels(substr(head, colon + 1L, nchar(head)))
+    if (length(levels) != m) next
+    spreadRows[[as.character(i)]] <- list(
+      label  = .ppCleanLabel(substr(head, 1, colon - 1L)),
+      levels = levels, m = m, k = kHeader,
+      counts = t$num1[np], pcts = t$num2[np])
+    tokensByLine[[i]] <- t[0, , drop = FALSE]
+    say("  \"", .ppSquish(substr(head, 1, colon - 1L)), "\": ", m, " levels across the line for ",
+        kHeader, " arms (", length(np), " cells) - read arm by arm.")
+  }
   allToks <- do.call(rbind, tokensByLine[dataIdx])
+  if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
+
+  # ---- Column clustering --------------------------------------------------
   cols    <- .ppClusterColumns(allToks$mid)
 
   # A COLUMN FED ONLY BY LABEL-LESS LINES IS NOT AN ARM COLUMN (2026-09-25,
@@ -916,6 +964,32 @@
               " (the printed row-level n).")
         }
       }
+      next
+    }
+    if (kind[i] == "data" && !is.null(spreadRows[[as.character(i)]])) {
+      sp <- spreadRows[[as.character(i)]]
+      if (sp$k != nArms) {
+        addSkip(sp$label, paste0("levels across the line for ", sp$k, " arms, but ",
+                                 nArms, " arm column(s) were read - enter by hand"),
+                lineTexts[i])
+        next
+      }
+      levelCols <- character(0)
+      for (lv in sp$levels) {
+        nm <- .ppUniqueName(.iaLevelColumnName(sp$label, lv), c(catColumns, levelCols))
+        levelCols <- c(levelCols, nm)
+      }
+      catColumns <- unique(c(catColumns, levelCols))
+      rowName <- .ppUniqueName(if (nchar(sp$label) > 0) sp$label else "Category", usedRowNames)
+      usedRowNames <- c(usedRowNames, rowName)
+      perArm <- lapply(seq_len(nArms), function(j) {
+        idx <- (j - 1L) * sp$m + seq_len(sp$m)
+        stats::setNames(as.list(as.integer(sp$counts[idx])), levelCols)
+      })
+      outRows[[length(outRows) + 1]] <-
+        list(row = rowName, type = "category", perArm = perArm,
+             key = paste0("__spread__", rowName))
+      catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
       next
     }
     if (kind[i] != "data") next

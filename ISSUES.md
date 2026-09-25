@@ -132,6 +132,42 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 49. A categorical variable printed as one line, its levels named after the colon and every arm's counts side by side
+
+**Status: fixed on `feat/levels-across-line`, 2026-09-25**, from the corpus
+session's findings on RezkHiF2020 (the rotated table of issue 38) and
+RezkPH2019 (K4 of batch 5).
+
+- **The defect.** "Age (years): 20–30 31-40  78 (47.6%) 86 (52.4%)  70
+  (43.75%) 90 (56.25%)  74 (45.7%) 88 (54.3%)" - the level names after
+  the label's colon, then two n (%) cells per arm across the line; three
+  such rows on the page. Six cells on a three-arm table seeded six
+  columns, the continuous rows' three cells fell into three of them, and
+  the report carried three phantom arms holding category counts; the
+  levels came out as rows "≥", "≥P3", "Category 2" … and category
+  columns "20", "80", "72".
+- **What changed.** Before the columns are clustered, a data line is
+  set aside as a spread row when the arm count k is printed in the
+  header ("(n = 164)" k times), the line holds m × k n (%) cells in one
+  run with an integer m ≥ 2, nothing but level parts before them and at
+  most p-values after, and the text between the colon and the first cell
+  names exactly m levels (`.ppSpreadLevels()`: a lone ≥/≤/</> is glued
+  to the token after it). Its cells feed no column; the block walker
+  emits the row from them, cell i to arm ⌈i/m⌉ and level (i−1) mod m + 1,
+  with the level names as the category columns. A spread row whose k
+  disagrees with the arms actually read is skipped with its reason.
+- **On the page.** RezkHiF2020 now reads three arms of 164/160/162; Age
+  (20–30, 31-40), Parity (P1-2, ≥P3) and Body mass index (18–25,
+  25.1–29.9, ≥30) as category rows with the printed counts; the five
+  continuous rows and the binary n (%) row as before; validateData
+  accepts the table.
+- **Tests** (`tests/testthat/test-levels-across-line.R`): the level
+  names with a glued sign; a rebuilt page whose two spread rows read arm
+  by arm beside ordinary continuous and binary rows, with the header's
+  three arms and no phantom.
+
+---
+
 ## 48. "Number" alone labels the N row; an arm with an N and nothing else is a phantom
 
 **Status: fixed on `feat/n-row-label`, 2026-09-25**, from CJA 1996;43:362

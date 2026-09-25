@@ -231,6 +231,12 @@ discrepancy rounding alone can explain.
   + a group noun (patients … volunteers). An arm with an N but neither a name nor a cell is
   dropped at assembly as a phantom, beside the label-column clusters that always were.
 
+- **Levels across the line** (2026-09-25, issue 49). "Age (years): 20–30 31-40  78 (47.6%)
+  86 (52.4%) …" prints a categorical variable on one line: level names after the colon, then
+  m cells per arm. When the header states k arms and the line holds m × k n (%) cells with m
+  level names, the cells feed no column and the row is emitted arm by arm (cell i to arm
+  ⌈i/m⌉), with the level names as its category columns.
+
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 
 A `.docx` submission enters through `parseBaselineTableHeuristics()` like any file (the
