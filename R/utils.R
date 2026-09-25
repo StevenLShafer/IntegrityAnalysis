@@ -725,6 +725,109 @@
 # Collapse repeated whitespace and trim.
 .ppSquish <- function(x) trimws(gsub("\\s+", " ", x))
 
+# OCR PLUS-MINUS GLYPHS, REPAIRED BY THEIR COLUMN (2026-09-25, ISSUES.md
+# issue 65; Fujii 1994, CJA 41:291, PMID 7954995 - the corpus session's
+# batch 12 finding Q1). A scanned page's text layer sets the plus-minus
+# sign differently from one cell to the next: a bullet in "46.7 <bullet>
+# 7.7", a plain plus in "44.1 + 9.0", then "154.4 :i: 4.9", "152.8 -t-
+# 5.1", "54.2 -I- 7.1", "82 4- 31" and "81 -t-32". The bullet and the plus
+# are known (issue 45), but ":i:", "-t-", "-I-" and "4-" are not, and a
+# row with fewer than two readable cells lost every cell it had - four
+# rows of five on that page, so the cut half of the table in one page
+# column out-scored the whole of it read full width.
+#
+# What is constant is WHERE the glyph sits: in every row the plus-minus of
+# a given arm's cell starts at the same x. So the block's lines are read
+# for their plus-minus SLOTS - x positions at which two or more lines set
+# a plus-minus glyph (the sign itself, the bullet, "+/-", or a "+" between
+# two numbers) - and, in any line, a short glyph-soup word that starts at
+# a slot between two numbers is a plus-minus. The soup may be glued to the
+# SD ("-t-32"); it is cut off. A plain "+" is never repaired here - it is
+# evidence for a slot, but whether "5 + 2" is a cell stays with the rules
+# of issue 45 (announced, or beside two cells on its own line). Guards:
+# the block must show at least two genuine plus-minus glyphs of its own,
+# or announce the notation with a soup glyph ("All values are expressed
+# as mean -t- SD." - then every line with two or more soup cells is
+# repaired, slot or no slot); and a glued soup must be at least two
+# characters, so a negative number ("-32") is never touched.
+#
+# `lines` is the block's list of word data frames (text, x, width, ...);
+# the lines from `capIdx + 1` on are read. Returns the lines with the
+# repaired words (the sign written as the plus-minus glyph, a glued SD
+# split into its own word) and the count of repairs.
+.ppSoupGlyph <- "^[-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
+.ppRepairPlusMinusGlyphs <- function(lines, capIdx = 0L, tol = 6) {
+  n <- length(lines)
+  if (n <= capIdx + 1L) return(list(lines = lines, repaired = 0L))
+  idx <- seq(capIdx + 1L, n)
+  isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
+  true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "+/-", "+-")
+  # a soup word is not a number and carries at least one stroke
+  isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
+    grepl("[-+:~\u2212\u2013\u00b7\u2022\u00b1]", s, perl = TRUE)
+  # (i) genuine markers, with the line they sit on and their left edge
+  markX <- numeric(0); markLine <- integer(0); nTrue <- 0L
+  for (i in idx) {
+    L <- lines[[i]]; if (nrow(L) < 3L) next
+    s <- L$text
+    prevNum <- c(FALSE, isNum(s[-length(s)]))
+    nextNum <- c(isNum(s[-1L]), FALSE)
+    g <- true(s) | (s == "+" & prevNum & nextNum)
+    nTrue <- nTrue + sum(true(s))
+    if (any(g)) { markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g))) }
+  }
+  # "mean -t- SD" announces the soup glyph as the notation
+  announced <- any(vapply(lines[idx], function(L) {
+    txt <- paste(L$text, collapse = " ")
+    m <- regmatches(txt, regexpr("(?i)\\bmean\\s+(\\S{1,4})\\s+s\\.?d\\b", txt, perl = TRUE))
+    length(m) == 1L && isSoup(strsplit(m, "\\s+")[[1]][2])
+  }, logical(1)))
+  # (ii) slots: clusters of marker left edges set on two or more lines
+  slots <- numeric(0)
+  if (length(markX) > 0L) {
+    o <- order(markX); mx <- markX[o]; ml <- markLine[o]
+    cl <- cumsum(c(1L, diff(mx) > tol))
+    slots <- vapply(split(seq_along(mx), cl), function(k)
+      if (length(unique(ml[k])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
+    slots <- slots[!is.na(slots)]
+  }
+  if (!announced && (nTrue < 2L || length(slots) == 0L))
+    return(list(lines = lines, repaired = 0L))
+  # (iii) the repair, line by line
+  repaired <- 0L
+  soupGlued <- "^([-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{2,4})(\\d+(?:[.,]\\d+)*)$"
+  for (i in idx) {
+    L <- lines[[i]]; if (nrow(L) < 3L) next
+    s <- L$text
+    atSlot <- vapply(L$x, function(x) any(abs(slots - x) <= tol), logical(1))
+    prevNum <- c(FALSE, isNum(s[-length(s)]))
+    nextNum <- c(isNum(s[-1L]), FALSE)
+    glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
+    base <- prevNum & ((isSoup(s) & nextNum) | glued) & !true(s) & s != "+"
+    hit  <- base & (atSlot | (announced & sum(base) >= 2L))
+    if (!any(hit)) next
+    out <- vector("list", nrow(L))
+    for (k in seq_len(nrow(L))) {
+      if (!hit[k]) { out[[k]] <- L[k, , drop = FALSE]; next }
+      repaired <- repaired + 1L
+      if (glued[k]) {
+        m  <- regmatches(s[k], regexec(soupGlued, s[k], perl = TRUE))[[1]]
+        w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
+        frac <- nchar(m[2]) / nchar(s[k])
+        w1$text <- .ppPLUSMINUS; w1$width <- L$width[k] * frac
+        w2$text <- m[3]; w2$x <- L$x[k] + L$width[k] * frac; w2$width <- L$width[k] * (1 - frac)
+        out[[k]] <- rbind(w1, w2)
+      } else {
+        w1 <- L[k, , drop = FALSE]; w1$text <- .ppPLUSMINUS
+        out[[k]] <- w1
+      }
+    }
+    lines[[i]] <- do.call(rbind, out)
+    rownames(lines[[i]]) <- NULL
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # Clean a row label for use as the ROW entry: drop trailing "n (%)" /
 # "no. (%)" annotations, a short trailing parenthetical unit like "(kg)"
 # or "(yr)" (but NOT one containing "/" - that names categories, e.g.
