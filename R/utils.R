@@ -977,6 +977,28 @@
     }
   }
   announced <- !is.na(annGlyph)
+  # UNDER AN ANNOUNCED NOTATION THE SOUP ITSELF MARKS THE SLOTS (2026-09-25,
+  # ISSUES.md issue 108; CJA 1994, PMID 8004733, the corpus session's batch
+  # 25 AD4). "All values are expressed as mean ~ SD." over a page whose
+  # signs are "4-", "-t-" and, in three cells, the glued digit-colon "5:34",
+  # "5:38", "5:5.1". The announcement repairs the soup words two or more to
+  # a line, but the glued digit form is a slot's evidence only (issue 70),
+  # and the slots were built from genuine glyphs and plain pluses alone -
+  # this page has none, so "81 5:34" stayed three words and the first
+  # arm's durations went unread. Once the notation is announced, every
+  # soup word set between two numbers marks its column: "4-" at one x on
+  # four lines is a slot, and "5:34" at that x is the sign and its SD.
+  if (announced) for (i in idx) {
+    L <- lines[[i]]; if (nrow(L) < 3L) next
+    s <- L$text
+    prevNum <- c(FALSE, isNum(s[-length(s)]))
+    nextNum <- c(isNum(s[-1L]), FALSE)
+    g <- (isSoup(s) | s == annGlyph) & prevNum & nextNum & !true(s) & s != "+"
+    if (any(g)) {
+      markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g)))
+      markTrue <- c(markTrue, rep(FALSE, sum(g)))
+    }
+  }
   # (ii) slots: clusters of marker left edges set on two or more lines
   slots <- numeric(0); strong <- numeric(0)
   if (length(markX) > 0L) {
