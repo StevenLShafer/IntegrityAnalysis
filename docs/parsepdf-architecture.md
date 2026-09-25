@@ -223,6 +223,8 @@ wrong entry would corrupt numbers invisibly.
   to the SD is the sign at a slot. A plain "+" is the sign at a slot two lines mark with the sign
   itself, a sign dropped entirely is inserted between two numbers straddling such a slot, and the
   legend may spell "S D" (issue 77).
+  to the SD is the sign at a slot. A letter O among the digits of an "(n = k)" group is a zero
+  (`.ppRepairSizeZeros()`, issue 75).
 
 - **A label may wrap twice** (2026-09-25, issue 69): the continuation rule absorbs up to
   three lower-case or bracketed lines beneath a row's values, each tested as the first.

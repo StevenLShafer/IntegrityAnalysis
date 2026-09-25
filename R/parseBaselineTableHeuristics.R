@@ -169,6 +169,14 @@
     say("Read ", rep$repaired, " OCR glyph(s) between two numbers as the plus-minus ",
         "sign, by the column where the block's other rows set it.")
   }
+  # ... and a letter O for a zero inside an "(n = k)" group (issue 75;
+  # PMID 10522590's "(n=4O)"): see .ppRepairSizeZeros() in utils.R
+  rep <- .ppRepairSizeZeros(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
+  }
 
   # Walk the lines after the caption; classify each one.
   #   header - contains "n = 25"-style arm sizes

@@ -725,6 +725,36 @@
 # Collapse repeated whitespace and trim.
 .ppSquish <- function(x) trimws(gsub("\\s+", " ", x))
 
+# A LETTER O FOR A ZERO IN AN ARM SIZE (2026-09-25, ISSUES.md issue 75;
+# Fujii 1999, Can J Anaesth, PMID 10522590 - the corpus session's batch 17
+# W2). The scanned page's text layer prints the header sizes as "(n=4O)"
+# beside "(n=40)": the size regex read 4, the remainder "O)" became part
+# of the first arm's name ("Granisetron O)"), and the first arm went out
+# with N = 4 - a wrong number that the hybrid merge then doubled into a
+# phantom arm. Within a word that IS an "(n = k)" group ("(n=4O)",
+# "n=1OO"), or the number word of a split one ("(n" "=" "4O)"), a letter
+# O among digits is a zero. At least one digit must be present, and
+# nothing outside such a group is touched.
+.ppRepairSizeZeros <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  for (i in seq(capIdx + 1L, n)) {
+    s <- lines[[i]]$text
+    if (!any(grepl("[Oo]", s, perl = TRUE))) next
+    glued <- grepl("^\\(?[Nn]\\s*=\\s*(?=[0-9Oo]*[0-9])(?=[0-9Oo]*[Oo])[0-9Oo]+\\)?$", s, perl = TRUE)
+    prev1 <- c("", s[-length(s)])
+    prev2 <- c("", "", s[seq_len(max(0L, length(s) - 2L))])
+    split <- grepl("^(?=[0-9Oo]*[0-9])(?=[0-9Oo]*[Oo])[0-9Oo]+\\)?$", s, perl = TRUE) &
+      grepl("^=$", prev1) & grepl("^\\(?[Nn]$", prev2)
+    hit <- glued | split
+    if (!any(hit)) next
+    s[hit] <- gsub("[Oo]", "0", s[hit])
+    lines[[i]]$text <- s
+    repaired <- repaired + sum(hit)
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # OCR PLUS-MINUS GLYPHS, REPAIRED BY THEIR COLUMN (2026-09-25, ISSUES.md
 # issue 65; Fujii 1994, CJA 41:291, PMID 7954995 - the corpus session's
 # batch 12 finding Q1). A scanned page's text layer sets the plus-minus
