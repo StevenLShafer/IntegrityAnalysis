@@ -247,6 +247,10 @@ wrong entry would corrupt numbers invisibly.
   "Pre-fatigue" as the baseline column, names the arms from the legend "C = control", and takes a
   group's size from "(Group C, n = 10)" in the text.
 
+- **The OUP download rail** (2026-09-25, issue 86): a word up to eight points wide and at least
+  twice as tall as it is wide is a rotated-rail candidate, so the seven-point OUP rail is stripped
+  like the six-point LWW rail.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
