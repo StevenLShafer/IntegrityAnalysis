@@ -98,3 +98,22 @@ test_that("a first size line naming a population with one size, the arm names on
   expect_identical(d$MEAN[grepl("^Younger.*Age", d$ROW)], c(31, 30, 31))
   expect_identical(d$MEAN[grepl("^Older.*Age", d$ROW)], c(70, 71, 71))
 })
+
+# ---- CodeRabbit on PR #363 -------------------------------------------------
+test_that("a stratum line's sole size is its total, never an arm's, even when it sits over the first arm column", {
+  vx <- c(240, 340, 440)
+  f <- file.path(tempdir(), "stratumTotal.pdf")
+  cells <- c(
+    list(list(x = 40, y = 60, text = "Table I. Patient demographics", adj = 0)),
+    rowCells(84,  "Variable", c("Placebo", "Drug 2.5", "Drug 5"), vx),
+    list(list(x = 40, y = 104, text = "Younger patients (20-40y)", adj = 0), list(x = 232, y = 104, text = "[n = 60]", adj = 0)),
+    rowCells(126, "Age (y)", c("31 ± 5", "30 ± 6", "31 ± 5"), vx),
+    rowCells(144, "Weight (kg)", c("56 ± 9", "57 ± 8", "55 ± 9"), vx),
+    list(list(x = 40, y = 166, text = "Older patients (60-80y)", adj = 0), list(x = 232, y = 166, text = "[n = 60]", adj = 0)),
+    rowCells(188, "Age (y)", c("70 ± 4", "71 ± 5", "71 ± 4", "x"), vx))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_false(any(!is.na(r$arms$N) & r$arms$N == 60L))
+  d <- r$data[!is.na(r$data$MEAN), ]
+  expect_false(any(!is.na(d$N) & d$N == 60L))
+})

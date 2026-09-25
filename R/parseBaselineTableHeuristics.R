@@ -624,7 +624,10 @@
   # is the names (vocacapsaicin corpus, 2026-08-22). A legend sentence
   # in that position is fenced out by its word count - prose runs far
   # longer than one name per column.
-  headerAt <- which(kind == "header")
+  # ... and only the header lines ABOVE the first data row: a row-level
+  # "(n = k)" line inside the block (issue 47) or a stratum's size line is
+  # not the column header (CodeRabbit on PR #363)
+  headerAt <- which(kind == "header"); headerAt <- headerAt[headerAt < firstData]
   if (length(headerAt) > 0) {
     nameRow <- headerAt[1] - 1L
     keepNameRow <- nameRow %in% headerIdx &&
@@ -732,6 +735,12 @@
                         "(no\\.?|number)\\s+of\\s+(patients|subjects|cases|",
                         "participants|animals|dogs|rats|rabbits|pigs|",
                         "women|men|children|infants|volunteers))$")
+
+  # The column header's own printed sizes, remembered here - before the n (%)
+  # and document-text recovery below - for the arms table of a table with
+  # strata (issue 55; CodeRabbit on PR #363: saved after recovery, a
+  # recovered size outranked the stratum's printed one).
+  armNHeader <- armN
 
   # ---- Drop a p-value column ----------------------------------------------
   # A column header of a bare "P" is ambiguous: it is the usual heading of a
@@ -914,7 +923,6 @@
   pctDerived   <- character(0) # rows whose counts were derived from percents
   rowNLines    <- character(0) # rows whose N came from their own "(n = k)" line (issue 47)
   stratumStarts <- list()      # where each stratum begins in outRows, and its name (issue 55)
-  armNHeader    <- armN        # the column header's arm sizes, for the arms table
   pctApproxRows <- character(0) # rows using the opt-in approximation
   # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
   # counts a printed percentage allows are decided for the whole
@@ -1072,6 +1080,10 @@
         isStratum <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
           !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
                  lead, perl = TRUE)
+        # a stratum line's SOLE size is the stratum's total ("Younger
+        # patients [n = 60]"), never an arm's, wherever it sits on the line
+        # (CodeRabbit on PR #363)
+        if (isStratum && length(m) == 1L) nOf[] <- NA_integer_
         if (isStratum) {
           stratumStarts[[length(stratumStarts) + 1]] <- list(at = length(outRows), name = lead)
           for (j in which(!is.na(nOf))) armN[arms[j]] <- nOf[j]
