@@ -63,7 +63,17 @@
 # looser vocabulary would start matching wide tables that merely mention
 # the word, and the wide reader is the one that must not move.
 .ppLongGroupWord    <- "(?i)^(group|arm)s?$"
-.ppLongBaselineWord <- "(?i)^(baseline|pre|pretreatment|before|basal)$"
+# "Pre-fatigue" (Fujii 1994, PMID 8055614, issue 76): the column before the
+# intervention may be named for what follows it; a closed list of such
+# words, not any "pre-" word, so that "Prednisolone" heads no column
+.ppLongBaselineWord <- paste0("(?i)^(baseline|pre|pretreatment|before|basal|",
+                              "pre[-\u2013\u2212]?(fatigue|op|operative|treatment|drug|induction|infusion|",
+                              "dose|study|intervention|exercise|stimulation))$")
+# A group LABEL under the Group column that is not a number: a capital
+# letter or two ("C", "N", "A", "B"), or a roman numeral (issue 76). The
+# labels are numbered in the order they first appear, and the run rule
+# of step 3 applies to the numbers.
+.ppLongGroupLabel <- "^([A-Z]{1,2}|I{1,3}|IV|V|VI{1,3})$"
 
 .ppParseRepeatedMeasures <- function(lines, lineTexts, kind, tokensByLine, capIdx,
                               lastData, trial, roundObsDelta,
@@ -112,6 +122,7 @@
   nDataSeen <- 0L
   unmatched <- list()      # data lines this reader could not use (reported)
   groupSeq  <- integer(0)  # every group index seen, value or no value
+  letterSeen <- character(0)   # letter labels in order of first appearance (issue 76)
   for (i in seq(hdr + 1L, lastData)) {
     if (kind[i] == "stop") break
     if (kind[i] != "data") next
@@ -120,13 +131,27 @@
     if (is.null(t) || nrow(t) == 0) next
     g <- which(t$type == "plain" & !is.na(t$num1) & t$num1 == round(t$num1) &
                  t$num1 >= 1 & t$num1 <= 12 & abs(t$mid - xGroup) <= tol)
+    gLabel <- NA_character_
     if (!length(g)) {
+      # a LETTER under the Group column ("HR C 146 +/- 9" / "(bpm) N 142
+      # +/- 10", PMID 8055614, issue 76): a word, not a token
+      d  <- lines[[i]]
+      wm <- d$x + d$width / 2
+      lw <- which(abs(wm - xGroup) <= tol & grepl(.ppLongGroupLabel, d$text, perl = TRUE))
+      if (length(lw)) {
+        gLabel <- d$text[lw[which.min(abs(wm[lw] - xGroup))]]
+        if (!gLabel %in% letterSeen) letterSeen <- c(letterSeen, gLabel)
+        gIdx <- match(gLabel, letterSeen)
+      }
+    } else {
+      g <- g[which.min(abs(t$mid[g] - xGroup))]
+      gIdx <- as.integer(t$num1[g])
+    }
+    if (!length(g) && is.na(gLabel)) {
       unmatched[[length(unmatched) + 1L]] <-
         list(i = i, reason = "no group index under the Group column")
       next
     }
-    g <- g[which.min(abs(t$mid[g] - xGroup))]
-    gIdx <- as.integer(t$num1[g])
     groupSeq <- c(groupSeq, gIdx)
     nearestIsBase <- vapply(t$mid, function(x) which.min(abs(hx - x)), integer(1)) ==
       which.min(abs(hx - xBase))
@@ -140,22 +165,31 @@
       # whole layout fell to the wide reader, which then filed the row's
       # after-drug value as baseline: the failure the reader exists to stop.
       unmatched[[length(unmatched) + 1L]] <- list(
-        i = i, reason = paste0("no mean ± SD or n (%) value under the ",
+        i = i, reason = paste0("no mean \u00b1 SD or n (%) value under the ",
                                "Baseline column beside group ", gIdx))
+      # the row still names (or continues) its variable for the emit step:
+      # without this, RAP's C row lost to a fused "5+2" left RAP's N row to
+      # be filed under the variable above it (PMID 8055614, issue 76)
+      lblNV <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
+      if (!is.na(gLabel)) lblNV <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lblNV, perl = TRUE)
+      rowsFound[[length(rowsFound) + 1L]] <-
+        list(i = i, g = gIdx, label = .ppCleanLabel(lblNV), tok = NULL)
       next
     }
     v <- v[which.min(abs(t$mid[v] - xBase))]
     # the row's label is whatever precedes its first token; blank on the
     # second and later group rows of a variable, which inherit the last one
-    lbl <- .ppCleanLabel(.ppSquish(substr(paste(lines[[i]]$text, collapse = " "),
-                                         1, min(t$start) - 1)))
+    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
+    if (!is.na(gLabel)) lbl <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lbl, perl = TRUE)
+    lbl <- .ppCleanLabel(lbl)
     rowsFound[[length(rowsFound) + 1L]] <-
       list(i = i, g = gIdx, label = lbl, tok = t[v, , drop = FALSE])
   }
-  if (length(rowsFound) < 4L) return(NULL)
+  nWithValue <- sum(vapply(rowsFound, function(r) !is.null(r$tok), logical(1)))
+  if (nWithValue < 4L) return(NULL)
   # Most data lines of the block must fit the pattern, or this is a wide
   # table that happens to use the word "Group" - leave it to the wide reader.
-  if (length(rowsFound) < 0.6 * nDataSeen) return(NULL)
+  if (nWithValue < 0.6 * nDataSeen) return(NULL)
 
   ## ---- 3. the group index must run 1..k beneath each variable ------------
   # Checked over EVERY group row, including those with no usable value, so
@@ -195,6 +229,23 @@
     buf <- c(buf, w)
   }
 
+  # LETTER GROUPS ARE NAMED BY THE LEGEND (issue 76): "C = control, N =
+  # nicardipine" in the table's footnote, or in the lines beneath the
+  # block; without a legend the arm is "Group C".
+  if (length(letterSeen)) {
+    below  <- if (lastData < length(lineTexts))
+      lineTexts[seq(lastData + 1L, min(lastData + 10L, length(lineTexts)))] else character(0)
+    legend <- paste(c(footnoteInfo, below), collapse = " ")
+    for (kk in seq_len(k)) {
+      L  <- letterSeen[kk]
+      if (is.na(L)) next
+      m  <- regmatches(legend, regexpr(paste0("(?<![A-Za-z])", L, "\\s*=\\s*([A-Za-z][A-Za-z -]{1,30}?)(?=\\s*(?:[,;.]|$))"),
+                                       legend, perl = TRUE))
+      nm <- if (length(m) && nzchar(m)) .ppSquish(sub("^[A-Za-z]{1,2}\\s*=\\s*", "", m)) else ""
+      armName[kk] <- if (nzchar(nm)) paste0(nm, " (Group ", L, ")") else paste("Group", L)
+    }
+  }
+
   ## ---- 5. arm N: not in the table; from the document text if stated ------
   armN      <- rep(NA_integer_, k)
   armSource <- rep(NA_character_, k)
@@ -212,6 +263,22 @@
     newly <- is.na(armN) & !is.na(fill$N)
     armN[newly]      <- fill$N[newly]
     armSource[newly] <- fill$source[newly]
+  }
+  # a letter group's size is often stated as "(Group C, n = 10)" in the
+  # text (issue 76): a size mention whose preceding words END with "Group
+  # C" is that arm's, when every such mention agrees
+  if (length(letterSeen) && any(is.na(armN)) && !is.null(textCands) && nrow(textCands) > 0 &&
+      !is.null(textCands$before)) {
+    for (kk in which(is.na(armN))) {
+      L <- letterSeen[kk]
+      if (is.na(L)) next
+      hit <- grepl(paste0("(?i)\\bgroup\\s+", L, "\\s*[,;:]?\\s*\\(?\\s*$"), textCands$before, perl = TRUE)
+      ns  <- unique(textCands$n[hit])
+      if (length(ns) == 1L) {
+        armN[kk]      <- as.integer(ns)
+        armSource[kk] <- paste0("document text (\"Group ", L, ", n = ", ns, "\")")
+      }
+    }
   }
 
   ## ---- 6. SD or SE: the same footnote rule the wide path uses -------------
@@ -239,6 +306,7 @@
       next
     }
     t <- r$tok
+    if (is.null(t)) next          # a group row with no usable value (reported in skipped)
     line <- stats::setNames(as.list(rep(NA, length(cols))), cols)
     line$TRIAL <- trial
     line$ROW   <- current

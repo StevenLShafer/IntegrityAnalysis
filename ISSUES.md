@@ -132,6 +132,48 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 76. The repeated-measures layout with letter groups, a "Pre-<word>" column, and a legend for the arm names
+
+**Status: fixed on `feat/long-layout-letter-groups`, 2026-09-25**, from
+the corpus session's batch 17 finding W1 (Fujii 1994, Can J Anaesth; PMID
+8055614; the issue 59b design note).
+
+- **The defect.** Table I is the long layout of issue 34 - "Variable |
+  Group | Pre-fatigue | Fatigue" - with the groups printed as the letters
+  C and N under Group, the baseline column named "Pre-fatigue", the unit
+  on each variable's second line ("HR" / "(bpm)"), and the arm names
+  only in the footnote legend "C = control, N = nicardipine" and the text
+  "control group (Group C, n = 10)". The reader wanted integer indices
+  and a "Baseline"/"Pre" column, so the layout fell to the wide reader,
+  which took the two timepoints for two arms and each variable's group
+  rows for separate variables ("HR (bpm), Group C" with two arms of 20,
+  Table II's Pdi rows merged in; 45 rows, p 0.9999).
+- **What changed.** A capital letter or two, or a roman numeral, under
+  the Group column is a group label, numbered in the order the labels
+  first appear (the 1..k run rule then applies as before), and cut off
+  the end of the row's label. The baseline column may be a "Pre-<word>"
+  column from a closed list (fatigue, op, operative, treatment, drug,
+  induction, infusion, dose, study, intervention, exercise, stimulation),
+  with the hyphen as a dash or the Unicode minus too. Letter groups are
+  named by the legend ("C = control" in the footnote or the lines beneath
+  the block), else "Group C". A group row with an index but no usable
+  value still opens or continues its variable, so the next group's row is
+  not filed under the variable above (RAP's C row, a fused "5+2", had left
+  RAP's N row under MAP); such rows do not count toward the layout's
+  admission. A letter group's size comes from a size mention whose
+  preceding words end with "Group C" when every such mention agrees.
+- **On the page** (with issue 77's sign repairs): 6 variables x 2 arms of
+  10 from the Pre-fatigue column - HR 146/142, MAP 121/121, RAP N 5,
+  MPAP, PCWP 8/9, Qt 2.0/1.9 - with RAP's C row reported as skipped (its
+  cell is the fused word "5+2").
+- **Tests** (`tests/testthat/test-long-layout-letter-groups.R`): a rebuilt
+  page with the letters, the Pre-fatigue column, the unit lines and the
+  legend reads two arms of 10 named by the legend and the Pre-fatigue
+  values only (fails on the unfixed code); the issue 34 and Loadsman
+  layout tests still pass.
+
+---
+
 ## 75. A letter O for a zero in an arm size ("(n=4O)")
 
 **Status: fixed on `fix/ocr-zero-in-arm-size`, 2026-09-25**, from the
