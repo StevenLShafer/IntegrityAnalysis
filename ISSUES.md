@@ -132,6 +132,57 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 44. A variable's heading above the first data line, legend-labelled statistic lines, and stretched watermark letters
+
+**Status: fixed on `feat/heading-above-first-row`, 2026-09-25**, from the
+corpus session's batch 4b (Fujii 2002, PMID 12182258, Carlisle-168: the
+"Mean ± SD" and "R Duration of anesthesia, min 20l ±" rows).
+
+- **The layout.** Every variable of that Table 1 is set as a heading
+  line with its statistics beneath it on lines labelled by the statistic:
+  "Age, y" / "Mean ± SD 46 ± 8 47 ± 8 …" / "Range 33-57 34-63 …". The
+  block walker starts at the first data line, so the first variable's
+  heading was never seen and its row went out named "Mean ± SD"
+  (the statRow rule names such a row by the open heading, and "Height,
+  cm", whose heading lies inside the loop, was right). Each "Range" line
+  was taken for the counts of a level and became a category row named
+  "Height, cm 2" with the range's endpoints as cells.
+- **The watermark.** The page also carries a watermark whose letters
+  `pdf_data()` reports one at a time, each with a box 130 points wide at
+  normal height, threaded between the table's lines and even off the
+  page (x = −62): "C", "A", "R", "ET". The rail stripper looks for the
+  opposite shape (narrow and tall), so they stayed: "A" became a label
+  line between "Age, y" and its statistics, "R" a prefix on "Duration of
+  anesthesia". That row's first cell, "20l ± 40" (the digit 1 set as a
+  letter l), left its unread half in the label too.
+- **What changed.** (1) `.ppStripStretchedGlyphs()` (pageLayout.R) drops
+  a word wider than 30 points per character — no printed word is — and
+  runs with the rail stripper. (2) The label lines directly above the
+  first data line are read for a heading, with the label branch's own
+  test and two more: the line lies left of the first value column (an
+  arm-name line without "(n = k)" is a label line too, and sits over the
+  columns), and it is not the caption's legend sentence ("Values are
+  mean ± SD …"). (3) A "Range" / "Min–max" line under a heading is
+  skipped with its reason ("range without mean or SD"), the heading
+  staying open. (4) A one-letter label line never replaces the open
+  heading. (5) A trailing "<word> ±" fragment is cut from a mean ± SD
+  row's label; the unreadable arm is lost either way, and the row keeps
+  its readable arms.
+- **On the paper.** Eight variables named as printed (Age, Sex, Height,
+  Body weight, Last menstrual cycle, Duration of surgery, Duration of
+  anesthesia, Thyroid status), no junk rows, the three Range lines in
+  `skipped` with their reason. `corpus/checkLoadsman.R` gains Altinsoy
+  2015 and EJA1997_327 (78 of 87 on this tree, which predates issue 39).
+- **Tests** (`tests/testthat/test-heading-above-first-row.R`): the
+  stacked layout parses with its headings as row names, the Range lines
+  skipped by name under their heading, the category intact; an arm-name
+  line above the first data line is not taken for a heading; stretched
+  letters are dropped while ordinary, one-letter and rotated words are
+  kept; a one-letter label line leaves the open heading alone, and the
+  "20l ±" fragment leaves the label.
+
+---
+
 ## 39. A paper's only table, captioned "TABLE" with no numeral, is found
 
 **Status: fixed on `feat/unnumbered-caption`, 2026-09-25**, from the
