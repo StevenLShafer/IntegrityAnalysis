@@ -647,14 +647,87 @@ parseBaselineTable <- function(pdfFile,
       }
     }, character(1))
   }
+  # CONTINUOUS VARIABLES ARE COMPARED ARM BY ARM, NOT AS A WHOLE
+  # (2026-09-25, issue 37; the corpus session's F3, G1 and H2). The
+  # whole-signature comparison above matched only when both sides had
+  # read the SAME arms. A deterministic row that read two of three arms
+  # ("Height; cm" on Anaesthesia2002_218, one of two on Akkus 2020) never
+  # matched the model's complete row, and both survived: the variable
+  # twice, once under each name - and on PMID 9602596 every variable of
+  # the table, doubled. So: a model variable IS a deterministic variable
+  # when every deterministic arm tuple (MEAN, SD, SE) appears among the
+  # model's, with N compared only where both sides have one. Then the
+  # model's row is dropped as before, and two things the finding asked
+  # for happen under the DETERMINISTIC label: an arm the deterministic
+  # pass had with no N takes the model's N (flagged as recovered), and
+  # arms the deterministic pass did not read at all are appended from the
+  # model, tagged "ai". Categorical variables keep the whole-signature
+  # rule (their levels are the identity).
+  valKey <- function(t) paste(t$MEAN, t$SD, t$SE, sep = "/")
+  contOf <- function(d) {
+    cont <- d[!is.na(d$MEAN), , drop = FALSE]
+    if (!nrow(cont)) return(list())
+    split(seq_len(nrow(d))[!is.na(d$MEAN)], cont$ROW)   # row indices into d, by ROW
+  }
+  hetT  <- contOf(het$data); candT <- contOf(newRows)
+  dropRows <- character(0); fillRows <- list(); nFilled <- character(0)
+  for (nm in names(candT)) {
+    ci <- candT[[nm]]; ck <- valKey(newRows[ci, ])
+    for (hn in names(hetT)) {
+      hi <- hetT[[hn]]; hk <- valKey(het$data[hi, ])
+      if (!all(hk %in% ck)) next
+      j  <- match(hk, ck)
+      nOK <- all(is.na(het$data$N[hi]) | is.na(newRows$N[ci][j]) |
+                   het$data$N[hi] == newRows$N[ci][j])
+      if (!nOK) next
+      dropRows <- c(dropRows, nm)
+      takeN <- which(is.na(het$data$N[hi]) & !is.na(newRows$N[ci][j]))
+      if (length(takeN)) {
+        het$data$N[hi[takeN]] <- newRows$N[ci][j][takeN]
+        nFilled <- c(nFilled, hn)
+      }
+      extra <- ci[!(ck %in% hk)]
+      if (length(extra)) {
+        ex <- newRows[extra, , drop = FALSE]; ex$ROW <- hn
+        fillRows[[length(fillRows) + 1L]] <- ex
+      }
+      break
+    }
+  }
   hetSig  <- rowSig(het$data)
   candSig <- rowSig(newRows)
-  dupRows <- names(candSig)[candSig %in% hetSig & nzchar(candSig)]
+  catDup  <- names(candSig)[candSig %in% hetSig & nzchar(candSig) &
+                              !(names(candSig) %in% names(candT))]
+  dupRows <- unique(c(dropRows, catDup))
   if (length(dupRows) > 0) {
     say("Dropping ", length(dupRows), " model variable(s) whose values ",
         "duplicate deterministic rows under another name: ",
         paste(dupRows, collapse = ", "))
     newRows <- newRows[!newRows$ROW %in% dupRows, , drop = FALSE]
+  }
+  if (length(nFilled)) {
+    nFilled <- unique(nFilled)
+    say("Arm N taken from the model for ", length(nFilled), " variable(s) the ",
+        "deterministic pass read without one: ", paste(nFilled, collapse = ", "))
+    flags <- c(flags, paste0("arm N for ", length(nFilled), " variable(s) taken ",
+                             "from the model where the table's own reading had ",
+                             "none - verify against the header: ",
+                             paste(nFilled, collapse = ", ")))
+  }
+  if (length(fillRows)) {
+    fill <- do.call(rbind, fillRows)
+    say("Adding ", nrow(fill), " arm line(s) from ", model, " under ",
+        "deterministic variable(s) the table's own reading had only partly: ",
+        paste(unique(fill$ROW), collapse = ", "))
+    newRows <- .ppRbindFill(fill, newRows)
+  }
+  # A model level column that differs from a deterministic one only by
+  # case or spacing is that column ("male" beside "Male" made two columns
+  # that normalise to one, and the table was refused; Sener 2008 EJA).
+  hetCols <- names(het$data)
+  for (cn in setdiff(names(newRows), hetCols)) {
+    jj <- match(tolower(.ppSquish(cn)), tolower(.ppSquish(hetCols)))
+    if (!is.na(jj)) names(newRows)[names(newRows) == cn] <- hetCols[jj]
   }
 
   if (nrow(newRows) == 0) {

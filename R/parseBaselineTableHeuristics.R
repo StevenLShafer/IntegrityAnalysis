@@ -364,6 +364,11 @@
   # per-column word bucketing can lose the digits. Matching the joined line
   # and mapping the match back to word x positions - the tokenizer's own
   # technique - is robust to how poppler split the cell (2026-08-20).
+  # The words of every "(n = k)" match, per header line, so the arm-name
+  # assembly below can leave them out (2026-09-25, issue 37): a "24)"
+  # that poppler set nearer the NEXT column's centre used to open that
+  # arm's name ("24) PECS group (n = 24").
+  nSpanWords <- list()
   for (i in intersect(headerAt, seq(capIdx + 1, length(lines)))) {
     d <- lines[[i]]
     joined    <- paste(d$text, collapse = " ")
@@ -371,15 +376,39 @@
     wordEnd   <- wordStart + nchar(d$text) - 1
     m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
     if (m[1] == -1) next
+    # "(n = k)" ANNOTATES THE NAME TO ITS LEFT (2026-09-25, issue 37;
+    # Kulturoglu 2024 JA). "RIB group (n=24)  PECS group (n=24)  Control
+    # group (n=24)", left-aligned over columns whose numbers are narrower
+    # than the headings: each "(n=24)" sits to the RIGHT of its arm's name,
+    # and its midpoint falls nearer the NEXT column's centre - arm 1's N
+    # went to arm 2, arm 2's to arm 3, arm 3's to the p-value column, and
+    # arm 3 had no N, so the table failed validation. The word before the
+    # match - the last word of the name - is the arm the count belongs
+    # to, so the column is read from that word's centre; the midpoint
+    # rule remains for a match with no word before it (a header that is
+    # only "(n = 24)").
+    spans <- integer(0)
     for (k in seq_along(m)) {
       s <- m[k]; e <- s + attr(m, "match.length")[k] - 1
       wFirst <- which(wordEnd >= s)[1]
       wLast  <- rev(which(wordStart <= e))[1]
-      xmid   <- (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
-      colk   <- cols$assign(xmid)
+      thisSpan <- seq(wFirst, wLast)
+      wPrev  <- wFirst - 1L
+      if (wPrev >= 1L && grepl("^\\($", d$text[wPrev])) wPrev <- wPrev - 1L   # "(" set as its own word
+      xRef   <- if (wPrev >= 1L && !(wPrev %in% spans))
+        d$x[wPrev] + d$width[wPrev] / 2
+      else (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
+      spans  <- c(spans, thisSpan)
+      colk   <- cols$assign(xRef)
       nval   <- suppressWarnings(as.integer(gsub("\\D", "", substr(joined, s, e))))
       if (!is.na(nval) && is.na(armN[colk])) armN[colk] <- nval
     }
+    # the closing ")" of the last match, when poppler set it as its own word
+    if (length(spans)) {
+      after <- max(spans) + 1L
+      if (after <= nrow(d) && grepl("^\\)$", d$text[after])) spans <- c(spans, after)
+    }
+    nSpanWords[[as.character(i)]] <- unique(spans)
   }
   for (i in headerIdx) {
     d    <- lines[[i]]
@@ -389,8 +418,9 @@
     # such as "Characteristic" is not swept into the first arm.
     near <- abs(cols$centers[wCol] - wMid) <
               (if (cols$n > 1) min(diff(sort(cols$centers))) * 0.75 else 100)
+    inSpan <- seq_len(nrow(d)) %in% nSpanWords[[as.character(i)]]
     for (k in seq_len(cols$n)) {
-      wtxt <- paste(d$text[near & wCol == k], collapse = " ")
+      wtxt <- paste(d$text[near & wCol == k & !inSpan], collapse = " ")
       if (nchar(wtxt) == 0) next
       nMatch <- regmatches(wtxt, regexpr("(?i)n\\s*=\\s*(\\d+)", wtxt, perl = TRUE))
       if (length(nMatch) > 0 && is.na(armN[k]))
