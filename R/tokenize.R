@@ -90,7 +90,17 @@
     "|(?<fraction>", "\\d+(?:\\s*/\\s*\\d+)+)",
     "|(?<pctOnly>",  NUM, "\\s*%)",
     "|(?<plain>",    NUM, ")",
-    ")(?![A-Za-z0-9])"
+    # A TOKEN DOES NOT END INSIDE A NUMBER (2026-09-26, ISSUES.md issue
+    # 121; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3):
+    # the guard refused a digit after the token, so "62 <pm> 61 <pm>"
+    # could not shorten to "62 <pm> 6" when issue 118's lookahead refused
+    # the whole "61" - but it did not refuse a DECIMAL POINT, and "45.3
+    # <pm> 43.2 <pm> 8.3" backtracked to "45.3 <pm> 43", the ".2" left
+    # behind, and the Age row scored on an SD of 43. A token that would
+    # end before a decimal point and a digit ends inside a number and is
+    # refused with the digit; the regex then gives up the cell, as it
+    # does for whole numbers.
+    ")(?![A-Za-z0-9]|[.,\u00b7][0-9])"
   )
 })
 

@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 121. A token does not end inside a decimal number
+
+**Status: fixed on `fix/sd-number-not-cut-at-decimal`, 2026-09-26**, from
+the corpus session's batch 27 AF3 (CJA 1995, PMID 7614644, a scan),
+found while building the fixture of issue 120.
+
+- **The defect.** The Age line reads "40.1 +/- 7.5 45.3 +/- 43.2 +/- 8.3
+  42.5 +/- 9.4" - the second SD lost to the text layer. Issue 118's
+  lookahead refuses "43.2" as the SD because a sign follows it, and the
+  token's trailing guard refuses a digit after the token, so a whole
+  number could not be shortened ("62 +/- 61 +/-" gave two bare
+  numbers). But the guard did not refuse a decimal point: the regex
+  backtracked to "45.3 +/- 43", the ".2" was left behind, and the row
+  scored on an SD of 43.
+- **What changed.** The trailing guard of the token pattern refuses a
+  decimal point (".", "," or the middle dot) followed by a digit as it
+  refuses a digit: a token never ends inside a number. The regex then
+  gives the cell up, leaving a bare mean the walker skips, as for whole
+  numbers.
+- **On the page.** Age reads 40.1 +/- 7.5, 43.2 +/- 8.3 and 42.5 +/- 9.4
+  in the first, third and fourth arms; the second arm's Age is a bare
+  mean and is left unread, as printed.
+- **Tests** (`tests/testthat/test-sd-number-not-cut-at-decimal.R`): the
+  tokenizer on the Age line and its comma-decimal form; a rebuilt page
+  with the lost decimal SD reads the three whole Age cells and no cell
+  cut from a neighbour's mean (9 of 11 expectations fail on the unfixed
+  code). The tokenizer, lost-SD, mean-with-range, slot and Loadsman
+  layout tests still pass.
+
 ## 119. Under an announced notation the glued digit-colon form marks its column
 
 **Status: fixed on `fix/glued-digit-colon-marks-slot`, 2026-09-26**, from
