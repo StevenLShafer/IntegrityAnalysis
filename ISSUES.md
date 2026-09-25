@@ -181,6 +181,9 @@ corpus: CJA 1995;42:1096 (scanned), CJA 1997;44:390, Acta 1997;41:741.
 
 ---
 
+
+---
+
 ## 44. A variable's heading above the first data line, legend-labelled statistic lines, and stretched watermark letters
 
 **Status: fixed on `feat/heading-above-first-row`, 2026-09-25**, from the
@@ -229,6 +232,30 @@ corpus session's batch 4b (Fujii 2002, PMID 12182258, Carlisle-168: the
   letters are dropped while ordinary, one-letter and rotated words are
   kept; a one-letter label line leaves the open heading alone, and the
   "20l ±" fragment leaves the label.
+
+---
+
+## 43. The model's reply rides along verbatim on the parse result
+
+**Status: fixed on `feat/model-raw-reply`, 2026-09-25**, from the corpus
+session's batch 4b finding J2 (PMID 15278663 read as two arms on one run
+and three on the next).
+
+- **The defect.** The model transcription call runs with extended
+  thinking on, which fixes the sampling temperature at 1, so two runs of
+  the same page can disagree; the reply was parsed to JSON and discarded
+  inside `aiFallback.R`, and only the merged table survived in the corpus
+  checkpoints, so a disagreement could not be attributed to the model or
+  to the template step.
+- **What changed.** `.ppClaudeStructuredOutput()` attaches the reply text
+  to the structured output, and `parseBaselineTableAI()` returns it as
+  `aiReply` (the JSON text as the model wrote it; NULL when a test double
+  supplied the parsed list). The corpus batch stores it in the checkpoint;
+  the app and the API are unchanged.
+- **Tests** (`tests/testthat/test-model-raw-reply.R`): a reply split
+  across two text blocks arrives as one string; through the whole route
+  (mocked at the HTTP boundary) `aiReply` is the reply and parses back to
+  the arms; a test double that hands back a plain list leaves it NULL.
 
 ---
 
