@@ -190,6 +190,37 @@ arms n = 26/25).
 
 ---
 
+## 51. A continuous variable with fewer cells than the table has arms is a review flag, and a table the model completes reports itself as hybrid
+
+**Status: fixed on `feat/short-variable-flag`, 2026-09-25**, from the
+corpus session's batch 5 finding K2 (CJA 1995;42:992, six arms of 15)
+and batch 6 finding L1.
+
+- **The defect.** Age was read in all six arms, Height and Weight in
+  four - the OCR of two cells failed - and the deterministic table was
+  accepted as it stood: no review flag, so the fallback never consulted
+  the model, and both variables entered the analysis two arms short
+  (P_FULL 0.0368 against the model's six-arm 0.128 on the earlier build).
+  Two more, found on the way: when the model's only contribution was to
+  complete a variable's missing arm lines (issue 37's arm-by-arm merge),
+  the result still called itself "heuristic" and dropped the model's
+  notes; and the model's reply (`aiReply`, issue 43) rode only on the
+  AI-only route, never on a hybrid result.
+- **What changed.** `reviewFlags()` names every continuous variable that
+  carries fewer cells than the table has arms ("Height (4 of 6)"); the
+  flag gates the model consult, and the merge fills the missing cells
+  from the model's reading, tagged "ai". A result the model completed
+  without adding a variable is labelled "hybrid", carries the model's
+  notes, and carries `aiReply`; the hybrid assembly carries `aiReply`
+  too.
+- **Tests** (`tests/testthat/test-short-variable-flag.R`): a rebuilt
+  page with one unreadable cell raises the flag naming the variable and
+  its count while full variables do not; with a mocked model the result
+  is hybrid, the missing cell is filled and tagged, and the reply rides
+  along.
+
+---
+
 ## 50. An arm-name line of ordinals that goes on to head the statistic columns; arm sizes stated only in a CONSORT flow
 
 **Status: fixed on `feat/ordinal-header-trailing`, 2026-09-25**, from the

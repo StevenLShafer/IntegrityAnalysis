@@ -389,6 +389,10 @@ inert without the model.
   from the model whose "sd" is each arm's count as a percentage of the arm's N (whole-number
   count, "sd" within 0–100, one-decimal rounding) is n (%) and becomes a count with its
   complement; "score", "index" and "ratio" labels are left as read.
+- **A variable short of arms consults the model** (2026-09-25, issue 51). `reviewFlags()` names
+  every continuous variable with fewer cells than the table has arms; the flag gates the
+  consult, the arm-by-arm merge fills the cells from the model's reading, and a table so
+  completed reports itself as "hybrid" with the model's notes and reply.
 - **The reply rides along verbatim** (2026-09-25, issue 43). The call runs with thinking on,
   which fixes the temperature at 1, so two runs can disagree; `parseBaselineTableAI()` now
   returns the reply text as `aiReply` so a corpus checkpoint can keep it and a disagreement can
