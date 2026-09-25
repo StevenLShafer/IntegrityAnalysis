@@ -1887,6 +1887,12 @@ parseBaselineTableHeuristics <- function(pdfFile,
 
   tried <- 0L
   best <- NULL; bestScore <- -Inf; bestCand <- NULL; bestStrong <- FALSE
+  # A straddle (see .ppSetAsideStraddles) is parsed like any candidate but
+  # DEFERRED: it competes only if its twin - the single-table reading of
+  # the same first table on the same page - yields no usable rows. Twins
+  # that parse are recorded by page and anchor as the loop goes.
+  deferred   <- list()
+  twinParsed <- character(0)
   for (i in seq_along(cand)) {
     cc <- cand[[i]]
     if (tried >= maxCandidates && bestScore > -Inf) break
@@ -1919,8 +1925,17 @@ parseBaselineTableHeuristics <- function(pdfFile,
     }
     say(whoIs, ": ", length(unique(res$data$ROW)), " variable(s) x ",
         nrow(res$arms), " arm(s), ", nrow(res$skipped), " skipped, score ",
-        sc, " + caption ", 2 * cc$capScore, ".")
+        sc, " + caption ", 2 * cc$capScore,
+        if (!is.null(cc$straddleTwin)) " - straddles two tables; deferred" else "", ".")
     sc <- sc + 2 * cc$capScore
+    tk <- .ppTwinKey(cc)
+    if (!is.na(tk)) twinParsed <- c(twinParsed, tk)
+    if (!is.null(cc$straddleTwin)) {
+      deferred[[length(deferred) + 1L]] <-
+        list(res = res, sc = sc, cc = cc, strong = strongOrdered[i],
+             key = paste(cc$page, cc$straddleTwin))
+      next
+    }
     # A table whose caption announces baseline data beats any table whose
     # caption does not, however large the latter is. Only within one class
     # does the parse score decide.
@@ -1929,6 +1944,23 @@ parseBaselineTableHeuristics <- function(pdfFile,
     if (better) {
       bestScore  <- sc; best <- res; bestCand <- cc
       bestStrong <- strongOrdered[i]
+    }
+  }
+  # Deferred straddles: admitted only when their twin produced nothing
+  # usable (PMID 20608923: the "Table 1" column reading has no rows, the
+  # straddle holds Height and Weight, and without this an outcome table
+  # won); excluded when the twin parsed (PMIDs 16738291 and 16179044:
+  # the straddle's four phantom arms would out-score the real two).
+  for (dfr in deferred) {
+    if (dfr$key %in% twinParsed) {
+      say("Straddle \"", substr(.ppSquish(dfr$cc$caption), 1, 50),
+          "\" excluded: its single-table twin parsed.")
+      next
+    }
+    better <- if (dfr$strong != bestStrong) dfr$strong else dfr$sc > bestScore
+    if (better) {
+      bestScore <- dfr$sc; best <- dfr$res; bestCand <- dfr$cc
+      bestStrong <- dfr$strong
     }
   }
 
