@@ -164,6 +164,38 @@ the corpus session's batch 17 finding W1 (Fujii 1994, Can J Anaesth; PMID
 
 ---
 
+## 78. The P across trials is combined from the numeric trial p, not from its display
+
+**Status: fixed on `fix/stouffer-uses-numeric-trial-p`, 2026-09-25**, to
+Steve's direction of 2026-09-25 ("use the actual number, not the displayed
+number, for the P across trials").
+
+- **The defect.** A trial's Summary line carries its p as a display:
+  four significant figures, or "<0.0001" when the one-sided 97.5% Monte
+  Carlo bound licenses it. Both Stouffer combinations across trials - the
+  results workbook's Summary sheet and the API's `overallP` - read that
+  display back as a number, so a trial at 0.000003 entered the
+  combination as 0.0001 (z = 3.7 for z = 4.5) and a four-figure display
+  entered as its rounded value. The study-level p was conservative, and
+  most so for the trials a fraud screen cares about. Within a trial
+  nothing was lost: the trial p is the exact combination over the
+  replicates.
+- **What changed.** `P_Calc()` keeps the numeric p of every line in a
+  `.PNUM` column - on the Summary line, the trial p at full Monte Carlo
+  precision (still floored at 1/(m+1), the honest limit of the
+  simulation). One helper, `.iaOverallP()` in `R/baselineTable.R`, takes
+  the number when it is there and the display otherwise (a frame from an
+  older build, a P typed by hand), and both combinations call it. The
+  workbook's Test Results sheet and the API's CSV drop the column; the
+  displays are unchanged.
+- **Tests** (`tests/testthat/test-stouffer-numeric-trial-p.R`): the helper
+  on a hand-built frame combines 1e-6 rather than 1e-4 and falls back on
+  the display without the column or with an NA; the CSV carries no
+  internal column; `P_Calc()`'s Summary line carries a numeric p at or
+  below its display. The KIND test now expects the column.
+
+---
+
 ## 77. A plain "+" at a slot the sign itself marks, the sign dropped entirely, and a legend that spells "S D"
 
 **Status: fixed on `feat/slot-plus-and-dropped-sign`, 2026-09-25**, from
