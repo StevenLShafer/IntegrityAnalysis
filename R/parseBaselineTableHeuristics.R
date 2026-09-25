@@ -1240,18 +1240,26 @@
     # not: when the line after the candidate is a data line whose label
     # starts to the RIGHT of the candidate's first word - indented under
     # it - the candidate is a header and is left to the label branch.
-    if (i < length(kind) && kind[i + 1] == "label") {
-      nxt <- .ppSquish(lineTexts[i + 1])
-      xNext  <- lines[[i + 1]]$x[1]
-      xChild <- if (i + 2L <= length(kind) && kind[i + 2L] == "data")
-        lines[[i + 2L]]$x[1] else NA_real_
+    # A LABEL MAY WRAP TWICE (2026-09-25, ISSUES.md issue 69; Fujii 2006,
+    # PMID 17126782, the corpus session's batch 15 residue): "Propofol
+    # doses" over the values, then "given at", then "first (mg)*" - three
+    # lines for one name. The rule absorbed one continuation and the row
+    # went out as "Propofol doses given at". Each absorbed line is tested
+    # as the first was (typography, and no indented child beneath it), up
+    # to three continuations.
+    j <- i
+    while (j < length(kind) && kind[j + 1L] == "label" && j - i < 3L) {
+      nxt <- .ppSquish(lineTexts[j + 1L])
+      xNext  <- lines[[j + 1L]]$x[1]
+      xChild <- if (j + 2L <= length(kind) && kind[j + 2L] == "data")
+        lines[[j + 2L]]$x[1] else NA_real_
       indentedChild <- !is.na(xChild) && !is.na(xNext) && xChild > xNext + 4
-      if (!indentedChild &&
-          grepl("^[a-z(]", nxt, perl = TRUE) && nchar(nxt) <= 40 &&
-          !grepl("[0-9]", gsub("\\([^)]*\\)", "", nxt))) {
-        rawLabel <- paste(rawLabel, nxt)
-        consumedLabel <- c(consumedLabel, i + 1L)
-      }
+      if (indentedChild ||
+          !grepl("^[a-z(]", nxt, perl = TRUE) || nchar(nxt) > 40 ||
+          grepl("[0-9]", gsub("\\([^)]*\\)", "", nxt))) break
+      rawLabel <- paste(rawLabel, nxt)
+      consumedLabel <- c(consumedLabel, j + 1L)
+      j <- j + 1L
     }
     label    <- .ppCleanLabel(rawLabel)
     txt      <- lineTexts[i]

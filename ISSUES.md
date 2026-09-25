@@ -171,6 +171,62 @@ Obstet; PMID 19358990).
 
 ---
 
+## 70. A glued plus-minus soup never eats the number it is glued to
+
+**Status: fixed on `fix/glued-soup-never-eats-number`, 2026-09-25**, from
+the corpus session's batch 15a finding T2 (Fujii 1996, Can J Anaesth; PMID
+8706192).
+
+- **The defect.** Issue 65's glued form ("-t-32": the soup and the SD as
+  one word) used a character class that held "4" and ".", so "+4.9" - a
+  plain plus set against its SD, which the plus rules of issue 45 own -
+  matched as the soup "+4." and the SD "9". Height's second arm went out
+  as 154.1 ± 9.0 for the printed 4.9: a wrong number, not a lost one, and
+  in a hybrid result the flags had nothing to say. Introduced on d04ccb6;
+  the other three regressions the corpus session filed with it (PMIDs
+  19358990, 7497558, 9649986) are not the engine's - the deterministic
+  reading is identical on 8e8fbd5 and d04ccb6 for all three, and the
+  change was the model's reply on the hybrid route.
+- **What changed.** The glued prefix is strokes and stroke-like letters
+  only, with no digit and no dot; a dot is no longer soup at all. One
+  digit form is admitted, "5:" - a digit and a colon, which is how that
+  page's OCR sets the sign in "55.3 5:5.4" - and only at a sign slot,
+  never on the announcement alone. The page now reads 8 variables x 4
+  arms with every Weight and Duration cell (the first Height cell,
+  "155.0-1-5.5", is one fused word and stays lost).
+- **Tests** (`tests/testthat/test-glued-soup-digits.R`): "+4.9" at a slot
+  is left alone; "5:5.4" at a slot is the sign glued to its SD and on the
+  legend alone is not; "4." and "." between two numbers are never a sign.
+  The first two fail on the unfixed code.
+
+---
+
+## 69. A row label that wraps onto two lines beneath its values
+
+**Status: fixed on `feat/label-wraps-twice`, 2026-09-25**, from the corpus
+session's batch 15 residue on Fujii 2006 (PMID 17126782, after issue 67).
+
+- **The defect.** "Propofol doses" over the values, then "given at", then
+  "first (mg)*": three lines for one name. The continuation rule of
+  2026-09-24 absorbed one line, and the row went out as "Propofol doses
+  given at". (The corpus session's guess, that the rule did not apply to
+  stratum-prefixed rows, was not it: the prefix is added afterwards; the
+  rule simply stopped after one line.)
+- **What changed.** The continuation rule loops: each further label-kind
+  line is tested as the first was (begins with a lower-case letter or a
+  bracket, at most 40 characters, no digit outside brackets, no indented
+  child beneath it) and absorbed, up to three continuations. A
+  capitalised line still ends the name. And `.ppCleanLabel()` drops a
+  footnote marker (*, dagger, double dagger, section sign) from the end
+  of a label before the unit rule, so "first (mg)*" loses its unit as
+  "first (mg)" does - the row is "Propofol doses given at first".
+- **Tests** (`tests/testthat/test-label-wraps-twice.R`): a rebuilt page
+  reads the three-line name whole (fails on the unfixed code); a
+  capitalised heading after a continuation is the next variable, with its
+  levels intact.
+
+---
+
 ## 68. A row label on the line above its values, the unit beneath
 
 **Status: fixed on `feat/label-above-values`, 2026-09-25**, from the corpus

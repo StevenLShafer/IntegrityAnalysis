@@ -219,7 +219,11 @@ wrong entry would corrupt numbers invisibly.
   genuine sign, are the sign (`.ppRepairPlusMinusGlyphs()`, utils.R); a glued "-t-32" is cut.
   A plain "+" is evidence for the column but is never repaired here (issue 45 decides it). A legend
   that names a letter as the sign ("Values are means F SD", issue 67) makes that letter the sign.
+  A glued soup holds no digit and no dot, so "+4.9" is never "+4." and "9" (issue 70); "5:" glued
+  to the SD is the sign at a slot.
 
+- **A label may wrap twice** (2026-09-25, issue 69): the continuation rule absorbs up to
+  three lower-case or bracketed lines beneath a row's values, each tested as the first.
 - **A row label on the line above its values** (2026-09-25, issue 68): a value line with no
   label directly under the line that opened a heading takes that line as its name; the unit
   line beneath is absorbed as the wrapped second line.
