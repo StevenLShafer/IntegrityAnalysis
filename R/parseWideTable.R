@@ -855,7 +855,18 @@
           NA_integer_
         else as.integer(t$num1)
       }, integer(1))
-      colName <- .ppUniqueName(if (nzchar(label)) label else "Category",
+      # A LEVEL ROW NAMED FOR ITS VARIABLE gives back the bare level (2026-09-25,
+      # ISSUES.md issue 81): the editors' view prints "Sex: MALE" under the
+      # heading "Sex, n", and the round trip must return the column MALE,
+      # not a new column "SEX: MALE" beside it.
+      lvl <- label
+      if (nzchar(lvl) && !is.na(catHeader)) {
+        hd  <- sub("\\s*,\\s*n\\s*$", "", catHeader, ignore.case = TRUE, perl = TRUE)
+        pre <- paste0("^\\s*", gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", hd), "\\s*:\\s*")
+        if (nzchar(hd) && grepl(pre, lvl, ignore.case = TRUE, perl = TRUE))
+          lvl <- sub(pre, "", lvl, ignore.case = TRUE, perl = TRUE)
+      }
+      colName <- .ppUniqueName(if (nzchar(lvl)) lvl else "Category",
                                catColumns)
       catColumns <- unique(c(catColumns, colName))
       addCount(colName, counts)

@@ -71,11 +71,28 @@ test_that("category variables become a header line plus indented counts", {
     stringsAsFactors = FALSE))
   t1 <- tabs[["T"]]
   expect_true("Sex, n" %in% t1$Variable)
-  male <- t1[t1$Variable == "    MALE", ]
+  # a level row carries its variable (issue 81): "Sex: MALE", not an indent
+  male <- t1[t1$Variable == "Sex: MALE", ]
   expect_identical(male[[2]], "10")
   expect_identical(male[[3]], "12")
+  expect_false(any(grepl("^ +MALE", t1$Variable)))
   # the header line itself carries no numbers
   expect_identical(t1[t1$Variable == "Sex, n", ][[2]], "")
+})
+
+test_that("levels shared between variables read unambiguously in the editors' view (issue 81)", {
+  tabs <- build(data.frame(
+    TRIAL = "T", ROW = c("ASA", "ASA", "Pain score", "Pain score"),
+    N = NA, MEAN = NA, SD = NA,
+    `1` = c(20, 22, 5, 4), `2` = c(10, 8, 15, 16), `3` = c(1, 1, NA, NA), `6` = c(NA, NA, 8, 9),
+    ROUND_MEAN = NA, ROUND_OBSERVATION = NA,
+    stringsAsFactors = FALSE, check.names = FALSE))
+  t1 <- tabs[["T"]]
+  expect_true(all(c("ASA: 1", "ASA: 2", "ASA: 3", "Pain score: 1", "Pain score: 2", "Pain score: 6")
+                  %in% t1$Variable))
+  expect_identical(t1[t1$Variable == "ASA: 1", ][[2]], "20")
+  expect_identical(t1[t1$Variable == "Pain score: 1", ][[2]], "5")
+  expect_false(any(grepl("^\\s+[0-9]", t1$Variable)))       # no bare, indented level rows
 })
 
 test_that("a line whose N differs from the arm's header N says so", {
