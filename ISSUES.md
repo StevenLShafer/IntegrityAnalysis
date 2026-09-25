@@ -132,6 +132,39 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 110. Long layout: "Ia" and "Ib" are group labels, and a size that names the group comes first
+
+**Status: fixed on `fix/long-layout-roman-letter-groups`, 2026-09-26**,
+from the corpus session's batch 26 AE1 (Fujii, CJA 2000, PMID 11132748,
+Table I "Hemodynamic data and changes in nonfatigued diaphragm").
+
+- **The defect.** The group column reads "Ia" and "Ib" - one
+  experiment's two arms among four ("Groups Ia (n=6), Ib (n=6), IIa
+  (n=8) and IIb (n=8)"). Neither a capital-letter label nor a plain
+  numeral, so the repeated-measures reader stood aside and the wide
+  reader took Baseline and 30 min for the arms and each group row for
+  a variable: twelve "variables" in two arms of 8, p 0.359, a wrong
+  reading with a confident verdict.
+- **What changed.** A roman numeral with a lowercase letter suffix is
+  a LETTER label (`.ppLongGroupLabel`): indexed in the order it first
+  appears, the arm named "Group Ia". And in the reader's arm-N step the
+  size that NAMES the group ("In Group Ia (n=6)", "Groups Ia (n=6), Ib
+  (n=6)") is applied before the count-less statement, which on this
+  page belongs to another experiment's groups ("In Groups IIa, IIb, and
+  IIc (n=8 each)") and used to give both arms 8; the name rule also
+  accepts a label inside a comma list after "Groups".
+- **On the page.** Two arms, Group Ia and Group Ib, six variables from
+  the Baseline column (HR, MAP, RAP, MPAP, PAOP, CO), N 6 and 6 - the
+  text layer says "In Group Ib (n=6)" and "Groups Ia (n=6), Ib (n=6)"
+  in two places, which the corpus session's note (Ib = 8) should be
+  checked against.
+- **Tests** (`tests/testthat/test-long-layout-roman-letter-groups.R`):
+  a rebuilt page with Ia/Ib rows, a "30 min" column and a text that
+  names each arm's size beside another experiment's "(n=8 each)" reads
+  two arms of 6 and 8 with four variables (6 expectations fail on the
+  unfixed code). The long-layout, legend, heading, canine, letter-group
+  and Loadsman layout tests still pass.
+
 ## 109. A variable's own n printed per cell, in brackets
 
 **Status: fixed on `feat/per-cell-n-in-brackets`, 2026-09-25**, from the
