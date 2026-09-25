@@ -414,7 +414,16 @@
                 # "allocated to one of four groups of 15 patients each" (issue
                 # 94; PMID 9613269): "to one of" as well as "into"
                 "split)\\b[^.;]{0,60}?\\b(?:into|to\\s+one\\s+of)\\s+([a-z0-9-]+)\\s+",
-                "(?:equal\\s+)?groups?\\s+of\\s+([a-z0-9]+)",
+                "(?:equal\\s+)?groups?\\s+of\\s+",
+                # A RUNNING HEAD INSIDE THE SENTENCE (2026-09-25, ISSUES.md issue
+                # 103; Fujii, PMID 11004073, the corpus session's batch 25 AD8):
+                # pdf_text() interleaves a two-column page's running head into
+                # the Methods, "divided into three groups of Methods D 10 each",
+                # and the size read as "Methods". Up to three stray words may
+                # stand between "of" and the size WHEN "each" follows the size -
+                # the anchor that makes the number the group size and not a
+                # dose or a duration further along the sentence.
+                "(?:(?:[A-Za-z]+\\s+){1,3}(?=[0-9]+\\s+each\\b))?([a-z0-9]+)",
                 "(?:\\s+(?:each|animals?|dogs?|rats?|pigs?|rabbits?|",
                 "patients?|subjects?|participants?))?")
   found <- list(groups = integer(0), n = integer(0), snippet = character(0))
