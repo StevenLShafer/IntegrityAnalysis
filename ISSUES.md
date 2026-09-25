@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 48. "Number" alone labels the N row; an arm with an N and nothing else is a phantom
+
+**Status: fixed on `feat/n-row-label`, 2026-09-25**, from CJA 1996;43:362
+(Loadsman corpus, Saitoh), whose Table I prints "Number 15 15 15 15" under
+an arm-name header without "(n = k)".
+
+- **The defect.** The N row's label pattern knew "n", "No. of patients"
+  and "Number of patients/subjects" but not a bare "Number", so the line
+  was skipped as a bare number and the arm sizes came from the Methods
+  ladder instead - three of four, because the fourth arm's name is an
+  OCR misreading ("PIT-AP" for the Methods' "PTT-AP") the ladder could
+  not place. Reading the row then surfaced a fifth cluster on that page
+  with an N and neither a header word nor a cell, reported as an arm.
+- **What changed.** The N row's label is "n", "N", "No.", "Number", or
+  "No./Number of" followed by a group noun (patients, subjects, cases,
+  participants, animals, dogs, rats, rabbits, pigs, women, men, children,
+  infants, volunteers); "Number of previous operations" is still a
+  variable. At assembly an arm that has an N but neither a name nor a
+  single data cell is dropped as the label-column phantoms already were.
+- **On the page.** Four named arms of 15, Sex, Age, Height, Weight.
+- **Tests** (`tests/testthat/test-n-row-label.R`): "Number" and its kin
+  label the N row and every arm takes its size; a label that merely
+  begins with a count word is not the N row.
+
+---
+
 ## 47. A "(n = k)" line printed under a row's cells is that row's N
 
 **Status: fixed on `feat/row-n-line`, 2026-09-25**, from the corpus
