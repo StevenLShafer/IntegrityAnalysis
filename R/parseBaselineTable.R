@@ -891,7 +891,15 @@ parseBaselineTable <- function(pdfFile,
   merged <- merged[, c(.ppBaseColumns(),
                        setdiff(names(merged), .ppBaseColumns())), drop = FALSE]
 
-  structure(
+  # THE ROW FLAGS ARE RECOMPUTED ON THE MERGED TABLE (2026-09-25, ISSUES.md
+  # issue 60; the corpus session's N4, PMID 15281514): the flags above were
+  # read off the deterministic table before the model's rows joined it, so
+  # a degenerate row the model added - eight "%Edi" rows at 100.0 +/- 0.0,
+  # a normalised baseline fixed by construction - was never named. The
+  # flags that describe rows (degenerate, duplicated tuples, SD above the
+  # mean, a variable short of arms) are taken from reviewFlags() on the
+  # merged result; the ones already present are kept once.
+  out <- structure(
     list(data       = merged,
          arms       = het$arms,
          skipped    = het$skipped,
@@ -921,6 +929,10 @@ parseBaselineTable <- function(pdfFile,
          dispersion     = het$dispersion,
          engine     = "hybrid"),
     class = "ParsePDFTable")
+  rowFlags <- grep("degenerate|identical N, mean and SD|SD larger than the mean|fewer cells than the table has arms|same value with no dispersion",
+                   reviewFlags(out), value = TRUE)
+  out$flags <- unique(c(out$flags, rowFlags))
+  out
 }
 
 #' @export

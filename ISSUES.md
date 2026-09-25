@@ -132,6 +132,27 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 60. The row flags are recomputed on the merged table, so a degenerate row the model adds is named
+
+**Status: fixed on `feat/post-merge-row-flags`, 2026-09-25**, from the
+corpus session's batch 8 finding N4 (PMID 15281514, a canine paper).
+
+- **The defect.** The hybrid merge appended eight "%Edi" rows at 100.0 ±
+  0.0 - a normalised baseline fixed by construction - and issue 36's
+  degenerate flag, computed on the deterministic table before the model's
+  rows joined it, never named them; the reviewer saw a clean flag list
+  over a table with eight rows that carry no sampling information.
+- **What changed.** After the merge, the flags that describe rows -
+  degenerate rows, duplicated tuples, SD above the mean, a variable short
+  of arms - are taken from `reviewFlags()` on the merged result and added
+  once to the flags already carried.
+- **Tests** (`tests/testthat/test-post-merge-row-flags.R`): with a mocked
+  model adding a variable at 100.0 ± 0.0 in every arm, the hybrid result
+  carries the degenerate flag naming it, and the flags the merge already
+  carried appear once.
+
+---
+
 ## 59. The announced plus-minus digit as a token of its own: "Values are mean 6 sd." and cells "141 6 9"
 
 **Status: partly fixed on `feat/digit-plusminus-token`, 2026-09-25**, from
