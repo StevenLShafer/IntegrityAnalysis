@@ -590,8 +590,15 @@
     }
   }
 
-  nRowPattern <- paste0("(?i)^(no\\.?\\s+of\\s+(patients|subjects|cases)|n",
-                        "|number\\s+of\\s+(patients|subjects))$")
+  # The N row's label: "n", "N", "No.", "Number", or "Number of patients"
+  # and its kin. A bare "Number" (CJA 1996;43:362, "Number 15 15 15 15")
+  # was not matched, the line was skipped as a bare number, and an arm
+  # whose name the text ladder could not place stayed without N (ISSUES.md
+  # issue 48, 2026-09-25). The nouns cover the animal papers too.
+  nRowPattern <- paste0("(?i)^(n|no\\.?|number|",
+                        "(no\\.?|number)\\s+of\\s+(patients|subjects|cases|",
+                        "participants|animals|dogs|rats|rabbits|pigs|",
+                        "women|men|children|infants|volunteers))$")
 
   # ---- Drop a p-value column ----------------------------------------------
   # A column header of a bare "P" is ambiguous: it is the usual heading of a
@@ -1829,7 +1836,11 @@
     any(vapply(outRows, function(r)
       length(r$perArm) >= j && !is.null(r$perArm[[j]]), logical(1))),
     logical(1))
-  keep <- used | !is.na(armN[arms])
+  # ... and an arm that has an N but neither a name nor a single data
+  # cell is a phantom too (issue 48): once "Number 15 15 15 15" was read
+  # as the N row, a fifth cluster on CJA 1996;43:362 - no header word, no
+  # cell - carried an N alone and appeared in the report as an arm.
+  keep <- used | (!is.na(armN[arms]) & !is.na(armName[arms]))
   if (!any(keep)) keep <- rep(TRUE, nArms)
 
   list(data       = DATA,

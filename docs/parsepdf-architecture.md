@@ -227,6 +227,9 @@ discrepancy rounding alone can explain.
   under a continuous row's cells is that row's N, arm by arm (Fujii 2002's "Last menstrual
   cycle" row, measured on 12/13/12/12 of the arms' 20); the merge then recognises the model's
   reading of that row by its values.
+- **The N row's label** (2026-09-25, issue 48): "n", "N", "No.", "Number", or "No./Number of"
+  + a group noun (patients … volunteers). An arm with an N but neither a name nor a cell is
+  dropped at assembly as a phantom, beside the label-column clusters that always were.
 
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 
