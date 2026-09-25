@@ -343,7 +343,17 @@ Reached only when `reviewFlags()` is non-empty and `ai != "never"`. Two sources:
 
 Replies are constrained by a JSON schema (`.ppTableSchemaJson()`), so there is no free-text
 parsing. Merging keeps every deterministic row and adds only variables the deterministic pass
-never produced.
+never produced. The identity of a variable is its values, not its label (the model names
+things its own way): since issue 37 (2026-09-25) a continuous variable is compared **arm by
+arm** — a model variable is a deterministic one when every deterministic arm tuple (MEAN,
+SD, SE) appears among the model's, N compared only where both sides have one; then the
+model's row is dropped, a deterministic arm with no N takes the model's N (flagged), and arms
+the deterministic pass did not read are appended under the *deterministic* label, tagged
+`ai`. Before that, a deterministic row that had read only some arms never matched the model's
+complete row and the variable survived twice (Anaesthesia2002_218, Akkuş 2020, every variable
+of PMID 9602596). Categorical variables are compared by their whole level signature, and a
+model level column whose case-folded name equals a deterministic column's is that column
+(Sener 2008: "male" beside "Male" had made two columns that normalise to one).
 
 ### 05e — The repeated-measures layout (2026-09-24, issue 34)
 

@@ -132,6 +132,54 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 37. The hybrid merge compares continuous variables arm by arm; a header's "(n = k)" belongs to the name on its left
+
+**Status: fixed on `fix/hybrid-merge-and-header-n`, 2026-09-25**, from
+the corpus session's findings F2, F3, G1 and H2 (Loadsman and Fujii
+corpora), each diagnosed read-only from its checkpoint.
+
+- **What was wrong.** The merge's value-signature dedupe (2026-08-25)
+  compared a variable's *complete* set of arm tuples, so a deterministic
+  row that had read only some arms — "Height; cm" with 2 of 3 arms on
+  `Anaesthesia2002_218`, "BMI kg/m" with 1 of 2 on `Akkuş 2020 JA` — never
+  matched the model's complete row, and the variable survived twice,
+  once under each name; on `PMID_9602596` (Fujii) every variable of the
+  table was doubled that way (21 duplicated cells of 27, p = 0.0146 with
+  each variable counted twice). A deterministic arm with no N never
+  matched a model arm with one (`Kulturoglu 2024 JA`), and the model's N
+  was not taken. A model level column differing from a deterministic one
+  only by case ("male" beside "Male", `Sener 2008 EJA`) made two columns
+  that normalise to one, and the validator refused the table. And the
+  header "RIB group (n=24)  PECS group (n=24)  Control group (n=24)",
+  left-aligned over columns narrower than the headings, put each
+  count's midpoint nearer the *next* column's centre: arm 1's N went to
+  arm 2, arm 2's to arm 3, arm 3's to the p-value column, and the stray
+  "24)" opened the next arm's name.
+- **What changed.** A model variable *is* a deterministic variable when
+  every deterministic arm tuple (MEAN, SD, SE) appears among the model's,
+  with N compared only where both sides have one; then the model's row is
+  dropped, a deterministic arm with no N takes the model's N (flagged
+  "taken from the model — verify against the header"), and arms the
+  deterministic pass did not read are appended under the *deterministic*
+  label, tagged "ai" in provenance. Categorical variables keep the
+  whole-signature rule. A model level column whose squished, case-folded
+  name equals a deterministic column's is that column. In the header, a
+  "(n = k)" is read for the column of the word before it — the last word
+  of the arm's name — and the count's own words are left out of every
+  arm name. Kulturoglu reads three arms of 24 and validates.
+- **Tests** (`tests/testthat/test-hybrid-merge-arms.R`, canned model
+  replies through the real merge): a same-arms duplicate under another
+  label is dropped while a genuinely new variable is added; a model row
+  with a third arm the page did not read joins the deterministic
+  variable and fills its missing Ns, with the flag and the provenance
+  tag; a "male"/"female" model row lands in the deterministic
+  "Male"/"Female" columns and the table validates; a synthetic header in
+  Kulturoglu's geometry gives all three Ns and no stray "24)".
+- Held, unchanged: the validator-level duplicate assertion (issue 36's
+  reasoning — the duplicates are sometimes the data).
+
+---
+
 ## 36. Rows that carry no sampling information are flagged at parse time: same value with zero dispersion in every arm, a median pinned at its quartile, and identical tuples under two labels
 
 **Status: fixed on `feat/degenerate-row-flag`, 2026-09-25**, from the
