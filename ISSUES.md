@@ -168,6 +168,47 @@ Loadsman PDFs (batch 27).
   announced-soup, glued-soup, minus-digit and Loadsman layout tests
   still pass.
 
+---
+
+## 122. A stray sign between two whole cells does not cost the first cell
+
+**Status: fixed on `fix/stray-sign-between-cells`, 2026-09-26**, a
+regression of issue 118 found by the corpus session's batch 27 AF4/AF5
+(CJA 1998, PMID 9717598, a scan whose text layer is scrambled; three
+arms of 20, 18 and 19).
+
+- **The defect.** The layer puts a plus-minus glyph of its own between
+  the first and second cells of four rows: "156 <bullet> 10 <pm> 155
+  <bullet> 9 154 <bullet> 8" on Height, and the same on both durations,
+  blood loss and fluid replacement. Issue 118's lookahead reads an SD
+  that is followed by a sign as the next cell's mean (the lost-SD line
+  "62 <pm> 61 <pm> 62 <pm> 9"), so it refused "156 <bullet> 10", left
+  "156" and "10" bare, and the first arm's cell went unread on four
+  rows; the fluid row, whose label is on the line above, was skipped
+  whole. On 0b7ccdd every cell read.
+- **Why the text cannot decide.** Both lines are the same sequence -
+  number, sign, number, sign, number, sign, number. Only the columns
+  tell them apart: a lost-SD line's bare means each stand in their own
+  arm column, while a refused whole cell leaves its mean and its SD
+  together in one column.
+- **What changed.** The lookahead is named (`.ppLostSdLookahead`) and
+  `.ppTokenizeLine()` can read trusting every SD (`trustSd = TRUE`).
+  After the columns settle (junk-column drops, header-count cut), a row
+  whose refusing reading puts two tokens in one column, and whose
+  trusting reading puts one token in each column it uses, is re-read
+  trusting, and the columns re-clustered. A lost-SD line keeps the
+  refusing reading.
+- **On the page.** All 21 cells of the seven continuous rows read in
+  three arms, nothing skipped; issue 118's page (9350368) and issue
+  119's (7614644) are unchanged.
+- **Tests** (`tests/testthat/test-stray-sign-between-cells.R`): a
+  rebuilt page on the scan's geometry with the stray sign on three rows
+  reads every cell (4 expectations fail on the unfixed code); the
+  lost-SD page still reads bare means and whole cells. The lost-SD,
+  tokenizer, mean-with-range, slot and Loadsman layout tests still pass.
+
+---
+
 ## 121. A token does not end inside a decimal number
 
 **Status: fixed on `fix/sd-number-not-cut-at-decimal`, 2026-09-26**, from

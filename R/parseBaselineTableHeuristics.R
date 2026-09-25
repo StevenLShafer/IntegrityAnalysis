@@ -861,6 +861,46 @@
     }
   }
 
+  # A STRAY SIGN BETWEEN TWO WHOLE CELLS (2026-09-26, ISSUES.md issue 122;
+  # CJA 1998, PMID 9717598, a scan - the corpus session's batch 27 AF4/AF5,
+  # a regression of issue 118). The scrambled text layer of that page puts
+  # a plus-minus glyph of its own between the first and second cells of
+  # four rows: "156 <bullet> 10 <pm> 155 <bullet> 9 154 <bullet> 8". Issue
+  # 118's lookahead reads an SD that is followed by a sign as the next
+  # cell's mean - the lost-SD line "62 <pm> 61 <pm> 62 <pm> 9" - and here
+  # it refused "156 <bullet> 10", leaving "156" and "10" bare and the
+  # first arm's cell unread (Height, both durations, blood loss; the
+  # fluid row was skipped whole). In the TEXT the two cases are the same
+  # sequence - number, sign, number, sign, number, sign, number - and
+  # only the columns tell them apart: the lost-SD line's bare means each
+  # stand in their own arm column, while a refused whole cell leaves its
+  # mean and its SD together in ONE column. So a row whose refusing
+  # reading puts two tokens in one column, and whose trusting reading
+  # (every SD taken as printed) puts one token in each column it uses,
+  # is re-read trusting. A lost-SD line keeps the refusing reading: its
+  # bare numbers sit one per column. The columns are the settled ones -
+  # after the junk-column drops and the header-count cut above - because
+  # a scrambled first column can merge two arms in the first clustering;
+  # a re-read row re-clusters them.
+  if (cols$n >= 2L) {
+    onePerColumn <- function(t) nrow(t) > 0 && !anyDuplicated(cols$assign(t$mid))
+    reread <- FALSE
+    for (i in dataIdx) {
+      t <- tokensByLine[[i]]
+      if (nrow(t) < 2L || !any(t$type == "plain") || onePerColumn(t)) next
+      alt <- .ppTokenizeLine(lines[[i]], trustSd = TRUE)
+      if (nrow(alt) >= nrow(t) || !onePerColumn(alt)) next
+      say("  \"", .ppSquish(substr(.ppLineText(lines[[i]]), 1, 40)), "\": a sign after an SD ",
+          "put two tokens in one column; read trusting the SD - ", nrow(alt), " cell(s).")
+      tokensByLine[[i]] <- alt
+      reread <- TRUE
+    }
+    if (reread) {
+      allToks <- do.call(rbind, tokensByLine[dataIdx])
+      cols    <- clusterCols(allToks$mid)
+    }
+  }
+
   # A STRATUM LINE (issue 55): a labelled "(n = k)" line after the first
   # header line - "Young patients (n = 75) (n = 25) (n = 25) (n = 25)" under
   # the column header's "(n = 50)" - is not the header, wherever it sits:
