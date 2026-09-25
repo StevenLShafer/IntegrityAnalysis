@@ -140,7 +140,8 @@
 .ppParseBlock <- function(lines, lineTexts, capIdx, trial, parenIsSD,
                           roundObsDelta, say,
                           textCands = NULL, textTotals = NULL,
-                          pctApprox = FALSE, textGroupN = NULL) {
+                          pctApprox = FALSE, textGroupN = NULL,
+                          docText = NULL) {
 
   # Footnote / end-of-table patterns. Checked BEFORE tokenizing, because a
   # footnote like "Values are mean +/- SD" itself contains a mean+/-SD-shaped
@@ -942,6 +943,37 @@
     for (k in which(newly))
       say("  arm ", valueArms[k], ": N = ", fill$N[k], " from ",
           fill$source[k])
+  }
+  # THE MODEL ROUTE'S LADDER, FOR A DETERMINISTIC TABLE WHOSE ARMS ALL LACK
+  # N (2026-09-25, ISSUES.md issue 84; the corpus session's batch 21). On
+  # the deterministic Carlisle pass 48 of the 55 validation failures were
+  # "missing N" - the table printed no arm sizes - and 39 of those 48
+  # state the sizes in the text: "divided into three groups of 20" (9)
+  # or "(n = 20)" beside the arm's name (30). The model-read table has
+  # had that recovery since issue 42, under one gate (every arm without
+  # N) and with the CONSORT flag on the result; the deterministic table
+  # gets the same here, after its own ladder: first the "k groups of n"
+  # statement, when every such statement for this arm count agrees, then
+  # the document-text ladder by arm name and by position. Each size
+  # carries its sentence, so reviewFlags() asks for it to be checked
+  # against the CONSORT diagram.
+  if (recoveryEligible && length(valueArms) && all(is.na(armN[valueArms]))) {
+    stated <- .ppGroupNFor(textGroupN, length(valueArms))
+    if (!is.na(stated$n)) {
+      armN[valueArms]      <- stated$n
+      armNSource[valueArms] <- paste0("document text (\"...", stated$snippet, "...\")")
+      say("  every arm: N = ", stated$n, " from the document text (\"...",
+          stated$snippet, "...\").")
+    } else if (!is.null(docText) && any(nzchar(trimws(docText)))) {
+      rec   <- .ppArmNFromDocument(armName[valueArms], docText)
+      newly <- !is.na(rec$N)
+      if (any(newly)) {
+        armN[valueArms][newly]       <- rec$N[newly]
+        armNSource[valueArms][newly] <- rec$source[newly]
+        for (k in which(newly))
+          say("  arm ", valueArms[k], ": N = ", rec$N[k], " from ", rec$source[k])
+      }
+    }
   }
 
   # ---- How to read "a (b)" cells ------------------------------------------
@@ -2648,7 +2680,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
                     textCands = textCands, textTotals = textTotals,
-                    pctApprox = pctApprox, textGroupN = textGroupN),
+                    pctApprox = pctApprox, textGroupN = textGroupN,
+                    docText = fullText),
       error = function(e) e)
     if (inherits(res, "error")) {
       say(whoIs, ": parse error - ", conditionMessage(res))
@@ -2736,7 +2769,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
                       trial, parenIsSD, roundObsDelta,
                       function(...) invisible(NULL),
                       textCands = textCands, textTotals = textTotals,
-                      pctApprox = pctApprox, textGroupN = textGroupN),
+                      pctApprox = pctApprox, textGroupN = textGroupN,
+                      docText = fullText),
         error = function(e) NULL)
       if (.ppParseScore(resExt) <= .ppParseScore(best)) break
       best      <- resExt

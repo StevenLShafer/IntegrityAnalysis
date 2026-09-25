@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 84. A deterministic table whose arms all lack N gets the model route's arm-size ladder
+
+**Status: implemented on `feat/deterministic-arm-n-from-text`,
+2026-09-25**, from the corpus session's batch 21 (the deterministic
+Carlisle-168 pass on adf5b75).
+
+- **The gap.** Of the 82 Carlisle trials the deterministic reader did not
+  analyse, 55 failed validation, and 48 of those for one reason: the
+  table printed no arm sizes. Thirty-nine of the 48 state the sizes in
+  the text - "divided into three groups of 20" (9) or "(n = 20)" beside
+  the arm's name (30). The model-read table has had that recovery since
+  issue 42 (`.ppArmNFromDocument()`, under the gate that every arm lacks
+  N, with the CONSORT flag on the result); the deterministic table had
+  only its own ladder inside the block walker, which reads "(n = k)"
+  mentions by arm name and by position but never the "k groups of n"
+  statement, and never the document-text ladder as a whole.
+- **What changed.** After the block walker's own ladder, a table whose
+  value arms all still lack N is given, in order: the "k groups of n"
+  statement when every such statement for this arm count agrees
+  (`.ppGroupNFor()`), then the document-text ladder by arm name and by
+  position (`.ppArmNFromDocument()` on the document's text, passed down
+  as `docText`). Each size carries its sentence as its source, so
+  `reviewFlags()` asks for it to be checked against the CONSORT diagram
+  exactly as for a model-read table. A table that prints any arm's size
+  is left as it was.
+- **Tests** (`tests/testthat/test-deterministic-arm-n-from-text.R`): a
+  rebuilt page with no printed sizes and "divided into two groups of 20"
+  in its text reads two arms of 20 with the sentence as source and the
+  CONSORT flag (fails on the unfixed code); "(n = 30)" beside each arm's
+  name; a table printing one arm's size is untouched. The arm-size and
+  layout tests still pass.
+
+---
+
 ## 79. A validator warning that lets the table pass
 
 **Status: implemented on `feat/validator-warning-code`, 2026-09-25**, to
