@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 97. "(n:25)" under the arm names is the arm-size line
+
+**Status: fixed on `feat/header-n-colon`, 2026-09-25**, from the corpus
+session's batch 24 AC3 (Fujii, thyroidectomy, PMID 9924225; "allocated
+randomly to one of four groups (n:25 for each)").
+
+- **The defect.** The table prints "Placebo 20 ug/kg 40 ug/kg 100
+  ug/kg" over "(n:25) (n:25) (n:25) (n:25)", with cells such as
+  "46.3(31-57)" set five points apart. Every header rule of the block
+  walker wanted "n =": the line was not a header, the header count of
+  issue 71 was nought, the gap rule fused four columns into two, and no
+  arm had its N. Two arms read where four are printed.
+- **What changed.** Each of the eight header-N patterns in
+  `parseBaselineTableHeuristics.R` accepts "n:" beside "n =" (as issue
+  89 did for the size statements in the text), and the header word
+  cleaner strips the colon as it strips the equals sign, so the arm
+  names carry no ":" residue.
+- **On the page.** Four arms of 25 - Placebo, 20, 40 and 100 ug/kg
+  (the superscript of "kg-1" prints as "91" in the text layer and stays
+  in the name) - with Height, Weight, the menstrual-cycle day and both
+  durations in all four; Age's range unusable as it should be.
+- **Tests** (`tests/testthat/test-header-n-colon.R`): a rebuilt page
+  with the "(n:25)" line and close-set cells reads four arms of 25, cut
+  by the header count, with clean names (2 expectations fail on the
+  unfixed code: two arms, N missing). The row-N, stratum, ordinal
+  header, partial-arm, header-count, gutter and Loadsman layout tests
+  still pass.
+
 ## 94. "Allocated to one of four groups of 15 patients each" states the arm sizes
 
 **Status: fixed on `feat/groups-of-n-patients-each`, 2026-09-25**, from

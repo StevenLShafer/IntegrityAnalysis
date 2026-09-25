@@ -232,7 +232,16 @@
       }
       break
     }
-    if (grepl("(?i)\\(?\\s*n\\s*=\\s*\\d+", txt, perl = TRUE)) {
+    # "(n:25)" - A COLON FOR THE EQUALS SIGN IN THE HEADER (2026-09-25,
+    # ISSUES.md issue 97; Fujii, PMID 9924225, the corpus session's batch
+    # 24 AC3): the arm-size line under the arm names reads "(n:25) (n:25)
+    # (n:25) (n:25)", and every header rule here wanted "n =". The line
+    # was not a header, the header count of issue 71 was nought, and four
+    # cells set five points apart fused into two columns; the sizes were
+    # never read. Each of the eight header-N patterns in this file now
+    # accepts "n:" beside "n =" (issue 89 did the same for the size
+    # statements in the text).
+    if (grepl("(?i)\\(?\\s*n\\s*[=:]\\s*\\d+", txt, perl = TRUE)) {
       kind[i] <- "header"
       next
     }
@@ -552,7 +561,7 @@
   }
   for (h in which(kind == "header")) {
     if (h >= max(firstData, firstMeasure)) break
-    kHeader <- max(kHeader, length(gregexpr("(?i)n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
+    kHeader <- max(kHeader, length(gregexpr("(?i)n\\s*[=:]\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
     if (kHeader > 0L) { kHeaderAt <- h; break }
   }
   if (kHeader >= 2L) for (i in dataIdx) {
@@ -703,9 +712,9 @@
   # A "[" before the size is cut like a "(".
   hdrAll <- which(kind == "header"); hdrAll <- hdrAll[hdrAll > capIdx]
   for (h in hdrAll) {
-    m1 <- regexpr("(?i)[(\\[]?\\s*n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)
+    m1 <- regexpr("(?i)[(\\[]?\\s*n\\s*[=:]\\s*\\d", lineTexts[h], perl = TRUE)
     if (m1 < 1) next
-    nSizes <- length(gregexpr("(?i)n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)[[1]])
+    nSizes <- length(gregexpr("(?i)n\\s*[=:]\\s*\\d", lineTexts[h], perl = TRUE)[[1]])
     lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(lineTexts[h], 1, m1 - 1)))
     isLabel <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
       !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
@@ -777,7 +786,7 @@
     joined    <- paste(d$text, collapse = " ")
     wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
     wordEnd   <- wordStart + nchar(d$text) - 1
-    m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
+    m <- gregexpr("(?i)n\\s*[=:]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
     if (m[1] == -1) next
     # "(n = k)" ANNOTATES THE NAME TO ITS LEFT (2026-09-25, issue 37;
     # Kulturoglu 2024 JA). "RIB group (n=24)  PECS group (n=24)  Control
@@ -818,7 +827,7 @@
   # COUNT TEXT is removed from it (CodeRabbit on PR #340: "Control(n=15)"
   # set as one word must keep "Control"). A word that was nothing but
   # count - "(n", "=", "24)" - becomes empty and contributes nothing.
-  stripCount <- function(x) .ppSquish(gsub("(?i)\\(?\\s*n\\b|=|[0-9][0-9,]*\\)?|^[()]$",
+  stripCount <- function(x) .ppSquish(gsub("(?i)\\(?\\s*n\\b|[=:]|[0-9][0-9,]*\\)?|^[()]$",
                                            "", x, perl = TRUE))
   for (i in headerIdx) {
     d    <- lines[[i]]
@@ -834,10 +843,10 @@
     for (k in seq_len(cols$n)) {
       wtxt <- paste(wordText[near & wCol == k & nzchar(wordText)], collapse = " ")
       if (nchar(wtxt) == 0) next
-      nMatch <- regmatches(wtxt, regexpr("(?i)n\\s*=\\s*(\\d+)", wtxt, perl = TRUE))
+      nMatch <- regmatches(wtxt, regexpr("(?i)n\\s*[=:]\\s*(\\d+)", wtxt, perl = TRUE))
       if (length(nMatch) > 0 && is.na(armN[k]))
         armN[k] <- as.integer(sub("\\D+", "", nMatch))
-      nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\s*=\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
+      nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\s*[=:]\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
       if (nchar(nameTxt) > 0)
         armName[k] <- .ppSquish(paste(ifelse(is.na(armName[k]), "", armName[k]), nameTxt))
     }
@@ -1221,7 +1230,7 @@
       joined <- paste(d$text, collapse = " ")
       wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
       wordEnd   <- wordStart + nchar(d$text) - 1
-      m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
+      m <- gregexpr("(?i)n\\s*[=:]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
       if (m[1] != -1) {
         lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(joined, 1, m[1] - 1)))
         # the per-arm sizes on the line; a match left of the first arm column
