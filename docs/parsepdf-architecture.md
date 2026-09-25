@@ -247,6 +247,10 @@ wrong entry would corrupt numbers invisibly.
   "Pre-fatigue" as the baseline column, names the arms from the legend "C = control", and takes a
   group's size from "(Group C, n = 10)" in the text.
 
+- **A table of changes from baseline is not the baseline table** (2026-09-25, issue 80): the
+  caption scorer marks down "changes ... from ...", "changes from baseline", "responses to" and
+  "during/after surgery" captions like outcome captions, unless the caption says baseline elsewhere.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
