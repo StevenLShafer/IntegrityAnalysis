@@ -283,6 +283,30 @@ arms n = 26/25).
 
 ---
 
+## 52. The same variable under a label suffix, one cell apart, is one variable in the hybrid merge
+
+**Status: fixed on `feat/label-suffix-merge-pairs`, 2026-09-25**, from the
+corpus session's batch 5 finding K3 (CJA 1997;44:390, Saitoh).
+
+- **The defect.** The table's "Weight" and the model's "Weight - kg" held
+  the same six cells but one: the page prints "57.9 ± 64", a missing
+  decimal point, which the table's reading takes as 6.4 and the model as
+  64.0. The value signature did not match, both variables survived, and
+  the variable was counted twice in the Stouffer combination.
+- **What changed.** In the arm-by-arm comparison, two variables whose
+  labels agree once a trailing unit or suffix is set aside (", kg",
+  "- kg", "(kg)", "; cm") and whose cells agree in at least half the arms
+  are one variable: the table's own reading is kept, the model's dropped,
+  and a flag names the pair and the number of cells that differ, so a
+  reviewer checks that cell against the printed table. A similar label
+  whose cells mostly differ is still a new variable.
+- **Tests** (`tests/testthat/test-label-suffix-merge-pairs.R`): with a
+  mocked model returning "Weight - kg" one cell apart from the table's
+  "Weight", the result holds Weight once with the table's cells and flags
+  the pair; a "Weight - kg" whose cells all differ is added as new.
+
+---
+
 ## 51. A continuous variable with fewer cells than the table has arms is a review flag, and a table the model completes reports itself as hybrid
 
 **Status: fixed on `feat/short-variable-flag`, 2026-09-25**, from the

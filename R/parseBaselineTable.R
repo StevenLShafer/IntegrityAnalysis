@@ -703,11 +703,33 @@ parseBaselineTable <- function(pdfFile,
   hetT  <- contOf(het$data); candT <- contOf(newRows)
   dropRows <- character(0); nFilled <- character(0); recovered <- character(0)
   rebuilt <- list()   # [[hn]] = the variable's lines, in the model's order
+  # THE SAME VARIABLE UNDER A LABEL SUFFIX, ONE CELL APART (2026-09-25,
+  # ISSUES.md issue 52; the corpus session's K3, CJA 1997;44:390): the
+  # table's "Weight" and the model's "Weight - kg" hold the same six cells
+  # but one - the page prints "57.9 ± 64", a missing decimal point, which
+  # the table's reading takes as 6.4 and the model as 64.0 - so the value
+  # signature does not match and both survived, the variable counted
+  # twice. Two variables whose labels agree once a trailing unit or
+  # suffix is set aside (", kg", "- kg", "(kg)", "; cm") and whose cells
+  # agree in at least half the arms are one variable: the table's own
+  # reading is kept, the model's dropped, and the disagreeing cell named
+  # for the reviewer.
+  labKey <- function(v) tolower(.ppSquish(sub("\\s*[,;:(\u2013\u2014-]\\s*[^,;:()]{1,12}\\)?\\s*$", "", v)))
+  labelPairs <- character(0)
   for (nm in names(candT)) {
     ci <- candT[[nm]]; ck <- valKey(newRows[ci, ])
     for (hn in names(hetT)) {
       hi <- hetT[[hn]]; hk <- valKey(het$data[hi, ])
-      if (!all(hk %in% ck)) next
+      if (!all(hk %in% ck)) {
+        if (labKey(nm) == labKey(hn) && length(hk) == length(ck) && mean(hk %in% ck) >= 0.5) {
+          dropRows   <- c(dropRows, nm)
+          labelPairs <- c(labelPairs, paste0("\"", nm, "\" = \"", hn, "\" (",
+                                             sum(!(hk %in% ck)), " of ", length(hk),
+                                             " cell(s) differ)"))
+          break
+        }
+        next
+      }
       used <- rep(FALSE, length(ci)); assign <- rep(NA_integer_, length(hi))
       for (r in seq_along(hi)) {
         cands <- which(!used & ck == hk[r])
@@ -775,6 +797,15 @@ parseBaselineTable <- function(pdfFile,
                              "from the model where the table's own reading had ",
                              "none - verify against the header: ",
                              paste(nFilled, collapse = ", ")))
+  }
+  if (length(labelPairs)) {
+    say("Dropping ", length(labelPairs), " model variable(s) that are the table's ",
+        "own under a label suffix, with a differing cell: ",
+        paste(labelPairs, collapse = "; "))
+    flags <- c(flags, paste0(length(labelPairs), " model variable(s) matched the ",
+                             "table's own reading under a label suffix but differ in ",
+                             "a cell - check that cell against the printed table: ",
+                             paste(labelPairs, collapse = "; ")))
   }
   if (length(recovered)) {
     say("Adding ", length(recovered), " arm line(s) from ", model, " under ",
