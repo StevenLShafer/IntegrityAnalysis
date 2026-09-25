@@ -220,6 +220,9 @@ wrong entry would corrupt numbers invisibly.
   A plain "+" is evidence for the column but is never repaired here (issue 45 decides it). A legend
   that names a letter as the sign ("Values are means F SD", issue 67) makes that letter the sign.
 
+- **A label may wrap twice** (2026-09-25, issue 69): the continuation rule absorbs up to
+  three lower-case or bracketed lines beneath a row's values, each tested as the first.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric

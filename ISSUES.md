@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 69. A row label that wraps onto two lines beneath its values
+
+**Status: fixed on `feat/label-wraps-twice`, 2026-09-25**, from the corpus
+session's batch 15 residue on Fujii 2006 (PMID 17126782, after issue 67).
+
+- **The defect.** "Propofol doses" over the values, then "given at", then
+  "first (mg)*": three lines for one name. The continuation rule of
+  2026-09-24 absorbed one line, and the row went out as "Propofol doses
+  given at". (The corpus session's guess, that the rule did not apply to
+  stratum-prefixed rows, was not it: the prefix is added afterwards; the
+  rule simply stopped after one line.)
+- **What changed.** The continuation rule loops: each further label-kind
+  line is tested as the first was (begins with a lower-case letter or a
+  bracket, at most 40 characters, no digit outside brackets, no indented
+  child beneath it) and absorbed, up to three continuations. A
+  capitalised line still ends the name. And `.ppCleanLabel()` drops a
+  footnote marker (*, dagger, double dagger, section sign) from the end
+  of a label before the unit rule, so "first (mg)*" loses its unit as
+  "first (mg)" does - the row is "Propofol doses given at first".
+- **Tests** (`tests/testthat/test-label-wraps-twice.R`): a rebuilt page
+  reads the three-line name whole (fails on the unfixed code); a
+  capitalised heading after a continuation is the next variable, with its
+  levels intact.
+
+---
+
 ## 67. A legend that names a letter as the plus-minus ("Values are means F SD") makes that letter the sign
 
 **Status: fixed on `feat/announced-letter-glyph`, 2026-09-25**, from the
