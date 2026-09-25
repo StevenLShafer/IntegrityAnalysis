@@ -170,6 +170,30 @@ the corpus session's batch 24 AC1's fifth paper (Fujii, Br J Anaesth
 
 ---
 
+## 100. "(n =3o)": the letter o for a zero after a glued equals sign
+
+**Status: fixed on `fix/size-zero-after-equals`, 2026-09-25**, from the
+corpus session's batch 24 (CJA 1998, PMID 9512856, a scan).
+
+- **The defect.** The page prints "(n = 3o) (n =3o)" over its two
+  arms. Issue 75's zero repair (`.ppRepairSizeZeros()`) knows the size
+  glued whole ("(n=3o)") and split three ways ("(n", "=", "3o)"); the
+  second form here - the equals sign glued to the size, "(n", "=3o)" -
+  was neither, so the first arm read 30 and the second read as an arm
+  of 3 named "o)".
+- **What changed.** A word that is an equals sign followed by digits
+  with a letter o among them, after a word that is "(n" or "n", is the
+  size; the o becomes a zero. Nothing else changes: "=7.4o" after "pH"
+  is untouched.
+- **On the page.** Two arms of 30; Age, Height and Weight in both.
+- **Tests** (`tests/testthat/test-size-zero-after-equals.R`): the helper
+  on all three forms with a non-size left alone; a rebuilt page with
+  "(n = 3o) (n =3o)" reads two arms of 30 (4 expectations fail on the
+  unfixed code). The zero-repair, utility and Loadsman layout tests
+  still pass.
+
+---
+
 ## 99. "(n = 20 of each)" is the size of every arm, and fills the arms a scanned header left blank
 
 **Status: fixed on `feat/n-of-each-statement`, 2026-09-25**, from the
@@ -204,6 +228,29 @@ corpus session's batch 24: the four CJA scans (PMIDs 9717598, 9350368,
 
 ---
 
+## 98. "(n ~ 20)": a tilde for the equals sign in the header
+
+**Status: fixed on `feat/header-n-tilde`, 2026-09-25**, from the corpus
+session's batch 24 (the CJA scans PMIDs 9717598, 9350368, 9836028).
+
+- **The defect.** The scanned header reads "(n = 20)" over one arm and
+  "(n ~ 20)" or "(n~20)" over the next: the OCR of an equals sign in a
+  small font is a tilde. The header rules of the block walker accept
+  "n =" and, since issue 97, "n:"; the tilde-headed arm had no N while
+  its neighbour did, and its name kept the "(n ~ 20)".
+- **What changed.** The eight header-N patterns accept "n ~" beside
+  "n =" and "n:", and the header word cleaner strips the tilde.
+- **On the pages.** 9717598's Group D, 9350368's second ET and LMA and
+  9836028's Group D all read 20 with clean names; with issue 99 as well
+  the count-less "(n = 20 of each)" no longer has to fill them.
+- **Tests** (`tests/testthat/test-header-n-tilde.R`): a rebuilt page
+  headed "(n ~ 20)" and "(n~20)" reads two arms of 20 with clean names
+  (2 expectations fail on the unfixed code). The colon-header, row-N,
+  stratum, ordinal-header, partial-arm, header-count, gutter and
+  Loadsman layout tests still pass.
+
+---
+
 ## 97. "(n:25)" under the arm names is the arm-size line
 
 **Status: fixed on `feat/header-n-colon`, 2026-09-25**, from the corpus
@@ -233,7 +280,6 @@ randomly to one of four groups (n:25 for each)").
   still pass.
 
 ---
-
 ## 96. A column of upright short words is not a rail
 
 **Status: fixed on `fix/rail-needs-tall-words`, 2026-09-25**, a
