@@ -7,7 +7,15 @@
   steveshafer.shinyapps.io; this page is just the frame.
 
   PROVENANCE: written by Claude Code (model Claude Fable 5), 2026-08-19
-  (ISSUES.md issue 2), modeled on the stanpumpr.io wrapper.
+  (ISSUES.md issue 2), modeled on the stanpumpr.io wrapper. Query-string
+  pass-through added 2026-09-25 (Claude Fable 5.1, at Steve's request):
+  the app reads a Monte Carlo seed from its own address (?seed=12345),
+  and a link to THIS page with that parameter used to lose it - the
+  iframe's src was fixed. The page's query string (and hash) is now
+  appended to the iframe src, so integrityanalysis.io/app/?seed=12345
+  reproduces a run exactly as the shinyapps address does. Only the
+  query string is forwarded, to a fixed origin; nothing on this page
+  reads or interprets it.
 -->
 <html lang="en">
 <head>
@@ -37,6 +45,16 @@
           title="IntegrityAnalysis"
           allow="fullscreen"></iframe>
 </div>
+<script>
+  // Forward this page's query string and hash to the app, so
+  // /app/?seed=12345 seeds the run (see the header comment).
+  (function () {
+    var f = document.getElementById("shinyapp");
+    var q = window.location.search || "";
+    var h = window.location.hash || "";
+    if (f && (q || h)) f.src = "https://steveshafer.shinyapps.io/IntegrityAnalysis/" + q + h;
+  })();
+</script>
 <noscript>
   <p style="font-family: sans-serif; padding: 2em;">
     This page embeds the IntegrityAnalysis application. If it does not

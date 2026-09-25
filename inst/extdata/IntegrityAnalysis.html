@@ -1202,13 +1202,23 @@ alarming ones get the precision a small p needs.</p>
 Carlo is not meant to give identical numbers from run to run: two runs
 of the same table differ within the reported Monte Carlo interval. To
 get identical numbers, set a seed by adding <code>?seed=12345</code>
-(any whole number from 1 to 2,147,483,647) to the page’s address before
-pressing Analyze; the log confirms it and the results workbook’s Summary
-sheet records it. The same table, the same seed and the same build then
-give the same numbers anywhere. Record the build with the seed (the
-Provenance sheet carries it), because a change to the simulation changes
-what a seed produces. A local copy can be started with a seed for every
-analysis: <code>IntegrityAnalysis::run_app(seed = 12345)</code>.</p>
+(any whole number from 1 to 2,147,483,647; the parameter’s name is read
+in any case, so <code>?SEED=12345</code> works too) to the page’s
+address before pressing Analyze — either address:
+<code>https://integrityanalysis.io/app/?seed=12345</code> or the app’s
+own
+<code>https://steveshafer.shinyapps.io/IntegrityAnalysis/?seed=12345</code>.
+Every press of Analyze in that session uses the seed; the log confirms
+it and the results workbook’s Summary sheet records it. The same table,
+the same seed and the same build then give the same numbers anywhere.
+Record the build with the seed (the Provenance sheet carries it),
+because a change to the simulation changes what a seed produces. To send
+a colleague a run they can reproduce, send them the <em>table</em> (the
+template workbook the app downloads), the seed and the build: the seed
+fixes the simulation, not the reading of a PDF, and a PDF read with the
+optional AI assist may carry rows their upload will not. A local copy
+can be started with a seed for every analysis:
+<code>IntegrityAnalysis::run_app(seed = 12345)</code>.</p>
 <p>With a finite number of replicates, the smallest honestly reportable
 p is bounded. No p is ever reported as zero: a row where no replicate
 matched is floored at 1 divided by (replicates + 1). A p is displayed as

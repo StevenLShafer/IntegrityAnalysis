@@ -702,7 +702,7 @@ app_server <- function(input, output, session) {
       # workbook's Summary sheet.
       qs <- tryCatch(shiny::parseQueryString(session$clientData$url_search),
                      error = function(e) list())
-      seedUsed <<- .iaSeedValue(qs$seed)
+      seedUsed <<- .iaSeedValue(.iaQuerySeed(qs))   # ?seed= in any case
       seedFrom <- "this page's address (?seed=)"
       if (is.null(seedUsed)) {
         seedUsed <<- .iaSeedValue(getOption("IntegrityAnalysis.seed"))

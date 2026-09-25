@@ -909,12 +909,20 @@ precision a small p needs.
 to give identical numbers from run to run: two runs of the same table
 differ within the reported Monte Carlo interval. To get identical
 numbers, set a seed by adding `?seed=12345` (any whole number from 1 to
-2,147,483,647) to the page's address before pressing Analyze; the log
-confirms it and the results workbook's Summary sheet records it. The
-same table, the same seed and the same build then give the same numbers
-anywhere. Record the build with the seed (the Provenance sheet carries it),
-because a change to the simulation changes what a seed produces. A
-local copy can be started with a seed for every analysis:
+2,147,483,647; the parameter's name is read in any case, so `?SEED=12345`
+works too) to the page's address before pressing Analyze — either
+address: `https://integrityanalysis.io/app/?seed=12345` or the app's own
+`https://steveshafer.shinyapps.io/IntegrityAnalysis/?seed=12345`. Every
+press of Analyze in that session uses the seed; the log confirms it and
+the results workbook's Summary sheet records it. The same table, the
+same seed and the same build then give the same numbers anywhere. Record
+the build with the seed (the Provenance sheet carries it), because a
+change to the simulation changes what a seed produces. To send a
+colleague a run they can reproduce, send them the *table* (the
+template workbook the app downloads), the seed and the build: the seed
+fixes the simulation, not the reading of a PDF, and a PDF read with the
+optional AI assist may carry rows their upload will not. A local copy
+can be started with a seed for every analysis:
 `IntegrityAnalysis::run_app(seed = 12345)`.
 
 With a finite number of replicates, the smallest honestly reportable p
