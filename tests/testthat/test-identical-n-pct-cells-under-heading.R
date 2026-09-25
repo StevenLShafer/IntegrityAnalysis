@@ -33,8 +33,11 @@ test_that("identical n (%) cells in both arms under a category heading read as c
   cont <- r$data[!is.na(r$data$MEAN), ]
   expect_setequal(unique(cont$ROW), c("Age", "Weight", "Duration of surgery"))
   expect_false(any(grepl("Lumbar", cont$ROW)))
-  lev <- r$data[grepl("Lumbar|Thoracic|Cervical", r$data$ROW), ]
+  # since issue 110 the levels are the COLUMNS of one "Surgical level"
+  # row; before it each was a binary row of its own - either way, counts
+  lev <- r$data[r$data$ROW == "Surgical level", ]
   expect_true(nrow(lev) >= 2)
+  expect_true(all(c("Lumbar", "Thoracic", "Cervical") %in% names(r$data)))
   expect_true(all(is.na(lev$MEAN)))
   expect_false(isTRUE(vdShared(r$data)$FAIL))
 })

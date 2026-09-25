@@ -132,6 +132,49 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 110. Levels under a plain category heading are one variable
+
+**Status: fixed on `fix/plain-heading-gathers-levels`, 2026-09-25**, from
+CodeRabbit's reading of PR #412 (issue 105) on Kilic 2023 (Cukurova Med
+J, Loadsman corpus, the corpus session's batch 25 AD1). Predates #412.
+
+- **The defect.** "Surgical level" over "L2-3 12(57.1) 12(57.1)", "L3-4
+  8(38.1) 7(33.3)", "L4-5 1(4.8) 2(9.5)": the block walker gathered n (%)
+  rows as the levels of one variable only under a heading that itself
+  announced the notation ("Race, N (%)"). Under a label-only heading each
+  level went out as a binary variable of its own with a complement
+  ("Lumbar / Not Lumbar", "Thoracic / Not Thoracic", ...) - three
+  two-level tables where the page prints one three-level table, every
+  complement counting the other levels' patients again. Percent-only
+  children ("Caucasian 45" under "Race, %") already gathered under a
+  plain heading; the n (%) cells did not.
+- **What changed.** An n (%) row under any open heading is a level of
+  that heading's variable unless its own label says "(%)" or "percent"
+  (its own variable, as before). A lone n (%) row with no heading keeps
+  the binary path. A heading that gathers only ONE level this way - a
+  section heading ("Demographic data") over a single "Sex (male) 12
+  (57)" line - is given back the binary form after the walk, since a
+  one-column category is degenerate and would be dropped at validation.
+- **What the rule cannot tell apart.** Non-exclusive binary rows under
+  a heading ("Comorbidities" over "Diabetes 12 (57)", "Hypertension 15
+  (71)") now gather as one variable, exactly as an announced
+  "Comorbidities, n (%)" heading always did. A candidate follow-up: a
+  block whose level counts exceed an arm's N is not a partition and
+  could be split back into binaries. The wide (workbook) reader keeps
+  its own announced-only rule (`parseWideTable.R`, `isChild`).
+- **On the page.** With issue 104 (the label whole) and 105 (identical
+  cells are evidence) the three level rows are one "Surgical level"
+  variable with levels L2-3 / L3-4 / L4-5 in two arms of 21.
+- **Tests** (`tests/testthat/test-plain-heading-gathers-levels.R`): a
+  rebuilt page reads the three levels as one variable (8 expectations
+  fail on the unfixed code); a lone n (%) row with no heading keeps its
+  complement; a section heading over one n (%) row yields the binary row,
+  not a one-level variable. The issue-104 test now looks for the level
+  labels among the columns. The degenerate-category, model count-row,
+  stratum, identical-cells and Loadsman layout tests still pass.
+
+---
+
 ## 109. A variable's own n printed per cell, in brackets
 
 **Status: fixed on `feat/per-cell-n-in-brackets`, 2026-09-25**, from the
