@@ -150,16 +150,24 @@ found while building the fixture of issue 120.
   decimal point (".", "," or the middle dot) followed by a digit as it
   refuses a digit: a token never ends inside a number. The regex then
   gives the cell up, leaving a bare mean the walker skips, as for whole
-  numbers.
+  numbers. And issue 118's refusal itself is narrowed: the SD is refused
+  only when the sign after it starts a cell - a number followed by a
+  sign, by a further number, or by the line's end. With the guard alone
+  "167.1 +/- 10.0 +/- 66.9 + l0.2" (the short-variable fixture's Height
+  line as the glyph repair leaves it; the second sign is the repair's
+  reading of the "l" of "l66.9") refused "167.1 +/- 10.0" and built a
+  cell "10.0 +/- 66.9" between two arm columns, which seeded a phantom
+  arm (the GitHub Actions check on PR #429); with the narrowing the
+  cell stands and "66.9" is bare.
 - **On the page.** Age reads 40.1 +/- 7.5, 43.2 +/- 8.3 and 42.5 +/- 9.4
   in the first, third and fourth arms; the second arm's Age is a bare
   mean and is left unread, as printed.
 - **Tests** (`tests/testthat/test-sd-number-not-cut-at-decimal.R`): the
   tokenizer on the Age line and its comma-decimal form; a rebuilt page
   with the lost decimal SD reads the three whole Age cells and no cell
-  cut from a neighbour's mean (9 of 11 expectations fail on the unfixed
-  code). The tokenizer, lost-SD, mean-with-range, slot and Loadsman
-  layout tests still pass.
+  cut from a neighbour's mean (9 of 13 expectations fail on the unfixed
+  code). The tokenizer, lost-SD, short-variable, mean-with-range, slot
+  and Loadsman layout tests still pass.
 
 ---
 

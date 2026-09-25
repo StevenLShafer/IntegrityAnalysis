@@ -1,7 +1,8 @@
 # test-sd-number-not-cut-at-decimal.R - a token never ends inside a
 # number: when the lookahead of issue 118 refuses a whole decimal number
 # as the SD, the regex does not shorten it to its integer part
-# (ISSUES.md issue 121, 2026-09-26).
+# (ISSUES.md issue 121, 2026-09-26); and the SD is refused only when a cell
+# follows the sign after it.
 #
 ############################################################################
 # Provenance                                                               #
@@ -29,6 +30,11 @@ test_that("a refused decimal SD leaves a bare mean, not a cell cut at the decima
   expect_identical(t$type, c("meanSD", "plain", "meanSD", "meanSD"))
   expect_identical(t$num2[t$type == "meanSD"], c(7.5, 8.3, 9.4))
   # whole numbers were already safe; a comma decimal is refused the same way
+  # a stray sign after a whole SD with no cell behind it: the cell stands
+  # (the short-variable fixture's Height line as the glyph repair leaves it)
+  t <- tokLine(paste("167.1", pm, "10.0", pm, "66.9 + l0.2 165.5", pm, "10.9"))
+  expect_identical(t$type, c("meanSD", "plain", "meanSD"))
+  expect_identical(t$num2[1], 10)
   t <- tokLine(paste("62", pm, "61", pm, "62", pm, "9"))
   expect_identical(t$type, c("plain", "plain", "meanSD"))
   t <- tokLine(paste("45,3", pm, "43,2", pm, "8,3"))
