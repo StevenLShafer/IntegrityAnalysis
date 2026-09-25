@@ -404,6 +404,9 @@ inert without the model.
   every continuous variable with fewer cells than the table has arms; the flag gates the
   consult, the arm-by-arm merge fills the cells from the model's reading, and a table so
   completed reports itself as "hybrid" with the model's notes and reply.
+- **A label-suffix pair one cell apart is one variable** (2026-09-25, issue 52). The table's
+  "Weight" and the model's "Weight - kg" agreeing in at least half the arms are one variable:
+  the table's reading is kept, the model's dropped, and the differing cell is flagged.
 - **The reply rides along verbatim** (2026-09-25, issue 43). The call runs with thinking on,
   which fixes the temperature at 1, so two runs can disagree; `parseBaselineTableAI()` now
   returns the reply text as `aiReply` so a corpus checkpoint can keep it and a disagreement can
