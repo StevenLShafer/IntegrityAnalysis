@@ -232,6 +232,9 @@ wrong entry would corrupt numbers invisibly.
   the "(n = k)" header names more arms than the gap rule found, the full rows beneath it are cut
   at the k - 1 widest gaps, if those are real column gaps wider than any column's spread.
 
+- **A stratum's name is at the row-label margin** (2026-09-25, issue 73): a labelled "(n = k)"
+  line whose name begins inside an arm column is a wrapped arm name's second line, not a stratum.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
