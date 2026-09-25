@@ -132,6 +132,52 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 95. Long layout: the group column without a header word, and blocks that lost their numerals
+
+**Status: fixed on `feat/long-layout-group-column-by-labels`, 2026-09-25**,
+from the corpus session's batch 24 AC1: five canine papers (Fujii, PMIDs
+10589648, 10475325, 11004073, 11573601, 10958102), "three groups of 10"
+or "of seven", all failing on missing N.
+
+- **The defect.** Two things kept the repeated-measures reader (issue
+  34) from these pages. The header line names the timepoints but not
+  the group column - "Baseline 60 min", "Variable Baseline Fatigued" -
+  and the gate wanted both words, so the wide reader took the two
+  timepoints for arms and each group row for a variable ("I", "II",
+  "III", "I 2" ... thirty-six rows, N nowhere). And the text layer
+  keeps the roman numerals only on the first variable's rows: every
+  later block - "MAP (mm Hg)" over three or four value rows - lost all
+  of them, so even with the column found, most rows had no index and
+  the most-lines-fit rule refused the layout.
+- **What changed.** When a header line names a Baseline column but no
+  Group column, the group column is found from the labels themselves:
+  group words (a roman numeral, a capital letter or two, a small
+  integer) stacked at one x on four or more lines beneath the header,
+  left of Baseline. And the lost-label rule of issue 88 is widened: a
+  value row with no group word continues an open run (the next index)
+  or starts a new one at I when the previous run is complete; only a
+  row with a value under Baseline and a label of at most five words is
+  indexed this way, so a subscript on a line of its own or a Results
+  sentence in a full-width block is not. The 1..k run rule and the
+  most-lines-fit rule still judge the whole, and a wide table whose
+  level rows stack "I", "II", "III" once fails them as before.
+- **On the pages** (with the branch alone): 10475325 reads four arms
+  of 10 with six variables and 10958102 three arms of 7 with eleven;
+  10589648 and 11004073 read their Table 1 as long layout too but lose
+  the candidate contest to a wide reading until the rows are named
+  (issue 91 names them; the scorer of issue 46 credits no "Unnamed"
+  row), so those two land when both fixes are on main. 11573601's
+  header carries "Group" and its rows keep their numerals; it fails
+  elsewhere (its legend fills the arm names with caption text) and is
+  a separate matter.
+- **Tests** (`tests/testthat/test-long-layout-group-column-by-labels.R`):
+  a rebuilt page with no Group header, a lost II in the first block and
+  two later blocks without numerals reads four arms of ten and three
+  variables from the Baseline column (9 expectations fail on the
+  unfixed code); a wide table with a Baseline column and one stack of
+  roman level rows is left to the wide reader. The long-layout, canine,
+  letter-group and Loadsman layout tests still pass.
+
 ## 93. A figure's axis under the table is not a row, and the rail's short words go with the rail
 
 **Status: fixed on `fix/rail-strip-keeps-column`, 2026-09-25**, a
