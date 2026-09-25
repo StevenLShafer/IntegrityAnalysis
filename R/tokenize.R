@@ -36,11 +36,13 @@
 # than split into "4" and ",335".
 .ppNUM <- "[<>]?-?\\d+(?:[.,\u00b7]\\d+)*"
 
-# The lookahead of issue 118 (below), named so that the block walker can ask
-# for the reading WITHOUT it: a stray sign glyph between two whole cells
-# (issue 122) looks exactly like a lost SD in the text, and only the
-# column geometry tells them apart.
-.ppLostSdLookahead <- "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe))"
+# The lookahead of issues 118 and 121 (below), named so that the block
+# walker can ask for the reading WITHOUT it: a stray sign glyph between two
+# whole cells (issue 122) looks exactly like a lost SD in the text, and only
+# the column geometry tells them apart.
+.ppLostSdLookahead <- paste0(
+  "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", .ppNUM,
+  "(?:\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)|\\s+", .ppNUM, "|\\s*$))")
 
 .ppTokenRegex <- local({
   NUM <- .ppNUM
@@ -78,6 +80,18 @@
     # followed by a sign glyph is the next cell's mean: the lookahead
     # refuses it, and the two signs without an SD leave two bare numbers,
     # which the walker skips, and two cells, which it reads.
+    # ... WHEN WHAT FOLLOWS IS A CELL (2026-09-26, ISSUES.md issue 121). The
+    # refusal is right when the sign after the SD starts another cell -
+    # "62 <pm> 61 <pm> 62 <pm> 9": the number after that sign is itself
+    # followed by a sign, or by a further number ("45.3 <pm> 43.2 <pm> 8.3
+    # 42.5 <pm> 9.4", where 8.3 is the SD of 43.2), or ends the line. It
+    # is wrong when the sign after the SD is a stray of the OCR's and what
+    # follows it is not a cell: "167.1 <pm> 10.0 <pm> 66.9 + l0.2" (the
+    # glyph repair's "<pm>" for the "l" of "l66.9") - refusing "167.1 <pm>
+    # 10.0" there built a cell "10.0 <pm> 66.9" that stood between two
+    # arm columns and seeded a phantom arm. So the SD is refused only
+    # when the sign, a number, and then a sign, a number or the line's
+    # end follow it.
     "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
                      .ppLostSdLookahead,
                      "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
@@ -96,7 +110,17 @@
     "|(?<fraction>", "\\d+(?:\\s*/\\s*\\d+)+)",
     "|(?<pctOnly>",  NUM, "\\s*%)",
     "|(?<plain>",    NUM, ")",
-    ")(?![A-Za-z0-9])"
+    # A TOKEN DOES NOT END INSIDE A NUMBER (2026-09-26, ISSUES.md issue
+    # 121; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3):
+    # the guard refused a digit after the token, so "62 <pm> 61 <pm>"
+    # could not shorten to "62 <pm> 6" when issue 118's lookahead refused
+    # the whole "61" - but it did not refuse a DECIMAL POINT, and "45.3
+    # <pm> 43.2 <pm> 8.3" backtracked to "45.3 <pm> 43", the ".2" left
+    # behind, and the Age row scored on an SD of 43. A token that would
+    # end before a decimal point and a digit ends inside a number and is
+    # refused with the digit; the regex then gives up the cell, as it
+    # does for whole numbers.
+    ")(?![A-Za-z0-9]|[.,\u00b7][0-9])"
   )
 })
 
@@ -122,10 +146,10 @@
 # thousand tokens, a data frame each, 0.84 s a cell - and a workbook of
 # 49,900 such cells, within every other bound, was eleven hours). One
 # match is one scan of the cell whatever it contains.
-# The same pattern trusting every SD - issue 118's lookahead removed. The
-# block walker re-reads a row with it when the refusing reading puts two
-# tokens in one arm column and the trusting reading puts one in each
-# (2026-09-26, ISSUES.md issue 122).
+# The same pattern trusting every SD - the lookahead of issues 118 and 121
+# removed. The block walker re-reads a row with it when the refusing reading
+# puts two tokens in one arm column and the trusting reading puts one in
+# each (2026-09-26, ISSUES.md issue 122).
 .ppTokenRegexTrusting <- sub(.ppLostSdLookahead, "", .ppTokenRegex, fixed = TRUE)
 
 # `trustSd = TRUE` reads with .ppTokenRegexTrusting (issue 122).
