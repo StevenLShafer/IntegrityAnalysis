@@ -228,6 +228,10 @@ wrong entry would corrupt numbers invisibly.
   label directly under the line that opened a heading takes that line as its name; the unit
   line beneath is absorbed as the wrapped second line.
 
+- **The header's arm count is a second opinion on the columns** (2026-09-25, issue 71): when
+  the "(n = k)" header names more arms than the gap rule found, the full rows beneath it are cut
+  at the k - 1 widest gaps, if those are real column gaps wider than any column's spread.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
