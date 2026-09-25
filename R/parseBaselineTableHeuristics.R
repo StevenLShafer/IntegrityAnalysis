@@ -321,7 +321,16 @@
               !is.na(t$num1[j]) & t$num1[j] >= 0 &
               !is.na(t$num1[j + 1]) & t$num1[j + 1] >= 0]
     pair <- pair[!(pair - 1) %in% pair]          # a token joins one pair only
-    if (length(pair) < (if (plusSD) 2 else 1)) next
+    # THE TWO-CELL FLOOR COUNTS THE CELLS ALREADY READ (2026-09-25, ISSUES.md
+    # issue 82; Saitoh, CJA 1995;42:992, the corpus session's batch 19 Y4).
+    # Issue 77's slot repair turns most of a line's plus signs into the
+    # sign before this rule runs, leaving one "49.4 + 5.9" whose column no
+    # other line marks; counted alone it fell under the announced floor
+    # of two and the cell was lost - the sixth arm of Age gone on a page
+    # issue 65 had made whole. The floor guards against a lone annotation
+    # on a line with NO cells; a line that already holds cells is a data
+    # line, and its remaining plus pair is one more.
+    if (!length(pair) || length(pair) + sum(t$type == "meanSD") < 2L) next
     t$type[pair] <- "meanSD"
     t$text[pair] <- paste(t$text[pair], "+", t$text[pair + 1])
     t$num2[pair] <- t$num1[pair + 1]
