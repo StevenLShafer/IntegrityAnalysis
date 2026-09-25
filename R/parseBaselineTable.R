@@ -54,6 +54,35 @@
   unname(isOutcome)
 }
 
+# The refusal applied to a MODEL-ONLY result (2026-09-25, ISSUES.md issues
+# 64 and 66). With no deterministic table beside it there is no block
+# text, so the vocabulary alone decides: a refused row leaves $data and
+# $provenance for $skipped with its reason, and a flag names it. Issue 64
+# put this on the retry route (the deterministic pass failed and the model
+# read the page alone); issue 66 shares it with the explicit ai = "always"
+# route, which the corpus batches use as their retry - on that route the
+# same page (PMID 9542558) kept Table 2's operative management, duration
+# of surgery to tubal ligation, and p moved from 0.059 to 7e-05.
+.ppRefuseModelOutcomes <- function(out, say = function(...) invisible(NULL)) {
+  if (!identical(out$engine, "ai") || is.null(out$data) || nrow(out$data) == 0) return(out)
+  isOutcome <- .ppOutcomeLabel(out$data$ROW, NULL)
+  if (!any(isOutcome)) return(out)
+  bad <- unique(out$data$ROW[isOutcome])
+  say("Refusing ", length(bad), " model variable(s) whose label names an ",
+      "outcome, not a baseline characteristic: ", paste(bad, collapse = ", "))
+  out$skipped <- rbind(out$skipped,
+                       data.frame(label = bad,
+                                  reason = "model variable with outcome vocabulary - not a baseline characteristic; enter by hand if it is one",
+                                  text = "", stringsAsFactors = FALSE))
+  out$flags <- c(out$flags, paste0(length(bad), " model variable(s) refused as ",
+                                   "outcomes (see $skipped): ", paste(bad, collapse = ", ")))
+  out$data <- out$data[!isOutcome, , drop = FALSE]
+  rownames(out$data) <- NULL
+  if (!is.null(out$provenance))
+    out$provenance <- out$provenance[!out$provenance$ROW %in% bad, , drop = FALSE]
+  out
+}
+
 reviewFlags <- function(x) {
   stopifnot(inherits(x, "ParsePDFTable"))
   flags <- character(0)
@@ -293,6 +322,9 @@ reviewFlags <- function(x) {
 #'   mechanical, or when there is no API key.
 #' * `"always"` skips the deterministic pass and asks the model to read the
 #'   whole table. Useful for comparing the two engines against each other.
+#'   A model variable whose label names an outcome rather than a baseline
+#'   characteristic is refused on this route as on the fallback (it goes to
+#'   `$skipped` with its reason, and a flag names it).
 #'
 #' `.docx` and `.xml` are an exception to all three: the AI engine reads
 #' RENDERED PDF PAGES, which neither format has. For those two, `ai` is
@@ -472,12 +504,18 @@ parseBaselineTable <- function(pdfFile,
   }
 
   # ---- AI-only path -------------------------------------------------------
+  # THE OUTCOME REFUSAL APPLIES HERE TOO (2026-09-25, ISSUES.md issue 66; the
+  # corpus session's batch 13 R2, PMID 9542558): the batches use this route
+  # as their retry, and on it the model's reading kept Table 2's operative
+  # management beside Table 1's rows. Same helper as the retry route.
   if (ai == "always")
-    return(parseBaselineTableAI(pdfFile, trial = trial, pages = pages,
-                                model = model, effort = effort,
-                                maxTokens = maxTokens,
-                                roundObsDelta = roundObsDelta,
-                                apiKey = apiKey, quiet = quiet))
+    return(.ppRefuseModelOutcomes(
+      parseBaselineTableAI(pdfFile, trial = trial, pages = pages,
+                           model = model, effort = effort,
+                           maxTokens = maxTokens,
+                           roundObsDelta = roundObsDelta,
+                           apiKey = apiKey, quiet = quiet),
+      say))
 
   # ---- Deterministic pass, always first -----------------------------------
   het <- tryCatch(
@@ -603,24 +641,8 @@ parseBaselineTable <- function(pdfFile,
     # Table 1's rows, and nothing refused them (p 0.24 -> 0.039). There is
     # no block text on this route, so the vocabulary alone decides; a
     # refused row goes to $skipped with its reason and a flag names it.
-    if (identical(out$engine, "ai") && nrow(out$data) > 0) {
-      isOutcome <- .ppOutcomeLabel(out$data$ROW, NULL)
-      if (any(isOutcome)) {
-        bad <- unique(out$data$ROW[isOutcome])
-        say("Refusing ", length(bad), " model variable(s) whose label names an ",
-            "outcome, not a baseline characteristic: ", paste(bad, collapse = ", "))
-        out$skipped <- rbind(out$skipped,
-                             data.frame(label = bad,
-                                        reason = "model variable with outcome vocabulary - not a baseline characteristic; enter by hand if it is one",
-                                        text = "", stringsAsFactors = FALSE))
-        out$flags <- c(out$flags, paste0(length(bad), " model variable(s) refused as ",
-                                         "outcomes (see $skipped): ", paste(bad, collapse = ", ")))
-        out$data <- out$data[!isOutcome, , drop = FALSE]
-        rownames(out$data) <- NULL
-        if (!is.null(out$provenance))
-          out$provenance <- out$provenance[!out$provenance$ROW %in% bad, , drop = FALSE]
-      }
-    }
+    # Shared with the explicit ai = "always" route since issue 66.
+    out <- .ppRefuseModelOutcomes(out, say)
     return(out)
   }
 
