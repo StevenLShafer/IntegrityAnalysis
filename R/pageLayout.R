@@ -246,8 +246,19 @@
   for (x0 in unique(pageWords$x[narrow])) {
     g <- which(narrow & abs(pageWords$x - x0) <= 1)
     if (length(g) >= 4 &&
-        max(bot[g]) - min(top[g]) > 0.3 * pageSpan)
+        max(bot[g]) - min(top[g]) > 0.3 * pageSpan) {
       drop[g] <- TRUE
+      # THE RAIL'S SHORT WORDS GO WITH IT (2026-09-25, issue 93; BJA
+      # 1995;74:293): "at", "on", "by", "12," of "... at University of
+      # Sydney Library on April 12, 2015" are two or three letters set
+      # sideways - as wide as they are tall, so not narrow by either
+      # test - and they stayed, one of them glued to a row label as
+      # "Weight (kg) at". A word at the rail's own x, within the rail's
+      # vertical span, is part of the rail whatever its shape.
+      inSpan <- abs(pageWords$x - x0) <= 1 &
+        top >= min(top[g]) - 1 & bot <= max(bot[g]) + 1
+      drop[inSpan] <- TRUE
+    }
   }
   if (!any(drop)) return(pageWords)
   pageWords[!drop, , drop = FALSE]
