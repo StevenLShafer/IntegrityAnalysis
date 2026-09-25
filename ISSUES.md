@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 61. The outcome refusal spares a model row that the chosen table itself prints
+
+**Status: fixed on `feat/refusal-spares-printed-rows`, 2026-09-25**, from
+the corpus session's batch 9 finding O1 (Polat 2015 KJMS; Sakızcı-Uyar
+2021 EJA).
+
+- **The defect.** Issue 54 refuses a model-added variable whose label
+  names an outcome, meant for rows the model brings in from another
+  table. Both papers print "Duration of anesthesia" and "Duration of
+  surgery" in their own Table 1; the deterministic pass skipped them (a
+  median, a cell it could not read), the model supplied them, and the
+  refusal threw them out: Polat rested on Age and BMI (P_FULL 0.60 →
+  0.16), Sakızcı-Uyar lost two of its rows.
+- **What changed.** The block parser returns the text of its own block
+  (caption to last data row) as `blockText`, the driver and the hybrid
+  assembly carry it, and the refusal spares a model label whose first two
+  words of three letters or more appear on one line of that block: the
+  engine reads what the caption's table prints, on either route. Whether
+  a post-randomisation duration printed in a baseline table belongs in
+  the screen is a policy question, held for Steve.
+- **Tests** (`tests/testthat/test-refusal-spares-printed-rows.R`): with a
+  mocked model supplying the table's own skipped "Duration of surgery
+  (min)" and a "Time to first analgesic request" from elsewhere, the
+  first is kept and the second refused; the block text rides on the
+  result.
+
+---
+
 ## 60. The row flags are recomputed on the merged table, so a degenerate row the model adds is named
 
 **Status: fixed on `feat/post-merge-row-flags`, 2026-09-25**, from the
