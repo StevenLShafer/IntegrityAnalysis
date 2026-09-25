@@ -150,13 +150,19 @@ a regression of issue 112 found by the corpus session's batch 27 AF2
 - **What changed.** The join applies only when the row carries a
   continuous cell (mean +/- SD, mean (SD), median [range]). A label's
   wrapped first line stands over such a row; a heading stands over
-  levels, whose cells are bare counts.
+  levels, whose cells are bare counts. An "a (b)" cell counts as
+  continuous only when it does not check as a count and its percentage
+  of the arm's N ("a -blocker 1 (6.7)" in an arm of 15 is a level;
+  "Height 157 (11)" is not) - the n (%) signature the cell decision
+  uses, applied cell by cell (CodeRabbit on PR #425).
 - **On the page.** Age, Height and Weight in three arms of 15 again,
   the antihypertensive levels as counts under their heading.
 - **Tests** (`tests/testthat/test-label-fragment-only-continuous-rows.R`):
   a rebuilt page with the heading over an OCR-lowercased level beside
   continuous rows reads the continuous rows and the levels as counts
-  (3 expectations fail on the unfixed code). The label-fragment,
+  (3 expectations fail on the unfixed code); the same page with the
+  levels printed as n (%) keeps the heading out of the level's label
+  (1 expectation fails without the cell check). The label-fragment,
   label-above-values, label-wrap, category and Loadsman layout tests
   still pass.
 
