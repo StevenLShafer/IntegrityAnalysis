@@ -164,6 +164,68 @@ corpus session's batch 20 finding Z1 (Saitoh, Acta Anaesthesiol Scand
 
 ---
 
+## 84. A deterministic table whose arms all lack N gets the model route's arm-size ladder
+
+**Status: implemented on `feat/deterministic-arm-n-from-text`,
+2026-09-25**, from the corpus session's batch 21 (the deterministic
+Carlisle-168 pass on adf5b75).
+
+- **The gap.** Of the 82 Carlisle trials the deterministic reader did not
+  analyse, 55 failed validation, and 48 of those for one reason: the
+  table printed no arm sizes. Thirty-nine of the 48 state the sizes in
+  the text - "divided into three groups of 20" (9) or "(n = 20)" beside
+  the arm's name (30). The model-read table has had that recovery since
+  issue 42 (`.ppArmNFromDocument()`, under the gate that every arm lacks
+  N, with the CONSORT flag on the result); the deterministic table had
+  only its own ladder inside the block walker, which reads "(n = k)"
+  mentions by arm name and by position but never the "k groups of n"
+  statement, and never the document-text ladder as a whole.
+- **What changed.** After the block walker's own ladder, a table whose
+  value arms all still lack N is given, in order: the "k groups of n"
+  statement when every such statement for this arm count agrees
+  (`.ppGroupNFor()`), then the document-text ladder by arm name and by
+  position (`.ppArmNFromDocument()` on the document's text, passed down
+  as `docText`). Each size carries its sentence as its source, so
+  `reviewFlags()` asks for it to be checked against the CONSORT diagram
+  exactly as for a model-read table. A table that prints any arm's size
+  is left as it was.
+- **Tests** (`tests/testthat/test-deterministic-arm-n-from-text.R`): a
+  rebuilt page with no printed sizes and "divided into two groups of 20"
+  in its text reads two arms of 20 with the sentence as source and the
+  CONSORT flag (fails on the unfixed code); "(n = 30)" beside each arm's
+  name; a table printing one arm's size is untouched. The arm-size and
+  layout tests still pass.
+
+---
+
+## 82. The announced "mean + SD" rule's two-cell floor counts the cells already read
+
+**Status: fixed on `fix/plus-rule-counts-read-cells`, 2026-09-25**, from
+the corpus session's batch 19 finding Y4 (Saitoh, Can J Anaesth
+1995;42:992; Loadsman corpus, the six-arm page of issue 65).
+
+- **The defect.** A regression of issue 77. The slot repair now turns a
+  plain "+" into the sign at any slot under an announced soup, and on
+  that page it read five of Age's six plus signs before the block
+  walker's announced "mean + SD" rule ran; the sixth, "49.4 + 5.9", sat
+  in a column no other line marked (its neighbours' signs were soup) and
+  was left to that rule, which requires at least two plus pairs on the
+  line. Counted alone it fell under the floor, its two numbers stayed
+  plain, and the fifth arm's Age was lost - on a page issue 65 had made
+  whole, with no flag but "Age (5 of 6)".
+- **What changed.** The floor counts the cells the line already holds:
+  a lone plus pair beside one or more mean +/- SD cells is one more cell,
+  while a lone pair on a line with no cell at all is still refused (the
+  lone annotation the floor exists for). A line with no pair is left as
+  it is, as before.
+- **Tests** (`tests/testthat/test-plus-rule-counts-read-cells.R`): a
+  rebuilt six-arm page whose fifth column no other line marks reads every
+  arm of Age (fails on the unfixed code); a lone "5 + 2" on a line with no
+  cell, off the sign columns, is still refused under an announced "mean +
+  SD". The issue 45, 65, 70 and 77 tests still pass.
+
+---
+
 ## 79. A validator warning that lets the table pass
 
 **Status: implemented on `feat/validator-warning-code`, 2026-09-25**, to

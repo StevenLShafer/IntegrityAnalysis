@@ -140,7 +140,8 @@
 .ppParseBlock <- function(lines, lineTexts, capIdx, trial, parenIsSD,
                           roundObsDelta, say,
                           textCands = NULL, textTotals = NULL,
-                          pctApprox = FALSE, textGroupN = NULL) {
+                          pctApprox = FALSE, textGroupN = NULL,
+                          docText = NULL) {
 
   # Footnote / end-of-table patterns. Checked BEFORE tokenizing, because a
   # footnote like "Values are mean +/- SD" itself contains a mean+/-SD-shaped
@@ -329,7 +330,16 @@
               !is.na(t$num1[j]) & t$num1[j] >= 0 &
               !is.na(t$num1[j + 1]) & t$num1[j + 1] >= 0]
     pair <- pair[!(pair - 1) %in% pair]          # a token joins one pair only
-    if (length(pair) < (if (plusSD) 2 else 1)) next
+    # THE TWO-CELL FLOOR COUNTS THE CELLS ALREADY READ (2026-09-25, ISSUES.md
+    # issue 82; Saitoh, CJA 1995;42:992, the corpus session's batch 19 Y4).
+    # Issue 77's slot repair turns most of a line's plus signs into the
+    # sign before this rule runs, leaving one "49.4 + 5.9" whose column no
+    # other line marks; counted alone it fell under the announced floor
+    # of two and the cell was lost - the sixth arm of Age gone on a page
+    # issue 65 had made whole. The floor guards against a lone annotation
+    # on a line with NO cells; a line that already holds cells is a data
+    # line, and its remaining plus pair is one more.
+    if (!length(pair) || length(pair) + sum(t$type == "meanSD") < 2L) next
     t$type[pair] <- "meanSD"
     t$text[pair] <- paste(t$text[pair], "+", t$text[pair + 1])
     t$num2[pair] <- t$num1[pair + 1]
@@ -951,6 +961,37 @@
     for (k in which(newly))
       say("  arm ", valueArms[k], ": N = ", fill$N[k], " from ",
           fill$source[k])
+  }
+  # THE MODEL ROUTE'S LADDER, FOR A DETERMINISTIC TABLE WHOSE ARMS ALL LACK
+  # N (2026-09-25, ISSUES.md issue 84; the corpus session's batch 21). On
+  # the deterministic Carlisle pass 48 of the 55 validation failures were
+  # "missing N" - the table printed no arm sizes - and 39 of those 48
+  # state the sizes in the text: "divided into three groups of 20" (9)
+  # or "(n = 20)" beside the arm's name (30). The model-read table has
+  # had that recovery since issue 42, under one gate (every arm without
+  # N) and with the CONSORT flag on the result; the deterministic table
+  # gets the same here, after its own ladder: first the "k groups of n"
+  # statement, when every such statement for this arm count agrees, then
+  # the document-text ladder by arm name and by position. Each size
+  # carries its sentence, so reviewFlags() asks for it to be checked
+  # against the CONSORT diagram.
+  if (recoveryEligible && length(valueArms) && all(is.na(armN[valueArms]))) {
+    stated <- .ppGroupNFor(textGroupN, length(valueArms))
+    if (!is.na(stated$n)) {
+      armN[valueArms]      <- stated$n
+      armNSource[valueArms] <- paste0("document text (\"...", stated$snippet, "...\")")
+      say("  every arm: N = ", stated$n, " from the document text (\"...",
+          stated$snippet, "...\").")
+    } else if (!is.null(docText) && any(nzchar(trimws(docText)))) {
+      rec   <- .ppArmNFromDocument(armName[valueArms], docText)
+      newly <- !is.na(rec$N)
+      if (any(newly)) {
+        armN[valueArms][newly]       <- rec$N[newly]
+        armNSource[valueArms][newly] <- rec$source[newly]
+        for (k in which(newly))
+          say("  arm ", valueArms[k], ": N = ", rec$N[k], " from ", rec$source[k])
+      }
+    }
   }
 
   # ---- How to read "a (b)" cells ------------------------------------------
@@ -2657,7 +2698,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
                     textCands = textCands, textTotals = textTotals,
-                    pctApprox = pctApprox, textGroupN = textGroupN),
+                    pctApprox = pctApprox, textGroupN = textGroupN,
+                    docText = fullText),
       error = function(e) e)
     if (inherits(res, "error")) {
       say(whoIs, ": parse error - ", conditionMessage(res))
@@ -2745,7 +2787,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
                       trial, parenIsSD, roundObsDelta,
                       function(...) invisible(NULL),
                       textCands = textCands, textTotals = textTotals,
-                      pctApprox = pctApprox, textGroupN = textGroupN),
+                      pctApprox = pctApprox, textGroupN = textGroupN,
+                      docText = fullText),
         error = function(e) NULL)
       if (.ppParseScore(resExt) <= .ppParseScore(best)) break
       best      <- resExt

@@ -248,6 +248,11 @@ wrong entry would corrupt numbers invisibly.
   "Pre-fatigue" as the baseline column, names the arms from the legend "C = control", and takes a
   group's size from "(Group C, n = 10)" in the text.
 
+- **Arm sizes from the document text for a deterministic table** (2026-09-25, issue 84): when
+  every arm lacks N after the block walker's own ladder, the "k groups of n" statement and then
+  the document-text ladder (`.ppArmNFromDocument()`) fill them, with the sentence as source and
+  the CONSORT flag - the model route's recovery of issue 42, under the same gate.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
