@@ -132,6 +132,42 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 88. Fujii's canine tables: roman groups, a lost label, and the sign as U+2AFE
+
+**Status: fixed on `feat/canine-long-layout`, 2026-09-25**, from the
+corpus session's batch 22 (the issue 84 recheck; PMID 12933396 the
+cleanest case, 12088956 identical in shape).
+
+- **The defect.** Sixteen of the eighteen animal papers among the 48
+  missing-N Carlisle trials are Fujii canine tables of one shape:
+  "Variable | Group | Baseline | Fatigued | Treatment | Recovery", the
+  groups I, II and III as rows under each variable. Three things kept the
+  repeated-measures reader out. The text layer reports the font's
+  plus-minus as U+2AFE, which the tokenizer did not know, so no cell was
+  a mean ± SD; the middle group's "II" is missing from the text layer
+  altogether, so its row carried no index; and issue 76 numbered letter
+  labels by first appearance, which would have made III the second
+  group. The wide reader then took the Baseline and Fatigued columns for
+  two arms and the group rows for separate variables, with no N - and
+  issue 84's ladder, offered "three groups of eight each", abstained
+  because k = 3 named more arms than the two the parse had.
+- **What changed.** The tokenizer and the slot repair know U+2AFE as the
+  sign. In the reader a roman numeral under Group is its own index; a
+  value line with nothing before its first number, between roman rows,
+  is the next group when that fills a gap the numerals seen in the block
+  bound (never a phantom Group IV after the last III); the groups are
+  named by their numerals and by the legend, whose "=" may be U+2AFD in
+  that font ("Group I = no study drug"). The size then comes from the
+  text as issue 84 provides: three arms of eight, the Baseline column
+  only.
+- **Tests** (`tests/testthat/test-canine-long-layout.R`): U+2AFE
+  tokenizes as the sign; a rebuilt page with roman groups, a lost II, the
+  legend and "three groups of eight each" reads three arms of eight from
+  the Baseline column, named by the legend (fails on the unfixed code).
+  The issue 34, 76 and sign tests still pass.
+
+---
+
 ## 86. The OUP download rail, seven points wide, is a rotated rail
 
 **Status: fixed on `fix/oup-rail-rotated-words`, 2026-09-25**, from the

@@ -834,7 +834,7 @@
   if (length(later)) idx <- idx[idx < later[1]]
   if (!length(idx)) return(none)
   isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
-  true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "+/-", "+-")
+  true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "\u2afe", "+/-", "+-")
   # a soup word is not a number and carries at least one stroke
   isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
     grepl("[-+:~\u2212\u2013\u00b7\u2022\u00b1]", s, perl = TRUE)
