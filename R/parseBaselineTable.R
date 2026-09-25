@@ -37,6 +37,21 @@ reviewFlags <- function(x) {
                              " treatment arm(s) were found"))
   if (any(is.na(x$arms$N)))
     flags <- c(flags, "arm N is missing for at least one arm")
+  # A COLUMN OF A DIFFERENT POPULATION BESIDE THE RANDOMISED ARMS
+  # (2026-09-25, ISSUES.md issue 62; the corpus session's O2, AAS1998_851):
+  # fifteen VOLUNTEERS beside three randomised current groups of 40. The
+  # cells are right, but the column is not an arm of the trial, and
+  # carried as one it moved P_FULL from 0.34 to 0.043 on the categorical
+  # rows. Named here so the reviewer can drop the column; the engine does
+  # not decide what the trial randomised.
+  other <- !is.na(x$arms$arm) &
+    grepl("(?i)\\bvolunteers?\\b|\\bhealthy\\s+(controls?|subjects?|adults?)|\\bnormal\\s+(subjects?|controls?)|\\bnon[- ]?randomi[sz]ed",
+          x$arms$arm, perl = TRUE)
+  if (any(other))
+    flags <- c(flags, paste0("arm(s) ", paste0("\"", x$arms$arm[other], "\"", collapse = ", "),
+                             " name a different population (volunteers, healthy ",
+                             "controls) beside the randomised arms - remove the column ",
+                             "before analysis unless it was randomised too"))
   # A TABLE WHOSE DISPERSIONS MOSTLY EXCEED THEIR MEANS is probably not a
   # table of means (2026-09-24, Loadsman corpus, Akkaya 2015 EJA: 31 of
   # 48 "continuous" rows were counts with their percentages - "18 (90)"
