@@ -75,6 +75,42 @@
 # of step 3 applies to the numbers.
 .ppLongGroupLabel <- "^([A-Z]{1,2}|I{1,3}|IV|V|VI{1,3})$"
 
+# THE ROW'S LABEL, AND THE HEADING ABOVE ITS BLOCK (2026-09-25, ISSUES.md
+# issue 91; Fujii 2003, PMID 12933396, the corpus session's batch 23).
+# Two things went wrong with the names of this layout's rows.
+#   - The label used to be the text before the row's FIRST TOKEN. On
+#     "20-Hz stimulation I 15.9 +/- 1.5" the tokenizer reads the "20" of
+#     "20-Hz" as a plain number, so the label was empty and the row was
+#     "Unnamed". The label is now the text before the first token that
+#     sits in or beyond the Group column (the group index, or the value):
+#     a number inside the label's own words is part of the label.
+#   - A variable can be printed as a HEADING on a line of its own above
+#     its group rows - "Pdi (cm H2O)" over "20-Hz stimulation" / "100-Hz
+#     stimulation", each with its I / II / III rows - and the reader
+#     skipped label-only lines altogether. The most recent short heading
+#     (five words or fewer) is kept, and it names the rows beneath it:
+#     alone when a row has no label of its own ("HR (bpm)" over "I 142
+#     +/- 11"), and as a prefix when the row's label starts with a digit
+#     and cannot stand alone ("Pdi: 20-Hz stimulation"). A row whose
+#     label is a name in itself ("HR (bpm)") keeps it, as the wide reader
+#     keeps a continuous row's label under a category heading.
+.ppLongRowLabel <- function(d, t, xGroup, tol, gLabel, heading) {
+  joined <- paste(d$text, collapse = " ")
+  inCol  <- which(t$mid >= xGroup - tol)
+  cut    <- if (length(inCol)) min(t$start[inCol]) else min(t$start)
+  lbl <- .ppSquish(substr(joined, 1, cut - 1L))
+  if (!is.na(gLabel)) lbl <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lbl, perl = TRUE)
+  lbl <- .ppCleanLabel(lbl)
+  if (!is.na(heading)) {
+    h <- .ppCleanLabel(heading)
+    if (nzchar(h)) {
+      if (!nzchar(lbl)) lbl <- h
+      else if (grepl("^[0-9]", lbl)) lbl <- paste0(h, ": ", lbl)
+    }
+  }
+  lbl
+}
+
 .ppParseRepeatedMeasures <- function(lines, lineTexts, kind, tokensByLine, capIdx,
                               lastData, trial, roundObsDelta,
                               footnoteInfo = character(0),
@@ -100,6 +136,50 @@
       hdr    <- i
       xGroup <- d$x[gi] + d$width[gi] / 2
       xBase  <- d$x[bi] + d$width[bi] / 2
+      break
+    }
+  }
+  # THE GROUP COLUMN WITHOUT A HEADER WORD (2026-09-25, ISSUES.md issue 95;
+  # Fujii, Anesth Analg 1999;89:1557, PMID 10589648, and 10475325,
+  # 11004073, 11573601, 10958102 - the corpus session's batch 24 AC1).
+  # These pages print the layout with the group column unheaded: the
+  # header line is "Baseline 60 min" or "Variable Baseline Fatigued", and
+  # the roman numerals I / II / III stand beneath it in a column of their
+  # own with no word above them. The gate above wanted both words, so
+  # the reader stood aside and the wide reader took the two timepoints
+  # for two arms and each group row for a variable - "I", "II", "III",
+  # "I 2" ... thirty-six rows with N nowhere. When a header line names a
+  # Baseline column but no Group column, the group column is found from
+  # the labels themselves: group words (a roman numeral, a capital letter
+  # or two, or a small integer) stacked at one x position on four or
+  # more lines beneath the header, left of the Baseline column. The
+  # run-of-1..k rule and the "most data lines fit" rule below still
+  # decide whether this is the layout; a wide table whose level rows
+  # happen to stack "I", "II", "III" once fails them as before.
+  if (is.na(hdr)) {
+    for (i in span) {
+      if (kind[i] == "stop") break
+      d <- lines[[i]]
+      bi <- which(grepl(.ppLongBaselineWord, d$text, perl = TRUE))
+      if (!length(bi)) next
+      xb <- d$x[bi[1]] + d$width[bi[1]] / 2
+      gx <- numeric(0); gl <- integer(0)
+      for (j in seq(i + 1L, lastData)) {
+        if (j > length(lines) || kind[j] == "stop") break
+        w <- lines[[j]]; wm <- w$x + w$width / 2
+        isG <- (grepl(.ppLongGroupLabel, w$text, perl = TRUE) |
+                  grepl("^([1-9]|1[0-2])$", w$text, perl = TRUE)) & wm < xb - 15
+        if (any(isG)) { gx <- c(gx, wm[isG]); gl <- c(gl, rep(j, sum(isG))) }
+      }
+      if (length(gx) < 4L) next
+      o <- order(gx); cl <- cumsum(c(1L, diff(gx[o]) > 10))
+      best <- NULL
+      for (k in split(seq_along(o), cl)) {
+        nl <- length(unique(gl[o][k]))
+        if (nl >= 4L && (is.null(best) || nl > best$nl)) best <- list(nl = nl, x = mean(gx[o][k]))
+      }
+      if (is.null(best)) next
+      hdr <- i; xGroup <- best$x; xBase <- xb
       break
     }
   }
@@ -133,9 +213,16 @@
     rw <- d$text[abs(wm - xGroup) <= tol & grepl("^(I{1,3}|IV|V|VI{1,3})$", d$text, perl = TRUE)]
     if (length(rw)) kRoman <- max(kRoman, as.integer(utils::as.roman(rw)))
   }
+  heading <- NA_character_     # the variable printed above its group rows (issue 91)
   for (i in seq(hdr + 1L, lastData)) {
     if (kind[i] == "stop") break
-    if (kind[i] != "data") next
+    if (kind[i] != "data") {
+      if (kind[i] == "label") {
+        ht <- .ppSquish(paste(lines[[i]]$text, collapse = " "))
+        if (nzchar(ht) && length(strsplit(ht, " ", fixed = TRUE)[[1]]) <= 5L) heading <- ht
+      }
+      next
+    }
     nDataSeen <- nDataSeen + 1L
     t <- tokensByLine[[i]]
     if (is.null(t) || nrow(t) == 0) next
@@ -161,12 +248,31 @@
           if (!gLabel %in% letterSeen) letterSeen <- c(letterSeen, gLabel)
           gIdx <- match(gLabel, letterSeen)
         }
-      } else if (romanMode && !is.na(prevIdx) && prevIdx + 1L <= kRoman && min(t$start) == 1L) {
+      } else if (romanMode && kRoman >= 2L &&
+                 any(t$type %in% c("meanSD", "numParen") & abs(t$mid - xBase) <= tol) &&
+                 sum(wm < xGroup - tol) <= 5L) {
         # THE LABEL THE TEXT LAYER LOST (issue 88): on those pages the
         # middle group's "II" is missing from the text layer, and its
-        # row is a value line with nothing before its first number,
-        # between the I and III rows. It is the next group.
-        gIdx <- prevIdx + 1L; gLabel <- as.character(utils::as.roman(gIdx))
+        # row is a value line between the I and III rows. It is the next
+        # group.
+        # ... AND WHOLE BLOCKS OF THEM (2026-09-25, issue 95; PMIDs
+        # 10475325, 11004073, 10958102, the corpus session's batch 24
+        # AC1): on these pages only the FIRST variable's rows keep their
+        # numerals; every later block - "MAP (mm Hg)" over three or four
+        # value rows - lost all of them. A value row with no group word
+        # continues the run when the run is open (the next index), and
+        # starts a new one at I when the previous run is complete or none
+        # has begun. Only a row with a value under the Baseline column is
+        # indexed this way - a stray line of digits (a subscript set on a
+        # line of its own) is not - and only a row whose label is at most
+        # five words: a sentence of the Results with a number in it, in a
+        # full-width block that runs past the table, is prose, not a
+        # group row. The 1..k run rule and the most-lines-fit rule below
+        # still judge the whole.
+        nxt <- if (!is.na(prevIdx) && prevIdx + 1L <= kRoman) prevIdx + 1L
+               else if (is.na(prevIdx) || prevIdx == kRoman) 1L
+               else NA_integer_
+        if (!is.na(nxt)) { gIdx <- nxt; gLabel <- as.character(utils::as.roman(gIdx)) }
       }
     } else {
       g <- g[which.min(abs(t$mid[g] - xGroup))]
@@ -196,18 +302,15 @@
       # the row still names (or continues) its variable for the emit step:
       # without this, RAP's C row lost to a fused "5+2" left RAP's N row to
       # be filed under the variable above it (PMID 8055614, issue 76)
-      lblNV <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
-      if (!is.na(gLabel)) lblNV <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lblNV, perl = TRUE)
       rowsFound[[length(rowsFound) + 1L]] <-
-        list(i = i, g = gIdx, label = .ppCleanLabel(lblNV), tok = NULL)
+        list(i = i, g = gIdx, tok = NULL,
+             label = .ppLongRowLabel(lines[[i]], t, xGroup, tol, gLabel, heading))
       next
     }
     v <- v[which.min(abs(t$mid[v] - xBase))]
     # the row's label is whatever precedes its first token; blank on the
     # second and later group rows of a variable, which inherit the last one
-    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
-    if (!is.na(gLabel)) lbl <- sub(paste0("\\s*", gLabel, "\\s*$"), "", lbl, perl = TRUE)
-    lbl <- .ppCleanLabel(lbl)
+    lbl <- .ppLongRowLabel(lines[[i]], t, xGroup, tol, gLabel, heading)
     rowsFound[[length(rowsFound) + 1L]] <-
       list(i = i, g = gIdx, label = lbl, tok = t[v, , drop = FALSE])
   }
