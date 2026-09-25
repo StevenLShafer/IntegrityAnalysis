@@ -2095,6 +2095,10 @@
                                N = (if (length(stratumStarts)) ifelse(is.na(armNHeader), armN, armNHeader) else armN)[arms][keep],
                                stringsAsFactors = FALSE),
        armNSource = armNSource[arms][keep],
+       # the lines of THIS block, caption to last data row: what the page
+       # prints inside the chosen table (issue 61 - the merge's outcome
+       # refusal must not touch a row printed in the table itself)
+       blockText  = lineTexts[seq(capIdx, lastData)],
        derivedCounts = unique(pctDerived),
        # A NAME SURVIVES IF ANY BLOCK STILL CLAIMS IT (screen
        # 2026-09-09-1532, F3): the labels of blocks that declined are
@@ -2677,6 +2681,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
          layout     = bestCand$mode,
          dispersion = best$dispersion,
          armNSource = best$armNSource,
+         blockText  = best$blockText,
          derivedCounts = best$derivedCounts,
          approxCounts  = best$approxCounts,
          approxStraddle = best$approxStraddle,

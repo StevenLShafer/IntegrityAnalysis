@@ -845,6 +845,27 @@ parseBaselineTable <- function(pdfFile,
                         "duration of (surgery|an(a)?esthesia|operation)|\\binterval\\b|",
                         "ephedrine|phenylephrine|atropine|neostigmine|consumption|\\btotal\\b.*\\bdose\\b")
     isOutcome <- grepl(outcomeRe, newRows$ROW, perl = TRUE)
+    # A ROW PRINTED INSIDE THE CHOSEN TABLE IS NOT AN ADDITION (2026-09-25,
+    # ISSUES.md issue 61; the corpus session's O1, Polat 2015 KJMS and
+    # Sakizci-Uyar 2021): "Duration of anesthesia" and "Duration of surgery"
+    # stand in those papers' own Table 1, the deterministic pass skipped
+    # them (a median or a cell it could not read) and the model supplied
+    # them - and the refusal above, meant for another table's rows, threw
+    # them out. Whether a post-randomisation duration printed in a
+    # baseline table belongs in the screen is Steve's call; the engine
+    # reads what the caption's table prints. A model label whose words
+    # (the first two of three letters or more) appear on one line of the
+    # block is the table's own and is kept.
+    if (any(isOutcome) && !is.null(het$blockText) && length(het$blockText)) {
+      blk <- tolower(.ppSquish(het$blockText))
+      inBlock <- vapply(newRows$ROW, function(lb) {
+        w <- tolower(unlist(strsplit(gsub("[^A-Za-z ]", " ", lb), "\\s+")))
+        w <- w[nchar(w) >= 3][seq_len(min(2L, sum(nchar(w) >= 3)))]
+        if (!length(w)) return(FALSE)
+        any(vapply(blk, function(line) all(vapply(w, function(x) grepl(x, line, fixed = TRUE), logical(1))), logical(1)))
+      }, logical(1))
+      isOutcome <- isOutcome & !inBlock
+    }
     if (any(isOutcome)) {
       bad <- unique(newRows$ROW[isOutcome])
       say("Refusing ", length(bad), " model variable(s) whose label names an ",
@@ -914,6 +935,7 @@ parseBaselineTable <- function(pdfFile,
          # the model's reply verbatim rides on the hybrid result too (the
          # corpus session's L1: issue 43 had reached only the AI-only route)
          aiReply    = aiRes$aiReply,
+         blockText  = het$blockText,
          flags      = c(imageNote, tatrFlags, flags),
          # CARRIED THROUGH THE MERGE (2026-09-08). These were dropped
          # here, so a hybrid parse painted no fail-safe cell orange and
