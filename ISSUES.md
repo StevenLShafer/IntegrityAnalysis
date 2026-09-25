@@ -515,16 +515,32 @@ or mean ± SD)").
 
 ---
 
-## 40. The "first table" caption bonus never fires (open)
+## 40. The "first table" caption bonus never fired
 
-**Status: open, 2026-09-25.** `.ppCaptionScore()` adds 2 for a caption
-that begins "Table 1" or "Table I", the reasoning being that baseline
-data is nearly always the first table. The pattern is case-sensitive,
-so it matches only a lower-case "table 1" — which no journal prints —
-and every printed caption has scored without it since the rule was
-written. Enabling it changes candidate scores across the corpus; it
-needs a before/after misparse run (`corpus/measureMisparse.R`) before
-it is switched on, and may need a smaller weight.
+**Status: switched on, `feat/first-table-bonus`, 2026-09-25** (filed
+2026-09-25 while fixing issue 39).
+
+- **The defect.** `.ppCaptionScore()` adds 2 for a caption that begins
+  "Table 1" or "Table I", the reasoning being that baseline data is
+  nearly always the first table. The pattern was case-sensitive, so it
+  matched only a lower-case "table 1" - which no journal prints - and
+  every printed caption had scored without it since the rule was
+  written.
+- **The measurement** (`corpus/measureMisparse.R` on the 1,110
+  Carlisle-linked PDFs, snapshot libraries built from main `dc39659`
+  with and without the fix): fully corroborated files 435 → 444 of ~940
+  with the bonus at +2 (441 at +1); corroborated share of our mean/SD
+  pairs 59.4% → 61.2%; fourteen files changed bucket, twelve up (zero or
+  partial → full) and two down (PMID 14687093, 14722167: the bonus picks
+  the paper's real "Table 1 Induction characteristics" / "Table 1
+  Physical characteristics" but the reading of it is poor, and Carlisle
+  recorded Table 2's values).
+- **What changed.** The pattern is case-insensitive at +2, and an
+  unnumbered caption ("TABLE Demographic data", issue 39) - a paper's
+  only table, so its first - takes the bonus too, so issue 39's equality
+  of the two forms holds.
+- **Tests** (`tests/testthat/test-unnumbered-caption.R`): a second
+  table scores 2 less than the first, Arabic or Roman.
 
 ---
 

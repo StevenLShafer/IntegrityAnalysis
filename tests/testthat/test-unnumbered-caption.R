@@ -58,6 +58,11 @@ test_that(".ppCaptionStart() knows numbered and unnumbered captions, and an unnu
                .ppCaptionScore("Table 1 Demographic data"))
   expect_equal(.ppCaptionScore("TABLE Patient characteristics (number or mean)"),
                .ppCaptionScore("TABLE I Patient characteristics (number or mean)"))
+  # the first-table bonus is live (issue 40): a second table scores 2 less
+  expect_equal(.ppCaptionScore("Table 2 Demographic data") + 2,
+               .ppCaptionScore("Table 1 Demographic data"))
+  expect_equal(.ppCaptionScore("TABLE II Demographic data") + 2,
+               .ppCaptionScore("TABLE I Demographic data"))
 })
 
 test_that("a page whose only table is captioned without a number is parsed", {

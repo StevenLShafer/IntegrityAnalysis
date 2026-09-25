@@ -140,7 +140,9 @@ promising ones.
   line begins a caption — numbered or not — for the block walker, the continuation-page
   extender and the Table Transformer adapter.
 - `.ppCaptionScore()` rewards "baseline", "demographic", *qualified* "characteristics", and the
-  table being number 1; it penalises outcome vocabulary, unless the caption also says baseline.
+  table being number 1 (switched on 2026-09-25, issue 40, after a before/after misparse run:
+  435 → 444 fully corroborated files; an unnumbered caption counts as a first table too); it
+  penalises outcome vocabulary, unless the caption also says baseline.
 - A cross-reference inside a sentence ("as demonstrated in Table 3 B and C") is demoted, not
   discarded — it is still tried if nothing better parses.
 - **Typographic spaces are split at ingest** (2026-09-02). Springer sets "Table 1" + en space +
