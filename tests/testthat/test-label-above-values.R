@@ -43,6 +43,27 @@ test_that("a label-less value line directly under the line that named it takes t
   expect_false(isTRUE(vdShared(r$data)$FAIL))
 })
 
+test_that("the FIRST row of the table may be the label-less one under its name (CodeRabbit on PR #373)", {
+  f  <- file.path(tempdir(), "labelAboveFirst.pdf")
+  vx <- c(300, 420)
+  cells <- c(
+    list(list(x = 60, y = 70, text = "Table 1. Maternal characteristics.", adj = 0)),
+    rowCells(100, "", c("Fentanyl group", "Pethidine group"), vx),
+    rowCells(112, "", c("n=40", "n=40"), vx),
+    list(list(x = 60, y = 130, text = "Duration of active phase", adj = 0)),
+    rowCells(136, "", c("5.25 ± 0.86", "5.31 ± 0.85"), vx),
+    list(list(x = 60, y = 142, text = "(hours)", adj = 0)),
+    rowCells(160, "Age (years)", c("21.72 ± 2.63", "21.70 ± 1.69"), vx),
+    rowCells(178, "Weight (kg)", c("69.40 ± 5.68", "70.00 ± 5.52"), vx),
+    list(list(x = 60, y = 208, text = "Values are mean ± SD.", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  cont <- r$data[!is.na(r$data$MEAN), ]
+  expect_false(any(grepl("^Unnamed", r$data$ROW)))
+  expect_identical(cont$MEAN[cont$ROW == "Duration of active phase"], c(5.25, 5.31))
+  expect_identical(cont$MEAN[cont$ROW == "Age"], c(21.72, 21.70))
+})
+
 test_that("a category heading over LABELLED level rows is still a heading", {
   f  <- file.path(tempdir(), "headingKept.pdf")
   vx <- c(300, 420)

@@ -997,6 +997,7 @@
                        "\\bexpressed\\b|\\bpresented\\b|\\bshown\\b"),
                 lineTexts[j], perl = TRUE)) next
       catHeader     <- lbl
+      catHeaderAt   <- j   # a label-less FIRST row beneath it takes this name too (issue 68; CodeRabbit on PR #373)
       catHeaderNPct <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)",
                              lineTexts[j], perl = TRUE)
       catHeaderPct  <- !catHeaderNPct &&
