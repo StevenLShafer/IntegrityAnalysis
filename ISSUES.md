@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 87. Some arms print an N, the rest do not: the ladder fills them by name
+
+**Status: fixed on `feat/partial-arm-n-by-name`, 2026-09-25**, from the
+corpus session's batch 22 (PMIDs 8004733, 9717598, 9350368, 9512856 on
+the deterministic Carlisle pass).
+
+- **The defect.** The arm-size ladder of issue 42 runs under one gate:
+  every arm without N. That is right for its positional rules, which
+  assume nothing is known, but it shut out the arm-NAME match too, so a
+  table that printed one arm's size beside a "(n = 20)" naming the other
+  arm in the text failed validation for the missing N.
+- **What changed.** With some sizes printed, the block walker asks the
+  ladder by name only (`namesOnly = TRUE` in `.ppFillArmNFromText()`):
+  a mention whose preceding words name a missing arm fills it, with the
+  sentence as source; the elimination and positional rules stay behind
+  the every-arm gate. A named arm whose name is a stop word of the match
+  ("control", "study") is not matched, as before.
+- **Tests** (`tests/testthat/test-partial-arm-n-by-name.R`): the ladder
+  by name on a hand-built mention frame, and its refusal to eliminate
+  under `namesOnly`; a rebuilt page printing one arm's size gets the
+  other from the text by name (fails on the unfixed code). The arm-size
+  and layout tests still pass.
+
+---
+
 ## 86. The OUP download rail, seven points wide, is a rotated rail
 
 **Status: fixed on `fix/oup-rail-rotated-words`, 2026-09-25**, from the

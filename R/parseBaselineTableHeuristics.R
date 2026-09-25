@@ -941,11 +941,20 @@
   valueArms <- intersect(dataArms, unique(cols$assign(
     allToks$mid[allToks$type %in% c("meanSD", "numParen", "nPct", "fraction", "medianRng")])))
   if (length(valueArms) == 0) valueArms <- dataArms
-  if (recoveryEligible && any(is.na(armN[valueArms])) &&
+  # SOME ARMS PRINT AN N, THE REST DO NOT (2026-09-25, ISSUES.md issue 87;
+  # PMIDs 8004733, 9717598, 9350368, 9512856, the corpus session's batch
+  # 22): the gate "every arm without N" - right for the positional rules,
+  # which assume nothing is known - shut out the arm-NAME match too, and a
+  # table with one printed size and a "(n = 20)" beside the other arm's
+  # name in the text failed validation for the missing N. With some
+  # sizes printed, the ladder runs by name only.
+  partialN <- !recoveryEligible && length(valueArms) > 0 &&
+    any(is.na(armN[valueArms])) && any(!is.na(armN[valueArms]))
+  if ((recoveryEligible || partialN) && any(is.na(armN[valueArms])) &&
       !is.null(textCands) && nrow(textCands) > 0) {
     fill <- .ppFillArmNFromText(armN[valueArms], armName[valueArms], textCands,
                                 if (is.null(textTotals)) integer(0)
-                                else textTotals)
+                                else textTotals, namesOnly = partialN)
     newly <- is.na(armN[valueArms]) & !is.na(fill$N)
     armN[valueArms] <- fill$N
     armNSource[valueArms][newly] <- fill$source[newly]

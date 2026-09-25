@@ -246,7 +246,11 @@
 #      positional candidate, and why reviewFlags() reports the sentence.
 #
 # Returns list(N = the completed vector, source = per-arm character).
-.ppFillArmNFromText <- function(armN, armName, cand, totals) {
+# `namesOnly = TRUE` stops after the arm-name match (issue 87): when some
+# arms already print an N, a mention that NAMES a missing arm is safe to
+# take, while the positional rules below - which assume every arm is
+# unknown - are not.
+.ppFillArmNFromText <- function(armN, armName, cand, totals, namesOnly = FALSE) {
   source <- rep(NA_character_, length(armN))
   if (nrow(cand) == 0 || !any(is.na(armN)))
     return(list(N = armN, source = source))
@@ -301,6 +305,7 @@
       used[hits] <- TRUE
     }
   }
+  if (namesOnly) return(list(N = armN, source = source))   # issue 87
   # 2. elimination - requires the leftover to actually correspond: exactly
   # one open arm AND exactly one unused mention. Two unused mentions of
   # "n = 20" over one open arm means the mentions belong to the two arms
