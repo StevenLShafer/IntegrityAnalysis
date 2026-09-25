@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 77. A plain "+" at a slot the sign itself marks, the sign dropped entirely, and a legend that spells "S D"
+
+**Status: fixed on `feat/slot-plus-and-dropped-sign`, 2026-09-25**, from
+the corpus session's batch 17 finding W1 (Fujii 1994, Can J Anaesth; PMID
+8055614).
+
+- **The defect.** That page's OCR sets the plus-minus as "5:9", "-1-",
+  "+" and, in six cells, as nothing at all: "142 10", "121 14", "14 2",
+  "2.0 0.5". Its legend reads "All values are expressed as mean -t- S D",
+  with the SD split. Issue 65's slot repair reached the soup words only:
+  a "+" is never repaired by a slot (issue 45's lone "5 + 2"), the legend
+  did not announce with "S D", and a dropped sign is not a word at all.
+  Two cells per variable were read at best, under the four-row floor of
+  the repeated-measures reader.
+- **What changed.** In `.ppRepairPlusMinusGlyphs()`: (a) the legend may
+  spell SD as "S D" or "S.D."; (b) a plain "+" between two numbers is the
+  sign at a slot that two or more lines mark with the sign itself (not
+  with a "+"), or, under an announced soup, at any slot - issue 45's
+  lone "5 + 2" beside one signed line is still left alone; (c) the sign
+  dropped entirely: two numbers straddling such a slot with a gap of four
+  to twenty points between them get the sign inserted, the second number
+  not negative. The gap bound keeps two arms' counts on an "n 20 20" row,
+  forty points apart, from becoming one cell.
+- **Tests** (`tests/testthat/test-slot-plus-and-dropped-sign.R`): the "+"
+  at a strong slot and the lone "+" left alone; the dropped sign with the
+  count row and the negative number untouched; the "S D" legend with "+"
+  cells and a glued "5:9". The issue 45, 63, 65, 67 and 70 tests still
+  pass.
+
+---
+
 ## 74. Post-randomisation quantities in a baseline table: the `durations` option
 
 **Status: implemented on `feat/durations-option`, 2026-09-25**, to Steve's

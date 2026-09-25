@@ -757,6 +757,18 @@
 # and "30" is a range, not a sign) is repaired only when it IS the
 # announced glyph.
 #
+# THREE MORE FORMS (2026-09-25, issue 77; Fujii 1994, PMID 8055614, the
+# corpus session's batch 17 W1, a page whose OCR sets the sign as "5:9",
+# "-1-", "+" and, in six cells, as nothing at all - "142 10", "121 14"):
+# (a) the legend may spell SD with a space, "mean -t- S D"; (b) a plain
+# "+" between two numbers IS the sign at a slot that two or more lines
+# mark with the sign itself (not with a "+"), or, under an announced
+# soup, at any slot; (c) the sign dropped entirely: two numbers that
+# straddle such a slot, with a gap of four to twenty points between them
+# for the missing glyph, get the sign inserted. The gap bound keeps two
+# arms' counts on an "n 20 20" row - forty points apart - from becoming
+# one cell.
+#
 # THE ANNOUNCED GLYPH MAY BE A LETTER (2026-09-25, issue 67; Fujii 2006,
 # PMID 17126782, the corpus session's batch 13 R1): a Symbol-font
 # plus-minus mapped to "F" - "Values are means F SD or numbers." over
@@ -797,7 +809,7 @@
   isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
     grepl("[-+:~\u2212\u2013\u00b7\u2022\u00b1]", s, perl = TRUE)
   # (i) genuine markers, with the line they sit on and their left edge
-  markX <- numeric(0); markLine <- integer(0); nTrue <- 0L
+  markX <- numeric(0); markLine <- integer(0); markTrue <- logical(0); nTrue <- 0L
   for (i in idx) {
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
@@ -805,13 +817,16 @@
     nextNum <- c(isNum(s[-1L]), FALSE)
     g <- true(s) | (s == "+" & prevNum & nextNum)
     nTrue <- nTrue + sum(true(s))
-    if (any(g)) { markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g))) }
+    if (any(g)) {
+      markX <- c(markX, L$x[g]); markLine <- c(markLine, rep(i, sum(g)))
+      markTrue <- c(markTrue, true(s)[g])
+    }
   }
   # "mean -t- SD" announces the soup glyph as the notation - in the
   # table's own caption line or its footnote
   annGlyph <- NA_character_
   for (txt in texts[c(if (capIdx >= 1L) capIdx, idx)]) {
-    m <- regmatches(txt, regexpr("(?i)\\bmeans?\\s+(\\S{1,4})\\s+s\\.?d\\b", txt, perl = TRUE))
+    m <- regmatches(txt, regexpr("(?i)\\bmeans?\\s+(\\S{1,4})\\s+s\\.?\\s?d\\.?\\b", txt, perl = TRUE))
     if (length(m) == 1L) {
       g <- strsplit(m, "\\s+")[[1]][2]
       if (isSoup(g) || grepl("^[A-Za-z]$", g)) { annGlyph <- g; break }
@@ -819,13 +834,16 @@
   }
   announced <- !is.na(annGlyph)
   # (ii) slots: clusters of marker left edges set on two or more lines
-  slots <- numeric(0)
+  slots <- numeric(0); strong <- numeric(0)
   if (length(markX) > 0L) {
-    o <- order(markX); mx <- markX[o]; ml <- markLine[o]
+    o <- order(markX); mx <- markX[o]; ml <- markLine[o]; mt <- markTrue[o]
     cl <- cumsum(c(1L, diff(mx) > tol))
-    slots <- vapply(split(seq_along(mx), cl), function(k)
+    grp <- split(seq_along(mx), cl)
+    slots  <- vapply(grp, function(k)
       if (length(unique(ml[k])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
-    slots <- slots[!is.na(slots)]
+    strong <- vapply(grp, function(k)
+      if (length(unique(ml[k][mt[k]])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
+    slots <- slots[!is.na(slots)]; strong <- strong[!is.na(strong)]
   }
   if (!announced && (nTrue < 2L || length(slots) == 0L)) return(none)
   # (iii) the repair, line by line
@@ -844,21 +862,46 @@
     base <- prevNum & ((isSign & nextNum) | glued) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph))
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
-    if (!any(hit)) next
+    # (a) a plain "+" between two numbers at a slot two or more lines mark
+    # with the sign itself, or at any slot under an announced soup (issue 77)
+    atStrong <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
+    hit <- hit | (s == "+" & prevNum & nextNum & (atStrong | (announced & atSlot)))
+    # (b) the sign dropped entirely: two numbers straddling such a slot with
+    # a gap of 4 to 20 points between them (issue 77)
+    back   <- if (announced) slots else strong
+    xEnd   <- L$x + L$width
+    gapHit <- logical(nrow(L))
+    if (length(back)) for (k in seq_len(nrow(L) - 1L)) {
+      if (!isNum(s[k]) || !isNum(s[k + 1L])) next
+      if (grepl("^-", s[k + 1L], perl = TRUE)) next   # a negative number is never an SD
+      gap <- L$x[k + 1L] - xEnd[k]
+      if (gap < 4 || gap > 20) next
+      if (any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1)) gapHit[k] <- TRUE
+    }
+    if (!any(hit) && !any(gapHit)) next
     out <- vector("list", nrow(L))
     for (k in seq_len(nrow(L))) {
-      if (!hit[k]) { out[[k]] <- L[k, , drop = FALSE]; next }
-      repaired <- repaired + 1L
-      if (glued[k]) {
-        m  <- regmatches(s[k], regexec(soupGlued, s[k], perl = TRUE))[[1]]
-        w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
-        frac <- nchar(m[2]) / nchar(s[k])
-        w1$text <- .ppPLUSMINUS; w1$width <- L$width[k] * frac
-        w2$text <- m[3]; w2$x <- L$x[k] + L$width[k] * frac; w2$width <- L$width[k] * (1 - frac)
-        out[[k]] <- rbind(w1, w2)
+      if (!hit[k]) {
+        out[[k]] <- L[k, , drop = FALSE]
       } else {
-        w1 <- L[k, , drop = FALSE]; w1$text <- .ppPLUSMINUS
-        out[[k]] <- w1
+        repaired <- repaired + 1L
+        if (glued[k]) {
+          m  <- regmatches(s[k], regexec(soupGlued, s[k], perl = TRUE))[[1]]
+          w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
+          frac <- nchar(m[2]) / nchar(s[k])
+          w1$text <- .ppPLUSMINUS; w1$width <- L$width[k] * frac
+          w2$text <- m[3]; w2$x <- L$x[k] + L$width[k] * frac; w2$width <- L$width[k] * (1 - frac)
+          out[[k]] <- rbind(w1, w2)
+        } else {
+          w1 <- L[k, , drop = FALSE]; w1$text <- .ppPLUSMINUS
+          out[[k]] <- w1
+        }
+      }
+      if (gapHit[k]) {
+        repaired <- repaired + 1L
+        w <- L[k, , drop = FALSE]
+        w$text <- .ppPLUSMINUS; w$x <- xEnd[k] + 1; w$width <- max(2, L$x[k + 1L] - xEnd[k] - 2)
+        out[[k]] <- rbind(out[[k]], w)
       }
     }
     lines[[i]] <- do.call(rbind, out)
