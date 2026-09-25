@@ -1501,8 +1501,19 @@
     # joining word ("of", "and", "in", "for", "after", "to"), is the
     # label's first line: joined in front, and the heading closed. A true category heading is a noun phrase and the
     # levels beneath it are capitalised or numeric.
+    # ... BUT ONLY FOR A ROW OF CONTINUOUS CELLS (2026-09-26, ISSUES.md issue
+    # 117, a regression of 112 found by the corpus session's batch 27 AF2;
+    # MTS2001_21): "Antihypertensive medication" over "a -blocker 1 1 2" -
+    # the OCR's "a" for the Greek alpha - is a category heading over a
+    # level, and the lowercase test above joined them into one row label,
+    # closed the heading, and the count rows beneath lost their category
+    # and were skipped; Height and Weight went with them in the candidate
+    # contest. A label's wrapped first line stands over a row of mean (SD)
+    # or n (%) cells; a heading stands over levels, whose cells are bare
+    # counts. The join applies only when the row carries a continuous cell.
     if (nzchar(.ppSquish(rawLabel)) && !is.na(catHeaderAt) && catHeaderAt == i - 1L &&
         !is.na(catHeader) && i - 1L > capIdx &&
+        any(toks$type %in% c("meanSD", "numParen", "medianRng")) &&
         (grepl("^[[a-z(]", .ppSquish(rawLabel), perl = TRUE) ||
            grepl("(?i)\\b(of|and|in|for|after|to|the)$", .ppSquish(lineTexts[i - 1L]), perl = TRUE))) {
       rawLabel <- paste(.ppSquish(lineTexts[i - 1L]), .ppSquish(rawLabel))

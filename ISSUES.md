@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 117. The label-fragment join applies only to a row of continuous cells
+
+**Status: fixed on `fix/label-fragment-only-continuous-rows`, 2026-09-26**,
+a regression of issue 112 found by the corpus session's batch 27 AF2
+(MTS2001_21, an OCR page; three arms of 15).
+
+- **The defect.** "Antihypertensive medication" on a line of its own
+  over "a -blocker 1 1 2", "B-blocker 1 1 1", ... - the OCR's "a" for
+  the Greek alpha. Issue 112's join (a heading directly above a row
+  whose own label begins with a lowercase letter is that label's first
+  line) took the heading into the level's label, closed the heading,
+  and every count row beneath was skipped as a bare number with no
+  category header; in the candidate contest the column reading then
+  lost to a full-width reading with Age alone (nine cells to three,
+  p 0.008 to 0.40).
+- **What changed.** The join applies only when the row carries a
+  continuous cell (mean +/- SD, mean (SD), median [range]). A label's
+  wrapped first line stands over such a row; a heading stands over
+  levels, whose cells are bare counts.
+- **On the page.** Age, Height and Weight in three arms of 15 again,
+  the antihypertensive levels as counts under their heading.
+- **Tests** (`tests/testthat/test-label-fragment-only-continuous-rows.R`):
+  a rebuilt page with the heading over an OCR-lowercased level beside
+  continuous rows reads the continuous rows and the levels as counts
+  (3 expectations fail on the unfixed code). The label-fragment,
+  label-above-values, label-wrap, category and Loadsman layout tests
+  still pass.
+
 ## 116. A look-alike letter among the digits of an SD after the sign ("58 <bullet> l0")
 
 **Status: fixed on `fix/letter-l-in-sd-after-sign`, 2026-09-26**, from
