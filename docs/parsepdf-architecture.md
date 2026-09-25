@@ -106,6 +106,10 @@ into it, and calls a long low-coverage run a gutter. "Low" rather than "zero" ma
 running head, the title and a full-width footnote all cross the gutter, so a strict emptiness
 test finds nothing on a real page.
 
+- **A narrow gutter** (2026-09-25, issue 57): a run of at least eight points that no line of
+  the page crosses is a column boundary too; the twelve-point rule with its 8% tolerance stands
+  for gutters a few lines cross.
+
 ### 03–04 — Finding the right table
 
 The engine does not pick a page and hope. It enumerates **every** captioned table in the

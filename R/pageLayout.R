@@ -82,7 +82,18 @@
   r     <- rle(cover <= maxCover)
   ends  <- cumsum(r$lengths)
   start <- ends - r$lengths + 1L
-  cand  <- which(r$values & r$lengths >= minGap &
+  # A NARROW GUTTER (2026-09-25, ISSUES.md issue 57; Altuntas 2016 TJAR,
+  # Loadsman corpus): the two columns of that page are 9 points apart,
+  # short of minGap, and with no band found the table in column 2 was
+  # read interleaved with column 1's prose ("Sex 0.510" on the line "ence
+  # to VAS (while resting, coughing, during mobilization)"). A run that
+  # NO line of the page crosses at all is a gutter at eight points too:
+  # a gap inside a table's own columns is crossed by the prose lines
+  # above and below it, so zero coverage over the whole page is the
+  # signature of the page's own layout, not of a table's.
+  zeroRun <- vapply(seq_along(r$lengths), function(k)
+    r$values[k] && all(cover[seq.int(start[k], ends[k])] == 0), logical(1))
+  cand  <- which(r$values & (r$lengths >= minGap | (zeroRun & r$lengths >= 8)) &
                  start > minBandFrac * nBin & ends < (1 - minBandFrac) * nBin)
   if (length(cand) == 0) return(single(pageWords))
 

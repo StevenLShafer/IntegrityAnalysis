@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 57. A gutter no line of the page crosses is a column boundary at eight points wide
+
+**Status: fixed on `feat/narrow-gutter-band`, 2026-09-25**, from the
+Loadsman corpus (Altuntaş 2016, Turk J Anaesthesiol Reanim), one of the
+five papers `corpus/checkLoadsman.R` still could not parse.
+
+- **The defect.** The page's two columns are nine points apart, short of
+  `.ppPageBands()`' minimum gap of twelve, so no band was found and the
+  table in column 2 was read interleaved with column 1's prose ("Sex
+  0.510" on the line "ence to VAS (while resting, coughing, during
+  mobilization)"): no usable rows.
+- **What changed.** A run of at least eight points that NO line of the
+  page crosses is a gutter too. Zero coverage over every line is the
+  signature of the page's own layout: a gap inside a table's columns is
+  crossed by the prose lines above and below it, and the twelve-point
+  rule with its 8% tolerance stands for those.
+- **On the corpus.** `corpus/checkLoadsman.R`: 81 → 82 of 87 (Altuntaş
+  reads Group I/II/III of 30, Age, Sex, ASA and the table's clinical
+  rows); the caption-straddle pages and the layout suites are unchanged.
+- **Tests** (`tests/testthat/test-narrow-gutter-band.R`): an eight-point
+  gutter no line crosses splits a synthetic page; the same gap crossed by
+  six lines does not; a wide gutter still splits when a few lines cross
+  it.
+
+---
+
 ## 56. "Group 60 50 40 30 20 Volunteers": a Group line whose values are the arms' names is the arm-name line
 
 **Status: fixed on `feat/group-name-line`, 2026-09-25**, from the corpus
