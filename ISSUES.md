@@ -132,6 +132,36 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 97. "(n:25)" under the arm names is the arm-size line
+
+**Status: fixed on `feat/header-n-colon`, 2026-09-25**, from the corpus
+session's batch 24 AC3 (Fujii, thyroidectomy, PMID 9924225; "allocated
+randomly to one of four groups (n:25 for each)").
+
+- **The defect.** The table prints "Placebo 20 ug/kg 40 ug/kg 100
+  ug/kg" over "(n:25) (n:25) (n:25) (n:25)", with cells such as
+  "46.3(31-57)" set five points apart. Every header rule of the block
+  walker wanted "n =": the line was not a header, the header count of
+  issue 71 was nought, the gap rule fused four columns into two, and no
+  arm had its N. Two arms read where four are printed.
+- **What changed.** Each of the eight header-N patterns in
+  `parseBaselineTableHeuristics.R` accepts "n:" beside "n =" (as issue
+  89 did for the size statements in the text), and the header word
+  cleaner strips the colon as it strips the equals sign, so the arm
+  names carry no ":" residue.
+- **On the page.** Four arms of 25 - Placebo, 20, 40 and 100 ug/kg
+  (the superscript of "kg-1" prints as "91" in the text layer and stays
+  in the name) - with Height, Weight, the menstrual-cycle day and both
+  durations in all four; Age's range unusable as it should be.
+- **Tests** (`tests/testthat/test-header-n-colon.R`): a rebuilt page
+  with the "(n:25)" line and close-set cells reads four arms of 25, cut
+  by the header count, with clean names (2 expectations fail on the
+  unfixed code: two arms, N missing). The row-N, stratum, ordinal
+  header, partial-arm, header-count, gutter and Loadsman layout tests
+  still pass.
+
+---
+
 ## 96. A column of upright short words is not a rail
 
 **Status: fixed on `fix/rail-needs-tall-words`, 2026-09-25**, a
@@ -156,6 +186,56 @@ regression of issue 93 caught by the fixture of issue 91.
   the unfixed code); a genuine rail with its tall words is still
   stripped whole. The rail, axis, column and layout tests still pass,
   and the fixture of issue 91 reads as long layout with both fixes.
+
+## 95. Long layout: the group column without a header word, and blocks that lost their numerals
+
+**Status: fixed on `feat/long-layout-group-column-by-labels`, 2026-09-25**,
+from the corpus session's batch 24 AC1: five canine papers (Fujii, PMIDs
+10589648, 10475325, 11004073, 11573601, 10958102), "three groups of 10"
+or "of seven", all failing on missing N.
+
+- **The defect.** Two things kept the repeated-measures reader (issue
+  34) from these pages. The header line names the timepoints but not
+  the group column - "Baseline 60 min", "Variable Baseline Fatigued" -
+  and the gate wanted both words, so the wide reader took the two
+  timepoints for arms and each group row for a variable ("I", "II",
+  "III", "I 2" ... thirty-six rows, N nowhere). And the text layer
+  keeps the roman numerals only on the first variable's rows: every
+  later block - "MAP (mm Hg)" over three or four value rows - lost all
+  of them, so even with the column found, most rows had no index and
+  the most-lines-fit rule refused the layout.
+- **What changed.** When a header line names a Baseline column but no
+  Group column, the group column is found from the labels themselves:
+  group words (a roman numeral, a capital letter or two, a small
+  integer) stacked at one x on four or more lines beneath the header,
+  left of Baseline. And the lost-label rule of issue 88 is widened: a
+  value row with no group word continues an open run (the next index)
+  or starts a new one at I when the previous run is complete; only a
+  row with a value under Baseline and a label of at most five words is
+  indexed this way, so a subscript on a line of its own or a Results
+  sentence in a full-width block is not. The 1..k run rule and the
+  most-lines-fit rule still judge the whole, and a wide table whose
+  level rows stack "I", "II", "III" once fails them as before.
+- **On the pages** (with the branch alone): 10475325 reads four arms
+  of 10 with six variables and 10958102 three arms of 7 with eleven;
+  10589648 and 11004073 read their Table 1 as long layout too but lose
+  the candidate contest to a wide reading until the rows are named
+  (issue 91 names them; the scorer of issue 46 credits no "Unnamed"
+  row), so those two land when both fixes are on main. 11573601's
+  header carries "Group" and its rows keep their numerals; it fails
+  elsewhere (its legend fills the arm names with caption text) and is
+  a separate matter.
+- **Tests** (`tests/testthat/test-long-layout-group-column-by-labels.R`):
+  a rebuilt page with no Group header, a lost II in the first block and
+  two later blocks without numerals reads four arms of ten and three
+  variables from the Baseline column (9 expectations fail on the
+  unfixed code); a wide table with a Baseline column and one stack of
+  roman level rows is left to the wide reader. The long-layout, canine,
+  letter-group and Loadsman layout tests still pass.
+
+---
+
+---
 
 ## 94. "Allocated to one of four groups of 15 patients each" states the arm sizes
 
