@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 64. The outcome refusal applies on the AI-only retry route too, by vocabulary alone
+
+**Status: fixed on `feat/refusal-on-ai-route`, 2026-09-25**, from the
+corpus session's batch 11 finding P2 (Fujii, PMID 9773135; engine "ai").
+
+- **The defect.** Issues 54 and 61 refuse a model-added outcome variable
+  in the hybrid merge. On the retry route - the deterministic engine
+  failed and the model read the page alone - nothing did: the model's
+  table carried Table 2's operative management (duration of surgery,
+  duration of uterus exteriorised, I-D interval, tubal ligation) beside
+  Table 1's Age, Height, Weight, Gestational age and Multiparous, and
+  p moved from 0.24 to 0.039.
+- **What changed.** The test is one helper, `.ppOutcomeLabel(labels,
+  blockText)`: the vocabulary of issue 54, sparing a label printed in the
+  chosen table's block (issue 61). The merge calls it with the block; the
+  AI-only retry route calls it with no block, so the vocabulary alone
+  decides, and a refused row leaves `$data` and `$provenance` for
+  `$skipped` with its reason and a flag. The explicit `ai = "always"`
+  route is untouched.
+- **Tests** (`tests/testthat/test-refusal-on-ai-route.R`): the helper with
+  and without a block; a mocked AI-only parse keeps Age and refuses
+  "Duration of surgery" and "I-D interval" with the reason and the flag.
+
+---
+
 ## 63. A mean ± SD cell with a bracketed range appended, a "+" as its plus-minus, and a "[ranges]" label suffix
 
 **Status: fixed on `feat/meansd-with-range`, 2026-09-25**, from the corpus

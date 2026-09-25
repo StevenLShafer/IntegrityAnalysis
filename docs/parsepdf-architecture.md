@@ -408,7 +408,8 @@ inert without the model.
   duplicated tuples, SD above the mean and variables short of arms are read off the merged
   table, so a row the model adds is flagged like the table's own.
 - **Model-added outcomes are refused** (2026-09-25, issue 54; a row the chosen table itself
-  prints is spared, issue 61 - the block's text rides on the result as `blockText`). A variable the model adds to
+  prints is spared, issue 61 - the block's text rides on the result as `blockText`; the same
+  test, by vocabulary alone, refuses outcome rows on the AI-only retry route, issue 64). A variable the model adds to
   the deterministic baseline table whose label names an outcome (time to, VAS, follow-up
   week/month, nausea, hypotension, duration of surgery, ephedrine …) goes to `$skipped` with
   its reason and a flag, never into the analysis; the model's reply is not reproducible, and a
