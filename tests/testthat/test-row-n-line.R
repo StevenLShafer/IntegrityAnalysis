@@ -63,5 +63,10 @@ test_that("the hybrid merge then recognises the model's reading of that row as t
   withr::local_envvar(ANTHROPIC_API_KEY = "test-key-not-used")
   out <- parseBaselineTable(rowNPdf(), ai = "fallback", quiet = TRUE)
   expect_identical(sum(grepl("^Last menstrual", out$data$ROW)), 4L)
-  expect_false("Last menstrual cycle, d" %in% out$data$ROW)
+  # one row, not the deterministic reading beside the model's: since issue
+  # 69 strips the footnote marker, the two labels are identical, so the
+  # duplicate is tested by name count and provenance rather than by the
+  # model's label being absent
+  expect_identical(length(unique(out$data$ROW[grepl("^Last menstrual", out$data$ROW)])), 1L)
+  expect_false(any(out$provenance$ENGINE == "ai" & grepl("^Last menstrual", out$provenance$ROW)))
 })
