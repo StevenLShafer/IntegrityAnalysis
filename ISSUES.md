@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 115. A caption number with a stray OCR glyph ("Table 1<bullet>")
+
+**Status: fixed on `fix/caption-number-with-glyph`, 2026-09-26**, a
+regression of issue 96 found by the corpus session's batch 26 AE9
+(Donmez 1998 JCVA, Loadsman corpus; also Altinsoy 2015 Minerva).
+
+- **The defect.** The scan's caption reads "Table 1<bullet> Demographic
+  Data", the bullet glued to the digit. Until issue 96 the rail
+  stripper took the word "1<bullet>" for a rail word and the caption
+  read "Table Demographic Data", which the bare-word anchor rule
+  accepted. With the word kept, neither anchor rule matched ("1<bullet>"
+  is not a number), page 2 had no candidate, and the assisted route -
+  which hands the model the best candidate's page - sent page 1, which
+  has no table: the trial went from read (adf5b75, twelve cells) to "no
+  baseline table" on both ai routes.
+- **What changed.** In `.ppCaptionAnchors()` a digit or numeral followed
+  by one stray glyph (a bullet, a middle dot, a quote) is the caption's
+  number, as a trailing period or colon already was.
+- **On the page.** Page 2's Table 1 is a candidate again ("Table
+  1<bullet> Demographic Data, CPB ...", caption score 12) and the
+  assisted route gets the right page; the deterministic reading of
+  that OCR page is still thin (AD2: the values sit one line below
+  their labels, no route yet), and its cells are mean +/- standard
+  error by the Methods.
+- **Tests** (`tests/testthat/test-caption-number-with-glyph.R`): the
+  anchor helper on "Table 1<bullet>", "Table 2.", "TABLE III" and a
+  non-caption "Table 1x"; a rebuilt page whose caption number carries
+  a bullet is found and read, with its "standard error" footnote
+  landing the cells in SE (3 expectations fail on the unfixed code).
+  The caption, tie-break, rail and Loadsman layout tests still pass.
+
 ## 114. A minus and one digit as the sign ("-6"), under an announced notation
 
 **Status: fixed on `fix/minus-digit-sign-at-slot`, 2026-09-26**, from
@@ -160,6 +191,8 @@ hypertensive patients").
   arms of every row (8 expectations fail on the unfixed code). The
   announced-soup, zero-repair, slot, glued-soup, junk-row and Loadsman
   layout tests still pass.
+
+---
 
 ## 113. A column fed by one token is not an arm column
 
