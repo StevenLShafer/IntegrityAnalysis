@@ -490,6 +490,45 @@ claudeAvailable <- function() {
                else as.integer(v$decimalsDispersion)
     # The model reports which the printed value is; it never converts.
     kind <- if (is.null(v$dispersion)) "unstated" else as.character(v$dispersion)
+    # A COUNT (%) ROW THE MODEL CALLED CONTINUOUS (2026-09-25, ISSUES.md
+    # issue 53; the corpus session's L3, Ozkan 2019: "Intubation success
+    # (at the first-pass attempt)" 26 (100) / 20 (80) filed as MEAN 26,
+    # SD 100). The identity the deterministic engine applies to its own
+    # "a (b)" cells (issue 35) decides here too: when every arm's "mean"
+    # is a whole number, its "sd" lies in [0, 100], the arm's N is known,
+    # and the "sd" is the percentage the count makes of that N (to the
+    # rounding of one decimal), the row is n (%) and is filed as a
+    # category with its complement, not as a mean and an SD.
+    cnt <- vapply(v$values, function(val) {
+      if (is.null(val$mean) || is.null(val$sd)) return(NA_real_)
+      n <- if (!is.null(val$n)) as.integer(val$n) else unname(armN[as.character(val$arm)])
+      m <- as.numeric(val$mean); s <- as.numeric(val$sd)
+      if (is.na(n) || n <= 0 || is.na(m) || is.na(s)) return(NA_real_)
+      if (m != round(m) || m < 0 || s < 0 || s > 100) return(NA_real_)
+      if (abs(m / n * 100 - s) > 0.55) return(NA_real_)
+      m
+    }, numeric(1))
+    if (length(cnt) >= 2 && all(!is.na(cnt)) &&
+        !grepl("(?i)\\bscore\\b|\\bindex\\b|\\bratio\\b", v$label, perl = TRUE)) {
+      lvl  <- .ppUniqueName(.iaLevelColumnName(rowName, rowName),
+                            c(catColumns, .ppBaseColumns(), "Q1", "Q3", "LEVEL"))
+      notl <- .ppUniqueName(.iaLevelColumnName(rowName, paste("Not", rowName)),
+                            c(catColumns, lvl, .ppBaseColumns(), "Q1", "Q3", "LEVEL"))
+      catColumns <- unique(c(catColumns, lvl, notl))
+      for (k in seq_along(v$values)) {
+        val <- v$values[[k]]
+        n <- if (!is.null(val$n)) as.integer(val$n) else unname(armN[as.character(val$arm)])
+        line <- data.frame(TRIAL = trial, ROW = rowName,
+                           N = NA_integer_, MEAN = NA_real_, SD = NA_real_, SE = NA_real_,
+                           ROUND_MEAN = NA_integer_, ROUND_DISPERSION = NA_integer_,
+                           ROUND_OBSERVATION = NA_integer_,
+                           stringsAsFactors = FALSE, check.names = FALSE)
+        line[[lvl]]  <- as.integer(cnt[k])
+        line[[notl]] <- as.integer(n - cnt[k])
+        rowsCat[[length(rowsCat) + 1]] <- line
+      }
+      next
+    }
     seen <- c(seen, kind)
     isSE <- identical(kind, "se")
     for (val in v$values) {
