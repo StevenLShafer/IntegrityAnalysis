@@ -82,6 +82,16 @@ chk(any(grepl("^ASA I$|^I$", lab)) && any(grepl("^ASA II$|^II$", lab)),
     paste0("ASA I and ASA II both present as rows (rows: ",
            paste(grep("ASA|^I{1,2}$", lab, value = TRUE), collapse = ", "), ")"))
 
+cat("\n=== Peker 2020 IJMS: a whole label with 'number' in it must not become a second N ===\n")
+r <- parse("Peker 2020 IJMS"); d <- r$data
+chk(any(grepl("(?i)rescue medication", d$ROW, perl = TRUE)),
+    "the wrapped label 'Need for rescue medication ...' is read")
+chk(!any(grepl("(?i)number", setdiff(names(d), IntegrityAnalysis:::.ppBaseColumns()), perl = TRUE)),
+    "no category column spells NUMBER (the normaliser would rename it N)")
+v <- shiny::isolate(IntegrityAnalysis:::validateData(d))
+chk(!isTRUE(v$FAIL) && !any(v$issues$code == "structural"),
+    paste0("validateData accepts the table (FAIL = ", isTRUE(v$FAIL), ")"))
+
 cat("\n=== corpus invariant: a table that is mostly SD > MEAN is flagged ===\n")
 pdfs <- list.files(DIR, "[.]pdf$", full.names = TRUE)
 bad <- character(0); unparsed <- character(0)

@@ -115,6 +115,39 @@ test_that("a lower-case category header with indented children is a header, not 
   expect_identical(nrow(r$skipped), 0L)
 })
 
+test_that("a level column named from a label never spells a header word the normaliser renames", {
+  # The corpus session's F4 on PR #336 (Peker 2020 IJMS): reading the label
+  # "Need for rescue medication (number of patients)" whole named the two
+  # parts of its "12/30" cells "... (number of patients) 1" and "... 2";
+  # the normaliser turns any column containing NUMBER into N, and the
+  # table was refused structurally. The name is respelled before it
+  # becomes a column; validation passes; the counts are intact.
+  expect_identical(.iaSafeColumnName("Need for rescue medication (number of patients) 1"),
+                   "Need for rescue medication (no. of patients) 1")
+  expect_identical(.iaSafeColumnName("Trial of labour"), "trl of labour")
+  expect_identical(.iaSafeColumnName("Brown"), "Brown")     # ROW is not unconditional
+  expect_identical(.iaLevelColumnName("Category", "Number"), "category no.")
+  f  <- file.path(tempdir(), "numberLabel.pdf")
+  vx <- c(300, 420)
+  cells <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Demographics and clinical data", adj = 0)),
+    rowCells(110, "", c("Group A", "Group B"), vx),
+    rowCells(128, "", c("(n = 30)", "(n = 30)"), vx),
+    rowCells(150, "Age (years)", c("41 ± 9", "43 ± 10"), vx),
+    rowCells(168, "Need for rescue medication (number of patients)", c("12/18", "8/22"), vx),
+    list(list(x = 72, y = 200, text = "Values are mean ± SD or n/n.", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  d <- r$data
+  expect_false(any(grepl("(?i)number", setdiff(names(d), .ppBaseColumns()), perl = TRUE)))
+  v <- vdShared(d)
+  expect_false(isTRUE(v$FAIL))
+  expect_identical(sum(v$issues$code == "structural"), 0L)
+  lv <- grep("(?i)rescue", names(d), value = TRUE)
+  expect_true(length(lv) >= 2)
+  expect_true(any(unlist(d[, lv]) == 12, na.rm = TRUE))
+})
+
 # ---- 3. counts and percentages with no "%" anywhere on the page -------------
 countsNoPercentPdf <- function(file = file.path(tempdir(), "countsNoPct.pdf"),
                               withN = TRUE) {
@@ -155,18 +188,74 @@ test_that("two arms printing the same integer values are one check, not two: a g
   expect_identical(age$SD, c(15, 15))
 })
 
-test_that("a caption that names two tables scores below a single-table caption", {
+test_that("a caption's table anchors are listed, and the straddle loses only to a split twin", {
   # PMID 16738291: the full-width candidate joined "TABLE I Baseline
   # characteristics" and "TABLE III Treatment outcomes" into one caption
   # and, once it had one more usable row, outscored the single-column
-  # table, filing outcome values under Age and Height.
-  one <- .ppCaptionScore("TABLE I Baseline characteristics")
-  two <- .ppCaptionScore("TABLE I Baseline characteristics TABLE III Treatment outcomes")
-  expect_true(two < one)
-  expect_true(two <= one - 8)
-  # a caption that merely mentions another table in prose is one anchor
-  expect_identical(.ppCaptionScore("Table 1 Patient characteristics (see also the table of outcomes)"),
-                   .ppCaptionScore("Table 1 Patient characteristics"))
+  # table, filing outcome values under Age and Height. The dock is
+  # applied at candidate level, only when a single-anchor candidate for
+  # the same first table exists on the page (PMIDs 15681941 and 12193491
+  # showed why: a page with no split, and prose running onto the caption).
+  expect_identical(.ppCaptionAnchorList("TABLE I Baseline characteristics TABLE III Treatment outcomes"),
+                   c("table i", "table iii"))
+  expect_identical(.ppCaptionAnchorList("Table 1. Patient Characteristics Table 3. Findings"),
+                   c("table 1", "table 3"))
+  expect_identical(.ppCaptionAnchorList("Table 1 Patient characteristics (see also the table of outcomes)"),
+                   "table 1")
+  expect_identical(.ppCaptionAnchorList(NA_character_), character(0))
+  # .ppCaptionScore itself is untouched by the anchor count
+  expect_identical(.ppCaptionScore("TABLE I Baseline characteristics TABLE III Treatment outcomes"),
+                   .ppCaptionScore("TABLE I Baseline characteristics"))
+
+  # the rule itself, on hand-built candidate lists: (a) a twin on the same
+  # page sets the straddle aside; (b) a prose candidate whose anchor is
+  # mid-sentence is not a twin; (c) a twin on another page is not a twin;
+  # (d) a caption running into prose ("... (Table II)") with no twin is
+  # left alone
+  mk <- function(page, caption, score = 8) list(page = page, caption = caption, capScore = score)
+  a <- .ppSetAsideStraddles(list(
+    mk(4, "TABLE I Baseline characteristics TABLE III Treatment outcomes"),
+    mk(4, "TABLE I Baseline characteristics"),
+    mk(4, "TABLE III Treatment outcomes", 0)))
+  expect_identical(vapply(a, `[[`, numeric(1), "capScore"), c(-100, 8, 0))
+  b <- .ppSetAsideStraddles(list(
+    mk(4, "Table 1. Patient Characteristics Table 3. Findings of MRI"),
+    mk(4, "sented in table 1. The CSF volume and velocity before", 3)))
+  expect_identical(vapply(b, `[[`, numeric(1), "capScore"), c(8, 3))
+  cc <- .ppSetAsideStraddles(list(
+    mk(4, "TABLE I Baseline characteristics TABLE III Treatment outcomes"),
+    mk(5, "TABLE I Baseline characteristics")))
+  expect_identical(vapply(cc, `[[`, numeric(1), "capScore"), c(8, 8))
+  d <- .ppSetAsideStraddles(list(
+    mk(4, "TABLE I Patient characteristics and preoperative risk score (Table II)."),
+    mk(4, "TABLE III Patient outcome in ICU", -4)))
+  expect_identical(vapply(d, `[[`, numeric(1), "capScore"), c(8, -4))
+
+  # and a page the column splitter does NOT split - a baseline table on
+  # the left and an outcome table on the right, both under one full-width
+  # band - has no twin, so the straddle is read: the documented limit of
+  # the rule, pinned so a change to it is a deliberate one
+  f <- file.path(tempdir(), "sideBySide.pdf")
+  lx <- c(190, 260); rx <- c(470, 540)
+  cells <- c(
+    list(list(x = 60,  y = 80, text = "TABLE I Baseline characteristics", adj = 0)),
+    list(list(x = 340, y = 80, text = "TABLE III Treatment outcomes", adj = 0)),
+    rowCells(104, "", c("Tuohy", "Sprotte"), lx, labelX = 60),
+    rowCells(104, "", c("Tuohy", "Sprotte"), rx, labelX = 340),
+    rowCells(120, "", c("(n = 537)", "(n = 532)"), lx, labelX = 60),
+    rowCells(120, "", c("(n = 537)", "(n = 532)"), rx, labelX = 340),
+    rowCells(140, "Age",    c("30.3 ± 5.2", "30.1 ± 5.4"), lx, labelX = 60),
+    rowCells(140, "Onset, min", c("84.7 ± 17.3", "68.2 ± 25.3"), rx, labelX = 340),
+    rowCells(158, "Weight", c("79.5 ± 14.9", "80.4 ± 15.8"), lx, labelX = 60),
+    rowCells(158, "Duration, h", c("1.4 ± 0.8", "1.4 ± 0.7"), rx, labelX = 340),
+    rowCells(176, "Height", c("163.9 ± 7.3", "164.4 ± 7.1"), lx, labelX = 60),
+    rowCells(176, "Failed blocks", c("12 (2)", "9 (2)"), rx, labelX = 340),
+    list(list(x = 60, y = 210, text = "Values are mean ± SD.", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_match(r$caption, "^TABLE I Baseline characteristics")
+  expect_identical(length(.ppCaptionAnchorList(r$caption)), 2L)   # the straddle, read whole
+  expect_identical(nrow(r$arms), 4L)
 })
 
 test_that("a (b) cells whose b is a as a percentage of the arm N in every arm are counts", {

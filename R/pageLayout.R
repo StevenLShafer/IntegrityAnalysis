@@ -362,21 +362,47 @@
                               "|intra-?operative|post-?operative|pain score",
                               "|recovery|haemodynamic|hemodynamic"),
                        txt, perl = TRUE)
-  # A CAPTION THAT NAMES TWO TABLES IS TWO TABLES (2026-09-24, issue 35).
-  # On a two-column page the full-width candidate joins the two columns'
-  # caption lines into one: "TABLE I Baseline characteristics TABLE III
-  # Treatment outcomes". Its block then mixes the two tables' rows, and
-  # when that block happens to yield one more usable row than the
-  # single-column reading it wins on score - PMID 16738291 filed Table
-  # III's outcome values under Age and Height once the wrapped-label rule
-  # made one of its lines usable. The vocabulary above cannot see the
-  # straddle (the joined caption still says "Baseline"); the second
-  # anchor can. Docked below what a single-column caption earns, so the
-  # split reading wins whenever one exists; a full-width table that is
-  # genuinely one table has one anchor and is untouched.
-  anchors <- gregexpr("(?i)\\btab(le|\\.)\\s+([0-9]+|[ivx]+)\\b", txt, perl = TRUE)[[1]]
-  if (anchors[1] != -1 && length(anchors) >= 2) s <- s - 8
   s
+}
+
+# The "Table N" anchors a caption line names, lower-cased and squished:
+# "TABLE I Baseline characteristics TABLE III Treatment outcomes" gives
+# c("table i", "table iii"). Used by the candidate scorer to recognise a
+# full-width block that straddles two side-by-side tables (issue 35).
+.ppCaptionAnchorList <- function(txt) {
+  if (is.null(txt) || length(txt) != 1L || is.na(txt)) return(character(0))
+  m <- regmatches(txt, gregexpr("(?i)\\btab(le|\\.)\\s+([0-9]+|[ivx]+)\\b", txt, perl = TRUE))[[1]]
+  tolower(gsub("\\s+", " ", m))
+}
+
+# A candidate whose caption names two tables is a full-width block that
+# STRADDLES two side-by-side tables, and its rows are two tables' rows.
+# When the page also offers the halves - a TWIN: a candidate on the same
+# page whose caption BEGINS with the same first table and names no other -
+# the whole is set aside (capScore -100: read only if nothing else on the
+# page parses). A prose candidate "... presented in table 1. The CSF ..."
+# is not a twin (its anchor is mid-sentence, and it has no rows), and a
+# page with no split at all keeps its straddle, because it is the only
+# reading holding the baseline table. Each element of `cand` carries
+# $page, $caption and $capScore; the list comes back with capScore
+# adjusted and nothing else touched. Tested with hand-built candidate
+# lists in test-loadsman-layouts.R; the corpus pages that decided the
+# rule are in corpus/checkCaptionStraddle.R.
+.ppSetAsideStraddles <- function(cand) {
+  if (length(cand) < 2) return(cand)
+  anchorsOf <- lapply(cand, function(x) .ppCaptionAnchorList(x$caption))
+  nAnch  <- lengths(anchorsOf)
+  firstA <- vapply(anchorsOf, function(a) if (length(a)) a[1] else NA_character_, character(1))
+  capLow <- vapply(cand, function(x) tolower(.ppSquish(as.character(x$caption))), character(1))
+  startsWithAnchor <- !is.na(firstA) &
+    mapply(function(cp, a) !is.na(a) && startsWith(cp, a), capLow, firstA)
+  pageOfC <- vapply(cand, function(x) as.numeric(x$page), numeric(1))
+  for (k in which(nAnch >= 2)) {
+    twin <- pageOfC == pageOfC[k] & nAnch == 1 & startsWithAnchor &
+      !is.na(firstA) & firstA == firstA[k]
+    if (any(twin)) cand[[k]]$capScore <- -100
+  }
+  cand
 }
 
 # Which page carries the most baseline-like table caption?

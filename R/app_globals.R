@@ -145,7 +145,33 @@ m <- 100000
             "ROUND_MEAN", "ROUND_DISPERSION", "ROUND_OBSERVATION")
   tokens <- "TRIAL|MEASURE|DECM|NUMBER|GROUP|ROW|MEAN|OBS|LEVEL|CATEGORY"
   nm <- toupper(trimws(level))
-  if (nm %in% base || grepl(tokens, nm)) tolower(paste(row, level)) else level
+  .iaSafeColumnName(
+    if (nm %in% base || grepl(tokens, nm)) tolower(paste(row, level)) else level)
+}
+
+# A CATEGORY COLUMN NAME MUST NOT CONTAIN A HEADER WORD THE NORMALISER
+# RENAMES UNCONDITIONALLY (2026-09-25, issue 35, the corpus session's F4).
+# .iaNormalizeNames() turns the FIRST column whose name contains NUMBER
+# into N, TRIAL into TRIAL, MEASURE into ROW and DECM into ROUND_MEAN,
+# whatever else the name says - those are the spellings a hand-made
+# spreadsheet uses for its headers, and the rule cannot know a column is
+# a category. So a level column named from a variable's label - "Need
+# for rescue medication (number of patients) 1", the two parts of a
+# "12/30" cell - became a second N, and validateData refused the table
+# structurally ("two columns normalize to the same name"). On main the
+# label had been truncated before its bracket and the collision did not
+# arise; reading the label whole (this issue) exposed it. The other
+# tokens (GROUP, ROW, MEAN, OBS, LEVEL, CATEGORY) are conditional or
+# first-match and the template carries every base column leftmost, so
+# they resolve to the real column; only the four unconditional ones are
+# respelled, each to a reading a human still understands. Applied to
+# every category column the parsers name, on both engines' routes.
+.iaSafeColumnName <- function(x) {
+  x <- gsub("number",  "no.",   x, ignore.case = TRUE)
+  x <- gsub("trial",   "trl",   x, ignore.case = TRUE)
+  x <- gsub("measure", "meas.", x, ignore.case = TRUE)
+  x <- gsub("decm",    "dec.",  x, ignore.case = TRUE)
+  x
 }
 
 # ORDER MATTERS and mirrors validateData's original sequence exactly:

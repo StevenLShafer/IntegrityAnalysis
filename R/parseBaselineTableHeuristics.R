@@ -1054,7 +1054,8 @@
       }
       partNames <- ifelse(nchar(partNames) <= 3 & !partNames %in% c("Male", "Female"),
                           paste(label, partNames), partNames)
-      partNames <- vapply(partNames, .ppUniqueName, character(1),
+      # never a spelling the normaliser reads as a header (.iaSafeColumnName)
+      partNames <- vapply(.iaSafeColumnName(partNames), .ppUniqueName, character(1),
                           existing = setdiff(catColumns, partNames))
       catColumns <- unique(c(catColumns, partNames))
       rowName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
@@ -1073,9 +1074,9 @@
       # The variable's name: the row label; failing that, an open block
       # header (a bare "N (%)" label under "NSAID use" names the NSAID
       # variable, not "Category"); failing both, "Category".
-      catName <- .ppUniqueName(
+      catName <- .ppUniqueName(.iaSafeColumnName(
         if (nchar(label) > 0) label
-        else if (!is.na(catHeader)) catHeader else "Category", catColumns)
+        else if (!is.na(catHeader)) catHeader else "Category"), catColumns)
       catHeader <- NA_character_
       catHeaderPct <- FALSE
       catHeaderNPct <- FALSE
@@ -1165,7 +1166,7 @@
                         "not counts; enter by hand"), txt)
           next
         }
-        catName <- .ppUniqueName(if (nchar(label) > 0) label else "Category",
+        catName <- .ppUniqueName(.iaSafeColumnName(if (nchar(label) > 0) label else "Category"),
                                  catColumns)
         catColumns <- unique(c(catColumns, catName))
         key <- paste0("__cat__", catHeader)
@@ -1841,6 +1842,34 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # "Table 1 Patient characteristics". So: if any caption clearly announces a
   # baseline table, only those candidates are considered, and the parse score
   # merely breaks ties among them.
+  # A CAPTION THAT NAMES TWO TABLES IS TWO TABLES - WHEN A SPLIT READING
+  # EXISTS (2026-09-24/25, issue 35). On a two-column page the full-width
+  # candidate joins the two columns' caption lines into one: "TABLE I
+  # Baseline characteristics TABLE III Treatment outcomes". Its block
+  # mixes the two tables' rows, and when that block yields one more
+  # usable row than the single-column reading it wins on score - PMID
+  # 16738291 filed Table III's outcome values under Age and Height once
+  # the wrapped-label rule made one of its lines usable. The caption
+  # vocabulary cannot see the straddle (the joined caption still says
+  # "Baseline"); the second anchor can. The straddle is docked below what
+  # its single-column twin earns, so the split reading wins.
+  #
+  # ONLY when that twin exists. An unconditional dock (the first version)
+  # moved two corpus files the wrong way: on PMID 15681941 the page is a
+  # single full-width layout with Table 1 beside Table 3 and no column
+  # split, so the straddle was the only reading holding Table 1 and an
+  # outcome table won; on PMID 12193491 the second anchor was prose that
+  # ran onto the caption line ("... (Table II)"). So: a candidate whose
+  # caption names two or more tables is set aside only if a TWIN exists -
+  # another candidate on the same page whose caption BEGINS with the same
+  # first table and names no other (a prose candidate "... presented in
+  # table 1. The CSF ..." is not a twin: its anchor is mid-sentence, and
+  # it has no rows). And "set aside" rather than "docked": the halves
+  # are on the page, so the whole is read only if nothing else parses. A
+  # fixed dock was not enough - four phantom arms each with a printed N
+  # out-score two real ones by more than any caption bonus - and the
+  # straddle's rows are two tables' rows, which no score should prefer.
+  cand <- .ppSetAsideStraddles(cand)
   capScores <- vapply(cand, function(x) x$capScore, numeric(1))
   pageOf    <- vapply(cand, function(x) x$page, numeric(1))
   isStrong  <- capScores >= 3

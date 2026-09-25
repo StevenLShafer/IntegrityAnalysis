@@ -268,9 +268,24 @@ other way were each read on both snapshots:
   its block mixes the two tables; once the wrapped-label rule made one
   of its lines usable it outscored the single-column reading by three
   and filed Table III's outcome values under Age and Height. A caption
-  naming two tables is two tables: `.ppCaptionScore()` docks a second
-  "Table N" anchor by 8, below what a single-column caption earns.
-  Table I wins again; a committed test pins the scorer.
+  naming two tables is two tables — *when the page also offers the
+  halves.* A first version docked every two-anchor caption by 8 and the
+  second misparse run showed both ways that is wrong: on `PMID_15681941`
+  the page is one full-width layout with Table 1 beside Table 3 and no
+  column split, so the straddle was the only reading holding Table 1
+  and an outcome table won; on `PMID_12193491` the second anchor was
+  prose that ran onto the caption line ("… (Table II)"). And a dock was
+  not enough anyway: four phantom arms each with a printed N out-score
+  two real ones by more than any caption bonus. Now
+  `.ppSetAsideStraddles()` sets a two-anchor candidate aside
+  (`capScore` −100: read only if nothing else on the page parses) only
+  when a *twin* exists — a candidate on the same page whose caption
+  begins with the same first table and names no other. Table I wins on
+  16738291 and Table 1 on 16179044; 15681941 keeps its straddle; 12193491
+  keeps TABLE I. The four pages are `corpus/checkCaptionStraddle.R`; the
+  rule is unit-tested on hand-built candidate lists, and a synthetic
+  side-by-side page that the column splitter does *not* split pins the
+  rule's documented limit (no twin, straddle read).
 - `PMID_16311286` (3 → 0 corroborated): scorer noise on a broken page.
   Both readings — Table 1 as one arm with no N, ten "variables" mostly
   fragments, and Table 3, an outcome table — fail validation; the
@@ -297,6 +312,31 @@ arms of 55 with identical printed means — and p = 0.026 is the genuine
 result on the genuine table; and one is the unseeded Monte Carlo wobble
 across 0.05 with identical rows (`PMID_17197846`), as before. Suite on the
 corrected branch: 125 files / 4,121 passed / 0 failed / 33 skipped.
+
+**A regression the corpus session found on the pushed branch (its batch
+1, 2026-09-25; the merge was stopped for it).** Peker 2020 IJMS validated
+on `main` and failed on the branch: the wrapped label "Need for rescue
+medication (number of patients)" — now read whole, correctly — named the
+two parts of its "12/30" cells "… (number of patients) 1" and "… 2", and
+`.iaNormalizeNames()` renames the *first* column containing NUMBER to
+`N` unconditionally (as it does TRIAL, MEASURE and DECM: a hand-made
+spreadsheet's header spellings, and the rule cannot know a column is a
+category), so the table was refused structurally as two columns
+normalising to `N`. On `main` the truncated label had no bracket and no
+collision. **Fixed**: `.iaSafeColumnName()` respells those four words
+(number → no., trial → trl, measure → meas., decm → dec.) in every
+category column either engine names — the heuristics' three naming sites
+and the AI route's `.iaLevelColumnName()` — so a level can never collapse
+onto a reserved column; the conditional tokens (GROUP, ROW, MEAN, OBS)
+resolve to the real base column, which the template carries leftmost,
+and are left alone. Peker is asserted in `corpus/checkLoadsman.R` (label
+read whole, no category column spells NUMBER, `validateData` accepts)
+and on a synthetic page in the test file. The corpus session's other
+findings of that batch (a cell set half a line above its row filed as
+Unnamed; a median row pinned at its floor in every arm; MALE/FEMALE and
+male/female both surviving the merge; a third header's N not read and
+NA-N heuristic rows not deduped against the model's) are follow-up
+issues, not this one.
 
 ---
 
