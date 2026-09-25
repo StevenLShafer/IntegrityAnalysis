@@ -876,6 +876,10 @@
   # (a BEL where a superscript "a" is printed - vocacapsaicin corpus,
   # 2026-08-22); strip them before anything pattern-matches the label.
   label <- gsub("[[:cntrl:]]", "", label)
+  # a footnote marker after the unit ("first (mg)*", Fujii 2006, PMID
+  # 17126782, issue 69) would keep the unit rule below from seeing the
+  # closing bracket at the end; the marker goes first
+  label <- sub("[*\u2020\u2021\u00a7]+\\s*$", "", label, perl = TRUE)
   # ...and the zero-width characters a typesetter leaves where a line
   # was allowed to break (U+200B in "ACA\u200b", ticagrelor article,
   # seen in the API's results CSV 2026-09-03): invisible in the grid,
