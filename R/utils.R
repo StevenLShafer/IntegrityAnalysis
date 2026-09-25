@@ -746,7 +746,13 @@
     prev2 <- c("", "", s[seq_len(max(0L, length(s) - 2L))])
     split <- grepl("^(?=[0-9Oo]*[0-9])(?=[0-9Oo]*[Oo])[0-9Oo]+\\)?$", s, perl = TRUE) &
       grepl("^=$", prev1) & grepl("^\\(?[Nn]$", prev2)
-    hit <- glued | split
+    # "(n =3o)" - the equals sign glued to the size (2026-09-25, ISSUES.md
+    # issue 100; CJA 1998, PMID 9512856, the corpus session's batch 24):
+    # the page prints "(n = 3o) (n =3o)", and only the first was repaired;
+    # the second read as an arm of 3 named "o)".
+    afterEq <- grepl("^=\\s*(?=[0-9Oo]*[0-9])(?=[0-9Oo]*[Oo])[0-9Oo]+\\)?$", s, perl = TRUE) &
+      grepl("^\\(?[Nn]$", prev1)
+    hit <- glued | split | afterEq
     if (!any(hit)) next
     s[hit] <- gsub("[Oo]", "0", s[hit])
     lines[[i]]$text <- s
