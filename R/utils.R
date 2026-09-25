@@ -761,6 +761,35 @@
   list(lines = lines, repaired = repaired)
 }
 
+# A LETTER FOR A DIGIT IN THE SD AFTER THE SIGN (2026-09-26, ISSUES.md issue
+# 116; CJA 1998, PMID 9717598, the corpus session's batch 26 AE6): the scan
+# sets the Weight row as "58 <bullet> l0" - the OCR's lowercase l for the 1
+# of "10" - and the tokenizer, which wants a number after the sign, read
+# no cell; the whole row was lost. A word that follows a genuine sign
+# glyph (the plus-minus, the bullet, "+/-") and is made of digits and the
+# look-alike letters l, I, | and O - at least one true digit among them,
+# never all letters - is the SD with its letters restored: l, I and |
+# become 1, O becomes 0. A word with any other letter ("l0a", "kg") is
+# left alone, and so is a word not directly after a sign.
+.ppRepairLetterDigitsAfterSign <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  signRe <- paste0("^(", .ppPLUSMINUS, "|\u2022|\\+/-|\\+-|\u2afe)$")
+  for (i in seq(capIdx + 1L, n)) {
+    s <- lines[[i]]$text
+    if (length(s) < 2L) next
+    afterSign <- c(FALSE, grepl(signRe, s[-length(s)], perl = TRUE))
+    lookalike <- grepl("^[0-9lI|Oo]+(?:[.,][0-9lI|Oo]+)?$", s, perl = TRUE) &
+      grepl("[0-9]", s) & grepl("[lI|Oo]", s)
+    hit <- afterSign & lookalike
+    if (!any(hit)) next
+    s[hit] <- chartr("lI|Oo", "11100", s[hit])
+    lines[[i]]$text <- s
+    repaired <- repaired + sum(hit)
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # THE SIGN FUSED INSIDE THE CELL WORD (2026-09-25, ISSUES.md issue 85;
 # Saitoh, Acta Anaesthesiol Scand 1998;42:851, the corpus session's batch
 # 20 Z1). The scanned page's text layer sets each mean +/- SD cell as ONE

@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 116. A look-alike letter among the digits of an SD after the sign ("58 <bullet> l0")
+
+**Status: fixed on `fix/letter-l-in-sd-after-sign`, 2026-09-26**, from
+the corpus session's batch 26 AE6 (CJA 1998, PMID 9717598, a scan).
+
+- **The defect.** The Weight row prints "58 <bullet> l0 59 <bullet> 11
+  56 <bullet> 9": the OCR's lowercase l for the 1 of "10". The
+  tokenizer wants a number after the sign, read no cell in the first
+  arm, and the row was lost altogether (three arms of 20, two rows
+  short).
+- **What changed.** `.ppRepairLetterDigitsAfterSign()`, beside the zero
+  repair of issue 75: a word that follows a genuine sign glyph (the
+  plus-minus, the bullet, "+/-") and is made of digits and the
+  look-alike letters l, I, | and O - at least one true digit among
+  them, never all letters - is the SD with its letters restored (l, I, |
+  to 1; O to 0). A word with any other letter, or not directly after a
+  sign, is left alone.
+- **On the page.** Weight 58 +/- 10 / 59 +/- 11 / 56 +/- 9 in the three
+  arms of 20; the other rows as before.
+- **Tests** (`tests/testthat/test-letter-l-in-sd-after-sign.R`): the
+  helper on "l0", "O.5" and "I2" after signs, with "l0" off a sign, "kg"
+  and "lO" untouched; a rebuilt scanned page reads the Weight row (3
+  expectations fail on the unfixed code, one as an error since the
+  helper does not exist there). The zero-repair, utility and Loadsman
+  layout tests still pass.
+
 ## 113. A column fed by one token is not an arm column
 
 **Status: fixed on `fix/single-token-column-not-arm`, 2026-09-26**, from

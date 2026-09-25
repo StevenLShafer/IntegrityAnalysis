@@ -178,6 +178,15 @@
     lineTexts <- vapply(lines, .ppLineText, character(1))
     say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
   }
+  # ... and a letter l, I or O among the digits of an SD right after the sign
+  # (issue 116; PMID 9717598's "58 <bullet> l0"): see
+  # .ppRepairLetterDigitsAfterSign() in utils.R
+  rep <- .ppRepairLetterDigitsAfterSign(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read a look-alike letter as a digit in ", rep$repaired, " SD(s) after the sign (\"l0\").")
+  }
   # ... and the sign fused inside the cell word, "48.4k7.2" (issue 85;
   # Saitoh 1998): see .ppRepairFusedSigns() in utils.R
   rep <- .ppRepairFusedSigns(lines, capIdx)
