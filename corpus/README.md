@@ -325,3 +325,22 @@ this list as adjudications find more):
 3. **Score before and after.** Regenerate `ParseOutcomes.csv` and compare
    parse rates; for value-level accuracy, score against Carlisle. A change
    that parses more tables but mis-reads more numbers is a regression.
+
+
+## Carlisle Table 12 comparison: deterministic pass as the citable figure (2026-09-25)
+
+Steve, 2026-09-25: the deterministic-only pass (`ai = "never"`) is the citable Carlisle validation number, because it is reproducible; the AI-assisted pass is reported beside it as what a user with a key would see, and its model-read rows vary from run to run. The text below is the Corpus session's ledger for engine adf5b75, reproduced as written (comparison files and checkpoints live in the private corpus folders).
+
+### Carlisle Table 12 comparison, engine adf5b75 (2026-09-25)
+
+Deterministic pass (ai = "never", the citable figure): 86 of 168 analysed. AI-assisted pass: 149 of 168 analysed, 44 of them by the model retry; the model's reply varies between runs, so this column is illustrative.
+The p<0.00001 band is unreachable from the batch: the app prints "<0.0001" at its display floor (3 deterministic trials sit there).
+
+| Source | n | p<0.00001 | p<0.001 | p<0.01 | p<0.05 | p>0.049 |
+|---|---|---|---|---|---|---|
+| DETERMINISTIC pass, human (primary) |  73 |  0 |  8 | 18 | 19 | 28 |
+| DETERMINISTIC pass, animal (primary) |   6 |  0 |  4 |  2 |  0 |  0 |
+| AI-assisted pass, human (secondary) | 127 |  0 | 13 | 32 | 36 | 46 |
+| AI-assisted pass, animal (secondary) |  15 |  0 | 10 |  5 |  0 |  0 |
+| Carlisle 2012, human | 135 |  9 | 30 | 27 | 31 | 38 |
+| Carlisle 2012, animal |  24 | 15 |  3 |  2 |  1 |  3 |
