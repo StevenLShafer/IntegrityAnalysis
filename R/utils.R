@@ -837,7 +837,19 @@
 # restores are the genuine glyphs the slot rule then leans on.
 # (a text layer may set the hyphens as the minus sign U+2212, as R's pdf
 # device does in the test fixture; both are accepted)
-.ppDashIDash <- "^([0-9]+(?:[.,][0-9]+)?)?([-\u2212]{1,2}I[-\u2212])([0-9]+(?:[.,][0-9]+)?[A-Za-z,]*)?$"
+# ... AND THE DIGIT ONE FOR THE I (2026-09-26, ISSUES.md issue 124; CJA
+# 1995, PMID 7497558, the corpus session's AF6): "Age (yr) 63+8 60 -k I1
+# 62-1-11" - the third arm's sign is "-1-", the same OCR family read with
+# a one for the capital I, and the cell was a bare number. Between two
+# numbers "-1-" can be nothing else on a table line: a hyphenated code
+# begins with a letter and a range has no second hyphen. But an ADDRESS
+# has the shape too - "2-1-1, Hongo, Toride City" on the title page of
+# BJA1999_340 (Loadsman corpus) read as a cell "2 +/- 1" and made a
+# one-cell table of an affiliation line - so the digit form is held to
+# a cell's numbers: two digits or a decimal on each side, and no comma
+# on the number after the sign. "62-1-11" passes, "2-1-1," and "12-1-1"
+# do not; a one-digit SD after "-1-" is missed, and left to the slot rule.
+.ppDashIDash <- "^([0-9]+(?:[.,][0-9]+)?)?([-\u2212]{1,2}[I1][-\u2212])([0-9]+(?:[.,][0-9]+)?[A-Za-z,]*)?$"
 .ppRepairDashIDash <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -857,6 +869,12 @@
       okBefore <- nzchar(before) || (k > 1L && isNum(s[k - 1L]))
       okAfter  <- nzchar(after)  || (k < length(s) && isNum(s[k + 1L]))
       if (!okBefore || !okAfter) next
+      if (grepl("1", m[3], fixed = TRUE)) {
+        numBefore <- if (nzchar(before)) before else s[k - 1L]
+        numAfter  <- if (nzchar(after))  after  else s[k + 1L]
+        cellNum <- function(x) grepl("^(?:[0-9]{2,}|[0-9]+[.,][0-9]+)", x, perl = TRUE)
+        if (!cellNum(numBefore) || !cellNum(numAfter) || grepl(",$", numAfter)) next
+      }
       nc <- nchar(s[k]); w <- L$width[k]; x0 <- L$x[k]
       f1 <- nchar(before) / nc; f2 <- nchar(m[3]) / nc
       parts <- list()
