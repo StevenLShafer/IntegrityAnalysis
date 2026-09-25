@@ -132,6 +132,46 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 93. A figure's axis under the table is not a row, and the rail's short words go with the rail
+
+**Status: fixed on `fix/rail-strip-keeps-column`, 2026-09-25**, a
+regression of issue 86 found by the corpus session's batch 23b (AB1:
+Saitoh, Br J Anaesth 1995;74:293, Loadsman corpus, Table 1 on page 2,
+two groups of 15).
+
+- **The defect.** Once issue 86 stripped the OUP rail, the block ran on
+  into the time axis of Figure 2 beneath the table: "15 20 25 ... 100",
+  eighteen integers eleven points apart and no label. Issue 46 drops a
+  column fed only by label-less lines, but these ticks are closer
+  together than the gap the columns are cut at, so they bridged the two
+  arm columns into one before any column could be judged, and the
+  table read one arm ("PTB group PTT group"), Height and Weight in one
+  arm each and Sex not at all. The rail had hidden this: its URL word
+  and the label lines it left ended the block before the axis. The
+  rail's short words - "at", "on", "12," - are as wide as they are tall
+  and stayed, one glued to a row label as "Weight (kg) at".
+- **What changed.** Before the columns are clustered, a label-less
+  line of six or more plain integers, evenly spaced across the page
+  (every gap within a quarter of the median) and stepping by one
+  constant amount, is an axis: its tokens are dropped and the line is
+  junk. No table prints such a row without a label. And a word at the
+  rail's own x, within the rail's vertical span, is part of the rail
+  whatever its shape (`.ppStripRotatedText()`).
+- **On the page.** Two arms of 15, Sex 7/8 in both, Height 166.2
+  (11.0) / 164.9 (10.5), Weight 57.7 (9.4) / 56.5 (9.9) under a clean
+  label; Age's range stays unusable. The arm names still carry caption
+  fragments ("(PTT) groups (mean (SD PTB group"), as they did before
+  issue 86 - a separate matter.
+- **Tests** (`tests/testthat/test-axis-ticks-under-table.R`): the
+  stripper drops "at", "on", "2015" at the rail's x within its span and
+  keeps an "at" below it; a rebuilt page with the axis straight beneath
+  the table reads two arms with both cells of Height and Weight (6
+  expectations fail on the unfixed code). The issue 46 test's tick line
+  is now dropped as an axis before the level step, and its expectation
+  says so. The rail, column and layout tests still pass.
+
+---
+
 ## 92. A colon between two integers is a ratio, not the sign ("19:21" under "Sex M:F")
 
 **Status: fixed on `fix/colon-ratio-not-fused-sign`, 2026-09-25**, a

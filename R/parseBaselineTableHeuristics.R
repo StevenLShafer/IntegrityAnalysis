@@ -580,6 +580,36 @@
     say("  \"", .ppSquish(substr(head, 1, colon - 1L)), "\": ", m, " levels across the line for ",
         kHeader, " arms (", length(np), " cells) - read arm by arm.")
   }
+  # AN AXIS-TICK LINE IS NOT A ROW (2026-09-25, ISSUES.md issue 93; Saitoh,
+  # Br J Anaesth 1995;74:293, Loadsman corpus, the corpus session's batch
+  # 23b AB1). Beneath Table 1 the figure's time axis runs on inside the
+  # block: "15 20 25 30 ... 100", eighteen integers eleven points apart
+  # and no label. Issue 46 drops a COLUMN fed only by label-less lines,
+  # but these ticks are closer together than the gap the columns are cut
+  # at, so they bridged the two arm columns into one before any column
+  # could be judged, and the table read as one arm. (The rail of issue
+  # 86 used to hide this: its URL word and the label lines it left ended
+  # the block before the axis.) A label-less line of six or more plain
+  # integers, evenly spaced across the page and stepping by one constant
+  # amount, is an axis: its tokens are dropped and the line is junk
+  # before the columns are clustered. No table prints such a row without
+  # a label.
+  for (i in dataIdx) {
+    t <- tokensByLine[[i]]
+    if (nrow(t) < 6L || any(t$type != "plain") || any(is.na(t$num1)) ||
+        any(t$num1 != round(t$num1))) next
+    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(t$start) - 1))
+    if (nchar(lbl) > 0) next
+    o    <- order(t$mid)
+    dx   <- diff(t$mid[o]); dv <- diff(t$num1[o])
+    if (length(unique(dv)) != 1L || dv[1] == 0) next
+    if (any(abs(dx - stats::median(dx)) > 0.25 * stats::median(dx))) next
+    say("  A label-less line of ", nrow(t), " evenly spaced integers stepping by ",
+        dv[1], " (\"", .ppSquish(paste(head(t$num1[o], 4), collapse = " ")),
+        " ...\") is an axis, not a row - dropped.")
+    kind[i] <- "junk"
+    tokensByLine[[i]] <- t[0, , drop = FALSE]
+  }
   allToks <- do.call(rbind, tokensByLine[dataIdx])
   if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
 

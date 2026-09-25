@@ -47,7 +47,9 @@ test_that("axis ticks with no row label feed no arm column; the footnote sentenc
   expect_false(any(grepl("^Sr|^Time|Category", names(r$data))))
   cont <- r$data[!is.na(r$data$MEAN), ]
   expect_identical(cont$MEAN[cont$ROW == "Age"], c(45.5, 45.0))
-  expect_true(any(grepl("no level name", r$skipped$reason)))
+  # since issue 93 the tick line is dropped as an axis before the level
+  # step, so it is neither a level nor a skipped one
+  expect_false(any(grepl("^15$|15 20 25", c(r$skipped$label, r$data$ROW))))
   expect_false(isTRUE(vdShared(r$data)$FAIL))
 })
 
