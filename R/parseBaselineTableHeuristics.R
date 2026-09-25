@@ -1501,8 +1501,32 @@
     # joining word ("of", "and", "in", "for", "after", "to"), is the
     # label's first line: joined in front, and the heading closed. A true category heading is a noun phrase and the
     # levels beneath it are capitalised or numeric.
+    # ... BUT ONLY FOR A ROW OF CONTINUOUS CELLS (2026-09-26, ISSUES.md issue
+    # 117, a regression of 112 found by the corpus session's batch 27 AF2;
+    # MTS2001_21): "Antihypertensive medication" over "a -blocker 1 1 2" -
+    # the OCR's "a" for the Greek alpha - is a category heading over a
+    # level, and the lowercase test above joined them into one row label,
+    # closed the heading, and the count rows beneath lost their category
+    # and were skipped; Height and Weight went with them in the candidate
+    # contest. A label's wrapped first line stands over a row of mean (SD)
+    # or n (%) cells; a heading stands over levels, whose cells are bare
+    # counts. The join applies only when the row carries a continuous cell.
+    # An "a (b)" cell is continuous only when it does NOT check as a count
+    # and its percentage of the arm's N ("a -blocker 1 (6.7)" in an arm of
+    # 15 is a level; "Height 157 (11)" is not) - the same signature the
+    # n (%) decision below uses, applied cell by cell, so a lowercase
+    # n (%) level under its heading is left as a level (CodeRabbit on
+    # PR #425, 2026-09-26).
+    contCell <- toks$type %in% c("meanSD", "medianRng") |
+      (toks$type == "numParen" & !vapply(seq_len(nrow(toks)), function(j) {
+        Nj <- armN[toks$col[j]]; n1 <- toks$num1[j]; n2 <- toks$num2[j]
+        dec2 <- if (is.na(toks$dec2[j])) 0 else toks$dec2[j]
+        !is.na(Nj) && Nj > 0 && !is.na(n1) && !is.na(n2) &&
+          n1 %% 1 == 0 && n1 >= 0 && n1 <= Nj &&
+          abs(n2 - 100 * n1 / Nj) <= 0.5 * 10^-dec2 + 1e-9
+      }, logical(1)))
     if (nzchar(.ppSquish(rawLabel)) && !is.na(catHeaderAt) && catHeaderAt == i - 1L &&
-        !is.na(catHeader) && i - 1L > capIdx &&
+        !is.na(catHeader) && i - 1L > capIdx && any(contCell) &&
         (grepl("^[[a-z(]", .ppSquish(rawLabel), perl = TRUE) ||
            grepl("(?i)\\b(of|and|in|for|after|to|the)$", .ppSquish(lineTexts[i - 1L]), perl = TRUE))) {
       rawLabel <- paste(.ppSquish(lineTexts[i - 1L]), .ppSquish(rawLabel))
