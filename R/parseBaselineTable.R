@@ -13,16 +13,6 @@
 # paths and the merge rule; the live API call is not exercised there).     #
 ############################################################################
 
-#' What in a parsed table needs a human look
-#'
-#' Returns the reasons a parsed table should not be trusted as-is. An empty
-#' character vector means the deterministic engine read the whole table
-#' cleanly. [parseBaselineTable()] uses this to decide whether to consult the
-#' AI fallback.
-#'
-#' @param x A `ParsePDFTable` object.
-#' @return A character vector of human-readable reasons, possibly empty.
-#' @export
 # Does a model-supplied variable's label name an OUTCOME rather than a
 # baseline characteristic (issues 54 and 61)? The vocabulary of the caption
 # scorer plus the words of block onset, analgesia, follow-up, adverse events
@@ -151,6 +141,16 @@
   out
 }
 
+#' What in a parsed table needs a human look
+#'
+#' Returns the reasons a parsed table should not be trusted as-is. An empty
+#' character vector means the deterministic engine read the whole table
+#' cleanly. [parseBaselineTable()] uses this to decide whether to consult the
+#' AI fallback.
+#'
+#' @param x A `ParsePDFTable` object.
+#' @return A character vector of human-readable reasons, possibly empty.
+#' @export
 reviewFlags <- function(x) {
   stopifnot(inherits(x, "ParsePDFTable"))
   flags <- character(0)
