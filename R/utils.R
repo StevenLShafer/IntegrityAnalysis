@@ -759,28 +759,81 @@
 # Saitoh, Acta Anaesthesiol Scand 1998;42:851, the corpus session's batch
 # 20 Z1). The scanned page's text layer sets each mean +/- SD cell as ONE
 # word with a letter or symbol where the sign was: "48.4k7.2",
-# "46.9Z7.7", "168.0?8.5", "166.9k8.4" - and, once, the digit 5
-# ("47.357.9"), which no rule can settle without a legend. The tokenizer
-# reads none of them: its number pattern refuses a digit run that a
-# letter touches on either side, so the row held no cell and Table 1
-# read as Gender alone. A word of the shape NUMBER, one or two glyphs
-# that are not digits, NUMBER - the glyphs not "e"/"E" (an exponent) and
-# not "x"/"X" (a dimension, "10x20") - is a mean +/- SD cell when the line
-# holds two or more of them: it is split into its three words, the sign
-# written as the plus-minus glyph, the widths shared by character count.
+# "46.9Z7.7", "168.0?8.5", "166.9k8.4" - and, in three cells, a DIGIT
+# ("47.357.9", "56.429.2", "58.527.8"). The tokenizer reads none of
+# them: its number pattern refuses a digit run that a letter touches on
+# either side, so the row held no cell and Table 1 read as Gender alone.
+# A word of the shape NUMBER, one or two glyphs that are not digits,
+# NUMBER - the glyphs not "e"/"E" (an exponent) and not "x"/"X" (a
+# dimension, "10x20") - is a mean +/- SD cell when the line holds two or
+# more of them: it is split into its three words, the sign written as
+# the plus-minus glyph, the widths shared by character count.
+#
+# TWO MORE FORMS ON SUCH A LINE (2026-09-25, ISSUES.md issue 90; the
+# corpus session's batch 23 on the same page, where the letter rule
+# read Height but left Age and Weight as bare numbers). A line that
+# holds two or more sign cells - letter-fused or the plus-minus glyph
+# itself - fixes the PRECISION of its cells: every mean on the line has
+# the same number of decimals, and so has every SD. With that settled,
+# (a) a word of two decimal points, "47.357.9", is a mean +/- SD cell
+# whose sign was set as a digit, and it splits in exactly one way:
+# "47.3", the one stray digit "5", "7.9"; and (b) a glyph-soup word that
+# is glued to an SD alone, "k8.0", and follows a bare number of the
+# line's precision, "50.1", is that number's sign and SD. Neither form
+# is read on a line with fewer than two sign cells, and the digit form
+# needs at least one decimal on each side (an integer mean "4757" could
+# split anywhere). The precision must agree across the line's sign
+# cells; where it does not, only the letter form is read.
 .ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
+.ppFusedSoup <- "^([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
+.ppDecimals  <- function(x) ifelse(grepl(".", x, fixed = TRUE), nchar(sub("^[^.]*\\.", "", x)), 0L)
 .ppRepairFusedSigns <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  isNum <- function(x) grepl("^[0-9]+(?:\\.[0-9]+)?$", x, perl = TRUE)
   for (i in seq(capIdx + 1L, n)) {
     L <- lines[[i]]; s <- L$text
-    hit <- grepl(.ppFusedSign, s, perl = TRUE)
-    if (sum(hit) < 2L) next
+    hit  <- grepl(.ppFusedSign, s, perl = TRUE)
+    glyph <- s == .ppPLUSMINUS
+    if (sum(hit) + sum(glyph) < 2L) next
+    # the line's precision, from its letter-fused cells and its glyph cells
+    # (the numbers either side of a glyph); NA when the cells disagree
+    parts <- lapply(which(hit), function(k)
+      regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]][c(2, 4)])
+    means <- vapply(parts, `[`, character(1), 1); sds <- vapply(parts, `[`, character(1), 2)
+    for (k in which(glyph)) {
+      if (k > 1L && isNum(s[k - 1L])) means <- c(means, s[k - 1L])
+      if (k < length(s) && isNum(s[k + 1L])) sds <- c(sds, s[k + 1L])
+    }
+    dm <- unique(.ppDecimals(means)); ds <- unique(.ppDecimals(sds))
+    dm <- if (length(dm) == 1L) dm else NA_integer_
+    ds <- if (length(ds) == 1L) ds else NA_integer_
+    # (a) the digit-fused form, split by that precision (issue 90)
+    digitRe <- if (!is.na(dm) && !is.na(ds) && dm >= 1L && ds >= 1L)
+      sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm, ds) else NULL
+    dhit <- if (is.null(digitRe)) rep(FALSE, length(s)) else grepl(digitRe, s, perl = TRUE)
+    # (b) a soup word glued to the SD alone, after a bare number of the line's
+    #     mean precision ("50.1" "k8.0"; issue 90)
+    shit <- grepl(.ppFusedSoup, s, perl = TRUE) & c(FALSE, isNum(s[-length(s)])) &
+      c(FALSE, !is.na(dm) & .ppDecimals(s[-length(s)]) == dm)
+    shit[is.na(shit)] <- FALSE
+    if (!any(hit | dhit | shit)) next
     out <- vector("list", nrow(L))
     for (k in seq_len(nrow(L))) {
-      if (!hit[k]) { out[[k]] <- L[k, , drop = FALSE]; next }
-      m  <- regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]]
+      if (!(hit[k] || dhit[k] || shit[k])) { out[[k]] <- L[k, , drop = FALSE]; next }
       nc <- nchar(s[k]); w <- L$width[k]; x0 <- L$x[k]
+      if (shit[k]) {
+        m  <- regmatches(s[k], regexec(.ppFusedSoup, s[k], perl = TRUE))[[1]]
+        f1 <- nchar(m[2]) / nc
+        w1 <- L[k, , drop = FALSE]; w2 <- w1
+        w1$text <- .ppPLUSMINUS; w1$width <- w * f1
+        w2$text <- m[3]; w2$x <- x0 + w * f1; w2$width <- w * (1 - f1)
+        out[[k]] <- rbind(w1, w2)
+        repaired <- repaired + 1L
+        next
+      }
+      re <- if (hit[k]) .ppFusedSign else digitRe
+      m  <- regmatches(s[k], regexec(re, s[k], perl = TRUE))[[1]]
       f1 <- nchar(m[2]) / nc; f2 <- nchar(m[3]) / nc
       w1 <- L[k, , drop = FALSE]; w2 <- w1; w3 <- w1
       w1$text <- m[2]; w1$width <- w * f1
