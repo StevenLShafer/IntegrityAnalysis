@@ -528,8 +528,11 @@
   # - unless the caption says baseline elsewhere too ("Baseline
   # characteristics and changes from baseline" keeps its standing)
   cfbRe <- "(?i)\\bchanges?\\s+from\\s+(the\\s+)?baseline"
+  # every such phrase is removed before the caption is searched for a
+  # baseline mention of its own (CodeRabbit on PR #384: "changes from
+  # baseline in blood pressure and changes from baseline in heart rate")
   changesFromBaseline <- grepl(cfbRe, txt, perl = TRUE) &&
-    !(grepl("(?i)baseline|demographic", sub(cfbRe, "", txt, perl = TRUE), perl = TRUE) ||
+    !(grepl("(?i)baseline|demographic", gsub(cfbRe, "", txt, perl = TRUE), perl = TRUE) ||
         grepl(qualChar, txt, perl = TRUE))
   if (changesFromBaseline) s <- s - 4
   if (!saysBaseline || changesFromBaseline)

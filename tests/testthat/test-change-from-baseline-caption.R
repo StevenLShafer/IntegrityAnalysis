@@ -18,6 +18,9 @@ test_that("a changes-from-baseline or response caption scores below a plain data
   expect_true(tII < tI)
   expect_true(tII <= -3)
   expect_true(.ppCaptionScore("Table 3 Changes from baseline in blood pressure") <= -3)
+  # two such phrases: both are removed before the caption is searched for a
+  # baseline mention of its own (CodeRabbit on PR #384)
+  expect_true(.ppCaptionScore("Table 3 Changes from baseline in blood pressure and changes from baseline in heart rate") <= -3)
   expect_true(.ppCaptionScore("Table 2 Haemodynamic responses to intubation") <= -6)
   expect_true(.ppCaptionScore("Table 4 Plasma catecholamines during surgery") <= -3)
 })
