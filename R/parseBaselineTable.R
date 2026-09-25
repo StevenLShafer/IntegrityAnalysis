@@ -86,6 +86,25 @@ reviewFlags <- function(x) {
     }
     FALSE
   }
+  # A CONTINUOUS VARIABLE WITH FEWER CELLS THAN THE TABLE HAS ARMS (2026-09-25,
+  # ISSUES.md issue 51; corpus batch 5, K2: CJA 1995;42:992, six arms of 15,
+  # Age read in all six, Height and Weight in four - the OCR of two cells
+  # failed). The deterministic table was accepted as it stood, so the
+  # fallback never consulted the model and the two variables went into the
+  # analysis two arms short. A variable that disagrees with its table on
+  # arm count is a review flag - which is what gates the model consult, and
+  # the arm-by-arm merge of issue 37 then fills the missing cells from the
+  # model's reading and tags them.
+  nArmsTable <- nrow(x$arms)
+  cellsPer <- vapply(byRow, function(i) sum(!is.na(d$MEAN[i])), integer(1))
+  short <- names(cellsPer)[cellsPer > 0 & cellsPer < nArmsTable]
+  if (length(short) && nArmsTable >= 2)
+    flags <- c(flags, paste0(length(short), " variable(s) carry fewer cells ",
+                             "than the table has arms - a cell the reader ",
+                             "dropped, or a variable the page reports for ",
+                             "fewer arms: ",
+                             paste0(short, " (", cellsPer[short], " of ",
+                                    nArmsTable, ")", collapse = ", ")))
   degenerate <- names(byRow)[vapply(byRow, isDegenerate, logical(1))]
   if (length(degenerate))
     flags <- c(flags, paste0(length(degenerate), " variable(s) print the same ",
@@ -815,8 +834,21 @@ parseBaselineTable <- function(pdfFile,
   }
 
   if (nrow(newRows) == 0) {
-    say("The model found nothing the deterministic pass had missed.")
     het$flags <- c(imageNote, tatrFlags, flags)
+    # Arm lines or arm sizes taken from the model make the result a HYBRID
+    # even when no whole variable was new: the provenance already names
+    # the recovered rows "ai", and the engine label, the model's notes and
+    # its reply must say so too (issue 51; before, a table completed from
+    # the model's reading reported itself as "heuristic").
+    if (length(recovered) || length(nFilled)) {
+      say("The model added no variable, but completed ",
+          length(unique(c(recovered, nFilled))), " of the table's own.")
+      het$engine  <- "hybrid"
+      het$notes   <- aiRes$notes
+      het$aiReply <- aiRes$aiReply
+      return(het)
+    }
+    say("The model found nothing the deterministic pass had missed.")
     return(het)
   }
   say("Adding ", nrow(newRows), " line(s) from ", model,
@@ -840,6 +872,9 @@ parseBaselineTable <- function(pdfFile,
          caption    = het$caption,
          trial      = trial,
          notes      = aiRes$notes,
+         # the model's reply verbatim rides on the hybrid result too (the
+         # corpus session's L1: issue 43 had reached only the AI-only route)
+         aiReply    = aiRes$aiReply,
          flags      = c(imageNote, tatrFlags, flags),
          # CARRIED THROUGH THE MERGE (2026-09-08). These were dropped
          # here, so a hybrid parse painted no fail-safe cell orange and
