@@ -186,10 +186,12 @@ session's batch 7 finding M1 (Fujii & Nakayama 2006, Clin Ther; PMID
   category heading for the stray numbers beneath it.
 - **On the page.** Two strata of three arms of 25: Age, Height, Weight
   and Initial propofol dose as "Young patients: …" and "Older patients:
-  …", Sex as a fraction category in each; the table validates. Residue:
-  the label column's "Characteristic" word clusters as a fourth arm and
-  takes one of the header's "(n = 50)", leaving the first drug arm's
-  header N missing (the rows carry the stratum's 25 regardless).
+  …", Sex as a fraction category in each; the table validates; three named arms of 50 in the arms table. (A first
+  reading left the label column's "Characteristic" as a fourth arm holding
+  a header "(n = 50)": the footnote "*No significant …" carried no space
+  after its asterisk, the stop pattern let the prose beneath run on into
+  the block, and its numbers seeded that column. The marker now ends the
+  block with or without the space.)
 - **Tests** (`tests/testthat/test-stratum-header.R`): the rebuilt page
   reads both strata with N 25, prefixed names, no " 2" suffix, the
   fraction categories per stratum, the footnote as no heading, the arms

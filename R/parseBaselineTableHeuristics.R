@@ -150,7 +150,11 @@
     "|presented\\s+as|expressed\\s+as|given\\s+as|shown\\s+as",
     "|^abbreviations?|^definition\\s+of",
     "|^(figure|fig\\.)\\s*\\d",
-    "|^(\\*|\u2020|\u2021|\u00a7)\\s")
+    # a footnote marker followed by its text, with or without a space:
+    # "*No significant between-group differences were found." (Fujii
+    # 2006, PMID 16982288, issue 55) ran on into the block and the prose
+    # beneath it seeded a phantom column
+    "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]")
   footnoteInfo <- character(0)   # kept to help disambiguate "a (b)" cells
 
   # Walk the lines after the caption; classify each one.
