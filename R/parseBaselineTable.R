@@ -23,6 +23,37 @@
 #' @param x A `ParsePDFTable` object.
 #' @return A character vector of human-readable reasons, possibly empty.
 #' @export
+# Does a model-supplied variable's label name an OUTCOME rather than a
+# baseline characteristic (issues 54 and 61)? The vocabulary of the caption
+# scorer plus the words of block onset, analgesia, follow-up, adverse events
+# and operative management. A label whose first two words (of three
+# letters or more) appear on a line of `blockText` - the chosen table's own
+# text - is the table's own and is never an outcome here; with no block
+# text (the AI-only route, where the model read the page without a
+# deterministic table beside it) the vocabulary alone decides.
+.ppOutcomeLabel <- function(labels, blockText = NULL) {
+  outcomeRe <- paste0("(?i)\\btime to\\b|\\bonset\\b|first analgesic|rescue analges|",
+                      "\\bvas\\b|\\bodi\\b|\\b(st|nd|rd|th)\\s+(week|month|day)\\b|",
+                      "\\b(week|month|day)s?\\s+(after|post)|\\bpost-?op|\\bintra-?op|",
+                      "bradycardia|hypotension|nausea|vomit|pruritus|shivering|",
+                      "satisfaction|complication|adverse|side.?effect|recovery|",
+                      "extubation|emergence|success\\b|\\bat\\s+\\d+\\s*(h|min|hours?|minutes?)\\b|",
+                      "duration of (surgery|an(a)?esthesia|operation)|\\binterval\\b|",
+                      "ephedrine|phenylephrine|atropine|neostigmine|consumption|\\btotal\\b.*\\bdose\\b")
+  isOutcome <- grepl(outcomeRe, labels, perl = TRUE)
+  if (any(isOutcome) && !is.null(blockText) && length(blockText)) {
+    blk <- tolower(.ppSquish(blockText))
+    inBlock <- vapply(labels, function(lb) {
+      w <- tolower(unlist(strsplit(gsub("[^A-Za-z ]", " ", lb), "\\s+")))
+      w <- w[nchar(w) >= 3][seq_len(min(2L, sum(nchar(w) >= 3)))]
+      if (!length(w)) return(FALSE)
+      any(vapply(blk, function(line) all(vapply(w, function(x) grepl(x, line, fixed = TRUE), logical(1))), logical(1)))
+    }, logical(1))
+    isOutcome <- isOutcome & !inBlock
+  }
+  unname(isOutcome)
+}
+
 reviewFlags <- function(x) {
   stopifnot(inherits(x, "ParsePDFTable"))
   flags <- character(0)
@@ -565,6 +596,31 @@ parseBaselineTable <- function(pdfFile,
     }
     out$flags <- c(paste0("deterministic parse failed: ", conditionMessage(het)),
                    out$flags)           # the model route's own flags (issue 42)
+    # THE REFUSAL OF OUTCOME VARIABLES APPLIES HERE TOO (2026-09-25, ISSUES.md
+    # issue 64; the corpus session's P2, PMID 9773135): with no deterministic
+    # table beside it, the model's page reading carried Table 2's operative
+    # management (duration of surgery, I-D interval, tubal ligation) beside
+    # Table 1's rows, and nothing refused them (p 0.24 -> 0.039). There is
+    # no block text on this route, so the vocabulary alone decides; a
+    # refused row goes to $skipped with its reason and a flag names it.
+    if (identical(out$engine, "ai") && nrow(out$data) > 0) {
+      isOutcome <- .ppOutcomeLabel(out$data$ROW, NULL)
+      if (any(isOutcome)) {
+        bad <- unique(out$data$ROW[isOutcome])
+        say("Refusing ", length(bad), " model variable(s) whose label names an ",
+            "outcome, not a baseline characteristic: ", paste(bad, collapse = ", "))
+        out$skipped <- rbind(out$skipped,
+                             data.frame(label = bad,
+                                        reason = "model variable with outcome vocabulary - not a baseline characteristic; enter by hand if it is one",
+                                        text = "", stringsAsFactors = FALSE))
+        out$flags <- c(out$flags, paste0(length(bad), " model variable(s) refused as ",
+                                         "outcomes (see $skipped): ", paste(bad, collapse = ", ")))
+        out$data <- out$data[!isOutcome, , drop = FALSE]
+        rownames(out$data) <- NULL
+        if (!is.null(out$provenance))
+          out$provenance <- out$provenance[!out$provenance$ROW %in% bad, , drop = FALSE]
+      }
+    }
     return(out)
   }
 
@@ -850,37 +906,7 @@ parseBaselineTable <- function(pdfFile,
   # analysis. The vocabulary is the caption scorer's, plus the words of
   # block onset, analgesia, follow-up and adverse events.
   if (nrow(newRows) > 0) {
-    outcomeRe <- paste0("(?i)\\btime to\\b|\\bonset\\b|first analgesic|rescue analges|",
-                        "\\bvas\\b|\\bodi\\b|\\b(st|nd|rd|th)\\s+(week|month|day)\\b|",
-                        "\\b(week|month|day)s?\\s+(after|post)|\\bpost-?op|\\bintra-?op|",
-                        "bradycardia|hypotension|nausea|vomit|pruritus|shivering|",
-                        "satisfaction|complication|adverse|side.?effect|recovery|",
-                        "extubation|emergence|success\\b|\\bat\\s+\\d+\\s*(h|min|hours?|minutes?)\\b|",
-                        # the operative-management table (Fujii 9542558, corpus batch 7, M3)
-                        "duration of (surgery|an(a)?esthesia|operation)|\\binterval\\b|",
-                        "ephedrine|phenylephrine|atropine|neostigmine|consumption|\\btotal\\b.*\\bdose\\b")
-    isOutcome <- grepl(outcomeRe, newRows$ROW, perl = TRUE)
-    # A ROW PRINTED INSIDE THE CHOSEN TABLE IS NOT AN ADDITION (2026-09-25,
-    # ISSUES.md issue 61; the corpus session's O1, Polat 2015 KJMS and
-    # Sakizci-Uyar 2021): "Duration of anesthesia" and "Duration of surgery"
-    # stand in those papers' own Table 1, the deterministic pass skipped
-    # them (a median or a cell it could not read) and the model supplied
-    # them - and the refusal above, meant for another table's rows, threw
-    # them out. Whether a post-randomisation duration printed in a
-    # baseline table belongs in the screen is Steve's call; the engine
-    # reads what the caption's table prints. A model label whose words
-    # (the first two of three letters or more) appear on one line of the
-    # block is the table's own and is kept.
-    if (any(isOutcome) && !is.null(het$blockText) && length(het$blockText)) {
-      blk <- tolower(.ppSquish(het$blockText))
-      inBlock <- vapply(newRows$ROW, function(lb) {
-        w <- tolower(unlist(strsplit(gsub("[^A-Za-z ]", " ", lb), "\\s+")))
-        w <- w[nchar(w) >= 3][seq_len(min(2L, sum(nchar(w) >= 3)))]
-        if (!length(w)) return(FALSE)
-        any(vapply(blk, function(line) all(vapply(w, function(x) grepl(x, line, fixed = TRUE), logical(1))), logical(1)))
-      }, logical(1))
-      isOutcome <- isOutcome & !inBlock
-    }
+    isOutcome <- .ppOutcomeLabel(newRows$ROW, het$blockText)
     if (any(isOutcome)) {
       bad <- unique(newRows$ROW[isOutcome])
       say("Refusing ", length(bad), " model variable(s) whose label names an ",
