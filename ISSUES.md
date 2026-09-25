@@ -226,6 +226,32 @@ Carlisle-168 pass on adf5b75).
 
 ---
 
+## 83. A duration whose label is in another script, with an English gloss, is kept
+
+**Status: fixed on `fix/non-latin-duration-labels`, 2026-09-25**, from the
+corpus session's batch 19 finding Y1 (MTS2006_17, Loadsman corpus).
+
+- **The defect.** On a page that prints Table 1 in Japanese, the model
+  returns the row's Japanese name with the gloss "(surgery duration)".
+  With the table's block at hand a duration is judged as the table's row
+  (issue 74), by the block test of issue 61 - the label's first two words
+  of three letters or more on a line of the block - which can never find
+  "surgery" in a Japanese block, so the row was refused as another
+  table's, against the durations policy.
+- **What changed.** A duration whose label carries a code point beyond
+  Latin Extended-B (another script) is kept on the durations option's
+  terms, block or no block; an outcome in such a label ("(postoperative
+  pentazocine required)") is still refused by its vocabulary, and a
+  Latin-script duration not printed in the block is still another
+  table's row. The script test is by code point, not by a PCRE class,
+  which needs UTF mode.
+- **Tests** (`tests/testthat/test-non-latin-duration-labels.R`): the
+  Japanese labels with their glosses against a Japanese block and with
+  no block; the Latin-script cases unchanged; accented Latin script is
+  Latin.
+
+---
+
 ## 82. The announced "mean + SD" rule's two-cell floor counts the cells already read
 
 **Status: fixed on `fix/plus-rule-counts-read-cells`, 2026-09-25**, from
