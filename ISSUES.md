@@ -165,6 +165,31 @@ batch 7 finding M3 (Fujii 9542558).
 
 ---
 
+## 53. A count (%) row the model called continuous is filed as a category, by the deterministic engine's own identity
+
+**Status: fixed on `feat/model-count-pct-rows`, 2026-09-25**, from the
+corpus session's batch 6 finding L3 (Ozkan 2019, Der Anaesthesist 68:90;
+arms n = 26/25).
+
+- **The defect.** The model returned "Intubation success (at the
+  first-pass attempt)" 26 (100) / 20 (80) and "Mallampati score" 8 (31) /
+  4 (16) as continuous rows, and the template took them as it does every
+  model row: MEAN 26, SD 100. The percentages are the counts' share of the
+  arm sizes, which the deterministic engine's own "a (b)" cells are tested
+  for (issue 35) but a model row never was.
+- **What changed.** In `.ppAiToTemplate()` a continuous row whose every
+  arm prints a whole-number "mean", an "sd" in [0, 100], a known arm N,
+  and an "sd" that is the count's percentage of that N to the rounding
+  of one decimal, is filed as a category with the count and its
+  complement (N − count), not as a mean and an SD. A label with "score",
+  "index" or "ratio" keeps the model's reading whatever its numbers.
+- **Tests** (`tests/testthat/test-model-count-pct-rows.R`): the success
+  row becomes counts 26/20 with complements 0/5 while Age stays
+  continuous and a "score" row is left alone; a row whose "sd" is not the
+  count's share stays continuous.
+
+---
+
 ## 50. An arm-name line of ordinals that goes on to head the statistic columns; arm sizes stated only in a CONSORT flow
 
 **Status: fixed on `feat/ordinal-header-trailing`, 2026-09-25**, from the

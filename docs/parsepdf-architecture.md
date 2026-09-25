@@ -385,6 +385,10 @@ inert without the model.
   week/month, nausea, hypotension, duration of surgery, ephedrine …) goes to `$skipped` with
   its reason and a flag, never into the analysis; the model's reply is not reproducible, and a
   run may read every table on the page.
+- **A model count (%) row is filed as a category** (2026-09-25, issue 53). A "continuous" row
+  from the model whose "sd" is each arm's count as a percentage of the arm's N (whole-number
+  count, "sd" within 0–100, one-decimal rounding) is n (%) and becomes a count with its
+  complement; "score", "index" and "ratio" labels are left as read.
 - **The reply rides along verbatim** (2026-09-25, issue 43). The call runs with thinking on,
   which fixes the temperature at 1, so two runs can disagree; `parseBaselineTableAI()` now
   returns the reply text as `aiReply` so a corpus checkpoint can keep it and a disagreement can
