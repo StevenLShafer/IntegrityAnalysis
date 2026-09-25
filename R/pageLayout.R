@@ -529,6 +529,31 @@
                               "|intra-?operative|post-?operative|pain score",
                               "|recovery|haemodynamic|hemodynamic"),
                        txt, perl = TRUE)
+  # A TABLE OF CHANGES FROM BASELINE IS NOT THE BASELINE TABLE (2026-09-25,
+  # ISSUES.md issue 80; Fujii 1994, PMID 8055614, the corpus session's
+  # batch 17 W1): "Changes in Pdi from pre-fatigue values" - a table whose
+  # caption says its cells are changes from, or responses to, the state
+  # before treatment - out-scored the page's Table I once the sign
+  # repairs of issue 77 made its rows readable. Marked down like an
+  # outcome caption, once, whichever wording it uses.
+  # "Changes from baseline in ..." says "baseline" and is the opposite of
+  # a baseline table: the word's bonus is withdrawn and the mark-down applies
+  # - unless the caption says baseline elsewhere too ("Baseline
+  # characteristics and changes from baseline" keeps its standing)
+  cfbRe <- "(?i)\\bchanges?\\s+from\\s+(the\\s+)?baseline"
+  # every such phrase is removed before the caption is searched for a
+  # baseline mention of its own (CodeRabbit on PR #384: "changes from
+  # baseline in blood pressure and changes from baseline in heart rate")
+  changesFromBaseline <- grepl(cfbRe, txt, perl = TRUE) &&
+    !(grepl("(?i)baseline|demographic", gsub(cfbRe, "", txt, perl = TRUE), perl = TRUE) ||
+        grepl(qualChar, txt, perl = TRUE))
+  if (changesFromBaseline) s <- s - 4
+  if (!saysBaseline || changesFromBaseline)
+    s <- s - 3 * grepl(paste0("(?i)\\bchanges?\\s+(in|of)\\b.*\\bfrom\\b",
+                              "|\\bchanges?\\s+from\\s+(the\\s+)?(baseline|pre[- ]?\\w+|initial|control)",
+                              "|\\bresponses?\\s+(to|of)\\b",
+                              "|\\b(during|after|following)\\s+(surgery|an(a)?esthesia|induction|infusion|treatment|the study)\\b"),
+                       txt, perl = TRUE)
   s
 }
 

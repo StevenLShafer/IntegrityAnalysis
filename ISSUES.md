@@ -274,6 +274,38 @@ Steve's direction of 2026-09-25.
 
 ---
 
+## 80. A table of changes from baseline is not the baseline table
+
+**Status: fixed on `fix/change-from-baseline-caption`, 2026-09-25**, from
+the corpus session's batch 17 finding W1 (Fujii 1994, Can J Anaesth; PMID
+8055614), after issues 76 and 77.
+
+- **The defect.** Once issue 77's sign repairs made its rows readable,
+  "TABLE II Changes in Pdi (cmH20) from pre-fatigue values" out-scored
+  the page's Table I ("Haemodynamic data and changes": score 10, caption
+  -2) at score 12, caption 0, and the whole-document parse returned a
+  table of changes as the baseline table - on the batch's route and the
+  app's. The caption scorer marked down "outcome", "complication",
+  "haemodynamic" and the like, but not a caption that says its cells are
+  changes from, or responses to, the state before treatment.
+- **What changed.** `.ppCaptionScore()` marks such a caption down like an
+  outcome caption (-3, once): "changes in ... from ...", "changes from
+  baseline / pre-<word> / initial / control values", "responses to ...",
+  "... during / after / following surgery, anaesthesia, induction,
+  infusion, treatment, the study". A caption that says baseline
+  elsewhere keeps its standing ("Baseline characteristics and changes
+  from baseline"); "Changes from baseline in blood pressure", whose only
+  "baseline" is the one it changes from, loses the word's bonus as well.
+  Table I now wins the page: 6 variables x 2 arms of 10 from its
+  Pre-fatigue column, on the whole document and with `pages = 3`.
+- **Tests** (`tests/testthat/test-change-from-baseline-caption.R`): the
+  scorer on the two captions of that page and on four more wordings; a
+  baseline caption is never marked down; a rebuilt page holding both a
+  plain table and a table of changes picks the plain one (fails on the
+  unfixed code). The caption, anchor and Loadsman layout tests still pass.
+
+---
+
 ## 79. A validator warning that lets the table pass
 
 **Status: implemented on `feat/validator-warning-code`, 2026-09-25**, to
