@@ -128,7 +128,8 @@ reviewFlags <- function(x) {
     fromText <- grepl("^document text", src)
     if (any(!fromText))
       flags <- c(flags, paste0(sum(!fromText), " arm size(s) derived from ",
-                               "the table's own printed n (%) cells"))
+                               "the table's own printed n (%) or a/b fraction ",
+                               "cells"))
     if (any(fromText))
       flags <- c(flags, paste0(sum(fromText), " arm size(s) recovered from ",
                                "the document text - verify against the ",
