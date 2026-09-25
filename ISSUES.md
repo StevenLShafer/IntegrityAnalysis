@@ -132,6 +132,28 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 100. "(n =3o)": the letter o for a zero after a glued equals sign
+
+**Status: fixed on `fix/size-zero-after-equals`, 2026-09-25**, from the
+corpus session's batch 24 (CJA 1998, PMID 9512856, a scan).
+
+- **The defect.** The page prints "(n = 3o) (n =3o)" over its two
+  arms. Issue 75's zero repair (`.ppRepairSizeZeros()`) knows the size
+  glued whole ("(n=3o)") and split three ways ("(n", "=", "3o)"); the
+  second form here - the equals sign glued to the size, "(n", "=3o)" -
+  was neither, so the first arm read 30 and the second read as an arm
+  of 3 named "o)".
+- **What changed.** A word that is an equals sign followed by digits
+  with a letter o among them, after a word that is "(n" or "n", is the
+  size; the o becomes a zero. Nothing else changes: "=7.4o" after "pH"
+  is untouched.
+- **On the page.** Two arms of 30; Age, Height and Weight in both.
+- **Tests** (`tests/testthat/test-size-zero-after-equals.R`): the helper
+  on all three forms with a non-size left alone; a rebuilt page with
+  "(n = 3o) (n =3o)" reads two arms of 30 (4 expectations fail on the
+  unfixed code). The zero-repair, utility and Loadsman layout tests
+  still pass.
+
 ## 96. A column of upright short words is not a rail
 
 **Status: fixed on `fix/rail-needs-tall-words`, 2026-09-25**, a
