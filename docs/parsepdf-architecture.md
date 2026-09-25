@@ -206,6 +206,10 @@ wrong entry would corrupt numbers invisibly.
   level name under a heading are skipped, not filed as "Category"; a label line holding a "|"
   never opens a heading.
 
+- **The announced digit as its own token** (2026-09-25, issue 59): "Values are mean 6 sd."
+  with cells "141 6 9" - three plain tokens whose middle one is the announced digit are one
+  mean ± SD cell (two or more on the line).
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric

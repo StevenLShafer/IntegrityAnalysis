@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 59. The announced plus-minus digit as a token of its own: "Values are mean 6 sd." and cells "141 6 9"
+
+**Status: partly fixed on `feat/digit-plusminus-token`, 2026-09-25**, from
+the corpus session's batch 8 finding N1 (Fujii 1999, PMID 10475325).
+
+- **The defect.** The Symbol-font plus-minus of that paper is set as the
+  digit 6, separated from its numbers by spaces ("Values are mean 6 sd."
+  and "=" as "5": "HR 5 heart rate"), so every cell was three plain
+  tokens. Issue 45's "mean2SD" rule handled the fused form ("49.527.9")
+  only; the cells stayed counts, the long layout (groups as rows,
+  Baseline / Fatigued / 30 min as columns) was read wide with the
+  timepoints as arms, and the model, completing, added ", Fatigued"
+  rows.
+- **What changed.** With a digit announced between "mean" and "SD", three
+  plain tokens in a row whose middle one is that digit are one mean ± SD
+  cell, at least two such triples on the line, as the other announced
+  notations require; unannounced, a 6 between two counts stays three
+  counts.
+- **What remains.** With the cells read, the repeated-measures reader of
+  issue 34 still declines this table (its Group II row lost its label to
+  the text layer, and the header line carries the caption's wrapped
+  text), so the wide path reads Baseline and Fatigued as the arms. The
+  reader's admission rule is the next step on this paper.
+- **Tests** (`tests/testthat/test-digit-plusminus-token.R`): the announced
+  page reads three arms with their means and SDs and validates; an
+  unannounced "4 6 3" row stays counts.
+
+---
+
 ## 57. A gutter no line of the page crosses is a column boundary at eight points wide
 
 **Status: fixed on `feat/narrow-gutter-band`, 2026-09-25**, from the
