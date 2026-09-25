@@ -753,6 +753,41 @@ parseBaselineTableAI <- function(pdfFile,
          if (source == "table") ", or source = \"prose\"" else "", ".",
          call. = FALSE)
 
+  # ---- Arm sizes the model did not find: the document text (issue 42) ----
+  # The model transcribes the table; a size printed only in the Methods
+  # ("randomly divided into three groups of eight each", "Group Ia
+  # (n = 5)") is not on the page it read. The deterministic engine runs
+  # the text ladder over its arms in exactly this case (no arm has an N);
+  # the model's arms now get the same treatment, with the same gate - a
+  # table that printed any arm size keeps the model's reading as is - and
+  # each N carries its sentence so reviewFlags() can ask for it to be
+  # checked against the CONSORT diagram.
+  armNSource <- NULL
+  if (source == "table" && length(parsed$arms) > 0) {
+    modelN <- vapply(parsed$arms, function(a)
+      if (is.null(a$n)) NA_integer_ else suppressWarnings(as.integer(a$n)),
+      integer(1))
+    if (all(is.na(modelN))) {
+      armNames <- vapply(parsed$arms, function(a) as.character(a$name), character(1))
+      # a scanned document has no text layer: its table page was found
+      # by OCR and sent as an image, and its Methods can only be read the
+      # same way (CodeRabbit on PR #343). The OCR pass needs the optional
+      # tesseract package; without it the text is simply empty.
+      docText <- if (isTRUE(ocr)) character(0) else
+        tryCatch(.ppPdfText(pdfFile), error = function(e) character(0))
+      if (!any(nzchar(trimws(docText))))
+        docText <- tryCatch(.ppOcrText(pdfFile, dpi = ocrDpi),
+                            error = function(e) character(0))
+      rec <- .ppArmNFromDocument(armNames, docText)
+      if (any(!is.na(rec$N))) {
+        for (i in which(!is.na(rec$N))) parsed$arms[[i]]$n <- rec$N[i]
+        armNSource <- rec$source
+        for (i in which(!is.na(rec$N)))
+          say("  arm \"", armNames[i], "\": N = ", rec$N[i], " from ", rec$source[i])
+      }
+    }
+  }
+
   tbl <- .ppAiToTemplate(parsed, trial = trial, roundObsDelta = roundObsDelta)
   engine <- if (source == "prose") "ai-prose" else "ai"
   say("Model returned ", nrow(tbl$data), " template line(s) across ",
@@ -777,7 +812,14 @@ parseBaselineTableAI <- function(pdfFile,
          trial      = trial,
          notes      = parsed$notes %||% "",
          usage      = resp$usage,
-         engine     = engine),
+         engine     = engine,
+         # per-arm sentence for a text-recovered N (NULL when none was;
+         # reviewFlags() reads this element on every route)
+         armNSource = armNSource,
+         flags      = if (!is.null(armNSource))
+           paste0(sum(!is.na(armNSource)), " arm size(s) recovered from the ",
+                  "document text - verify against the CONSORT flow diagram: ",
+                  paste(armNSource[!is.na(armNSource)], collapse = " | "))),
     class = "ParsePDFTable")
 }
 

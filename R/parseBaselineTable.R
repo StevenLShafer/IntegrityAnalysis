@@ -528,7 +528,8 @@ parseBaselineTable <- function(pdfFile,
       if (!is.null(ocr)) return(ocr)
       stop(out)
     }
-    out$flags <- paste0("deterministic parse failed: ", conditionMessage(het))
+    out$flags <- c(paste0("deterministic parse failed: ", conditionMessage(het)),
+                   out$flags)           # the model route's own flags (issue 42)
     return(out)
   }
 

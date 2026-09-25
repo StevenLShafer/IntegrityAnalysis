@@ -337,6 +337,17 @@ inert without the model.
 
 ### 08 — The AI fallback
 
+- **A model-read table with no arm sizes gets the document-text ladder** (2026-09-25, issue 42).
+  The model transcribes the page it is shown; a size printed only in the Methods ("randomly
+  divided into three groups of eight each", "Group Ia (n = 5)") is not on it, and nine of the
+  eleven Carlisle-168 trials that failed validation in the corpus session's batch 4b were
+  model-read tables with N missing in every row. `.ppArmNFromDocument()` (armNRecovery.R) runs
+  the same two sources the deterministic engine uses — the "into k groups of n" statement for
+  exactly this many arms, then the "(n = k)" mentions matched to the arm names — under the same
+  gate (no arm has an N), records each sentence, and `reviewFlags()` asks for the sizes to be
+  checked against the CONSORT diagram. Roman group tags ("Ia", "IIb") now count as distinctive
+  words in the name match, matched whole.
+
 Reached only when `reviewFlags()` is non-empty and `ai != "never"`. Two sources:
 
 - `source = "table"` sends the text of **one page** — chosen by `.ppBestCaptionPage()`, the same

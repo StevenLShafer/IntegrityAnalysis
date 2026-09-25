@@ -181,6 +181,11 @@
                # near context: whose mention is it, and is it a sample-size
                # calculation? The label sits immediately left of "(n = X)".
                near = substr(j, nearFrom, m[k] + lens[k] + 12),
+               # the text BEFORE the mention alone: in a packed list
+               # "Group Ia (n = 5), Group Ib (n = 7)" the near window's
+               # tail reaches the NEXT arm's label, and Ib then matched
+               # both mentions (CodeRabbit on PR #343)
+               before = substr(j, nearFrom, max(nearFrom, m[k] - 1)),
                pos = m[k], stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, out)
@@ -247,24 +252,44 @@
 
   stop_words <- c("group", "groups", "arm", "arms", "the", "and", "with",
                   "patients", "study", "control")
+  # A distinctive word is three letters or more - or a ROMAN GROUP TAG
+  # ("Ia", "IIb", "IV": Fujii's canine papers name their arms "Group Ia
+  # (n = 5) ... Group IIb (n = 8)", issue 42), which is short but is the
+  # whole of the arm's name once "Group" is set aside. A tag is matched
+  # whole (\bia\b), so "Group I" does not claim "Group Ia"'s mention.
+  isTag <- function(w) grepl("^[ivx]{1,3}[a-d]?$", w) & nchar(w) >= 2
   armWords <- lapply(armName, function(nm) {
     if (is.na(nm)) return(character(0))
     w <- tolower(unlist(strsplit(gsub("[^A-Za-z ]", " ", nm), "\\s+")))
-    setdiff(w[nchar(w) >= 3], stop_words)
+    setdiff(w[nchar(w) >= 3 | isTag(w)], stop_words)
   })
 
   used <- rep(FALSE, nrow(cand))
   # 1. name match - against the NEAR window only, because the arm's label
   # sits immediately left of its "(n = X)", while a 90-character context
   # regularly spans the other arm's mention too ("...the ketamine group
-  # (n = 24) or the saline group (n = 26)").
+  # (n = 24) or the saline group (n = 26)"). And within the near window,
+  # the text BEFORE the mention decides when it names any arm at all:
+  # the window's short tail exists for "(n = 24) received ketamine", but
+  # in a packed list "Group Ia (n = 5), Group Ib (n = 7)" it reaches the
+  # next arm's label, and Ib matched both mentions and got nothing
+  # (CodeRabbit on PR #343). The tail is consulted only for a mention
+  # whose preceding text names no arm.
+  if (is.null(cand$before)) cand$before <- cand$near
+  namesIn <- function(ctx) {
+    lc <- tolower(ctx)
+    which(vapply(armWords, function(ws)
+      length(ws) > 0 && any(vapply(ws, function(w)
+        grepl(paste0("\\b", w, if (isTag(w)) "\\b" else ""), lc, perl = TRUE),
+        logical(1))), logical(1)))
+  }
+  armsOf <- lapply(seq_len(nrow(cand)), function(c) {
+    a <- namesIn(cand$before[c])
+    if (length(a)) a else namesIn(cand$near[c])
+  })
   for (k in which(is.na(armN))) {
     if (length(armWords[[k]]) == 0) next
-    hits <- which(vapply(cand$near, function(ctx) {
-      lc <- tolower(ctx)
-      any(vapply(armWords[[k]], function(w)
-        grepl(paste0("\\b", w), lc, perl = TRUE), logical(1)))
-    }, logical(1)))
+    hits <- which(vapply(armsOf, function(a) k %in% a, logical(1)))
     if (length(hits) == 0) next
     ns <- unique(cand$n[hits])
     if (length(ns) == 1) {
@@ -403,6 +428,39 @@
   }
   if (!length(found$groups)) return(NULL)
   found
+}
+
+# Arm sizes for a table that printed none, from the document text alone
+# (issue 42, 2026-09-25). The two sources the block parser and the
+# repeated-measures reader already use, in the same order: a "divided
+# into k groups of n" statement for exactly this many arms, then the
+# "(n = k)" mentions matched to the arm names (.ppFillArmNFromText's
+# ladder). Written for the model route: when the deterministic engine
+# fails and the model transcribes the table, its arms came back with no
+# N on nine of the eleven Carlisle-168 trials that failed validation
+# (corpus batch 4b) - Fujii's canine papers, whose sizes are in the
+# Methods and nowhere in the table - and nothing ran the ladder over
+# them. Every N found carries its sentence, for the CONSORT flag.
+.ppArmNFromDocument <- function(armName, txt) {
+  k      <- length(armName)
+  armN   <- rep(NA_integer_, k)
+  source <- rep(NA_character_, k)
+  if (k == 0 || !length(txt)) return(list(N = armN, source = source))
+  stated <- .ppGroupNFor(.ppGroupsOfN(txt), k)
+  if (!is.na(stated$n)) {
+    armN[]   <- stated$n
+    source[] <- paste0("document text (\"...", stated$snippet, "...\")")
+  }
+  if (any(is.na(armN))) {
+    cand <- .ppArmNCandidatesFromText(txt)
+    if (nrow(cand) > 0) {
+      fill  <- .ppFillArmNFromText(armN, armName, cand, .ppRandomizedTotals(txt))
+      newly <- is.na(armN) & !is.na(fill$N)
+      armN[newly]   <- fill$N[newly]
+      source[newly] <- fill$source[newly]
+    }
+  }
+  list(N = armN, source = source)
 }
 
 # The one group size the document states for a table of k arms, or NA.
