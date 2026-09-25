@@ -784,10 +784,18 @@
 # needs at least one decimal on each side (an integer mean "4757" could
 # split anywhere). The precision must agree across the line's sign
 # cells; where it does not, only the letter form is read.
-.ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
-.ppFusedSoup <- "^([A-DF-WYZa-df-wyz?:;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
+.ppFusedSoup <- "^([A-DF-WYZa-df-wyz?;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
 # (its own name: .ppDecimals() in text precision is a different helper)
 .ppFusedDecimals <- function(x) ifelse(grepl(".", x, fixed = TRUE), nchar(sub("^[^.]*\\.", "", x)), 0L)
+# A COLON IS A RATIO, NOT A SIGN (2026-09-25, ISSUES.md issue 92; CJA
+# 1997;44:390, the corpus session's batch 23b AB2): "19:21" under "Sex
+# M:F" is a two-level count, and with the colon in this glyph set three
+# such cells on a line were split into 19 +/- 21 and the row became a
+# continuous variable that moved the trial's p from 0.013 to 0.125. The
+# colon is out of the set; an OCR sign of that shape ("5:9") is still
+# read by the slot rule above, which needs the column's other rows to
+# set a genuine glyph there.
+.ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
 .ppRepairFusedSigns <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
