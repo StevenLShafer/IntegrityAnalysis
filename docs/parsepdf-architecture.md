@@ -220,6 +220,9 @@ wrong entry would corrupt numbers invisibly.
   A plain "+" is evidence for the column but is never repaired here (issue 45 decides it). A legend
   that names a letter as the sign ("Values are means F SD", issue 67) makes that letter the sign.
   A glued soup holds no digit and no dot, so "+4.9" is never "+4." and "9" (issue 70); "5:" glued
+  to the SD is the sign at a slot. A plain "+" is the sign at a slot two lines mark with the sign
+  itself, a sign dropped entirely is inserted between two numbers straddling such a slot, and the
+  legend may spell "S D" (issue 77).
   to the SD is the sign at a slot. A letter O among the digits of an "(n = k)" group is a zero
   (`.ppRepairSizeZeros()`, issue 75).
 
