@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 111. Paired before/after columns under each arm
+
+**Status: fixed on `feat/paired-timepoint-columns`, 2026-09-26**, from
+the corpus session's batch 26 AE2 (Takahashi, CJA 2003, PMID 14525825,
+Table I "Hemodynamic changes after saline/milrinone treatment").
+
+- **The defect.** "Saline" and "Milrinone" over "Before a / After b /
+  Before a / After b": two arms of 9, each with a before and an after
+  column. The block walker took the four columns for four arms of 9
+  and scored p 0.040 on cells that are not baseline - a wrong reading
+  under a confident verdict - and lost the SBP and SVR rows besides.
+- **What changed.** A header line before the first data line whose
+  words (footnote letters aside) are timepoint terms in alternating
+  pairs - before, after, before, after - means the arms are the pairs:
+  the cells nearest a "before" word are the baseline and stay, the
+  cells nearest an "after" word go with their words, the columns are
+  cut afresh, and the pair line leaves the header so the line above
+  it (the group names) names the arms. Tokens are matched to the pair
+  line's words by position, not by column index, because wide cells
+  ("5921 +/- 1603") split the gap rule's columns before the header
+  settles them. A single pair (one group, before and after) is not a
+  comparison and is left alone; a plain four-arm header is untouched.
+- **On the page.** Two arms, Saline and Milrinone, N 9 each, ten
+  variables from the Before columns: SBP, MBP, DBP, HR, CVP, MPAP, PAOP,
+  CO, SVR, PVR, every cell as printed.
+- **Tests** (`tests/testthat/test-paired-timepoint-columns.R`): a
+  rebuilt page with two groups over before/after pairs reads two arms
+  from the before columns (7 expectations fail on the unfixed code); a
+  plain four-arm header is untouched. The column-count, junk-row,
+  stratum, gutter and Loadsman layout tests still pass.
+
 ## 109. A variable's own n printed per cell, in brackets
 
 **Status: fixed on `feat/per-cell-n-in-brackets`, 2026-09-25**, from the

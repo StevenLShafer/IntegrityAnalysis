@@ -701,6 +701,69 @@
     }
   }
 
+  # PAIRED TIMEPOINT COLUMNS UNDER EACH ARM (2026-09-26, ISSUES.md issue
+  # 111; Takahashi, CJA 2003, PMID 14525825, the corpus session's batch 26
+  # AE2). "Saline" and "Milrinone" over "Before a / After b / Before a /
+  # After b": two arms of 9, each with a before and an after column. The
+  # walker took the four columns for four arms of 9 and scored p 0.040 on
+  # cells that are not baseline. A header line before the first data line
+  # whose words (footnote letters aside) are timepoint terms in
+  # alternating PAIRS - before, after, before, after - means the arms are
+  # the pairs: the cells nearest a "before" word are the baseline and
+  # stay, the cells nearest an "after" word go with their words, the
+  # columns are cut afresh, and the arm names then come from the line
+  # above the pair line, as the header assembly reads them. The tokens
+  # are matched to the pair line's words by position, not by column
+  # index: wide cells such as "5921 +/- 1603" can split the gap rule's
+  # columns before the header count settles them.
+  if (cols$n >= 2L) {
+    firstWord <- "(?i)^(before|baseline|pre|pre-?op(erative)?|pre-?treatment|basal|initial|control|0\\s*min|t0)$"
+    laterWord <- "(?i)^(after|post|post-?op(erative)?|post-?treatment|\\d+\\s*(min|h|hr|hours?|days?|wk|weeks?)|t\\d+|end|final|recovery)$"
+    pairLine <- NA_integer_; pairWords <- NULL
+    for (h in which(kind %in% c("header", "label"))) {
+      if (h <= capIdx || h >= firstData) next
+      L <- lines[[h]]
+      keepW <- !grepl("^[a-z]$", L$text)          # footnote letters "a", "b" beside the words
+      w <- L$text[keepW]
+      if (length(w) < 4L || length(w) %% 2L != 0L) next
+      isFirst <- grepl(firstWord, w, perl = TRUE); isLater <- grepl(laterWord, w, perl = TRUE)
+      odd <- seq(1L, length(w), by = 2L); even <- seq(2L, length(w), by = 2L)
+      if (all(isFirst[odd]) && all(isLater[even])) {
+        pairLine <- h
+        pairWords <- data.frame(mid = (L$x + L$width / 2)[keepW], later = isLater, stringsAsFactors = FALSE)
+        break
+      }
+    }
+    if (!is.na(pairLine)) {
+      nearestLater <- function(mid) pairWords$later[vapply(mid, function(m) which.min(abs(pairWords$mid - m)), integer(1))]
+      say("  Header line \"", .ppSquish(lineTexts[pairLine]), "\": each arm has a before and an ",
+          "after column; the after columns are not arms and their cells are dropped.")
+      # the pair line names timepoints, not arms: it leaves the header lines
+      # altogether, so the line above it (the group names) names the arms
+      kind[pairLine] <- "junk"
+      lines[[pairLine]] <- lines[[pairLine]][0, , drop = FALSE]
+      lineTexts[pairLine] <- ""
+      for (i in dataIdx) {
+        t <- tokensByLine[[i]]
+        if (is.null(t) || nrow(t) == 0) next
+        gone <- t[nearestLater(t$mid), , drop = FALSE]
+        if (nrow(gone) == 0) next
+        L <- lines[[i]]
+        wMid <- L$x + L$width / 2
+        inGone <- vapply(wMid, function(m) any(m >= gone$x0 - 1 & m <= gone$x1 + 1), logical(1))
+        L <- L[!inGone, , drop = FALSE]
+        if (nrow(L) == 0) { kind[i] <- "junk"; tokensByLine[[i]] <- t[0, , drop = FALSE]; next }
+        lines[[i]]        <- L
+        lineTexts[i]      <- .ppLineText(L)
+        tokensByLine[[i]] <- .ppTokenizeLine(L)
+        if (nrow(tokensByLine[[i]]) == 0) kind[i] <- "junk"
+      }
+      allToks <- do.call(rbind, tokensByLine[dataIdx])
+      if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
+      cols <- clusterCols(allToks$mid)
+    }
+  }
+
   # A STRATUM LINE (issue 55): a labelled "(n = k)" line after the first
   # header line - "Young patients (n = 75) (n = 25) (n = 25) (n = 25)" under
   # the column header's "(n = 50)" - is not the header, wherever it sits:
