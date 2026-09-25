@@ -625,10 +625,36 @@
 # `gapTol` points.  Column spacing in a journal table is typically well
 # over 40 pt while jitter within a column (mean +/- SD vs a lone count)
 # stays under ~20 pt.
-.ppClusterColumns <- function(mids, gapTol = 25) {
+#
+# THE HEADER'S ARM COUNT AS A SECOND OPINION (2026-09-25, ISSUES.md issue
+# 71; Fujii & Itakura 2009, PMID 19358990, the corpus session's batch 15a
+# T1). That table's three columns are 35 points apart and the "(n = 30)"
+# header tokens sit 8 points right of the cells beneath them, so the gap
+# between the first two columns' tokens narrows to 22 points and the
+# gap rule fused them: two arms, "Placebo Propofol, 0.25" and "g/kg
+# Propofol, 0.5 mg/kg", on every build. With `k` given - the number of
+# "(n = k)" groups the header prints - and the gap rule finding fewer
+# columns than that, the midpoints are cut at the k - 1 largest gaps
+# instead, and the cut is accepted only when the narrowest of those gaps
+# is a real column gap (at least `minGap` points) and wider than every
+# column's own spread; otherwise NULL, and the caller keeps the gap rule's
+# answer. A header that counts a "total" column among its groups asks for
+# one column too many, and the spread test refuses the split of a real
+# column, whose inner gaps are a few points.
+.ppClusterColumns <- function(mids, gapTol = 25, k = NULL, minGap = 12) {
   o <- order(mids)
   s <- mids[o]
-  cl <- cumsum(c(1, diff(s) > gapTol))
+  if (!is.null(k)) {
+    if (length(s) < k || k < 2L) return(NULL)
+    gaps <- diff(s)
+    cutAt <- sort(order(gaps, decreasing = TRUE)[seq_len(k - 1L)])
+    if (min(gaps[cutAt]) < minGap) return(NULL)
+    cl <- cumsum(c(1, seq_along(gaps) %in% cutAt))
+    spread <- tapply(s, cl, function(v) max(v) - min(v))
+    if (max(spread) >= min(gaps[cutAt])) return(NULL)
+  } else {
+    cl <- cumsum(c(1, diff(s) > gapTol))
+  }
   centers <- tapply(s, cl, mean)
   list(assign = function(x) {
          # nearest center

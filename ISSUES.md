@@ -132,6 +132,45 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 71. The header's "(n = k)" count is a second opinion when the gap rule fuses two narrow columns
+
+**Status: fixed on `feat/columns-from-header-count`, 2026-09-25**, from the
+corpus session's batch 15a finding T1 (Fujii & Itakura 2009, Int J Gynecol
+Obstet; PMID 19358990).
+
+- **The defect.** Three arms of 30 in columns 35 points apart; the
+  "(n = 30)" header tokens sit 8 points right of the cells beneath them,
+  so the gap between the first two columns' tokens is 22 points and the
+  column clustering (a cut wherever neighbouring midpoints are more than
+  25 points apart) fused them. The deterministic engine has read two arms
+  there on every build - "Placebo Propofol, 0.25" and "g/kg Propofol,
+  0.5 mg/kg" - and the trial's reading was the hybrid's, which changed
+  with the model's reply. (The corpus session filed it as a d04ccb6
+  regression; the deterministic reading is identical on 8e8fbd5.)
+- **What changed.** `.ppClusterColumns()` takes an expected count `k`:
+  the midpoints are cut at the k - 1 widest gaps, accepted only when the
+  narrowest of those gaps is a real column gap (12 points or more) and
+  wider than every column's own spread - a header that counts a total
+  column asks for one column too many, and the spread test refuses the
+  split of a real column. The block walker asks for it when the header
+  prints k "(n = k)" groups and the gap rule found fewer, with only FULL
+  ROWS beneath the header voting (exactly one cell per arm; at least two
+  such rows): an arm-name line above the header that carries numbers
+  ("Propofol, 0.25 g/kg") and a short row set between the columns ("Dose
+  of propofol at the 0 (2) 28 (3)") would otherwise widen a column past
+  its cut. And the header count is taken from a "(n = k)" line that
+  follows such an arm-name line - a line of plain numbers only - where
+  before the first data line ended the search (a row's own "(n = k)" line,
+  issue 47, always follows a measured row).
+- **On the page.** 7 variables x 3 arms of 30: Placebo, "Propofol, 0.25",
+  "Propofol, 0.5".
+- **Tests** (`tests/testthat/test-columns-from-header-count.R`): the
+  clusterer with `k` on fused midpoints, on one column too many, and on a
+  column whose spread exceeds the cut; a rebuilt page whose columns the
+  gap rule fuses reads three arms of 30 (fails on the unfixed code).
+
+---
+
 ## 68. A row label on the line above its values, the unit beneath
 
 **Status: fixed on `feat/label-above-values`, 2026-09-25**, from the corpus

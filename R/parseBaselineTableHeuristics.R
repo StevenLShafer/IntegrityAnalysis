@@ -509,11 +509,24 @@
   # block walker emits the row from them, arm by arm in printed order
   # (cell i belongs to arm ceiling(i / m), level (i - 1) mod m + 1).
   spreadRows <- list()
-  kHeader <- 0L
+  kHeader   <- 0L
+  kHeaderAt <- NA_integer_   # the header line that gave the count (issue 71)
+  # The header may follow an ARM-NAME LINE THAT CARRIES NUMBERS: "Placebo
+  # Propofol, 0.25 g/kg Propofol, 0.5 mg/kg" is a data line to the
+  # classifier, and the "(n = 30)" line beneath it was refused as a
+  # row-level n line because it came after the first data line (PMID
+  # 19358990, issue 71). A header still counts while every data line
+  # above it holds plain numbers only - a dose in an arm's name - and none
+  # holds a measurement (mean +/- SD, n (%), a fraction); a row's own
+  # "(n = k)" line (issue 47) always follows a measured row.
+  firstMeasure <- {
+    m <- dataIdx[vapply(dataIdx, function(i) any(tokensByLine[[i]]$type != "plain"), logical(1))]
+    if (length(m)) m[1] else firstData
+  }
   for (h in which(kind == "header")) {
-    if (h >= firstData) break
+    if (h >= max(firstData, firstMeasure)) break
     kHeader <- max(kHeader, length(gregexpr("(?i)n\\s*=\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
-    if (kHeader > 0L) break
+    if (kHeader > 0L) { kHeaderAt <- h; break }
   }
   if (kHeader >= 2L) for (i in dataIdx) {
     t <- tokensByLine[[i]]
@@ -544,7 +557,31 @@
   if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
 
   # ---- Column clustering --------------------------------------------------
-  cols    <- .ppClusterColumns(allToks$mid)
+  # The header's "(n = k)" count is a second opinion when the gap rule
+  # finds fewer columns (issue 71; see .ppClusterColumns() in pageLayout.R)
+  clusterCols <- function(m) {
+    c1 <- .ppClusterColumns(m)
+    if (kHeader >= 2L && c1$n < kHeader) {
+      # only FULL ROWS beneath the header line vote - lines with exactly
+      # one cell per arm: an arm-name line above it ("Propofol, 0.25
+      # g/kg") carries numbers at positions no cell uses, and a short row
+      # ("Dose of propofol at the 0 (2) 28 (3)", two cells set between the
+      # columns) would widen a column's spread past the gap it is cut at
+      # (PMID 19358990); at least two such rows must agree
+      nTok <- vapply(dataIdx, function(i) nrow(tokensByLine[[i]]), integer(1))
+      full <- dataIdx[dataIdx > kHeaderAt & nTok == kHeader]
+      c2 <- if (length(full) >= 2L)
+        .ppClusterColumns(unlist(lapply(full, function(i) tokensByLine[[i]]$mid)), k = kHeader)
+      else NULL
+      if (!is.null(c2)) {
+        say("  The header names ", kHeader, " arms and the gap rule found ", c1$n,
+            " column(s): the cells are cut at the ", kHeader - 1L, " widest gap(s) instead.")
+        return(c2)
+      }
+    }
+    c1
+  }
+  cols    <- clusterCols(allToks$mid)
 
   # A COLUMN FED ONLY BY LABEL-LESS LINES IS NOT AN ARM COLUMN (2026-09-25,
   # ISSUES.md issue 46; CJA 1995;42:1096, a scanned page). Beneath that
@@ -590,7 +627,7 @@
       }
       allToks <- do.call(rbind, tokensByLine[dataIdx])
       if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
-      cols <- .ppClusterColumns(allToks$mid)
+      cols <- clusterCols(allToks$mid)
     }
   }
 
