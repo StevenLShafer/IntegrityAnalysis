@@ -237,6 +237,13 @@ discrepancy rounding alone can explain.
   level names, the cells feed no column and the row is emitted arm by arm (cell i to arm
   ⌈i/m⌉), with the level names as its category columns.
 
+- **Ordinal arm names with trailing column words, and CONSORT sizes** (2026-09-25, issue 50).
+  "Group 1 Group 2 Group 3 ANOVA test p value" is the arm-name line (the run of "word number"
+  pairs from the start decides); a flow diagram's "Analyzed (n=30)" mentions fill the arms when,
+  screening boxes and totals set aside, every remaining mention states one n and k × n is the
+  stated total ("Randomized (n=90)" counts as one); the ladder sees only arms that carry value
+  cells, so a statistic column is never an arm.
+
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 
 A `.docx` submission enters through `parseBaselineTableHeuristics()` like any file (the

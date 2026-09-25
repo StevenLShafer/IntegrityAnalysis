@@ -373,15 +373,23 @@
   #     as a bare number and the arms had no names. A line whose numbers
   #     are exactly 1..k in order, each preceded by the same word, is the
   #     arm-name line; reclassified as a label, its words name the arms.
+  #     The line may go on after the last ordinal - "Group 1 Group 2 Group 3
+  #     ANOVA test p value" (RezkJMFNM2014, corpus batch 5, K1) heads its
+  #     statistic columns on the same line - so only the run of "word
+  #     number" pairs is required, and whatever follows the last number
+  #     is left to name the columns beyond the arms (issue 50).
   for (i in which(kind == "data")) {
     toks <- tokensByLine[[i]]
     if (nrow(toks) < 2 || !all(toks$type == "plain")) next
     if (!identical(as.numeric(toks$num1), as.numeric(seq_len(nrow(toks))))) next
     words <- lines[[i]]$text
     isNum <- grepl("^[0-9]+$", words)
-    if (sum(isNum) != nrow(toks) || sum(!isNum) != nrow(toks)) next
-    if (length(unique(tolower(words[!isNum]))) != 1L) next
-    if (!all(which(isNum) == which(!isNum) + 1L)) next   # word, number, word, number ...
+    if (sum(isNum) != nrow(toks)) next
+    numAt <- which(isNum)
+    if (any(numAt < 2L) || !all(numAt == seq(numAt[1], by = 2L, length.out = length(numAt)))) next
+    wordAt <- numAt - 1L                                   # the word before each number
+    if (length(unique(tolower(words[wordAt]))) != 1L) next
+    if (numAt[1] != 2L) next                               # the run starts the line
     kind[i] <- "label"
     tokensByLine[[i]] <- toks[0, , drop = FALSE]
   }
@@ -760,16 +768,25 @@
   #     N taken this way carries its source sentence, and reviewFlags()
   #     tells the reviewer to verify it against the CONSORT diagram.
   #     The same no-known-N gate applies, for the same measured reason.
-  if (recoveryEligible && any(is.na(armN[dataArms])) &&
+  #     The ladder sees only the arms that carry VALUE cells (mean +/- SD,
+  #     mean (SD), n (%), a fraction, a median): a statistic column - the
+  #     "ANOVA test" F values beside RezkJMFNM2014's three groups (corpus
+  #     batch 5, K1) - clusters as a column too, and counted as a fourth
+  #     arm it made "3 x 30 = 90" unreachable. It gets no N here, and an
+  #     arm with neither N nor a cell is dropped at assembly (issue 50).
+  valueArms <- intersect(dataArms, unique(cols$assign(
+    allToks$mid[allToks$type %in% c("meanSD", "numParen", "nPct", "fraction", "medianRng")])))
+  if (length(valueArms) == 0) valueArms <- dataArms
+  if (recoveryEligible && any(is.na(armN[valueArms])) &&
       !is.null(textCands) && nrow(textCands) > 0) {
-    fill <- .ppFillArmNFromText(armN[dataArms], armName[dataArms], textCands,
+    fill <- .ppFillArmNFromText(armN[valueArms], armName[valueArms], textCands,
                                 if (is.null(textTotals)) integer(0)
                                 else textTotals)
-    newly <- is.na(armN[dataArms]) & !is.na(fill$N)
-    armN[dataArms] <- fill$N
-    armNSource[dataArms][newly] <- fill$source[newly]
+    newly <- is.na(armN[valueArms]) & !is.na(fill$N)
+    armN[valueArms] <- fill$N
+    armNSource[valueArms][newly] <- fill$source[newly]
     for (k in which(newly))
-      say("  arm ", dataArms[k], ": N = ", fill$N[k], " from ",
+      say("  arm ", valueArms[k], ": N = ", fill$N[k], " from ",
           fill$source[k])
   }
 
