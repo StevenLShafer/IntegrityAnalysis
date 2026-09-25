@@ -278,6 +278,7 @@ Captured (the example workbook, two trials):
 | `journalTablesOmitted` | string or empty | when the reconstructed tables would exceed the service's cell budget they are omitted and this says so; otherwise empty |
 | `templateCsv` | string | the table in the template layout, as `/parse` returns it — the analysed rows and any row the validator left out (a label with no values), so a caller can fill the missing cells and POST it back |
 | `flags` | array of strings | present only when the reader had to decide something for itself: the same warnings `/parse` returns, including the FAIL-SAFE counts note above and recovered arm sizes. Read them before quoting `overallP`; a p computed from fail-safe counts is conservative for those rows |
+| `warnings` | array of `{row, col, code, note}` | present only when validation passed with warnings (code `warning`, below): cells that analysed but deserve a look - an SD larger than its mean, a row with no dispersion in any arm, a row identical to another. `row` indexes `templateCsv` as `issues` does |
 | `seed` | integer | present only when the request sent one: the seed the run used |
 
 The columns of `resultsCsv`, with the names the app's results workbook
@@ -328,10 +329,11 @@ The round-trip contract: the failure payload is the next call's input.
 | `too_large` | the table exceeds a size or compute limit (section 7) | `issues`, one entry with `detail` |
 | `analysis` | the Monte Carlo itself failed on a trial | `issues`, one entry, code `error` |
 
-`code` in an `issues` entry takes one of seven values:
+`code` in an `issues` entry takes one of eight values:
 
 | code | meaning |
 |---|---|
+| `warning` | the table PASSED validation, and this cell deserves a look: an SD larger than its mean on a non-negative quantity, a row with the same value and no dispersion in every arm, or a row identical in N, mean and SD to another row of the trial. On a successful `/analyze` these arrive in `warnings`, not `issues`; the analysis ran regardless |
 | `missing` | a required cell is blank: an arm N, a mean or an SD; a quartile of a median row; the `ROW` cell of a categorical line with no matching line in another arm |
 | `unreadable` | the cell holds something that is not a number |
 | `incongruent` | the cell is a number that cannot be right where it sits: a negative count, SD or SE; an N that is not a whole number of at least 2; a median outside its quartiles; a count with a fraction; a continuous value on a categorical line, or a dispersion where the table gives none; a magnitude no measurement reaches. A row whose magnitude and printed precision together ask for more than the 15 significant digits a double carries passes validation but is refused by the engine, and its `P` cell says so |

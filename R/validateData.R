@@ -132,6 +132,64 @@ is_category <- function(x, requireNA = TRUE) {
 #'   (columns selected and ordered), `TRIALS`, `ColumnNames`,
 #'   `CategoryNames`, `MiscNames`. On failure only `FAIL` is meaningful.
 #' @noRd
+# WARNINGS THAT DO NOT FAIL THE TABLE (2026-09-25, ISSUES.md issue 79;
+# Steve: "implement a warning that allows the validator to pass ... A
+# warning will allow comparisons to be made against ground truth, while
+# also highlighting to validating software as well as human reviewers
+# where there may be problems that need further scrutiny"). Three shapes
+# of a row that analyses but deserves a look: an SD larger than its mean
+# on a non-negative quantity; a variable whose every arm prints the same
+# value with no dispersion, or the same mean and SD (fixed by design or by
+# a floor, not a sample); and two variables of one trial with identical
+# N, mean and SD in every arm (a duplicated row). The parser flags the
+# same shapes as it reads a page; here they are judged on the table the
+# analysis will see, whatever its source, and filed as issues with the
+# code "warning" - painted in the grid, listed in the log, returned by the
+# service beside the results - without setting FAIL. `use` marks the rows
+# to judge (the excluded ones are not).
+.iaRowWarnings <- function(DATA, use = rep(TRUE, nrow(DATA))) {
+  if (!all(c("TRIAL", "ROW", "MEAN", "SD") %in% names(DATA)) || !nrow(DATA)) return(NULL)
+  out <- list()
+  add <- function(row, col, note)
+    out[[length(out) + 1L]] <<- data.frame(row = row, col = col, code = "warning", note = note,
+                                           stringsAsFactors = FALSE)
+  num  <- function(x) suppressWarnings(as.numeric(as.character(x)))
+  mean <- num(DATA$MEAN); sd <- num(DATA$SD)
+  n    <- if ("N" %in% names(DATA)) num(DATA$N) else rep(NA_real_, nrow(DATA))
+  key  <- paste(DATA$TRIAL, DATA$ROW, sep = "\r")
+  # (a) an SD larger than its mean, on a non-negative mean
+  for (i in which(use & !is.na(mean) & !is.na(sd) & mean >= 0 & sd > 0 & sd > mean))
+    add(i, "SD", paste("SD larger than the mean: plausible for a skewed quantity (a duration,",
+                       "a dose), implausible for a symmetric one - check the cell against the page"))
+  # (b) a degenerate variable: no dispersion in any arm, or the same mean
+  #     and SD in every arm
+  sig <- character(0)
+  for (k in unique(key[use])) {
+    idx <- which(use & key == k & !is.na(mean) & !is.na(sd))
+    if (length(idx) < 2L) next
+    if (all(sd[idx] == 0) || (length(unique(mean[idx])) == 1L && length(unique(sd[idx])) == 1L))
+      for (i in idx)
+        add(i, "MEAN", paste("the same value in every arm with no dispersion, or the same mean",
+                             "and SD in every arm: fixed by design or by a floor, not a sample -",
+                             "consider removing the row before analysis"))
+    sig[k] <- paste(n[idx], mean[idx], sd[idx], collapse = "|")
+  }
+  # (c) two variables of one trial with identical N, mean and SD in every arm
+  if (length(sig) >= 2L) {
+    trialOf <- sub("\r.*$", "", names(sig)); rowOf <- sub("^.*\r", "", names(sig))
+    for (a in seq_along(sig)) for (b in seq_along(sig)) {
+      if (a == b || trialOf[a] != trialOf[b] || sig[a] != sig[b]) next
+      idx <- which(use & key == names(sig)[a] & !is.na(mean) & !is.na(sd))
+      for (i in idx)
+        add(i, "MEAN", paste0("identical N, mean and SD to \"", rowOf[b],
+                              "\" in this trial, in every arm - a duplicated row? check the page"))
+    }
+  }
+  if (!length(out)) return(NULL)
+  w <- do.call(rbind, out)
+  w[!duplicated(w[, c("row", "col")]), , drop = FALSE]
+}
+
 validateData <- function(DATA) {
   FAIL <- FALSE
 
@@ -871,6 +929,11 @@ validateData <- function(DATA) {
   # frame the caller displays). If NOTHING analyzable remains, that is a
   # failure after all.
   excluded <- labelOnly | singleCat
+  # the warnings that do not fail the table (issue 79), on the rows the
+  # analysis will see, indexing the frame the issues index
+  warn <- .iaRowWarnings(DATA, !excluded)
+  if (!is.null(warn))
+    for (j in seq_len(nrow(warn))) addIssue(warn$row[j], warn$col[j], "warning", warn$note[j])
   # THE ROWS LEFT OUT TRAVEL WITH THE RESULT (independent audit
   # 2026-09-10, F3). A category block the document parser could not
   # reconstruct arrives here as label-only lines - every cell blank -
