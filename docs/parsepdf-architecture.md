@@ -394,6 +394,10 @@ and pins: geometry + text layer reproduces the text-layer parse exactly; geometr
 reproduces it with no text layer at all; the workflow falls back, stays out of the way, and is
 inert without the model.
 
+- **A different population beside the arms** (2026-09-25, issue 62): an arm headed volunteers
+  or healthy controls is flagged for the reviewer to drop; the engine does not decide what the
+  trial randomised.
+
 ### 08 — The AI fallback
 
 - **Row flags are recomputed after the merge** (2026-09-25, issue 60): degenerate rows,

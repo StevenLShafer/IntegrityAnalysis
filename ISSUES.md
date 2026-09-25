@@ -132,6 +132,26 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 62. A column of a different population beside the randomised arms is a review flag
+
+**Status: fixed on `feat/other-population-arm-flag`, 2026-09-25**, from
+the corpus session's batch 9 finding O2 (AAS1998_851, Saitoh).
+
+- **The defect.** Table 1 sets fifteen volunteers beside three randomised
+  current groups of 40 (and a single "supramaximality" patient, rightly
+  dropped). The cells are right, but the volunteers are not an arm of the
+  trial, and carried as a fourth arm they moved P_FULL from 0.34 to
+  0.043 on the categorical rows.
+- **What changed.** `reviewFlags()` names an arm whose header word is
+  volunteers, healthy controls or subjects, normal subjects or controls,
+  or non-randomised, and asks for the column to be removed before
+  analysis unless it was randomised too. The engine does not decide what
+  the trial randomised; the reviewer does.
+- **Tests** (`tests/testthat/test-other-population-arm-flag.R`): the flag
+  fires for such names and names the arm; ordinary arms raise nothing.
+
+---
+
 ## 61. The outcome refusal spares a model row that the chosen table itself prints
 
 **Status: fixed on `feat/refusal-spares-printed-rows`, 2026-09-25**, from
