@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 107. "_+" is soup too
+
+**Status: fixed on `fix/underscore-plus-is-soup`, 2026-09-25**, from the
+corpus session's batch 25 AD5 (CJA 1996, PMID 8665632, a scan under a
+diagonal RETRACTED watermark).
+
+- **The defect.** Three second-arm cells set the sign as "_+" - an
+  underscore for the lower stroke - and went unread: Duration of
+  operation 52.6 +/- 20.7, Acetaminophen 252.0 +/- 82.3, Pentazocine
+  1.4 +/- 2.9. The slot repair of issue 65 knows strokes and
+  stroke-like letters; the underscore was not among them.
+- **What changed.** The underscore joins the soup class
+  (`.ppSoupGlyph`), so "_+" at a slot the block's other rows mark with
+  the bullet or the sign is the plus-minus.
+- **On the page.** Duration of operation and Acetaminophen read in
+  both arms. Pentazocine's second SD is absent from the text layer
+  altogether (the line ends at the sign), so that cell stays unread.
+- **Tests** (`tests/testthat/test-underscore-plus-is-soup.R`): the helper
+  on a block whose bullets mark the slot; a rebuilt page reads both
+  arms of the rows set with "_+" (6 expectations fail on the unfixed
+  code). The slot, glued-soup, junk-row and Loadsman layout tests still
+  pass.
+
+---
+
 ## 106. Long layout: a heading line carrying a bare number is a heading
 
 **Status: fixed on `fix/heading-with-bare-digit`, 2026-09-25**, from the
@@ -189,6 +214,37 @@ Loadsman corpus, page 5).
   no heading and a mean (SD) footnote stay continuous. The degenerate-
   category, model count-row, stratum, row-N and Loadsman layout tests
   still pass.
+
+---
+
+## 104. A hyphenated code is one word ("L2-3")
+
+**Status: fixed on `fix/level-code-is-one-word`, 2026-09-25**, from the
+corpus session's batch 25 AD1 (Kilic 2023, Cukurova Med J, Loadsman
+corpus, page 5).
+
+- **The defect.** The spinal levels "L2-3", "L3-4", "L4-5" head three
+  rows of counts. The tokenizer's guard refuses a digit run that a
+  letter or digit touches, but it looks only at the character before
+  the digit, and that is the hyphen: the "3" of "L2-3" started a token.
+  The label was cut to "L2", the "3" fed a phantom arm column at the
+  label's x (a column fed by labelled lines, so issue 46 kept it), the
+  table read three arms with the first nameless and N-less, and the
+  level rows lost their arm N.
+- **What changed.** A second guard on the token pattern: a digit run
+  whose hyphen, en dash or minus follows a letter or digit is part of
+  that word. A range in a cell ("31-57") is untouched, since the
+  interval alternative takes it whole from its first number.
+- **On the page.** Two arms of 21, the level labels whole, Age, Weight,
+  Height and both durations as printed, Male/Female and ASA as
+  category rows. The first level row, "L2-3 12(57.1) 12(57.1)", still
+  reads as mean (SD): its two cells are identical, and the n (%)
+  evidence rule wants two distinct signatures - issue 105.
+- **Tests** (`tests/testthat/test-level-code-is-one-word.R`): the
+  tokenizer on "L2-3", "T10-11", a bracketed range and a bare range; a
+  rebuilt Kilic page reads two arms of 21 with the labels whole and no
+  phantom arm (6 expectations fail on the unfixed code). The tokenizer,
+  text-precision, junk-row and Loadsman layout tests still pass.
 
 ---
 
