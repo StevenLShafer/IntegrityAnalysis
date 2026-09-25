@@ -44,8 +44,14 @@ headingPdf <- function(file = file.path(tempdir(), "longHeading.pdf")) {
 }
 
 test_that("rows under a heading are named by it, a numeric-led label keeps its words, a heading alone names bare rows", {
-  r <- parseBaselineTableHeuristics(headingPdf(), quiet = TRUE)
-  expect_identical(nrow(r$arms), 3L)
+  msgs <- character(0)
+  r <- withCallingHandlers(parseBaselineTableHeuristics(headingPdf(), quiet = FALSE),
+         message = function(m) { msgs <<- c(msgs, conditionMessage(m)); invokeRestart("muffleMessage") })
+  # (the engine's log and the words poppler reports travel with the first
+  # failure, so a runner whose fonts differ from the author's explains itself)
+  words <- pdftools::pdf_data(file.path(tempdir(), "longHeading.pdf"))[[1]]
+  diag <- paste(c(msgs, paste(words$text, words$x, words$y, words$width, sep = "@", collapse = " ")), collapse = " || ")
+  expect_identical(nrow(r$arms), 3L, info = diag)
   expect_identical(r$arms$N, c(8L, 8L, 8L))
   cont <- r$data[!is.na(r$data$MEAN), ]
   rows <- unique(cont$ROW)          # (the pdf device sets the label's hyphen as U+2212, hence "20.Hz")
