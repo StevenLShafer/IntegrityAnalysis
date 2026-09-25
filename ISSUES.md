@@ -166,7 +166,7 @@ J, Loadsman corpus, the corpus session's batch 25 AD1). Predates #412.
   cells are evidence) the three level rows are one "Surgical level"
   variable with levels L2-3 / L3-4 / L4-5 in two arms of 21.
 - **Tests** (`tests/testthat/test-plain-heading-gathers-levels.R`): a
-  rebuilt page reads the three levels as one variable (8 expectations
+  rebuilt page reads the three levels as one variable (6 expectations
   fail on the unfixed code); a lone n (%) row with no heading keeps its
   complement; a section heading over one n (%) row yields the binary row,
   not a one-level variable. The issue-104 test now looks for the level
