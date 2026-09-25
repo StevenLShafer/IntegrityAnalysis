@@ -276,6 +276,41 @@ CJA 1997;44:390, page 3, four arms 40/40/40/10).
   code). On the real page Age, Height and Weight are unchanged and Sex
   M:F is skipped.
 
+## 91. Long layout: a row's label keeps its leading number, and a heading above the group rows names them
+
+**Status: fixed on `feat/long-layout-block-heading`, 2026-09-25**, from
+the corpus session's batch 23 on Fujii 2003 (PMID 12933396, Table 1
+"Changes in Hemodynamics, Pdi, and %Edi").
+
+- **The defect.** The repeated-measures reader (issue 34) named each
+  row from the text before its first token. On "20-Hz stimulation I
+  15.9 +/- 1.5" the tokenizer reads the "20" of "20-Hz" as a number,
+  so the label was empty and the row "Unnamed"; and the variable
+  printed as a heading on a line of its own above its group rows -
+  "Pdi (cm H2O)" over the 20-Hz and 100-Hz rows, "%Edi-cru", "%Edi-cost"
+  - was a label-only line the reader skipped. Eight of the table's ten
+  variables were "Unnamed" ... "Unnamed 6" while every number was right.
+- **What changed.** `.ppLongRowLabel()`: the label is the text before
+  the first token in or beyond the Group column (the group index or
+  the value), so a number inside the label's own words stays with it.
+  The most recent short heading (a label-only line of five words or
+  fewer after the header) is kept: it names a row that has no label of
+  its own ("HR (bpm)" over "I 142 +/- 11") and prefixes a label that
+  starts with a digit and cannot stand alone ("Pdi (cm H2O): 20-Hz
+  stimulation"). A row whose label is a name in itself keeps it, as
+  the wide reader keeps a continuous row's label under a category
+  heading.
+- **On the page.** Ten variables, all named: HR, MAP (mm Hg), Pdi (cm
+  H O) [the subscript 2 is on a line of its own] with its 20-Hz and
+  100-Hz rows, %Edi-cru and %Edi-cost likewise; three arms of 8.
+- **Tests** (`tests/testthat/test-long-layout-heading-rows.R`): a
+  rebuilt page with a labelled block, a heading over two numeric-led
+  rows and a heading over bare rows reads four named variables (7
+  expectations fail on the unfixed code). The long-layout, canine,
+  letter-group and Loadsman layout tests still pass.
+
+---
+
 ## 90. The sign set as a digit ("47.357.9"), and a soup word glued to the SD alone ("50.1 k8.0")
 
 **Status: fixed on `feat/digit-fused-sign`, 2026-09-25**, from the
