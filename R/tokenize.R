@@ -43,7 +43,16 @@
     # the BULLET (U+2022) is what a scanned CJA page's plus-minus becomes
     # in its OCR text layer ("56.7 \u2022 6.9", CJA 1995 and 1997, ISSUES.md
     # issue 45); a bullet between two numbers means nothing else
-    "(?<meanSD>",    NUM, "\\s*(?:\u00b1|\\+/-|\\+-|\u2022)\\s*", NUM, ")",
+    # A BRACKETED RANGE MAY FOLLOW (2026-09-25, ISSUES.md issue 63; Fujii
+    # 1998, PMID 9649986): "48.4 \u00b1 7.6 [33-63]" is a mean +/- SD with
+    # the range appended, and "48.4 +7.6[33-63]" - the plus-minus set as a
+    # plain "+" - can be nothing else once the range follows. Without the
+    # range a "+" stays two numbers (the announced rules in the block
+    # walker decide those). The range's numbers are num3/num4 to the
+    # extractor and are ignored for a meanSD token.
+    "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022)\\s*", NUM,
+                     "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
+                     "|\\+\\s*", NUM, "\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\]))",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what
     # PDF fonts often use for "-"), the word "to" (ranges as journals
     # print them), plus comma/semicolon - the "median [Q1, Q3]" form

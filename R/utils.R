@@ -740,6 +740,10 @@
   # they defeat label matching and cannot be written by every encoding.
   label <- gsub("[\u200b\u200c\u200d\u2060\ufeff]", "", label)
   label <- .ppSquish(label)
+  # "[ranges]" / "[range]" / "[min-max]" after a label announces the
+  # bracketed ranges of the row's cells (Fujii 1998, issue 63): notation,
+  # removed first so that a unit before it is still trailing
+  label <- sub("(?i)\\s*\\[\\s*(ranges?|min\\s*[-\u2013]\\s*max)\\s*\\]\\s*$", "", label, perl = TRUE)
   label <- sub("(?i)[,;\u2014-]?\\s*(no\\.?|n)\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
   label <- sub("(?i)[,;\u2014-]?\\s*\\(%\\)\\s*$", "", label, perl = TRUE)
   # trailing "(kg)", "(yr)", "(mmHg)" ... : parenthetical with no slash,
