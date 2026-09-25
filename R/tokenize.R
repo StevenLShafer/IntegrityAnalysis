@@ -50,7 +50,10 @@
     # range a "+" stays two numbers (the announced rules in the block
     # walker decide those). The range's numbers are num3/num4 to the
     # extractor and are ignored for a meanSD token.
-    "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022)\\s*", NUM,
+    # U+2AFE is what the text layer of Fujii's canine tables (Anesth Analg
+    # 2003, PMID 12933396 and its siblings) reports for the plus-minus
+    # glyph of their font (2026-09-25, ISSUES.md issue 88)
+    "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
                      "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
                      "|\\+\\s*", NUM, "\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\]))",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what

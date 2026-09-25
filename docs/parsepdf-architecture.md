@@ -259,6 +259,10 @@ wrong entry would corrupt numbers invisibly.
   the document-text ladder (`.ppArmNFromDocument()`) fill them, with the sentence as source and
   the CONSORT flag - the model route's recovery of issue 42, under the same gate.
 
+- **Fujii's canine long layout** (2026-09-25, issue 88): roman numerals under Group are their own
+  index, a value line with nothing before its first number fills a lost numeral's gap, the legend's
+  "=" may be U+2AFD, and U+2AFE is the sign.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
