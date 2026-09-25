@@ -246,6 +246,9 @@ discrepancy rounding alone can explain.
   stated total ("Randomized (n=90)" counts as one); the ladder sees only arms that carry value
   cells, so a statistic column is never an arm.
 
+- **Numeric arm names** (2026-09-25, issue 56). "Group 60 50 40 30 20 Volunteers" above the
+  first value line is the arm-name line; its numbers name the arms as printed.
+
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 
 A `.docx` submission enters through `parseBaselineTableHeuristics()` like any file (the

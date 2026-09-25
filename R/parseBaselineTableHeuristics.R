@@ -378,9 +378,24 @@
   #     statistic columns on the same line - so only the run of "word
   #     number" pairs is required, and whatever follows the last number
   #     is left to name the columns beyond the arms (issue 50).
+  #     And a line whose label is the word "Group" (or Arm, Treatment) and
+  #     whose values are the arms' NAMES - "Group 60 50 40 30 20
+  #     Volunteers", the stimulating currents of CJA 1995;42:992 (corpus
+  #     batch 5, K2; issue 56) - is the arm-name line too, when it stands
+  #     above the first line that holds a value cell; its numbers name the
+  #     arms as printed and the words after them name the rest.
+  firstValue <- suppressWarnings(min(which(vapply(tokensByLine, function(t)
+    !is.null(t) && any(t$type %in% c("meanSD", "numParen", "nPct", "fraction", "medianRng")), logical(1)))))
   for (i in which(kind == "data")) {
     toks <- tokensByLine[[i]]
     if (nrow(toks) < 2 || !all(toks$type == "plain")) next
+    lbl <- .ppSquish(substr(paste(lines[[i]]$text, collapse = " "), 1, min(toks$start) - 1))
+    if (grepl("(?i)^(groups?|arms?|treatments?)$", lbl, perl = TRUE) && i < firstValue &&
+        all(!is.na(toks$num1) & toks$num1 == round(toks$num1) & toks$num1 >= 0)) {
+      kind[i] <- "label"
+      tokensByLine[[i]] <- toks[0, , drop = FALSE]
+      next
+    }
     if (!identical(as.numeric(toks$num1), as.numeric(seq_len(nrow(toks))))) next
     words <- lines[[i]]$text
     isNum <- grepl("^[0-9]+$", words)
