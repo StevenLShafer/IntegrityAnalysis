@@ -766,11 +766,21 @@
 # other announced notations require (the digit case, "mean 6 sd", stays
 # with the block walker's digitSD rule). "means" is accepted as "mean".
 #
+# A GLUED SOUP NEVER EATS THE NUMBER (2026-09-25, issue 70; Fujii 1996, PMID
+# 8706192, the corpus session's batch 15a T2): the first version's glued
+# class held "4" and ".", so "+4.9" - a plain plus set against its SD -
+# matched as the soup "+4." and the SD "9", and Height's second arm went
+# out as 154.1 +/- 9.0 for the printed 4.9. The glued prefix is now
+# strokes and stroke-like letters only, no digit and no dot; the one
+# digit form admitted is "5:" - a digit and a colon, which is how that
+# page's OCR sets the sign in "55.3 5:5.4" - and only at a sign slot,
+# never on the announcement alone.
+#
 # `lines` is the block's list of word data frames (text, x, width, ...);
 # the lines from `capIdx + 1` on are read. Returns the lines with the
 # repaired words (the sign written as the plus-minus glyph, a glued SD
 # split into its own word) and the count of repairs.
-.ppSoupGlyph <- "^[-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
+.ppSoupGlyph <- "^[-+:~\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{1,4}$"
 .ppRepairPlusMinusGlyphs <- function(lines, capIdx = 0L, tol = 6) {
   n <- length(lines)
   none <- list(lines = lines, repaired = 0L)
@@ -820,7 +830,8 @@
   if (!announced && (nTrue < 2L || length(slots) == 0L)) return(none)
   # (iii) the repair, line by line
   repaired <- 0L
-  soupGlued <- "^([-+:~.\u2212\u2013\u00b7\u2022\u00b1iIlTt4]{2,4})(\\d+(?:[.,]\\d+)*)$"
+  soupGlued <- paste0("^((?:[-+:~\u2212\u2013\u00b7\u2022\u00b1iIlTt]{2,4})|(?:[0-9]:))",
+                      "([0-9]+(?:[.,][0-9]+)*)$")
   for (i in idx) {
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
@@ -828,10 +839,11 @@
     prevNum <- c(FALSE, isNum(s[-length(s)]))
     nextNum <- c(isNum(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
+    gluedDigit <- glued & grepl("^[0-9]:", s, perl = TRUE)   # "5:5.4": a slot's evidence only
     isSign <- isSoup(s) | (announced & s == annGlyph)
     base <- prevNum & ((isSign & nextNum) | glued) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph))
-    hit  <- base & (atSlot | (announced & sum(base) >= 2L))
+    hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
     if (!any(hit)) next
     out <- vector("list", nrow(L))
     for (k in seq_len(nrow(L))) {
