@@ -110,6 +110,21 @@ refused with 422, stage `request`, saying so; a part sent with
 not a whole number in range is refused with 422, stage `request`,
 before the document is read.
 
+Both endpoints also take `durations`, on the URL like the seed:
+`POST /parse?durations=exclude` or `POST /analyze?durations=exclude`
+drops the rows a baseline table prints for post-randomisation
+quantities - durations of surgery and of anaesthesia, blood loss,
+fluids - moving them to `skipped` with the reason. The default,
+`include`, keeps them and names them in `flags`: whether they belong is
+a judgement for each trial (randomised at induction they follow the
+intervention; randomised after surgery they precede it), and the
+service takes the author's word unless told otherwise. The value is read
+in any case; anything but `include` or `exclude` is refused with 422,
+stage `request`; the reply echoes `durations` when it was sent. For a
+corpus the recommended route is two passes: `/parse` each document,
+delete the post-baseline rows from the returned template by hand, and
+`/analyze` the edited template.
+
 There is no knob for the number of replications: every trial runs the
 same staged scheme as the app (1,000 replicates per row, then 10,000
 while the trial's or any row's mid-p is below 0.1, then 100,000 while

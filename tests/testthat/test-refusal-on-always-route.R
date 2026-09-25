@@ -42,11 +42,20 @@ test_that("ai = 'always' refuses outcome variables with their reason and a flag,
   withr::local_envvar(ANTHROPIC_API_KEY = "test-key-not-used")
   out <- parseBaselineTable(syntheticPdfMeanSD(), ai = "always", tatr = "never", quiet = TRUE)
   expect_identical(out$engine, "ai")
-  expect_identical(unique(out$data$ROW), "Age (years)")
-  expect_setequal(out$skipped$label,
-                  c("Duration of surgery (min)", "I-D interval (min)", "Total ephedrine (mg)"))
+  # the true outcome (a vasopressor dose) is refused; the two durations are
+  # the durations class, kept by default and flagged (issue 74)
+  expect_setequal(unique(out$data$ROW),
+                  c("Age (years)", "Duration of surgery (min)", "I-D interval (min)"))
+  expect_identical(out$skipped$label, "Total ephedrine (mg)")
   expect_true(any(grepl("refused as outcomes", out$flags)))
+  expect_true(any(grepl("post-randomisation quantities", out$flags)))
   expect_false(any(out$provenance$ROW %in% out$skipped$label))
+  # ?durations=exclude on this route drops them too
+  gone <- parseBaselineTable(syntheticPdfMeanSD(), ai = "always", tatr = "never", quiet = TRUE,
+                             durations = "exclude")
+  expect_identical(unique(gone$data$ROW), "Age (years)")
+  expect_setequal(gone$skipped$label,
+                  c("Total ephedrine (mg)", "Duration of surgery (min)", "I-D interval (min)"))
 })
 
 test_that("the helper leaves a result with no outcome label untouched, and ignores other engines", {
