@@ -763,6 +763,7 @@
   catColumns   <- character(0)
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
+  rowNLines    <- character(0) # rows whose N came from their own "(n = k)" line (issue 47)
   pctApproxRows <- character(0) # rows using the opt-in approximation
   # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
   # counts a printed percentage allows are decided for the whole
@@ -865,6 +866,48 @@
         catHeaderPct <- !catHeaderNPct &&
           (grepl("%", lineTexts[i], fixed = TRUE) ||
              grepl("(?i)\\bpercent", lineTexts[i], perl = TRUE))
+      }
+      next
+    }
+    # A ROW'S OWN "(n = k)" LINE (2026-09-25, ISSUES.md issue 47; the corpus
+    # session on Fujii 2002, PMID 12182258). "Last menstrual cycle, d*  15
+    # ± 4  16 ± 3  16 ± 2  16 ± 3" is followed by "(n = 12) (n = 13) (n =
+    # 12) (n = 12)" under its cells, and the footnote says why ("*N = 49.
+    # Patients who had experienced menopause were excluded"): that row
+    # was measured on fewer patients than the arm. The line is a header
+    # kind to the classifier and was skipped, so the row went out with the
+    # arm's N of 20 - and the hybrid merge, seeing the model's row with
+    # the printed 12/13/12/12, kept both and double-counted the variable.
+    # A "(n = k)" line directly under a continuous row, with each count
+    # under one of the row's cells, is that row's N, arm by arm.
+    if (kind[i] == "header" && i > firstData && length(outRows) > 0 &&
+        identical(outRows[[length(outRows)]]$type, "continuous")) {
+      d      <- lines[[i]]
+      joined <- paste(d$text, collapse = " ")
+      wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
+      wordEnd   <- wordStart + nchar(d$text) - 1
+      m <- gregexpr("(?i)n\\s*=\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
+      if (m[1] != -1) {
+        last <- outRows[[length(outRows)]]
+        set  <- integer(0)
+        for (q in seq_along(m)) {
+          s0 <- m[q]; e0 <- s0 + attr(m, "match.length")[q] - 1
+          wFirst <- which(wordEnd >= s0)[1]; wLast <- rev(which(wordStart <= e0))[1]
+          xMid <- (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
+          j    <- match(cols$assign(xMid), arms)
+          nval <- suppressWarnings(as.integer(gsub("\\D", "", substr(joined, s0, e0))))
+          if (is.na(j) || is.na(nval) || is.null(last$perArm[[j]])) next
+          last$perArm[[j]]$N <- nval
+          set <- c(set, j)
+        }
+        if (length(set)) {
+          outRows[[length(outRows)]] <- last
+          rowNLines <- c(rowNLines, last$row)
+          say("  row \"", last$row, "\": its own (n = k) line gives N = ",
+              paste(vapply(last$perArm[set], function(v) as.character(v$N), character(1)),
+                    collapse = "/"), " for arm(s) ", paste(set, collapse = ","),
+              " (the printed row-level n).")
+        }
       }
       next
     }
