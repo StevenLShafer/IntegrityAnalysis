@@ -20,8 +20,11 @@ quiet <- function(expr) { utils::capture.output(r <- suppressMessages(expr)); r 
 test_that("P_Calc returns KIND: variable lines, one summary, a blank spacer", {
   dqrng::dqset.seed(1); set.seed(1)
   x <- quiet(suppressWarnings(shiny::isolate(P_Calc("T", mk("Summary"), NULL, 1000))))
-  expect_identical(names(x), c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND"))
+  # .PNUM, the numeric p of every line, rides with the result since issue
+  # 78 for the across-trials combination; the workbook and the CSV drop it
+  expect_identical(names(x), c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND", ".PNUM"))
   expect_identical(x$KIND, c("variable", "summary", NA))
+  expect_true(is.numeric(x$.PNUM) && !is.na(x$.PNUM[2]) && is.na(x$.PNUM[3]))
   expect_identical(x$ROW[1:2], c("Summary", "Summary"))   # the label collides; the kind does not
 })
 

@@ -1768,6 +1768,14 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
   use  <- !is.na(Pv)
 
   ciStr <- ""
+  # THE NUMERIC TRIAL P TRAVELS WITH THE RESULT (2026-09-25, ISSUES.md
+  # issue 78; Steve: "use the actual number, not the displayed number, for
+  # the P across trials"). The Summary line's P is a display - four
+  # figures, or "<0.0001" when the bound licenses it - and the Stouffer
+  # combination across trials used to read that display back, so a trial
+  # at 0.000003 entered as 0.0001. The number rides in the .PNUM column of
+  # the Summary line; the combinations take it first (.iaOverallP()).
+  trialPnum <- NA_real_
   if (sum(use) > 1)
   {
     # The trial p: the share of simulated honest trials whose Stouffer
@@ -1780,6 +1788,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
     mT  <- trialStat$m
     Pnum <- max((trialStat$kG + trialStat$kE / 2) / mT, 1 / (mT + 1))
     if (Pnum >= 1) Pnum <- 0.9999
+    trialPnum <- Pnum
     upper <- .mcUpper(kGE, mT)
     P <- if (upper < 1e-4) "<0.0001" else signif(Pnum, 4)
     if (Pnum < 0.001)
@@ -1809,6 +1818,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
     {
       P <- x$P[use]
       ciStr <- x$CI95[use]
+      trialPnum <- Pv[use]
     }
     if (sum(use) == 0)
       P = "No values"
@@ -1843,13 +1853,15 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
     M = c(NA, NA),
     NOTE = c(summaryNote, NA),
     KIND = c("summary", NA),
-    .PNUM = c(NA, NA),
+    .PNUM = c(trialPnum, NA),
     .KLE = c(NA, NA)
   )
 
   x <- rbind(x, lastline)
-  # internal bookkeeping columns stay out of the results
-  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND")]
+  # internal bookkeeping columns stay out of the results - except .PNUM,
+  # the numeric p of every line, which the across-trials combination
+  # needs (issue 78); the workbook, the API's CSV and the app drop it
+  x <- x[, c("TRIAL", "ROW", "P", "CI95", "M", "NOTE", "KIND", ".PNUM")]
   outputComments(
     paste0("Trial ", TRIAL,": p = ", P,
            if (nzchar(ciStr)) paste0(" (95% Monte Carlo interval ",
