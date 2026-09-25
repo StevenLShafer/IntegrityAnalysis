@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 94. "Allocated to one of four groups of 15 patients each" states the arm sizes
+
+**Status: fixed on `feat/groups-of-n-patients-each`, 2026-09-25**, from
+the corpus session's batch 24 AC2 (Fujii, Anaesthesia 1998;53:244, PMID
+9613269, the same table as Loadsman Anaesthesia1998_244).
+
+- **The defect.** The "k groups of n" reader (`.ppGroupsOfN()`) wanted
+  "into": "divided into four groups of 15". The Methods of this trial
+  say "allocated randomly to one of four groups of 15 patients each",
+  and with no N in the table all four arms of Age, Height, Weight and
+  Duration validated as missing N.
+- **What changed.** The pattern accepts "to one of" where it accepted
+  "into". Everything else about the statement - the verb before it,
+  the optional noun after the size, the "every statement for this arm
+  count must agree" rule of `.ppGroupNFor()` - is unchanged.
+- **On the page.** Four arms of 15 (Great toe-PTC, Thumb-PTC, Great
+  toe-TOF, Thumb-TOF) with the sentence as source; sixteen rows.
+- **Tests** (`tests/testthat/test-groups-of-n-patients-each.R`): the
+  helper on the sentence, the "into" form still read, a sentence with
+  neither refused; a rebuilt page with no N in the table gets four arms
+  of 15 (6 expectations fail on the unfixed code). The arm-size and
+  layout tests still pass.
+
+---
+
 ## 93. A figure's axis under the table is not a row, and the rail's short words go with the rail
 
 **Status: fixed on `fix/rail-strip-keeps-column`, 2026-09-25**, a
