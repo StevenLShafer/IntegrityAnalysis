@@ -460,11 +460,17 @@
   # Baseline data is nearly always the first table, so its number is evidence
   # in its own right - enough to separate "Table 1 Patient data" from
   # "Table 4 Patient data at 24 h".
-  # NOTE (issue 39, 2026-09-25): this pattern is case-sensitive, so it
-  # has never fired on a printed "Table 1" or "TABLE I" (only on a
-  # lower-case "table 1"). Making it fire is a scoring change across the
-  # whole corpus and waits for its own measured PR (ISSUES.md issue 40).
-  s <- s + 2 * grepl("^\\s*(table|tab\\.?)\\s+(1|I)\\b", txt, perl = TRUE)
+  # Switched on 2026-09-25 (issue 40): the pattern had been case-sensitive
+  # since it was written, so it never fired on a printed "Table 1" or
+  # "TABLE I". Measured before switching (corpus/measureMisparse.R, 1,110
+  # Carlisle-linked PDFs, main dc39659): fully corroborated files 435 ->
+  # 444 of ~940 with this +2, 441 with +1; twelve files up, two down
+  # (PMID 14687093 and 14722167, where the bonus picks the paper's real
+  # Table 1 but the reading of it is poor and Carlisle recorded Table 2).
+  # An unnumbered caption ("TABLE Demographic data", issue 39) is a
+  # paper's only table, so its first: it takes the bonus too.
+  s <- s + 2 * (grepl("(?i)^\\s*(table|tab\\.?)\\s+(1|I)\\b", txt, perl = TRUE) ||
+                grepl("^\\s*(TABLE|Table)\\s+[A-Z][a-z]+", txt, perl = TRUE))
   # Tables of results are not baseline tables, even when they tabulate people.
   # But the penalty must not override an explicit announcement: "Table 1
   # Baseline and pre- and intra-operative data" is a baseline table that
