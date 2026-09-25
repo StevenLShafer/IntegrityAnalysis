@@ -132,6 +132,42 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 123. "-I-" between two numbers is the plus-minus sign
+
+**Status: fixed on `fix/dash-i-dash-is-the-sign`, 2026-09-26**, from the
+corpus session's survey of the form across the Fujii, Boldt, Reuben and
+Loadsman PDFs (batch 27).
+
+- **The finding.** The OCR of a scanned plus-minus is often a minus, a
+  capital I and a minus: "149 -I- 13", "54.2 -I-7.1", "18.0 --I-1.8",
+  "10141-I- 1977", "114.7 -I- 5.5a,b,c". Thirteen files carry the form;
+  eight on data lines as the sign (Fujii 23568117, 7497558, 7534216,
+  7614644, 7889590, 7954995, 8055614; Loadsman CJA1995_992), five in
+  prose only ("ASA-I- bis", "HS-I-IES", "ROCHA-I-SILVA") and never
+  between two numbers. The slot rule of issue 65 reads it only where
+  another row sets a genuine glyph at that x, and issue 108 only under
+  an announced notation: a page whose every sign is "-I-" read no cell.
+- **What changed.** `.ppRepairDashIDash()` in utils.R, run before the
+  slot repair: on a line after the caption, the form between two
+  numbers is the sign, whether it stands alone or is glued to the
+  number before it, after it, or both; a glued word is split by its
+  characters' share of its width. A number may carry a footnote mark.
+  The hyphens may be the minus sign U+2212 (as R's pdf device sets them
+  in the fixture). Restored first, its signs are the genuine glyphs the
+  slot rule then leans on for the line's other soup - so "-I-" leaves
+  the older slot test's set of soup that must be left alone.
+- **On the corpus.** The baseline tables of 7889590, 7954995 and
+  8055614 read the same before and after (their "-I-" lines were
+  already reached by the slot rule or lie in other tables); the gain is
+  the page with no genuine glyph and no announcement.
+- **Tests** (`tests/testthat/test-dash-i-dash-is-the-sign.R`): the
+  helper alone, glued before, after and both, with a footnoted number,
+  on prose forms (untouched) and before the caption (untouched); a
+  rebuilt page whose every sign is "-I-" reads every cell (the helper is
+  absent and the page unreadable on the unfixed code). The slot,
+  announced-soup, glued-soup, minus-digit and Loadsman layout tests
+  still pass.
+
 ## 121. A token does not end inside a decimal number
 
 **Status: fixed on `fix/sd-number-not-cut-at-decimal`, 2026-09-26**, from

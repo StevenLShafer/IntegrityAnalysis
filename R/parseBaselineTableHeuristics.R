@@ -163,6 +163,16 @@
   # two numbers, at an x where other lines set a genuine plus-minus, are
   # the sign - see .ppRepairPlusMinusGlyphs() in utils.R. The lines and
   # their texts are replaced so that every rule below sees the sign.
+  # ... after the one OCR form that needs no column: "-I-" between two
+  # numbers, alone or glued ("54.2 -I-7.1"; issue 123): see
+  # .ppRepairDashIDash() in utils.R. Restored first, its signs are the
+  # genuine glyphs the slot rule leans on.
+  rep <- .ppRepairDashIDash(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read \"-I-\" between two numbers as the plus-minus sign in ", rep$repaired, " word(s).")
+  }
   rep <- .ppRepairPlusMinusGlyphs(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines

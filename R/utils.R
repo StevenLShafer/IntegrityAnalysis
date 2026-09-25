@@ -819,6 +819,68 @@
 # needs at least one decimal on each side (an integer mean "4757" could
 # split anywhere). The precision must agree across the line's sign
 # cells; where it does not, only the letter form is read.
+# "-I-" BETWEEN TWO NUMBERS IS THE PLUS-MINUS SIGN (2026-09-26, ISSUES.md
+# issue 123; the corpus session's survey of batch 27). The OCR of a scanned
+# plus-minus is often a minus, a capital I and a minus - "149 -I- 13",
+# "54.2 -I-7.1", "18.0 --I-1.8", "10141-I- 1977" - and the survey found
+# the form on data lines of eight papers (Fujii 23568117, 7497558,
+# 7534216, 7614644, 7889590, 7954995, 8055614 and Loadsman CJA1995_992)
+# and in prose only elsewhere ("ASA-I- bis", "HS-I-IES", a reference's
+# "ROCHA-I-SILVA"), never between two numbers. The slot rule below reads
+# it only where another row sets a genuine glyph at that x, so a page
+# whose every sign is "-I-" (7889590, nine lines) read no cell. Between
+# two numbers on a line after the caption the form is the sign, whether
+# it stands alone or is glued to the number before it, after it, or
+# both; the glued word is split by its characters' share of its width,
+# as the fused-sign repair splits. A number may carry a footnote mark
+# ("5.5a,b,c", "10t"). Runs BEFORE the slot repair, so the signs it
+# restores are the genuine glyphs the slot rule then leans on.
+# (a text layer may set the hyphens as the minus sign U+2212, as R's pdf
+# device does in the test fixture; both are accepted)
+.ppDashIDash <- "^([0-9]+(?:[.,][0-9]+)?)?([-\u2212]{1,2}I[-\u2212])([0-9]+(?:[.,][0-9]+)?[A-Za-z,]*)?$"
+.ppRepairDashIDash <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  isNum <- function(x) grepl("^[0-9]+(?:[.,][0-9]+)?[A-Za-z,]*$", x, perl = TRUE) &
+    grepl("^[0-9]", x, perl = TRUE)
+  for (i in seq(capIdx + 1L, n)) {
+    L <- lines[[i]]; s <- L$text
+    hit <- grepl(.ppDashIDash, s, perl = TRUE)
+    if (!any(hit)) next
+    out <- vector("list", nrow(L))
+    for (k in seq_len(nrow(L))) {
+      out[[k]] <- L[k, , drop = FALSE]
+      if (!hit[k]) next
+      m <- regmatches(s[k], regexec(.ppDashIDash, s[k], perl = TRUE))[[1]]
+      before <- m[2]; after <- m[4]
+      # a number on each side: glued to the word, or the neighbouring word
+      okBefore <- nzchar(before) || (k > 1L && isNum(s[k - 1L]))
+      okAfter  <- nzchar(after)  || (k < length(s) && isNum(s[k + 1L]))
+      if (!okBefore || !okAfter) next
+      nc <- nchar(s[k]); w <- L$width[k]; x0 <- L$x[k]
+      f1 <- nchar(before) / nc; f2 <- nchar(m[3]) / nc
+      parts <- list()
+      if (nzchar(before)) {
+        w1 <- L[k, , drop = FALSE]; w1$text <- before; w1$width <- w * f1
+        parts <- c(parts, list(w1))
+      }
+      w2 <- L[k, , drop = FALSE]; w2$text <- .ppPLUSMINUS
+      w2$x <- x0 + w * f1; w2$width <- w * f2
+      parts <- c(parts, list(w2))
+      if (nzchar(after)) {
+        w3 <- L[k, , drop = FALSE]; w3$text <- after
+        w3$x <- x0 + w * (f1 + f2); w3$width <- w * (1 - f1 - f2)
+        parts <- c(parts, list(w3))
+      }
+      out[[k]] <- do.call(rbind, parts)
+      repaired <- repaired + 1L
+    }
+    lines[[i]] <- do.call(rbind, out)
+    rownames(lines[[i]]) <- NULL
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 .ppFusedSoup <- "^([A-DF-WYZa-df-wyz?;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
 # (its own name: .ppDecimals() in text precision is a different helper)
 .ppFusedDecimals <- function(x) ifelse(grepl(".", x, fixed = TRUE), nchar(sub("^[^.]*\\.", "", x)), 0L)

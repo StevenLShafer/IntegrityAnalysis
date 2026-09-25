@@ -58,7 +58,10 @@ test_that("soup glyphs at the block's plus-minus columns read as the sign, a glu
 })
 
 test_that("with no genuine sign in the block and no announcement, the soup is left alone", {
-  soup <- c(":i:", "-t-", "-I-", "4-")
+  # "-I-" left this set on 2026-09-26: between two numbers it is the sign
+  # without any column's evidence (ISSUES.md issue 123), and restored first
+  # it becomes the genuine glyph the slot rule leans on for the rest
+  soup <- c(":i:", "-t-", ":t:", "4-")
   f <- soupPdf(file.path(tempdir(), "soup-none.pdf"), footnote = "There were no differences between the groups.",
                ageGlyphs = soup, weightGlyphs = soup, anGlyphs = soup)
   r <- tryCatch(parseBaselineTableHeuristics(f, quiet = TRUE), error = function(e) NULL)
