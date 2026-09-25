@@ -248,6 +248,10 @@ discrepancy rounding alone can explain.
 
 - **Numeric arm names** (2026-09-25, issue 56). "Group 60 50 40 30 20 Volunteers" above the
   first value line is the arm-name line; its numbers name the arms as printed.
+- **Strata** (2026-09-25, issue 55). A labelled "(n = k)" line inside the table ("Young
+  patients (n = 75) (n = 25) (n = 25) (n = 25)") opens a stratum: the rows beneath carry its
+  arm sizes and its name as a prefix ("Young patients: Age, y"); a bare "(n = k)" line is the
+  row above's own n (issue 47); a footnote marker never opens a heading.
 
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 

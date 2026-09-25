@@ -154,6 +154,51 @@ session's batch 5 finding K2 (CJA 1995;42:992, Saitoh).
 
 ---
 
+## 55. A labelled "(n = k)" line inside a table opens a stratum: the rows beneath carry its arm sizes and its name
+
+**Status: fixed on `feat/stratum-header`, 2026-09-25**, from the corpus
+session's batch 7 finding M1 (Fujii & Nakayama 2006, Clin Ther; PMID
+16982288).
+
+- **The defect.** Table I prints "Young patients (n = 75) (n = 25) (n =
+  25) (n = 25)" and, half-way down, "Older patients (n = 75) (n = 25) (n
+  = 25) (n = 25)" under a column header of "(n = 50)", each stratum with
+  the same variables as "Mean (SD)" / "Range" sub-rows. The stratum lines
+  were header kinds the walker skipped (the first one, above the first
+  data row, even fed the header's arm sizes), so the rows beneath took
+  the column header's 50, the second stratum's variables came out as
+  "Age, y 2", and the hybrid reading had every variable three times
+  (p 0.14 → 0.25 for a table the model alone had read right).
+- **What changed.** A labelled "(n = k)" line after the first header line
+  - the label at least three letters and not the N row's own words - is a
+  stratum line wherever it sits. The header reads its arm sizes from the
+  column header alone; the block walker starts at the first stratum line
+  when one stands above the first data row; on reaching a stratum line
+  it sets the arm sizes for the rows beneath (a match left of the first
+  arm column, the stratum's own total, is ignored) and closes any open
+  heading. After the walk, each stratum's rows take its name as a prefix
+  ("Young patients: Age, y"), and a name `.ppUniqueName()` had suffixed
+  because an earlier stratum used it takes its base back. The arms table
+  keeps the column header's sizes. A bare "(n = k)" line - no label - is
+  the row above's own n as before (issue 47). And a label line beginning
+  with a footnote marker (*, †, ‡, §) never opens a heading: the page's
+  "*No significant between-group differences were found." had become a
+  category heading for the stray numbers beneath it.
+- **On the page.** Two strata of three arms of 25: Age, Height, Weight
+  and Initial propofol dose as "Young patients: …" and "Older patients:
+  …", Sex as a fraction category in each; the table validates; three named arms of 50 in the arms table. (A first
+  reading left the label column's "Characteristic" as a fourth arm holding
+  a header "(n = 50)": the footnote "*No significant …" carried no space
+  after its asterisk, the stop pattern let the prose beneath run on into
+  the block, and its numbers seeded that column. The marker now ends the
+  block with or without the space.)
+- **Tests** (`tests/testthat/test-stratum-header.R`): the rebuilt page
+  reads both strata with N 25, prefixed names, no " 2" suffix, the
+  fraction categories per stratum, the footnote as no heading, the arms
+  table at 50; a bare "(n = k)" line under a row is still that row's n.
+
+---
+
 ## 54. A variable the model adds to the baseline table is refused when its label names an outcome
 
 **Status: fixed on `feat/refuse-model-outcome-rows`, 2026-09-25**, from
