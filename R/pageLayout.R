@@ -375,7 +375,16 @@
   # S1. Characteristics of the study participants" while Table 1 is an
   # outcome; the anchor knew only a plain numeral and the paper's only
   # baseline table was never a candidate)
-  isNo <- grepl("^(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:)]?$", w$text)
+  # THE NUMBER MAY CARRY AN OCR GLYPH (2026-09-26, ISSUES.md issue 115; Donmez
+  # 1998 JCVA, Loadsman corpus, the corpus session's batch 26 AE9): the scan's
+  # caption reads "Table 1<bullet> Demographic Data", the bullet glued to the
+  # digit. Until issue 96 the stripper took that word for a rail word and
+  # the caption read "Table Demographic Data", which the bare-word rule
+  # below accepted; with the word kept, neither rule matched, page 2 had
+  # no candidate, and the assisted route handed the model page 1 - which
+  # has no table - so the trial went from read to "no baseline table". A
+  # digit or numeral followed by one stray glyph is the caption's number.
+  isNo <- grepl("^(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:)\u2022\u00b7\u2019']?$", w$text, perl = TRUE)
   sameLine <- c(abs(diff(w$y)) <= 3, FALSE)
   # "Table" immediately followed by a numeral on the same visual line
   hit  <- which(isTb & c(utils::tail(isNo, -1), FALSE) & sameLine)
