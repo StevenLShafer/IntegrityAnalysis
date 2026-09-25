@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 82. The announced "mean + SD" rule's two-cell floor counts the cells already read
+
+**Status: fixed on `fix/plus-rule-counts-read-cells`, 2026-09-25**, from
+the corpus session's batch 19 finding Y4 (Saitoh, Can J Anaesth
+1995;42:992; Loadsman corpus, the six-arm page of issue 65).
+
+- **The defect.** A regression of issue 77. The slot repair now turns a
+  plain "+" into the sign at any slot under an announced soup, and on
+  that page it read five of Age's six plus signs before the block
+  walker's announced "mean + SD" rule ran; the sixth, "49.4 + 5.9", sat
+  in a column no other line marked (its neighbours' signs were soup) and
+  was left to that rule, which requires at least two plus pairs on the
+  line. Counted alone it fell under the floor, its two numbers stayed
+  plain, and the fifth arm's Age was lost - on a page issue 65 had made
+  whole, with no flag but "Age (5 of 6)".
+- **What changed.** The floor counts the cells the line already holds:
+  a lone plus pair beside one or more mean +/- SD cells is one more cell,
+  while a lone pair on a line with no cell at all is still refused (the
+  lone annotation the floor exists for). A line with no pair is left as
+  it is, as before.
+- **Tests** (`tests/testthat/test-plus-rule-counts-read-cells.R`): a
+  rebuilt six-arm page whose fifth column no other line marks reads every
+  arm of Age (fails on the unfixed code); a lone "5 + 2" on a line with no
+  cell, off the sign columns, is still refused under an announced "mean +
+  SD". The issue 45, 65, 70 and 77 tests still pass.
+
+---
+
 ## 78. The P across trials is combined from the numeric trial p, not from its display
 
 **Status: fixed on `fix/stouffer-uses-numeric-trial-p`, 2026-09-25**, to
