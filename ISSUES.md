@@ -166,6 +166,42 @@ missing-N Carlisle trials (PMIDs 9861126, 9924225, 14749151, 10357343).
 
 ---
 
+## 88. Fujii's canine tables: roman groups, a lost label, and the sign as U+2AFE
+
+**Status: fixed on `feat/canine-long-layout`, 2026-09-25**, from the
+corpus session's batch 22 (the issue 84 recheck; PMID 12933396 the
+cleanest case, 12088956 identical in shape).
+
+- **The defect.** Sixteen of the eighteen animal papers among the 48
+  missing-N Carlisle trials are Fujii canine tables of one shape:
+  "Variable | Group | Baseline | Fatigued | Treatment | Recovery", the
+  groups I, II and III as rows under each variable. Three things kept the
+  repeated-measures reader out. The text layer reports the font's
+  plus-minus as U+2AFE, which the tokenizer did not know, so no cell was
+  a mean ± SD; the middle group's "II" is missing from the text layer
+  altogether, so its row carried no index; and issue 76 numbered letter
+  labels by first appearance, which would have made III the second
+  group. The wide reader then took the Baseline and Fatigued columns for
+  two arms and the group rows for separate variables, with no N - and
+  issue 84's ladder, offered "three groups of eight each", abstained
+  because k = 3 named more arms than the two the parse had.
+- **What changed.** The tokenizer and the slot repair know U+2AFE as the
+  sign. In the reader a roman numeral under Group is its own index; a
+  value line with nothing before its first number, between roman rows,
+  is the next group when that fills a gap the numerals seen in the block
+  bound (never a phantom Group IV after the last III); the groups are
+  named by their numerals and by the legend, whose "=" may be U+2AFD in
+  that font ("Group I = no study drug"). The size then comes from the
+  text as issue 84 provides: three arms of eight, the Baseline column
+  only.
+- **Tests** (`tests/testthat/test-canine-long-layout.R`): U+2AFE
+  tokenizes as the sign; a rebuilt page with roman groups, a lost II, the
+  legend and "three groups of eight each" reads three arms of eight from
+  the Baseline column, named by the legend (fails on the unfixed code).
+  The issue 34, 76 and sign tests still pass.
+
+---
+
 ## 86. The OUP download rail, seven points wide, is a rotated rail
 
 **Status: fixed on `fix/oup-rail-rotated-words`, 2026-09-25**, from the
@@ -191,6 +227,38 @@ corpus session's batch 21 finding AA1 (PMIDs 9389277 and 9861126, BJA).
   page with the rail beside its table reads two arms of 30 and no
   phantom. The issue 35 and 38 rail tests and the Loadsman layout tests
   still pass.
+
+---
+
+## 85. The sign fused inside the cell word ("48.4k7.2")
+
+**Status: fixed on `feat/fused-sign-in-cell-word`, 2026-09-25**, from the
+corpus session's batch 20 finding Z1 (Saitoh, Acta Anaesthesiol Scand
+1998;42:851; Loadsman corpus, page 3).
+
+- **The defect.** The scanned page's text layer sets each mean ± SD cell
+  as one word with a letter or symbol where the sign was - "48.4k7.2",
+  "46.9Z7.7", "168.0?8.5", "166.9k8.4" - and once with the digit 5
+  ("47.357.9"). The tokenizer's number pattern refuses a digit run that a
+  letter touches on either side, so the rows held no cell: the
+  deterministic pass read Gender alone and scored a Gender-only table
+  (p 0.0029, meaningless).
+- **What changed.** `.ppRepairFusedSigns()` in `R/utils.R`, called after
+  the sign and size repairs at the head of `.ppParseBlock()`: a word of
+  the shape NUMBER, one or two glyphs that are not digits, NUMBER - the
+  glyphs not "e"/"E" (an exponent) nor "x"/"X" (a dimension) - is a mean
+  ± SD cell when the line holds two or more of them, and is split into
+  its three words with the sign as the plus-minus glyph, the widths
+  shared by character count. The digit-fused form ("47.357.9") is left as
+  it is: without a legend naming the digit it cannot be split, and the
+  row is reported as unusable rather than misread. On the page Height
+  now reads four arms; Age and Weight, each with a digit-fused cell,
+  stay reported for the reviewer or the model.
+- **Tests** (`tests/testthat/test-fused-sign-in-cell-word.R`): the helper
+  on fused cells, on an exponent, a dimension and a lone fused word; the
+  split words keep the cell's extent; a rebuilt page reads Age, Height
+  and Weight across four arms (fails on the unfixed code). The sign,
+  glyph, junk-row and Loadsman layout tests still pass.
 
 ---
 
@@ -305,6 +373,38 @@ Steve's direction of 2026-09-25.
   and a pain score read unambiguously. The editors'-view and stacked
   Baseline Tables round-trip tests of `test-wide-table.R` pass with the
   named rows.
+
+---
+
+## 80. A table of changes from baseline is not the baseline table
+
+**Status: fixed on `fix/change-from-baseline-caption`, 2026-09-25**, from
+the corpus session's batch 17 finding W1 (Fujii 1994, Can J Anaesth; PMID
+8055614), after issues 76 and 77.
+
+- **The defect.** Once issue 77's sign repairs made its rows readable,
+  "TABLE II Changes in Pdi (cmH20) from pre-fatigue values" out-scored
+  the page's Table I ("Haemodynamic data and changes": score 10, caption
+  -2) at score 12, caption 0, and the whole-document parse returned a
+  table of changes as the baseline table - on the batch's route and the
+  app's. The caption scorer marked down "outcome", "complication",
+  "haemodynamic" and the like, but not a caption that says its cells are
+  changes from, or responses to, the state before treatment.
+- **What changed.** `.ppCaptionScore()` marks such a caption down like an
+  outcome caption (-3, once): "changes in ... from ...", "changes from
+  baseline / pre-<word> / initial / control values", "responses to ...",
+  "... during / after / following surgery, anaesthesia, induction,
+  infusion, treatment, the study". A caption that says baseline
+  elsewhere keeps its standing ("Baseline characteristics and changes
+  from baseline"); "Changes from baseline in blood pressure", whose only
+  "baseline" is the one it changes from, loses the word's bonus as well.
+  Table I now wins the page: 6 variables x 2 arms of 10 from its
+  Pre-fatigue column, on the whole document and with `pages = 3`.
+- **Tests** (`tests/testthat/test-change-from-baseline-caption.R`): the
+  scorer on the two captions of that page and on four more wordings; a
+  baseline caption is never marked down; a rebuilt page holding both a
+  plain table and a table of changes picks the plain one (fails on the
+  unfixed code). The caption, anchor and Loadsman layout tests still pass.
 
 ---
 
