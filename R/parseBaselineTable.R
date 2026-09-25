@@ -45,7 +45,7 @@ reviewFlags <- function(x) {
   # rows. Named here so the reviewer can drop the column; the engine does
   # not decide what the trial randomised.
   other <- !is.na(x$arms$arm) &
-    grepl("(?i)\\bvolunteers?\\b|healthy\\s+(controls?|subjects?|adults?)|normal\\s+(subjects?|controls?)|non-?randomi[sz]ed",
+    grepl("(?i)\\bvolunteers?\\b|\\bhealthy\\s+(controls?|subjects?|adults?)|\\bnormal\\s+(subjects?|controls?)|\\bnon[- ]?randomi[sz]ed",
           x$arms$arm, perl = TRUE)
   if (any(other))
     flags <- c(flags, paste0("arm(s) ", paste0("\"", x$arms$arm[other], "\"", collapse = ", "),

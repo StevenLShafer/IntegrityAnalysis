@@ -22,4 +22,12 @@ test_that("a volunteers or healthy-controls arm is flagged; ordinary arms are no
   }
   r3 <- r; r3$arms$arm <- c("Control", "Treatment")
   expect_false(any(grepl("different population", reviewFlags(r3))))
+  # whole words (CodeRabbit on PR #367): "Unhealthy controls" and "Abnormal subjects" are
+  # not healthy controls or normal subjects; a spaced "Non randomised" is flagged
+  for (nm in c("Unhealthy controls", "Abnormal subjects")) {
+    r4 <- r; r4$arms$arm[2] <- nm
+    expect_false(any(grepl("different population", reviewFlags(r4))), info = nm)
+  }
+  r5 <- r; r5$arms$arm[2] <- "Non randomised controls"
+  expect_true(any(grepl("different population", reviewFlags(r5))))
 })
