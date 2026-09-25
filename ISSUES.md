@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 75. A letter O for a zero in an arm size ("(n=4O)")
+
+**Status: fixed on `fix/ocr-zero-in-arm-size`, 2026-09-25**, from the
+corpus session's batch 17 finding W2 (Fujii 1999, Can J Anaesth; PMID
+10522590).
+
+- **The defect.** The scanned page's text layer prints the header sizes
+  as "(n=4O)" beside "(n=40)". The size regex read 4, the remainder "O)"
+  became part of the first arm's name ("Granisetron O)"), and the first
+  arm went out with N = 4 - a wrong number - which the hybrid merge then
+  doubled into a phantom arm beside the model's real one (p 0.082 to
+  0.0009 on a table with the wrong N and a duplicated column). Issue 48's
+  phantom-arm rule did not reach it: the phantom had values.
+- **What changed.** `.ppRepairSizeZeros()` in `R/utils.R`, called at the
+  head of `.ppParseBlock()` after the plus-minus repair: within a word
+  that is an "(n = k)" group, or the number word of a split one ("(n" "="
+  "4O)"), a letter O among digits is a zero. At least one digit must be
+  present, and nothing outside such a group is touched. The page reads
+  two arms of 40 with clean names.
+- **Tests** (`tests/testthat/test-ocr-zero-in-arm-size.R`): the helper on
+  glued and split forms and on words that must not change ("Oral",
+  "SpO2", "n=O"); a rebuilt page with "(n=4O)" reads two arms of 40 with
+  clean names (fails on the unfixed code).
+
+---
+
 ## 73. A stratum's name stands at the row-label margin, left of the arm columns
 
 **Status: fixed on `fix/stratum-lead-left-of-arms`, 2026-09-25**, from the
