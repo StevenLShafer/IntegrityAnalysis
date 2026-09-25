@@ -212,7 +212,20 @@
   # its character count). Narrow UPRIGHT words exist too ("yr", "kg" in
   # a condensed font), which is why narrowness alone must not strip -
   # the rail test below is what decides.
-  narrow <- pageWords$width <= 6 & nchar(pageWords$text) >= 2
+  # THE OUP RAIL IS SEVEN POINTS WIDE (2026-09-25, ISSUES.md issue 86;
+  # PMIDs 9389277 and 9861126, BJA, the corpus session's batch 21 AA1):
+  # "Downloaded from https://academic.oup.com/bja/article/.../254374 by
+  # ... user on 25 September 2026" runs up the right margin in a font one
+  # point larger than the LWW rail this test was measured on, so none of
+  # its words was narrow by the six-point rule; the URL's article number
+  # became a fourth arm with N = 254996 and the validator refused the
+  # table for its size. A rotated word is far taller than it is wide: a
+  # word up to eight points wide whose height is at least twice its
+  # width is a candidate too. An upright two-letter word is about as
+  # wide as it is tall and stays.
+  narrow <- (pageWords$width <= 6 |
+               (pageWords$width <= 8 & pageWords$height >= 2 * pageWords$width)) &
+    nchar(pageWords$text) >= 2
   if (sum(narrow) < 4) return(pageWords)
   # the rail: four or more narrow words sharing one x position and
   # spanning a third of the page's height - running text never stacks

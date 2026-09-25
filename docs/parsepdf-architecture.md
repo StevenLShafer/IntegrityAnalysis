@@ -250,6 +250,9 @@ wrong entry would corrupt numbers invisibly.
 - **A table of changes from baseline is not the baseline table** (2026-09-25, issue 80): the
   caption scorer marks down "changes ... from ...", "changes from baseline", "responses to" and
   "during/after surgery" captions like outcome captions, unless the caption says baseline elsewhere.
+- **The OUP download rail** (2026-09-25, issue 86): a word up to eight points wide and at least
+  twice as tall as it is wide is a rotated-rail candidate, so the seven-point OUP rail is stripped
+  like the six-point LWW rail.
 - **Arm sizes from the document text for a deterministic table** (2026-09-25, issue 84): when
   every arm lacks N after the block walker's own ladder, the "k groups of n" statement and then
   the document-text ladder (`.ppArmNFromDocument()`) fill them, with the sentence as source and
