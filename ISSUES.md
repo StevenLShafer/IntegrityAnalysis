@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 103. "Divided into three groups of Methods D 10 each": the running head inside the sentence
+
+**Status: fixed on `feat/groups-of-n-past-running-head`, 2026-09-25**,
+from the corpus session's batch 25 AD8 (Fujii, PMID 11004073).
+
+- **The defect.** After issues 91 and 95 every cell of the trial's
+  Table 1 read with its name, three arms, and N stayed missing although
+  the Methods say "divided into three groups of 10 each": the text
+  extractor interleaves the two-column page's running head into the
+  sentence, "divided into three groups of Methods D 10 each", and the
+  "k groups of n" reader took "Methods" for the size.
+- **What changed.** The pattern steps over up to three stray words
+  between "of" and the size when "each" follows the size - the anchor
+  that makes the number the group size and not a dose or a duration
+  further along the sentence. A sentence with the stray words and no
+  "each", or with four of them, licenses nothing.
+- **On the page.** Three arms of 10 (Group I no study drug, II, III)
+  with the sentence as source; the 24 cells as before.
+- **Tests** (`tests/testthat/test-groups-of-n-past-running-head.R`):
+  the interleaved sentence, the plain sentence, a sentence whose "each"
+  belongs to a dose, and one with four stray words (3 expectations fail
+  on the unfixed code). The arm-size and layout tests still pass.
+
+---
+
 ## 102. A "Changes in X" caption heads a time-course table, and on equal scores the lower table number wins
 
 **Status: fixed on `fix/changes-in-caption-tiebreak`, 2026-09-25**, a
