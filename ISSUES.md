@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 120. The rows of whole cells cut the columns when the full rows refuse the cut
+
+**Status: fixed on `fix/header-count-cut-on-continuous-rows`, 2026-09-26**,
+from the corpus session's batch 27 AF3 (CJA 1995, PMID 7614644, a scan;
+four arms of 22 in columns 48 to 60 points apart).
+
+- **The defect.** The header names four arms and the gap rule found
+  three, so the header-count cut of issue 71 tried the "full" rows -
+  the rows with one token per arm. The Age line has four tokens but
+  only two are cells: "62 <pm> 61 <pm> 62 <pm> 9 61 <pm> 11" leaves two
+  bare means (issue 118), and a bare mean sits left of where its cell's
+  midpoint would be; the count rows under "Types of operation
+  performed" set their integers under the SDs. The columns' spreads
+  over all full rows (18, 33, 28, 18) passed the narrowest cut gap
+  (21), the cut was refused, and the table read three arms of four.
+- **What changed.** When the cut over the full rows is refused, the
+  rows whose every token is a whole cell (mean +/- SD, mean (SD),
+  median [range]) cut the columns by themselves - a bare number is not
+  a cell. At least two such rows, as before; the first attempt is
+  unchanged.
+- **On the page.** With issue 119 all four arms of 22 read: Height,
+  Weight, both durations and Morphine in every arm (23 cells). Age's
+  second cell still reads "45.3 +/- 43.0" from a neighbour's mean -
+  issue 121.
+- **Tests** (`tests/testthat/test-header-count-cut-on-whole-cells.R`):
+  a rebuilt page on the scan's geometry (a bare mean in the Age row,
+  counts under the SDs) reads four arms and every continuous row in
+  all four (7 expectations fail on the unfixed code). The announced-
+  soup, zero-repair, slot, glued-soup, junk-row and Loadsman layout
+  tests still pass.
+
 ## 119. Under an announced notation the glued digit-colon form marks its column
 
 **Status: fixed on `fix/glued-digit-colon-marks-slot`, 2026-09-26**, from
