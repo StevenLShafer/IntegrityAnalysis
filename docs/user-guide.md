@@ -452,6 +452,14 @@ specific cell:
 - **Blue — incongruent.** The value conflicts with the type of its row:
   an SD on a median/IQR row, continuous entries on a category row, a
   median outside its own quartiles, an SE standing in for a missing SD.
+- **Lavender — warning.** The table passed validation, but the value
+  looks suspect: an SD larger than its mean (plausible for a skewed
+  quantity such as a duration or a dose, implausible for a symmetric
+  one), a row printing the same value with no dispersion in every arm
+  (fixed by design or by a floor, not a sample), or a row identical in
+  N, mean and SD to another row of the same trial (a duplicate?). The
+  analysis runs either way; the log lists the rows, and hovering the
+  cell gives the reason. Check them against the manuscript.
 - **Green — derived or AI-read.** The parser computed the value (a
   percentage converted to a count, or an arm N recovered from the
   document), or the AI assist read the line off the page (its ROW cell

@@ -1250,8 +1250,15 @@
     })
   }, error = function(e) NULL)
 
+  # validation warnings (issue 79) travel beside the results: the table
+  # passed, and the caller is told which cells deserve a look
+  wi <- if (!is.null(v$issues)) v$issues[v$issues$code == "warning", , drop = FALSE] else NULL
+  apiWarnings <- if (!is.null(wi) && nrow(wi))
+    lapply(seq_len(nrow(wi)), function(i) list(row = wi$row[i], col = wi$col[i],
+                                               code = "warning", note = wi$note[i]))
+  else list()
   list(ok = TRUE, stage = "analysis",
-       results = OUTPUT, overallP = overall,
+       results = OUTPUT, overallP = overall, warnings = apiWarnings,
        trials = length(v$TRIALS),
        journalTables = journal,
        # say WHY they are absent rather than returning a bare null the

@@ -330,5 +330,6 @@ function(req, res, file = NULL, seed = NULL, durations = NULL) {
   # the seed the run used, when one was sent (2026-09-05)
   if (!is.null(seedValue)) out$seed <- seedValue
   if (isTRUE(dur$sent)) out$durations <- dur$value
+  if (length(a$warnings)) out$warnings <- a$warnings   # validation warnings (issue 79)
   out
 }

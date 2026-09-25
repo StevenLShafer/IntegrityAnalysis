@@ -393,6 +393,10 @@ app_server <- function(input, output, session) {
           "the value conflicts with the row's type - for example an SD",
           "on a median/IQR row, or continuous entries on a category",
           "row.")),
+        entry("#e9d8ff", "warning", paste(
+          "passed validation but looks suspect - an SD larger than its",
+          "mean, a row with no dispersion in any arm, or a row identical",
+          "to another. The analysis runs either way; hover for the reason.")),
         div(style = "margin-top: 4px;", paste(
           "Fix or delete the colored cells, then click Apply Edits &",
           "Revalidate. Hover any colored cell for details.")))
@@ -571,6 +575,10 @@ app_server <- function(input, output, session) {
       "                to enumerate the cell is left blank and the row ",
       "                is not analysed. Hover shows the bracket and the ",
       "                best and worst p; the printed counts settle it.',",
+      "      warning: 'The table passed validation, but this value looks ",
+      "               suspect - an SD larger than its mean, a row with no ",
+      "               dispersion in any arm, or a row identical to another. ",
+      "               Hover for the reason; the analysis runs either way.',",
       "      ocr: 'This table was read by optical character recognition ",
       "           from a scanned page. OCR can misread digits - verify ",
       "           every value against the manuscript, or enter an API ",
@@ -581,6 +589,7 @@ app_server <- function(input, output, session) {
       "    else if (code === 'derived') td.style.background = '#d7f0d7';",
       "    else if (code === 'ocr') td.style.background = '#d2ecef';",
       "    else if (code === 'failsafe') td.style.background = '#ffd8a8';",
+      "    else if (code === 'warning') td.style.background = '#e9d8ff';",
       "    if (code) {",
       "      var notes = instance.params.cellNotes;",
       "      td.title = (notes && notes[key]) ? notes[key] : help[code];",
@@ -1468,6 +1477,18 @@ app_server <- function(input, output, session) {
       EXCLUDED <<- v$Excluded
       EXCLUDED_ROWS <<- v$ExcludedRows
       TRIALS <<- v$TRIALS
+      # the table passed with warnings (issue 79): the reviewer is told
+      # here, and the cells are painted lavender by the issue registry
+      if (!is.null(v$issues) && any(v$issues$code == "warning")) {
+        wi <- v$issues[v$issues$code == "warning", , drop = FALSE]
+        g  <- reactiveData()
+        rows <- if (!is.null(g) && all(wi$row <= nrow(g)))
+          unique(paste0(g$TRIAL[wi$row], ": ", g$ROW[wi$row])) else character(0)
+        outputComments(paste0("Validation passed with ", nrow(wi), " warning(s) - ",
+                              "lavender cells, hover each for the reason",
+                              if (length(rows)) paste0(": ", paste(rows, collapse = "; ")) else "",
+                              ". The analysis runs either way."))
+      }
       ColumnNames <<- v$ColumnNames
       CategoryNames <<- v$CategoryNames
 

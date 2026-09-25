@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 79. A validator warning that lets the table pass
+
+**Status: implemented on `feat/validator-warning-code`, 2026-09-25**, to
+Steve's direction of 2026-09-25 ("implement a warning that allows the
+validator to pass ... A warning will allow comparisons to be made against
+ground truth, while also highlighting to validating software as well as
+human reviewers where there may be problems that need further scrutiny").
+
+- **The gap.** The validator passed a table or failed it. A row that
+  analyses but deserves a look - an SD larger than its mean, a variable
+  with the same value and no dispersion in every arm, two variables of
+  one trial with identical N, mean and SD in every arm - was either
+  flagged only by the PDF parser (and so invisible for a spreadsheet) or
+  cost the whole table, and the corpus session spent time working out
+  what had failed and why.
+- **What changed.** `.iaRowWarnings()` in `R/validateData.R` judges the
+  rows the analysis will see and files each finding as an issue with the
+  code `warning` - row, column, note - without setting `FAIL`. An SD is
+  judged against a non-negative mean only (a change score is not). The
+  app paints such cells lavender, explains the code in the legend and on
+  hover, and logs "Validation passed with n warning(s)" with the rows;
+  the analysis runs. The service returns `warnings` beside a successful
+  `/analyze` reply, each `{row, col, code, note}`, and the API guide
+  lists the code.
+- **Tests** (`tests/testthat/test-validator-warning-code.R`): the helper
+  on a table holding all three shapes and a clean pair of rows; a
+  negative mean is not judged; `validateData()` passes with eight
+  warnings and files none on the clean rows; `.apiAnalyze()` returns
+  them beside `ok = TRUE`; the app source paints and explains the code.
+
+---
+
 ## 77. A plain "+" at a slot the sign itself marks, the sign dropped entirely, and a legend that spells "S D"
 
 **Status: fixed on `feat/slot-plus-and-dropped-sign`, 2026-09-25**, from
