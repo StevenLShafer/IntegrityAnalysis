@@ -344,3 +344,30 @@ The p<0.00001 band is unreachable from the batch: the app prints "<0.0001" at it
 | AI-assisted pass, animal (secondary) |  15 |  0 | 10 |  5 |  0 |  0 |
 | Carlisle 2012, human | 135 |  9 | 30 | 27 | 31 | 38 |
 | Carlisle 2012, animal |  24 | 15 |  3 |  2 |  1 |  3 |
+
+**Correction, 2026-09-25 (Corpus session):** seven Saitoh trials (PMIDs
+10618943, 9613269, 11212045, 10434810, 9785065, 9698964, 10589650) sat
+with species "unknown" in the corpus file list and were dropped from
+both rows of the adf5b75 table above; they are clinical (patient
+demographics on the page) and are now human. The adf5b75 rows are kept
+as written; the table below, on engine e4a00ea, carries the correction,
+and its human row is the current citable figure.
+
+### Carlisle Table 12 comparison, engine e4a00ea (2026-09-25)
+
+Deterministic pass (ai = "never", the citable figure): 106 of 168 analysed. AI-assisted pass: 150 of 168 analysed, 45 of them by the model retry; the model's reply varies between runs, so this column is illustrative.
+The p<0.00001 band is unreachable from the batch: the app prints "<0.0001" at its display floor (4 deterministic trials sit there).
+
+| Source | n | p<0.00001 | p<0.001 | p<0.01 | p<0.05 | p>0.049 |
+|---|---|---|---|---|---|---|
+| DETERMINISTIC pass, human (primary) |  92 |  0 |  8 | 19 | 30 | 35 |
+| DETERMINISTIC pass, animal (primary) |  13 |  0 |  6 |  6 |  0 |  1 |
+| AI-assisted pass, human (secondary) | 134 |  0 | 12 | 32 | 39 | 51 |
+| AI-assisted pass, animal (secondary) |  16 |  0 |  9 |  6 |  0 |  1 |
+| Carlisle 2012, human | 135 |  9 | 30 | 27 | 31 | 38 |
+| Carlisle 2012, animal |  24 | 15 |  3 |  2 |  1 |  3 |
+
+Notes on the e4a00ea pass (Corpus session): it carries one known
+regression, PMID 11226115 reading its Table 2 instead of Table 1 (fixed
+by issue 102), and two wrong-N cases: 9512856's second arm N 3 (issue
+100) and per-cell n in 9924225 and 19358990 (open).
