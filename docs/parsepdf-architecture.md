@@ -250,6 +250,10 @@ wrong entry would corrupt numbers invisibly.
 - **A table of changes from baseline is not the baseline table** (2026-09-25, issue 80): the
   caption scorer marks down "changes ... from ...", "changes from baseline", "responses to" and
   "during/after surgery" captions like outcome captions, unless the caption says baseline elsewhere.
+- **Arm sizes from the document text for a deterministic table** (2026-09-25, issue 84): when
+  every arm lacks N after the block walker's own ladder, the "k groups of n" statement and then
+  the document-text ladder (`.ppArmNFromDocument()`) fill them, with the sentence as source and
+  the CONSORT flag - the model route's recovery of issue 42, under the same gate.
 
 ### 05 — Parsing one block
 
