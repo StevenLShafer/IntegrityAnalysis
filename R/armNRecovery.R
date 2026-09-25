@@ -516,6 +516,28 @@
     if (!is.na(n) && n >= 1 && !grepl(powerRe, window(a, b), perl = TRUE))
       add(NA_integer_, n, window(a, b))
   }
+  # (d) "(n = 20 of each)" / "(n = 20 in each group)" / "(n = 20 per group)"
+  #     (2026-09-25, ISSUES.md issue 99; PMIDs 9717598, 9836028, the corpus
+  #     session's batch 24, the four partial-arm CJA scans): the size of
+  #     every arm in one parenthesis after the arms are named - "diltiazem
+  #     or saline (n = 20 of each)" - with the group count unstated, as in
+  #     (c). The bare "(n = 20)" beside one arm's name stays with the
+  #     arm-name match of .ppFillArmNFromText(); only a parenthesis that
+  #     says "each" or "per group" speaks for every arm.
+  pd <- paste0("(?i)\\(\\s*n\\s*[=:]\\s*(\\d{1,4})\\s+",
+               "(?:(?:of|in|for)\\s+each(?:\\s+(?:group|arm))?|per\\s+(?:group|arm)|each)\\s*\\)")
+  m <- gregexpr(pd, j, perl = TRUE)[[1]]
+  if (m[1] != -1) for (h in seq_along(m)) {
+    a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L
+    parts <- regmatches(substr(j, a, b), regexec(pd, substr(j, a, b), perl = TRUE))[[1]]
+    n <- as.integer(parts[2])
+    # a parenthesis that follows "one of three groups" belongs to shape (a),
+    # which names the group count; it is not also a count-less statement
+    owned <- grepl("(?i)\\b(?:one\\s+of|into)\\s+[a-z0-9-]+\\s+(?:equal\\s+)?groups?\\s*$",
+                   substr(j, max(1, a - 40), a - 1), perl = TRUE)
+    if (!owned && !is.na(n) && n >= 1 && !grepl(powerRe, window(a, b), perl = TRUE))
+      add(NA_integer_, n, window(a, b))
+  }
   if (!length(found$groups)) return(NULL)
   found
 }

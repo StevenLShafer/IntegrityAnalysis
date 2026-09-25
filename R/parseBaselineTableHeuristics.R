@@ -1010,6 +1010,26 @@
       say("  arm ", valueArms[k], ": N = ", fill$N[k], " from ",
           fill$source[k])
   }
+  # "(n = 20 of each)" FILLS THE ARMS THE TABLE LEFT BLANK (2026-09-25,
+  # ISSUES.md issue 99; PMIDs 9717598, 9836028, the corpus session's batch
+  # 24): a scanned header prints one arm's "(n = 20)" and loses the
+  # other's, and the Methods say "diltiazem or saline (n = 20 of each)".
+  # A statement for every arm - the group count unstated, or naming this
+  # table's arm count - fills the blanks when its size is the size every
+  # printed arm already shows; a statement that disagrees with the page
+  # fills nothing.
+  if (partialN && any(is.na(armN[valueArms])) && !is.null(textGroupN)) {
+    stated <- .ppGroupNFor(textGroupN, length(valueArms))
+    known  <- armN[valueArms][!is.na(armN[valueArms])]
+    if (!is.na(stated$n) && all(known == stated$n)) {
+      blank <- which(is.na(armN[valueArms]))
+      armN[valueArms][blank] <- stated$n
+      armNSource[valueArms][blank] <- paste0("document text (\"...", stated$snippet, "...\")")
+      for (k in blank)
+        say("  arm ", valueArms[k], ": N = ", stated$n, " from the statement for every arm (\"...",
+            stated$snippet, "...\"), which the printed arms agree with")
+    }
+  }
   # THE MODEL ROUTE'S LADDER, FOR A DETERMINISTIC TABLE WHOSE ARMS ALL LACK
   # N (2026-09-25, ISSUES.md issue 84; the corpus session's batch 21). On
   # the deterministic Carlisle pass 48 of the 55 validation failures were
