@@ -165,6 +165,35 @@ corpus session's batch 13 finding R1 (Fujii 2006, PMID 17126782).
 
 ---
 
+## 66. The outcome refusal applies on the explicit `ai = "always"` route too
+
+**Status: fixed on `feat/refusal-on-always-route`, 2026-09-25**, from the
+corpus session's batch 13 finding R2 (Fujii, PMID 9542558; engine "ai").
+
+- **The defect.** Issue 64 put the outcome refusal on the retry route (the
+  deterministic pass failed and the model read the page alone) and left
+  the explicit `ai = "always"` route untouched. The corpus batches use
+  exactly that route as their second pass, so every retry-decided trial
+  (about 55 of the 149 Carlisle trials) bypassed the refusal: on PMID
+  9542558 the model's reading kept Table 2's operative management
+  (duration of surgery, duration of uterus exteriorised, I-D interval,
+  total ephedrine, total fentanyl, tubal ligation) beside Table 1's five
+  rows - 16 rows became 40 and p moved from 0.059 to 7e-05 - while the
+  same page through the fallback route (PMID 15476909) was refused.
+- **What changed.** The refusal is one helper, `.ppRefuseModelOutcomes()`
+  in `R/parseBaselineTable.R`: on a model-only result (`engine` "ai") the
+  vocabulary of `.ppOutcomeLabel()` decides, a refused row leaves `$data`
+  and `$provenance` for `$skipped` with its reason, and a flag names it.
+  The retry route and the `ai = "always"` route both call it. The roxygen
+  for `ai = "always"` says so.
+- **Tests** (`tests/testthat/test-refusal-on-always-route.R`): a mocked
+  model table through `ai = "always"` keeps Age and refuses "Duration of
+  surgery", "I-D interval" and "Total ephedrine" with the reason and the
+  flag (fails on the unfixed code); the helper leaves a result with no
+  outcome label untouched and ignores other engines.
+
+---
+
 ## 65. A scanned page's plus-minus soup is repaired by the column where the other rows set the sign
 
 **Status: fixed on `feat/ocr-plusminus-slots`, 2026-09-25**, from the corpus
