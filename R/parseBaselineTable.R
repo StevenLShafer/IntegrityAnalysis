@@ -669,31 +669,72 @@ parseBaselineTable <- function(pdfFile,
     if (!nrow(cont)) return(list())
     split(seq_len(nrow(d))[!is.na(d$MEAN)], cont$ROW)   # row indices into d, by ROW
   }
+  # ARMS ARE MATCHED ONE TO ONE, AND KEPT IN THE MODEL'S ORDER (CodeRabbit
+  # on PR #340). Two arms can print the same mean and SD, so each
+  # deterministic arm claims ONE unused model arm with the same values -
+  # preferring the one whose N agrees when both are known - and a model
+  # arm claimed by nobody is the arm the deterministic pass did not read.
+  # The template's arms are positional (a variable's lines are its arms
+  # left to right), so a recovered arm cannot simply be appended: the
+  # variable's lines are rebuilt in the model's arm order, each line
+  # taken from the deterministic side where matched and from the model
+  # where not, and put back where the variable's lines were.
   hetT  <- contOf(het$data); candT <- contOf(newRows)
-  dropRows <- character(0); fillRows <- list(); nFilled <- character(0)
+  dropRows <- character(0); nFilled <- character(0); recovered <- character(0)
+  rebuilt <- list()   # [[hn]] = the variable's lines, in the model's order
   for (nm in names(candT)) {
     ci <- candT[[nm]]; ck <- valKey(newRows[ci, ])
     for (hn in names(hetT)) {
       hi <- hetT[[hn]]; hk <- valKey(het$data[hi, ])
       if (!all(hk %in% ck)) next
-      j  <- match(hk, ck)
-      nOK <- all(is.na(het$data$N[hi]) | is.na(newRows$N[ci][j]) |
-                   het$data$N[hi] == newRows$N[ci][j])
-      if (!nOK) next
+      used <- rep(FALSE, length(ci)); assign <- rep(NA_integer_, length(hi))
+      for (r in seq_along(hi)) {
+        cands <- which(!used & ck == hk[r])
+        if (!length(cands)) break
+        hN <- het$data$N[hi[r]]; cN <- newRows$N[ci][cands]
+        agree <- !is.na(hN) & !is.na(cN) & cN == hN
+        unknown <- is.na(hN) | is.na(cN)
+        pick <- if (any(agree)) cands[agree][1] else if (any(unknown)) cands[unknown][1] else NA_integer_
+        if (is.na(pick)) break
+        assign[r] <- pick; used[pick] <- TRUE
+      }
+      if (anyNA(assign)) next
       dropRows <- c(dropRows, nm)
-      takeN <- which(is.na(het$data$N[hi]) & !is.na(newRows$N[ci][j]))
-      if (length(takeN)) {
-        het$data$N[hi[takeN]] <- newRows$N[ci][j][takeN]
-        nFilled <- c(nFilled, hn)
+      lines <- vector("list", length(ci))
+      for (j in seq_along(ci)) {
+        r <- match(j, assign)
+        if (!is.na(r)) {
+          line <- het$data[hi[r], , drop = FALSE]
+          if (is.na(line$N) && !is.na(newRows$N[ci[j]])) {
+            line$N <- newRows$N[ci[j]]; nFilled <- c(nFilled, hn)
+          }
+        } else {
+          line <- newRows[ci[j], , drop = FALSE]; line$ROW <- hn
+          recovered <- c(recovered, hn)
+        }
+        lines[[j]] <- line
       }
-      extra <- ci[!(ck %in% hk)]
-      if (length(extra)) {
-        ex <- newRows[extra, , drop = FALSE]; ex$ROW <- hn
-        fillRows[[length(fillRows) + 1L]] <- ex
-      }
+      rebuilt[[hn]] <- .ppRbindFillAll(lines)
       break
     }
   }
+  if (length(rebuilt)) {
+    # put each rebuilt variable back where its lines were, in the model's
+    # arm order; other variables keep their place
+    firstAt <- vapply(names(rebuilt), function(hn) min(hetT[[hn]]), integer(1))
+    keep <- !(het$data$ROW %in% names(rebuilt)) | is.na(het$data$MEAN)
+    pieces <- list(); pos <- 0L
+    for (hn in names(rebuilt)[order(firstAt)]) {
+      at <- firstAt[[hn]]
+      if (at > pos + 1L) pieces[[length(pieces) + 1L]] <- het$data[seq(pos + 1L, at - 1L), , drop = FALSE][keep[seq(pos + 1L, at - 1L)], , drop = FALSE]
+      pieces[[length(pieces) + 1L]] <- rebuilt[[hn]]
+      pos <- max(hetT[[hn]])
+    }
+    if (pos < nrow(het$data)) pieces[[length(pieces) + 1L]] <- het$data[seq(pos + 1L, nrow(het$data)), , drop = FALSE][keep[seq(pos + 1L, nrow(het$data))], , drop = FALSE]
+    het$data <- .ppRbindFillAll(pieces)
+    rownames(het$data) <- NULL
+  }
+  fillRows <- list()
   hetSig  <- rowSig(het$data)
   candSig <- rowSig(newRows)
   catDup  <- names(candSig)[candSig %in% hetSig & nzchar(candSig) &
@@ -714,12 +755,18 @@ parseBaselineTable <- function(pdfFile,
                              "none - verify against the header: ",
                              paste(nFilled, collapse = ", ")))
   }
-  if (length(fillRows)) {
-    fill <- do.call(rbind, fillRows)
-    say("Adding ", nrow(fill), " arm line(s) from ", model, " under ",
+  if (length(recovered)) {
+    say("Adding ", length(recovered), " arm line(s) from ", model, " under ",
         "deterministic variable(s) the table's own reading had only partly: ",
-        paste(unique(fill$ROW), collapse = ", "))
-    newRows <- .ppRbindFill(fill, newRows)
+        paste(unique(recovered), collapse = ", "))
+    het$provenance <- rbind(het$provenance,
+                            data.frame(ROW = unique(recovered), ENGINE = "ai",
+                                       stringsAsFactors = FALSE))
+    flags <- c(flags, paste0(length(recovered), " arm line(s) for ",
+                             paste(unique(recovered), collapse = ", "),
+                             " taken from the model where the table's own ",
+                             "reading had no cell - check them against the ",
+                             "printed table"))
   }
   # A model level column that differs from a deterministic one only by
   # case or spacing is that column ("male" beside "Male" made two columns

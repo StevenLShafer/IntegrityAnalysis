@@ -393,8 +393,14 @@
       wFirst <- which(wordEnd >= s)[1]
       wLast  <- rev(which(wordStart <= e))[1]
       thisSpan <- seq(wFirst, wLast)
-      wPrev  <- wFirst - 1L
-      if (wPrev >= 1L && grepl("^\\($", d$text[wPrev])) wPrev <- wPrev - 1L   # "(" set as its own word
+      # a detached "(" before the match and ")" after it are the count's
+      # too (CodeRabbit on PR #340: "Control ( n = 15 )" set as separate
+      # words used to leave "( )" in the name), for EVERY match
+      if (wFirst > 1L && grepl("^\\($", d$text[wFirst - 1L]))
+        thisSpan <- c(wFirst - 1L, thisSpan)
+      if (wLast < nrow(d) && grepl("^\\)$", d$text[wLast + 1L]))
+        thisSpan <- c(thisSpan, wLast + 1L)
+      wPrev  <- min(thisSpan) - 1L
       xRef   <- if (wPrev >= 1L && !(wPrev %in% spans))
         d$x[wPrev] + d$width[wPrev] / 2
       else (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
@@ -403,13 +409,14 @@
       nval   <- suppressWarnings(as.integer(gsub("\\D", "", substr(joined, s, e))))
       if (!is.na(nval) && is.na(armN[colk])) armN[colk] <- nval
     }
-    # the closing ")" of the last match, when poppler set it as its own word
-    if (length(spans)) {
-      after <- max(spans) + 1L
-      if (after <= nrow(d) && grepl("^\\)$", d$text[after])) spans <- c(spans, after)
-    }
     nSpanWords[[as.character(i)]] <- unique(spans)
   }
+  # A word that carries the count is not dropped from the arm's name; the
+  # COUNT TEXT is removed from it (CodeRabbit on PR #340: "Control(n=15)"
+  # set as one word must keep "Control"). A word that was nothing but
+  # count - "(n", "=", "24)" - becomes empty and contributes nothing.
+  stripCount <- function(x) .ppSquish(gsub("(?i)\\(?\\s*n\\b|=|[0-9][0-9,]*\\)?|^[()]$",
+                                           "", x, perl = TRUE))
   for (i in headerIdx) {
     d    <- lines[[i]]
     wMid <- d$x + d$width / 2
@@ -419,8 +426,10 @@
     near <- abs(cols$centers[wCol] - wMid) <
               (if (cols$n > 1) min(diff(sort(cols$centers))) * 0.75 else 100)
     inSpan <- seq_len(nrow(d)) %in% nSpanWords[[as.character(i)]]
+    wordText <- d$text
+    wordText[inSpan] <- vapply(d$text[inSpan], stripCount, character(1))
     for (k in seq_len(cols$n)) {
-      wtxt <- paste(d$text[near & wCol == k & !inSpan], collapse = " ")
+      wtxt <- paste(wordText[near & wCol == k & nzchar(wordText)], collapse = " ")
       if (nchar(wtxt) == 0) next
       nMatch <- regmatches(wtxt, regexpr("(?i)n\\s*=\\s*(\\d+)", wtxt, perl = TRUE))
       if (length(nMatch) > 0 && is.na(armN[k]))

@@ -181,3 +181,55 @@ test_that("a model level column differing only by case from a deterministic one 
   expect_false(isTRUE(v$FAIL))
   expect_identical(sum(v$issues$code == "structural"), 0L)
 })
+
+test_that("arms are matched one to one, and a recovered arm takes the model's position (CodeRabbit on #340)", {
+  # the page prints arms 1 and 3 of a three-arm table (the middle column
+  # is lost), and two arms print the SAME mean and SD: 41 +/- 9 in the
+  # first and the third. The model has all three; its middle arm - also
+  # 41 +/- 9 - must be recovered as the SECOND line, not appended last,
+  # and neither identical tuple may claim the other's arm.
+  f <- file.path(tempdir(), "twinTuples.pdf")
+  vx <- c(300, 480)
+  cells <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Baseline characteristics", adj = 0)),
+    rowCells(110, "", c("Control", "Treatment B"), vx),
+    rowCells(128, "", c("(n = 15)", "(n = 17)"), vx),
+    rowCells(150, "Age (yr)", c("41 ± 9", "41 ± 9"), vx),
+    list(list(x = 72, y = 190, text = "Values are mean ± SD.", adj = 0)))
+  makeTablePdf(f, cells)
+  reply <- jsonlite::fromJSON('{
+    "found": true, "notes": "",
+    "arms": [{"name": "Control", "n": 15}, {"name": "Treatment A", "n": 16}, {"name": "Treatment B", "n": 17}],
+    "continuous": [
+      {"label": "Age, years", "decimalsMean": 0,
+       "values": [{"arm": "Control", "n": 15, "mean": 41, "sd": 9},
+                  {"arm": "Treatment A", "n": 16, "mean": 41, "sd": 9},
+                  {"arm": "Treatment B", "n": 17, "mean": 41, "sd": 9}]}],
+    "categorical": []}', simplifyVector = FALSE)
+  out <- withMockedModel(reply, f)
+  a <- out$data[out$data$ROW == "Age", ]
+  expect_identical(nrow(a), 3L)
+  expect_identical(a$N, c(15L, 16L, 17L))            # positional: 1, 2, 3 - the recovered arm is in the middle
+  expect_false("Age, years" %in% out$data$ROW)
+  expect_true(any(out$provenance$ROW == "Age" & out$provenance$ENGINE == "ai"))
+})
+
+test_that("a count fused to its name, or set with detached parentheses, leaves the name intact", {
+  f <- file.path(tempdir(), "fusedCount.pdf")
+  vx <- c(300, 420)
+  cells <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Baseline characteristics", adj = 0)),
+    list(list(x = 300, y = 110, text = "Control(n=15)", adj = 0.5)),
+    list(list(x = 400, y = 110, text = "Treatment", adj = 0.5), list(x = 425, y = 110, text = "(", adj = 0),
+         list(x = 432, y = 110, text = "n", adj = 0), list(x = 440, y = 110, text = "=", adj = 0),
+         list(x = 448, y = 110, text = "17", adj = 0), list(x = 460, y = 110, text = ")", adj = 0)),
+    rowCells(150, "Age (yr)",    c("45.3 ± 12.1", "46.1 ± 11.8"), vx),
+    rowCells(168, "Height (cm)", c("165 ± 7",     "167 ± 7"),     vx),
+    list(list(x = 72, y = 200, text = "Values are mean ± SD.", adj = 0)))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_identical(r$arms$N, c(15L, 17L))
+  expect_match(r$arms$arm[1], "^Control")
+  expect_match(r$arms$arm[2], "^Treatment")
+  expect_false(any(grepl("[()=]|\\bn\\b|1[57]", r$arms$arm)))
+})
