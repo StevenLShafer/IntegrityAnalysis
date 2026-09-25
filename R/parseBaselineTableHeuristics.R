@@ -1779,10 +1779,37 @@
               else if (rowSaysSD) FALSE
               else footSaysSE && !footSaysSD
 
+      # A VARIABLE'S OWN n PRINTED PER CELL (2026-09-25, ISSUES.md issue 109;
+      # Fujii, PMID 9924225, the corpus session's batch 25 AD6): "Last
+      # menstrual cycle(days)[n] 15.3(3.2)[17] 16.2(2.9)[16] ..." - the
+      # bracket after each cell is the number of patients that cell
+      # summarises (the premenopausal ones), not the arm's 25. A bracketed
+      # integer that ends the cell's own word, or stands within a few
+      # points to its right, is that cell's N; it must not exceed the arm
+      # N where the arm N is known. A bracketed range ("[33-63]") is a
+      # range and never matches.
+      cellN <- vapply(seq_len(nArms), function(j) {
+        t <- armTok[[j]]
+        if (is.null(t)) return(NA_integer_)
+        d <- lines[[i]]
+        wx0 <- d$x; wx1 <- d$x + d$width
+        own <- which(wx0 <= t$x0 + 1 & wx1 >= t$x1 - 1)
+        after <- which(wx0 >= t$x1 - 1 & wx0 <= t$x1 + 6)
+        k <- NA_integer_
+        for (w in c(own, after)) {
+          m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*$", d$text[w], perl = TRUE))
+          if (length(m) && nzchar(m)) { k <- as.integer(gsub("\\D", "", m)); break }
+        }
+        if (!is.na(k) && !is.na(armN[arms[j]]) && k > armN[arms[j]]) k <- NA_integer_
+        k
+      }, integer(1))
+      if (any(!is.na(cellN)))
+        say("  \"", label, "\": per-cell n in brackets - N ",
+            paste(ifelse(is.na(cellN), "arm", cellN), collapse = "/"), " for this row.")
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- armTok[[j]]
         if (is.null(t) || !t$type %in% c("meanSD", "numParen")) return(NULL)
-        list(N = armN[arms[j]], MEAN = t$num1,
+        list(N = if (!is.na(cellN[j])) cellN[j] else armN[arms[j]], MEAN = t$num1,
              SD = if (isSE) NA_real_ else t$num2,
              SE = if (isSE) t$num2 else NA_real_,
              ROUND_MEAN = t$dec1,
