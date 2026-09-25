@@ -139,6 +139,50 @@
       break
     }
   }
+  # THE GROUP COLUMN WITHOUT A HEADER WORD (2026-09-25, ISSUES.md issue 95;
+  # Fujii, Anesth Analg 1999;89:1557, PMID 10589648, and 10475325,
+  # 11004073, 11573601, 10958102 - the corpus session's batch 24 AC1).
+  # These pages print the layout with the group column unheaded: the
+  # header line is "Baseline 60 min" or "Variable Baseline Fatigued", and
+  # the roman numerals I / II / III stand beneath it in a column of their
+  # own with no word above them. The gate above wanted both words, so
+  # the reader stood aside and the wide reader took the two timepoints
+  # for two arms and each group row for a variable - "I", "II", "III",
+  # "I 2" ... thirty-six rows with N nowhere. When a header line names a
+  # Baseline column but no Group column, the group column is found from
+  # the labels themselves: group words (a roman numeral, a capital letter
+  # or two, or a small integer) stacked at one x position on four or
+  # more lines beneath the header, left of the Baseline column. The
+  # run-of-1..k rule and the "most data lines fit" rule below still
+  # decide whether this is the layout; a wide table whose level rows
+  # happen to stack "I", "II", "III" once fails them as before.
+  if (is.na(hdr)) {
+    for (i in span) {
+      if (kind[i] == "stop") break
+      d <- lines[[i]]
+      bi <- which(grepl(.ppLongBaselineWord, d$text, perl = TRUE))
+      if (!length(bi)) next
+      xb <- d$x[bi[1]] + d$width[bi[1]] / 2
+      gx <- numeric(0); gl <- integer(0)
+      for (j in seq(i + 1L, lastData)) {
+        if (j > length(lines) || kind[j] == "stop") break
+        w <- lines[[j]]; wm <- w$x + w$width / 2
+        isG <- (grepl(.ppLongGroupLabel, w$text, perl = TRUE) |
+                  grepl("^([1-9]|1[0-2])$", w$text, perl = TRUE)) & wm < xb - 15
+        if (any(isG)) { gx <- c(gx, wm[isG]); gl <- c(gl, rep(j, sum(isG))) }
+      }
+      if (length(gx) < 4L) next
+      o <- order(gx); cl <- cumsum(c(1L, diff(gx[o]) > 10))
+      best <- NULL
+      for (k in split(seq_along(o), cl)) {
+        nl <- length(unique(gl[o][k]))
+        if (nl >= 4L && (is.null(best) || nl > best$nl)) best <- list(nl = nl, x = mean(gx[o][k]))
+      }
+      if (is.null(best)) next
+      hdr <- i; xGroup <- best$x; xBase <- xb
+      break
+    }
+  }
   if (is.na(hdr) || !(xBase > xGroup)) return(NULL)
   tol <- max(15, 0.5 * (xBase - xGroup))
   # THE BASELINE COLUMN IS BOUNDED ON THE RIGHT BY THE NEXT HEADER, not only
@@ -204,12 +248,31 @@
           if (!gLabel %in% letterSeen) letterSeen <- c(letterSeen, gLabel)
           gIdx <- match(gLabel, letterSeen)
         }
-      } else if (romanMode && !is.na(prevIdx) && prevIdx + 1L <= kRoman && min(t$start) == 1L) {
+      } else if (romanMode && kRoman >= 2L &&
+                 any(t$type %in% c("meanSD", "numParen") & abs(t$mid - xBase) <= tol) &&
+                 sum(wm < xGroup - tol) <= 5L) {
         # THE LABEL THE TEXT LAYER LOST (issue 88): on those pages the
         # middle group's "II" is missing from the text layer, and its
-        # row is a value line with nothing before its first number,
-        # between the I and III rows. It is the next group.
-        gIdx <- prevIdx + 1L; gLabel <- as.character(utils::as.roman(gIdx))
+        # row is a value line between the I and III rows. It is the next
+        # group.
+        # ... AND WHOLE BLOCKS OF THEM (2026-09-25, issue 95; PMIDs
+        # 10475325, 11004073, 10958102, the corpus session's batch 24
+        # AC1): on these pages only the FIRST variable's rows keep their
+        # numerals; every later block - "MAP (mm Hg)" over three or four
+        # value rows - lost all of them. A value row with no group word
+        # continues the run when the run is open (the next index), and
+        # starts a new one at I when the previous run is complete or none
+        # has begun. Only a row with a value under the Baseline column is
+        # indexed this way - a stray line of digits (a subscript set on a
+        # line of its own) is not - and only a row whose label is at most
+        # five words: a sentence of the Results with a number in it, in a
+        # full-width block that runs past the table, is prose, not a
+        # group row. The 1..k run rule and the most-lines-fit rule below
+        # still judge the whole.
+        nxt <- if (!is.na(prevIdx) && prevIdx + 1L <= kRoman) prevIdx + 1L
+               else if (is.na(prevIdx) || prevIdx == kRoman) 1L
+               else NA_integer_
+        if (!is.na(nxt)) { gIdx <- nxt; gLabel <- as.character(utils::as.roman(gIdx)) }
       }
     } else {
       g <- g[which.min(abs(t$mid[g] - xGroup))]
