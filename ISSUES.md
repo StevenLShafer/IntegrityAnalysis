@@ -158,6 +158,60 @@ corpus session's batch 17 finding W2 (Fujii 1999, Can J Anaesth; PMID
 
 ---
 
+## 74. Post-randomisation quantities in a baseline table: the `durations` option
+
+**Status: implemented on `feat/durations-option`, 2026-09-25**, to Steve's
+decision of 2026-09-25, from the corpus session's batch 15b finding U1.
+
+- **The question.** A baseline table often prints durations of surgery
+  and of anaesthesia, blood loss, the fluids given. Randomised at
+  induction, they are measured after the intervention and are not
+  baseline values; randomised after surgery (a postoperative analgesia
+  trial), they precede the intervention and have the same statistical
+  standing as any other baseline variable. That is a judgement for each
+  trial, not a rule the engine can apply from a label. Meanwhile the
+  outcome refusal of issues 54, 61, 64 and 66 treated them as outcomes,
+  and on the model-only routes - which have no table block to spare a
+  printed row - removed 58 printed duration variables from 28
+  retry-decided Carlisle trials, moving the Table 12 count of human
+  trials at p < 0.001 from 15 to 10.
+- **The decision (Steve).** Take the author's word by default: a
+  baseline table is meant to hold pre-randomisation values, so the rows
+  stay in, and the reader is told. The app shows a radio button when a
+  parsed table prints them - "Include durations" (the default) and
+  "Exclude durations" - to call attention to the possible error; the
+  service and the app's address take `durations=exclude` to switch the
+  default. For a corpus the recommended route is two passes: parse the
+  PDFs to a spreadsheet, scan it for entries that are likely
+  post-baseline and delete those rows, then upload the edited
+  spreadsheet for the analysis of human-adjudicated baseline variables.
+- **What changed.** `.ppDurationLabel()` names the durations class
+  (durations of surgery, anaesthesia, operation or procedure; operative
+  and anaesthesia time; blood loss; incision-to-delivery intervals;
+  intra-operative fluids). It leaves the outcome vocabulary: with the
+  chosen table's block at hand a duration is judged as the table's row
+  (printed there, spared; brought in from another table, refused as
+  before); with no block - the model-only routes - it is never refused.
+  `parseBaselineTable(durations = "include" | "exclude")`, applied to
+  whatever route produced the table, keeps the rows with a flag that
+  names them, or moves them to `$skipped` with the reason. The service
+  takes `?durations=exclude` on `/parse` and `/analyze`, validated like
+  the seed and echoed when sent. The app reads `?durations=exclude` from
+  its address, shows the radio button once a parsed table prints such
+  rows, and on "Exclude durations" blanks their values in the grid
+  (the names stay, as the parser's skipped lines do) and on "Include
+  durations" restores them.
+- **Tests** (`tests/testthat/test-durations-option.R`): the class on
+  labels that belong and labels that do not ("Duration of diabetes",
+  "QT interval"); the outcome test with and without a block; the option
+  on a rebuilt page through `parseBaselineTable()` and through the batch
+  reader's subprocess; the service's argument reader; the app's address
+  reader; the app's radio button blanking and restoring rows in a
+  `testServer()` session. The issue 64 and 66 tests now expect the
+  durations kept and a true outcome refused.
+
+---
+
 ## 73. A stratum's name stands at the row-label margin, left of the arm columns
 
 **Status: fixed on `fix/stratum-lead-left-of-arms`, 2026-09-25**, from the

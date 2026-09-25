@@ -915,6 +915,25 @@ where it matters — unremarkable trials finish fast, borderline ones get
 a p with a Monte Carlo standard error of about 0.002 instead of 0.007, alarming ones get the
 precision a small p needs.
 
+**Post-randomisation quantities.** A baseline table often prints
+durations of surgery and of anaesthesia, the blood loss, the fluids
+given. Whether they are baseline values depends on when the trial
+randomised: at induction, they were measured after the intervention and
+do not belong; after surgery (a postoperative analgesia trial), they
+precede the intervention like any other baseline variable. That is a
+judgement for each trial, and the app takes the author's word by
+default: the rows stay in, the log names them, and a choice appears
+above the table - *Include durations* (the default) and *Exclude
+durations*. Excluding blanks those rows' values (their names stay, as
+the parser's unusable lines do, so nothing disappears silently);
+including restores them. To start the other way, add
+`?durations=exclude` to the page's address (in any case, beside a seed:
+`?seed=12345&durations=exclude`). For a corpus the recommended route is
+two passes: parse the PDFs, download the spreadsheet, scan it for
+entries that are likely post-baseline and delete those rows, then
+upload the edited spreadsheet for the analysis of human-adjudicated
+baseline variables.
+
 **Reproducing a result exactly.** An unseeded Monte Carlo is not meant
 to give identical numbers from run to run: two runs of the same table
 differ within the reported Monte Carlo interval. To get identical

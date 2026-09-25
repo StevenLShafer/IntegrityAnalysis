@@ -434,7 +434,10 @@ inert without the model.
 - **Model-added outcomes are refused** (2026-09-25, issue 54; a row the chosen table itself
   prints is spared, issue 61 - the block's text rides on the result as `blockText`; the same
   test, by vocabulary alone, refuses outcome rows on the AI-only retry route, issue 64, and on
-  the explicit `ai = "always"` route, issue 66 - one helper, `.ppRefuseModelOutcomes()`). A variable the model adds to
+  the explicit `ai = "always"` route, issue 66 - one helper, `.ppRefuseModelOutcomes()`; since
+  issue 74 the durations class - durations of surgery and anaesthesia, blood loss, fluids - is
+  never refused as an outcome: with the table's block it is judged as the table's row, without one
+  it is kept, and `parseBaselineTable(durations = )` keeps and flags or excludes it on every route). A variable the model adds to
   the deterministic baseline table whose label names an outcome (time to, VAS, follow-up
   week/month, nausea, hypotension, duration of surgery, ephedrine …) goes to `$skipped` with
   its reason and a flag, never into the analysis; the model's reply is not reproducible, and a

@@ -19,7 +19,8 @@ parseBaselineTable(
   apiKey = NULL,
   tatr = c("auto", "never", "always"),
   tatrXml = NULL,
-  quiet = FALSE
+  quiet = FALSE,
+  durations = c("include", "exclude")
 )
 }
 \arguments{
@@ -71,6 +72,15 @@ the better; \code{"never"} leaves it out.}
 holding \verb{<stem>.tatr.xml}. When \code{NULL}, the model is run if available.}
 
 \item{quiet}{Suppress the progress and summary messages.}
+
+\item{durations}{\code{"include"} (the default) keeps the rows a baseline
+table prints for post-randomisation quantities - durations of surgery
+and of anaesthesia, blood loss, fluids given - and flags them;
+\code{"exclude"} moves them to \verb{$skipped} with the reason. Whether they
+belong is a trial-by-trial judgement: randomised at induction they are
+measured after the intervention; randomised after surgery (a
+postoperative analgesia trial) they precede it like any other baseline
+variable. The app offers the same choice when a table prints them.}
 }
 \value{
 An object of class \code{ParsePDFTable}. \verb{$engine} is \code{"heuristic"},
@@ -97,6 +107,9 @@ circumstance. Use this when the provenance of every number has to be
 mechanical, or when there is no API key.
 \item \code{"always"} skips the deterministic pass and asks the model to read the
 whole table. Useful for comparing the two engines against each other.
+A model variable whose label names an outcome rather than a baseline
+characteristic is refused on this route as on the fallback (it goes to
+\verb{$skipped} with its reason, and a flag names it).
 }
 
 \code{.docx} and \code{.xml} are an exception to all three: the AI engine reads

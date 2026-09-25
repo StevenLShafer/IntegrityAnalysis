@@ -859,7 +859,25 @@
 # options (HUGE, NOENT, DTDLOAD) that would switch them off, so an
 # entity bomb or an external-entity read in a hostile submission stays a
 # parse error inside the child (issue 29; tools/securityCheck.R group 1).
-.apiReadUpload <- function(path, name, apiKey = NULL) {
+# The durations option as the request sends it (issue 74): NULL or empty
+# means the default; "include" or "exclude" in any case; anything else is
+# a request error. A multipart text part without a Content-Type arrives
+# as an empty list (the seed's transport hazard, 2026-09-05) and is
+# refused with the same advice: send it on the URL.
+.apiDurationsArg <- function(x) {
+  if (is.list(x) && !length(x))
+    return(list(ok = FALSE, reason = paste("durations was sent as a form part without a",
+                                           "Content-Type and was dropped: send it on the",
+                                           "URL as ?durations=exclude")))
+  if (is.null(x) || !length(x) || !nzchar(trimws(as.character(x[1]))))
+    return(list(ok = TRUE, value = "include", sent = FALSE))
+  v <- tolower(trimws(as.character(x[1])))
+  if (!v %in% c("include", "exclude"))
+    return(list(ok = FALSE, reason = "durations must be \"include\" or \"exclude\""))
+  list(ok = TRUE, value = v, sent = TRUE)
+}
+
+.apiReadUpload <- function(path, name, apiKey = NULL, durations = "include") {
   ext <- tolower(tools::file_ext(name))
   stem <- tools::file_path_sans_ext(basename(name))
   if (ext %in% c("pdf", "docx", "xml", .ppImageExts)) {
@@ -898,7 +916,8 @@
     res <- parseBaselineTableFiles(
       path, ai = if (aiOn) "fallback" else "never",
       timeout = if (aiOn) 300 else 60,
-      quiet = TRUE, pctApprox = TRUE, apiKey = if (aiOn) apiKey else NULL)
+      quiet = TRUE, pctApprox = TRUE, apiKey = if (aiOn) apiKey else NULL,
+      durations = durations)
     r <- res$result[[1]]
     if (is.null(r) || nrow(r$data) == 0) {
       msg <- res$error[1]
