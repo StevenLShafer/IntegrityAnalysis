@@ -132,7 +132,7 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
-## 110. Levels under a plain category heading are one variable
+## 111. Levels under a plain category heading are one variable
 
 **Status: fixed on `fix/plain-heading-gathers-levels`, 2026-09-25**, from
 CodeRabbit's reading of PR #412 (issue 105) on Kilic 2023 (Cukurova Med

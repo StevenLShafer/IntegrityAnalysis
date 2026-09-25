@@ -1,7 +1,7 @@
 # test-plain-heading-gathers-levels.R - n (%) rows indented under a
 # label-only category heading are the levels of ONE category variable,
 # named by the heading; a lone n (%) row with no heading keeps its binary
-# form with a complement (ISSUES.md issue 110, 2026-09-25).
+# form with a complement (ISSUES.md issue 111, 2026-09-25).
 #
 ############################################################################
 # Provenance                                                               #

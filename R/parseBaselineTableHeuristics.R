@@ -1114,7 +1114,7 @@
   rowNLines    <- character(0) # rows whose N came from their own "(n = k)" line (issue 47)
   stratumStarts <- list()      # where each stratum begins in outRows, and its name (issue 55)
   pctApproxRows <- character(0) # rows using the opt-in approximation
-  npctBlocks   <- character(0) # blocks holding an n (%) level gathered under a plain heading (issue 110)
+  npctBlocks   <- character(0) # blocks holding an n (%) level gathered under a plain heading (issue 111)
   # THE BRACKETS BEHIND EVERY AMBIGUOUS PERCENTAGE (2026-09-08). The
   # counts a printed percentage allows are decided for the whole
   # arms-by-levels block at once, and a block is only complete after
@@ -1733,7 +1733,7 @@
     # while a block is open.
     #
     # A PLAIN HEADING GATHERS ITS LEVELS TOO (2026-09-25, ISSUES.md issue
-    # 110; CodeRabbit's reading of PR #412, on Kilic 2023, Cukurova Med J,
+    # 111; CodeRabbit's reading of PR #412, on Kilic 2023, Cukurova Med J,
     # the corpus session's batch 25 AD1). Until this change the gathering
     # required the heading ITSELF to announce the notation ("Race, N (%)",
     # vocacapsaicin corpus, 2026-08-22), so under a label-only heading -
@@ -2036,7 +2036,7 @@
         catColumns <- unique(c(catColumns, catName))
         key <- paste0("__cat__", catHeader)
         # remembered so a heading that gathers only one such level can
-        # be given back its binary form after the walk (issue 110)
+        # be given back its binary form after the walk (issue 111)
         if (fromNPct) npctBlocks <- union(npctBlocks, key)
         existing <- which(vapply(outRows, function(r) identical(r$key, key),
                                  logical(1)))
@@ -2075,7 +2075,7 @@
     }
   }
 
-  # ---- A HEADING THAT GATHERED ONE LEVEL IS NOT A VARIABLE (issue 110) ----
+  # ---- A HEADING THAT GATHERED ONE LEVEL IS NOT A VARIABLE (issue 111) ----
   # The rule above gathers every n (%) row under a plain heading as a
   # level of it. A section heading ("Demographic data", "Patient
   # characteristics") over a single "Sex (male) 12 (57)" line, followed

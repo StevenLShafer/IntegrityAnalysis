@@ -50,7 +50,7 @@ test_that("a rebuilt Kilic page reads two arms of 21, the level labels whole, an
   expect_identical(nrow(r$arms), 2L)
   expect_identical(r$arms$N, c(21L, 21L))
   # (the pdf device sets the hyphen as U+2212, hence the dot in the patterns)
-  # Since issue 110 the three level rows are gathered under their plain
+  # Since issue 111 the three level rows are gathered under their plain
   # heading, so the whole labels are the LEVEL COLUMNS of one "Surgical
   # Level" row rather than row names of their own; the phantom-arm check
   # looks at both.
