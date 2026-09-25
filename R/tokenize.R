@@ -36,6 +36,12 @@
 # than split into "4" and ",335".
 .ppNUM <- "[<>]?-?\\d+(?:[.,\u00b7]\\d+)*"
 
+# The lookahead of issue 118 (below), named so that the block walker can ask
+# for the reading WITHOUT it: a stray sign glyph between two whole cells
+# (issue 122) looks exactly like a lost SD in the text, and only the
+# column geometry tells them apart.
+.ppLostSdLookahead <- "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe))"
+
 .ppTokenRegex <- local({
   NUM <- .ppNUM
   paste0(
@@ -73,7 +79,7 @@
     # refuses it, and the two signs without an SD leave two bare numbers,
     # which the walker skips, and two cells, which it reads.
     "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
-                     "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe))",
+                     .ppLostSdLookahead,
                      "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
                      "|\\+\\s*", NUM, "\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\]))",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what
@@ -116,13 +122,21 @@
 # thousand tokens, a data frame each, 0.84 s a cell - and a workbook of
 # 49,900 such cells, within every other bound, was eleven hours). One
 # match is one scan of the cell whatever it contains.
-.ppTokenizeLine <- function(line, first = FALSE) {
+# The same pattern trusting every SD - issue 118's lookahead removed. The
+# block walker re-reads a row with it when the refusing reading puts two
+# tokens in one arm column and the trusting reading puts one in each
+# (2026-09-26, ISSUES.md issue 122).
+.ppTokenRegexTrusting <- sub(.ppLostSdLookahead, "", .ppTokenRegex, fixed = TRUE)
+
+# `trustSd = TRUE` reads with .ppTokenRegexTrusting (issue 122).
+.ppTokenizeLine <- function(line, first = FALSE, trustSd = FALSE) {
   joined    <- paste(line$text, collapse = " ")
   wordStart <- cumsum(c(1, nchar(line$text) + 1))[seq_len(nrow(line))]
   wordEnd   <- wordStart + nchar(line$text) - 1
 
-  m <- if (first) regexpr(.ppTokenRegex, joined, perl = TRUE)
-       else gregexpr(.ppTokenRegex, joined, perl = TRUE)[[1]]
+  re <- if (trustSd) .ppTokenRegexTrusting else .ppTokenRegex
+  m <- if (first) regexpr(re, joined, perl = TRUE)
+       else gregexpr(re, joined, perl = TRUE)[[1]]
   if (m[1] == -1) {
     return(data.frame(type = character(0), text = character(0),
                       num1 = numeric(0), num2 = numeric(0),
