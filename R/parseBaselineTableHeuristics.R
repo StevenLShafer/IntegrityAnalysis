@@ -1074,9 +1074,13 @@
       # The variable's name: the row label; failing that, an open block
       # header (a bare "N (%)" label under "NSAID use" names the NSAID
       # variable, not "Category"); failing both, "Category".
-      catName <- .ppUniqueName(.iaSafeColumnName(
-        if (nchar(label) > 0) label
-        else if (!is.na(catHeader)) catHeader else "Category"), catColumns)
+      # the variable's printed name is the ROW label as printed; only the
+      # COLUMN spelling is sanitised (.iaSafeColumnName), so the row still
+      # matches what the model calls it in the hybrid merge (CodeRabbit on
+      # PR #336)
+      varName <- if (nchar(label) > 0) label
+        else if (!is.na(catHeader)) catHeader else "Category"
+      catName <- .ppUniqueName(.iaSafeColumnName(varName), catColumns)
       catHeader <- NA_character_
       catHeaderPct <- FALSE
       catHeaderNPct <- FALSE
@@ -1090,7 +1094,7 @@
       present <- !vapply(armTok, is.null, logical(1))
       haveN <- any(present) && all(!is.na(armN[arms[present]]))
       catColumns <- unique(c(catColumns, catName, if (haveN) complementName))
-      rowName <- .ppUniqueName(catName, usedRowNames)
+      rowName <- .ppUniqueName(varName, usedRowNames)
       usedRowNames <- c(usedRowNames, rowName)
       if (haveN)
         say("  \"", label, "\": binary n (%) row - complement column \"",

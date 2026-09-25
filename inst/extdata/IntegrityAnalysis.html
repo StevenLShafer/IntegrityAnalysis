@@ -309,11 +309,17 @@ baseline data this way is unusual.</p>
 <blockquote>
 <p><strong>Two things the PDF reader works out for itself.</strong> A
 count with its percentage is recognised by the table’s notation — “n
-(%)” in a header or a label — and also by the numbers: “18 (90)” in an
-arm of 20 is a count and its percentage even when no “%” is printed
-anywhere, because the bracketed number is the first as a percentage of
-the arm size in every arm. And a variable name that wraps onto a second
-line (“Amount of intraoperative” over “fluid (ml)”) is read whole.</p>
+(%)” in a header or a label — and also by the numbers: a row whose
+bracketed number is the first as a percentage of the arm size <em>in
+every arm</em> is read as counts even when no “%” is printed anywhere.
+That takes more than one cell: three distinct (count, percentage, arm
+size) cells when the percentages are whole numbers, two when they carry
+a decimal, and at least one nonzero count — so a two-arm row of
+whole-number percentages is left to the table’s notation. And a variable
+name that wraps onto a second line is read whole when the second line
+begins with a lower-case letter or a bracketed unit (“Amount of
+intraoperative” over “fluid (ml)”); a second line that begins with a
+capital is taken as the next variable.</p>
 </blockquote>
 <blockquote>
 <p><strong>Repeated-measures tables.</strong> Laboratory and crossover

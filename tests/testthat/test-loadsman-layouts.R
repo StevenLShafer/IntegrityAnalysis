@@ -146,6 +146,25 @@ test_that("a level column named from a label never spells a header word the norm
   lv <- grep("(?i)rescue", names(d), value = TRUE)
   expect_true(length(lv) >= 2)
   expect_true(any(unlist(d[, lv]) == 12, na.rm = TRUE))
+
+  # the sanitiser reaches the COLUMN only: a binary n (%) row keeps its
+  # printed label as ROW (the hybrid merge matches the model's rows by
+  # label), while its level column is respelled (CodeRabbit on PR #336)
+  f2 <- file.path(tempdir(), "numberBinary.pdf")
+  cells2 <- c(
+    list(list(x = 72, y = 80, text = "Table 1 Baseline characteristics", adj = 0)),
+    rowCells(110, "", c("Group A", "Group B"), vx),
+    rowCells(128, "", c("(n = 30)", "(n = 30)"), vx),
+    rowCells(150, "Age (years)", c("41 ± 9", "43 ± 10"), vx),
+    rowCells(168, "Number of failed attempts, n (%)", c("12 (40)", "9 (30)"), vx),
+    list(list(x = 72, y = 200, text = "Values are mean ± SD or n (%).", adj = 0)))
+  makeTablePdf(f2, cells2)
+  r2 <- parseBaselineTableHeuristics(f2, quiet = TRUE)
+  expect_true(any(grepl("^Number of failed attempts", r2$data$ROW)))
+  expect_false(any(grepl("(?i)number", setdiff(names(r2$data), .ppBaseColumns()), perl = TRUE)))
+  expect_true(any(grepl("^no\\. of failed attempts", names(r2$data))))
+  v2 <- vdShared(r2$data)
+  expect_false(isTRUE(v2$FAIL))
 })
 
 # ---- 3. counts and percentages with no "%" anywhere on the page -------------
