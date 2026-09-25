@@ -97,8 +97,22 @@
   # option decides its fate
   isDur     <- .ppDurationLabel(labels)
   isOutcome <- grepl(outcomeRe, labels, perl = TRUE)
+  # A LABEL IN ANOTHER SCRIPT WITH AN ENGLISH GLOSS (2026-09-25, ISSUES.md
+  # issue 83; MTS2006_17, the corpus session's batch 19 Y1): the model
+  # returns the row's Japanese name with the gloss "(surgery duration)"
+  # for a row the block prints in Japanese, and the block test below -
+  # the label's first two words on a line of the block - can never find
+  # "surgery" in that block. A duration whose label carries letters
+  # outside Latin script is kept on the durations option's terms, block
+  # or no block; an outcome in such a label (a Japanese name glossed
+  # "(postoperative pentazocine required)") is still refused by its
+  # vocabulary.
+  # (a code point above U+024F - beyond Latin Extended-B - is another
+  # script; tested by code point, not by a PCRE class, which needs UTF mode)
+  nonLatin  <- vapply(labels, function(l)
+    !is.na(l) && any(utf8ToInt(enc2utf8(l)) > 0x024F), logical(1))
   if (is.null(blockText) || !length(blockText)) isOutcome <- isOutcome & !isDur
-  else isOutcome <- isOutcome | isDur
+  else isOutcome <- isOutcome | (isDur & !nonLatin)
   if (any(isOutcome) && !is.null(blockText) && length(blockText)) {
     blk <- tolower(.ppSquish(blockText))
     inBlock <- vapply(labels, function(lb) {
