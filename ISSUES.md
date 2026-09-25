@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 47. A "(n = k)" line printed under a row's cells is that row's N
+
+**Status: fixed on `feat/row-n-line`, 2026-09-25**, from the corpus
+session's re-run of Fujii 2002 (PMID 12182258) on `dc39659`.
+
+- **The defect.** "Last menstrual cycle, d*  15 ± 4  16 ± 3  16 ± 2  16
+  ± 3" is followed by "(n = 12) (n = 13) (n = 12) (n = 12)" under its
+  cells, and the footnote says why ("*N = 49. Patients who had
+  experienced menopause were excluded"): that row was measured on fewer
+  patients than the arm. The line is a header kind to the classifier
+  and was skipped, so the row went out with the arm's N of 20 - and the
+  hybrid merge, seeing the model's row with the printed 12/13/12/12 and
+  the same means and SDs, kept both and double-counted the variable.
+- **What changed.** In the block walker a "(n = k)" line directly under
+  a continuous row, each count under one of the row's cells, sets that
+  row's N arm by arm (the printed row-level n); every other row keeps
+  the arm's N. With the N agreeing, the merge's value signature
+  recognises the model's row as the same row and drops it.
+- **Tests** (`tests/testthat/test-row-n-line.R`): the row under the
+  "(n = k)" line takes 12/13/12/12 while its neighbours keep 20, and the
+  table validates; with a mocked model returning that row under a
+  different label, the hybrid result holds it once.
+
+---
+
 ## 46. The OCR of a figure beneath a scanned table, and a footnote sentence between caption and header, stay out of the arms and the rows
 
 **Status: fixed on `feat/junk-ocr-rows`, 2026-09-25**, from the corpus

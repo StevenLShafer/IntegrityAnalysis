@@ -220,6 +220,11 @@ Cell shapes recognised (`tokenize.R`):
 and `63.0` has 1. That distinction is data — it tells the Monte Carlo analysis how much of a
 discrepancy rounding alone can explain.
 
+- **A row's own "(n = k)" line** (2026-09-25, issue 47). A "(n = k)" line printed directly
+  under a continuous row's cells is that row's N, arm by arm (Fujii 2002's "Last menstrual
+  cycle" row, measured on 12/13/12/12 of the arms' 20); the merge then recognises the model's
+  reading of that row by its values.
+
 ### 05a — Word manuscripts (.docx, issue 19, 2026-08-21)
 
 A `.docx` submission enters through `parseBaselineTableHeuristics()` like any file (the
