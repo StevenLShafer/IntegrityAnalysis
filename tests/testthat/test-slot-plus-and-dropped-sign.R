@@ -46,6 +46,32 @@ test_that("the sign dropped entirely: two numbers straddling a strong slot with 
   expect_identical(rep$lines[[6]]$text, c("Change", "-3.2", "-1.0"))
 })
 
+test_that("a strong slot is placed by the sign itself, not pulled by pluses in its cluster (CodeRabbit on PR #381)", {
+  # the signs at 200 and 201, pluses at 206, 210, 211: a strong slot averaged over
+  # all five would sit at 205.6 and admit the plus at 210, nine points from any sign
+  lines <- list(
+    mk(c("Table", "1"), c(60, 90)),
+    mk(c("Age", "46.7", "±", "7.7"), c(60, 180, 200, 210)),
+    mk(c("Height", "164", "±", "7"), c(60, 180, 201, 210)),
+    mk(c("Weight", "58", "+", "10"), c(60, 180, 206, 216)),
+    mk(c("Dose", "5", "+", "2"), c(60, 180, 210, 220)),
+    mk(c("Rate", "3", "+", "1"), c(60, 180, 211, 221)))
+  rep <- .ppRepairPlusMinusGlyphs(lines, capIdx = 1L)
+  expect_identical(rep$lines[[4]]$text, c("Weight", "58", "±", "10"))   # within 6 of the signs
+  expect_identical(rep$lines[[5]]$text, c("Dose", "5", "+", "2"))            # nine points away: not
+  expect_identical(rep$lines[[6]]$text, c("Rate", "3", "+", "1"))
+})
+
+test_that("a dropped sign is looked for on labelled lines only: a figure's axis ticks are not cells", {
+  lines <- list(
+    mk(c("Table", "1"), c(60, 90)),
+    mk(c("Age", "46.7", "±", "7.7", "46.3", "±", "11.8"), c(60, 180, 200, 210, 240, 260, 270)),
+    mk(c("Height", "164", "±", "7", "163", "±", "7"), c(60, 180, 200, 210, 240, 260, 270)),
+    mk(c("15", "20", "25", "30", "35"), c(180, 206, 240, 266, 300)))     # axis ticks, no label
+  rep <- .ppRepairPlusMinusGlyphs(lines, capIdx = 1L)
+  expect_identical(rep$lines[[4]]$text, c("15", "20", "25", "30", "35"))
+})
+
 test_that("a legend that spells 'mean -t- S D' announces the soup, and a '+' at any slot is then the sign", {
   lines <- list(
     mk(c("Table", "1"), c(60, 90)),

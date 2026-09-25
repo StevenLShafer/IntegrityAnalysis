@@ -871,8 +871,10 @@
     grp <- split(seq_along(mx), cl)
     slots  <- vapply(grp, function(k)
       if (length(unique(ml[k])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
+    # a strong slot is placed by the genuine markers alone: pluses in the
+    # same cluster must not pull it toward themselves (CodeRabbit on PR #381)
     strong <- vapply(grp, function(k)
-      if (length(unique(ml[k][mt[k]])) >= 2L) mean(mx[k]) else NA_real_, numeric(1))
+      if (length(unique(ml[k][mt[k]])) >= 2L) mean(mx[k][mt[k]]) else NA_real_, numeric(1))
     slots <- slots[!is.na(slots)]; strong <- strong[!is.na(strong)]
   }
   if (!announced && (nTrue < 2L || length(slots) == 0L)) return(none)
@@ -901,7 +903,10 @@
     back   <- if (announced) slots else strong
     xEnd   <- L$x + L$width
     gapHit <- logical(nrow(L))
-    if (length(back)) for (k in seq_len(nrow(L) - 1L)) {
+    # only a LABELLED line: a figure's axis ticks under a scanned table
+    # ("15 20 25 30 35 40", issue 46) have no row label, and two of them
+    # straddling a slot are not a cell
+    if (length(back) && !isNum(s[1])) for (k in seq_len(nrow(L) - 1L)) {
       if (!isNum(s[k]) || !isNum(s[k + 1L])) next
       if (grepl("^-", s[k + 1L], perl = TRUE)) next   # a negative number is never an SD
       gap <- L$x[k + 1L] - xEnd[k]
