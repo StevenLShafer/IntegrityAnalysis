@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 68. A row label on the line above its values, the unit beneath
+
+**Status: fixed on `feat/label-above-values`, 2026-09-25**, from the corpus
+session's batch 14 finding S1 (Rezk 2015, Clin Exp Obstet Gynecol; Loadsman
+corpus, page 3, Table 1 "Maternal characteristics").
+
+- **The defect.** In a narrow first column "Duration of active phase
+  (hours)" wraps to two lines and the typesetter centres the cells on the
+  pair: "Duration of active phase" / "5.25 ± 0.86  5.31 ± 0.85" /
+  "(hours)". The values' line carries no label at all, so the row went out
+  as "Unnamed" on both engines, and the name above it opened a category
+  heading that nothing used. The wrapped-label rule of 2026-09-24 covers
+  the opposite layout only (label on the values' line, continuation
+  beneath).
+- **What changed.** A value line with no label directly beneath the line
+  that opened the heading takes that line as its name, and the heading
+  closes - a level of a category always carries its own label, so a
+  label-less value line under a heading is the heading's own wrapped
+  name, never a level. The unit line beneath is then absorbed by the
+  continuation rule as any wrapped second line is. `catHeaderAt` records
+  which line opened the heading.
+- **Tests** (`tests/testthat/test-label-above-values.R`): a rebuilt page
+  names the row "Duration of active phase" with its two cells, leaves no
+  "Unnamed" row and no "(hours)" heading, and validates (fails on the
+  unfixed code); a category heading over labelled level rows is still a
+  heading.
+
+---
+
 ## 67. A legend that names a letter as the plus-minus ("Values are means F SD") makes that letter the sign
 
 **Status: fixed on `feat/announced-letter-glyph`, 2026-09-25**, from the
