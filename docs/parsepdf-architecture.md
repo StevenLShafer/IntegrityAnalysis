@@ -570,6 +570,12 @@ grid with nothing flagged:
   study "divided into three groups of ten"; `.ppGroupsOfN()` returns each distinct
   statement, and `.ppGroupNFor()` applies a size only when the statements for the
   table's arm count agree on one — otherwise N stays missing, which the flags say.
+  Since issue 89 the reader also knows "(n:50 each)" with a colon, a total the
+  group count divides ("150 patients ... one of three groups" gives 50), and a
+  size on a sentence of its own with the count unstated ("Twenty patients were
+  randomly assigned to each treatment group"), which serves any arm count after
+  the statements that name it; a sentence about sufficiency, power or a sample
+  size calculation is refused as an allocation.
 
 Two things changed around it, and both are deliberate:
 

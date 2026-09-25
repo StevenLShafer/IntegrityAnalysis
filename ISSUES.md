@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 89. Three more ways a paper states its arm sizes, and the power statement that is not one
+
+**Status: fixed on `feat/size-sentence-shapes`, 2026-09-25**, from the
+corpus session's batch 22 spec of every size-stating sentence in the 48
+missing-N Carlisle trials (PMIDs 9861126, 9924225, 14749151, 10357343).
+
+- **The defect.** The "k groups of n" reader (`.ppGroupsOfN()`) knew
+  "divided into three groups of 20" and "(n = 20 each)" but not the
+  colon of "(n:50 each)", nor a total that the group count divides
+  ("150 female patients ... allocated randomly to one of three groups"),
+  nor a size on a sentence of its own with the group count unstated
+  ("Twenty patients were randomly assigned to each treatment group").
+  Its number words stopped at twenty. And a power statement ("60
+  patients per group would be sufficient") was at risk of being read as
+  an allocation.
+- **What changed.** `n\s*[=:]` accepts the colon; the number words
+  reach thirty to hundred; three sentence shapes are read: (a) "one
+  of/into K groups (n = N each)", (b) "T patients ... one of/into K
+  groups" giving N = T / K only when whole and T >= 2K, (c) "N patients
+  were [randomly] assigned/allocated to each [treatment] group" with the
+  group count recorded as NA. A shape whose sentence window mentions
+  sufficiency, power, sample size, detection, requirement or a
+  calculation is refused. `.ppGroupNFor()` prefers a statement naming
+  the table's arm count and falls back to a count-less one, which
+  serves any k. The duplicate test in `add()` copes with NA.
+- **Tests** (`tests/testthat/test-size-sentence-shapes.R`): each shape
+  at the helper level, the refusals (a total that does not divide, the
+  power statements), the number words, and a rebuilt page with no N in
+  the table filled from the count-less sentence while the power
+  statement alone leaves it empty (17 expectations fail on the unfixed
+  code). The arm-size and layout tests still pass.
+
+---
+
 ## 86. The OUP download rail, seven points wide, is a rotated rail
 
 **Status: fixed on `fix/oup-rail-rotated-words`, 2026-09-25**, from the
