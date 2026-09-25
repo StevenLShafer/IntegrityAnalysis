@@ -63,7 +63,17 @@
     # U+2AFE is what the text layer of Fujii's canine tables (Anesth Analg
     # 2003, PMID 12933396 and its siblings) reports for the plus-minus
     # glyph of their font (2026-09-25, ISSUES.md issue 88)
+    # A SIGN WHOSE SD IS LOST MUST NOT REACH THE NEXT CELL (2026-09-26,
+    # ISSUES.md issue 118; CJA 1998, PMID 9350368, the corpus session's
+    # batch 27 AF1): the scan's Age line reads "62 <pm> 61 <pm> 62 <pm> 9
+    # 61 <pm> 11" - the first two SDs are absent from the text layer - and
+    # the pattern below took "62 <pm> 61" for a cell, the next cell's mean
+    # as this cell's SD, and scored p < 0.0001 on it. An SD that is itself
+    # followed by a sign glyph is the next cell's mean: the lookahead
+    # refuses it, and the two signs without an SD leave two bare numbers,
+    # which the walker skips, and two cells, which it reads.
     "(?<meanSD>",    NUM, "\\s*(?:(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe)\\s*", NUM,
+                     "(?!\\s*(?:\u00b1|\\+/-|\\+-|\u2022|\u2afe))",
                      "(?:\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\])?",
                      "|\\+\\s*", NUM, "\\s*\\[\\s*", NUM, "\\s*(?:\u2013|\u2212|-|to)\\s*", NUM, "\\s*\\]))",
     # interval separator: hyphen, en/em dash, Unicode minus (U+2212 - what
