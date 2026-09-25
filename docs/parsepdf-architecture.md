@@ -190,6 +190,13 @@ wrong entry would corrupt numbers invisibly.
   Group 2 Group 3 Group 4") is the arm-name line; a caption whose anchor line is the bare
   "Table 1" takes the numberless line beneath as its title.
 
+- **What OCR leaves under a scanned table** (2026-09-25, issue 46). A column fed only by
+  lines that carry no row label is not an arm column and is dropped after clustering (a
+  figure's axis ticks under CJA 1995's Table I had seeded three); the prose fence (more words
+  than three per column) applies to every label line that would name the arms; counts with no
+  level name under a heading are skipped, not filed as "Category"; a label line holding a "|"
+  never opens a heading.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric

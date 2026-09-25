@@ -753,6 +753,21 @@
   .ppSquish(label)
 }
 
+# Is a category level's printed name unreadable - OCR noise rather than a
+# word or a band (ISSUES.md issue 46, 2026-09-25)? Letters, when present,
+# must make up at least half of the non-space characters, unless the name
+# is a roman numeral; and the name is at most forty characters. "Male",
+# "ASA III", "<65", "0-1", "3" and "IIb" pass; ". T", "i I | I I t" and
+# "and past-tetanic count (PTC) (D .... [ vceuronium" do not.
+.ppUnreadableLevel <- function(label) {
+  if (is.na(label)) return(TRUE)
+  if (nchar(label) > 40) return(TRUE)
+  if (grepl("^[IVXivx]+[a-d]?$", label)) return(FALSE)
+  chars   <- gsub("\\s", "", label)
+  letters <- nchar(gsub("[^A-Za-z]", "", chars))
+  letters > 0 && letters * 2 < nchar(chars)
+}
+
 # Make `nm` unique against `existing` by appending " 2", " 3", ...
 .ppUniqueName <- function(nm, existing) {
   base <- nm
