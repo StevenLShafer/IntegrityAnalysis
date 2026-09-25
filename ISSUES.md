@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 96. A column of upright short words is not a rail
+
+**Status: fixed on `fix/rail-needs-tall-words`, 2026-09-25**, a
+regression of issue 93 caught by the fixture of issue 91.
+
+- **The defect.** The rail stripper (`.ppStripRotatedText()`) takes
+  four or more narrow words at one x spanning a third of the page for
+  a rotated rail, and since issue 93 every word at that x within the
+  span goes with them. A long-layout table's group column - "II" on
+  four or more rows, five points wide and eight tall - is four narrow
+  words at one x spanning a third of the page: it was taken for a
+  rail, and with issue 93 every "I" and "III" beside it went too. The
+  fixture of issue 91 then lost its whole group column and read as a
+  wide table. Before issue 93 the same page lost only its "II"s, which
+  issue 88's lost-label rule quietly filled.
+- **What changed.** A rail's words are set sideways, so at least two of
+  the stack must be far taller than wide (height at least twice the
+  width); upright short words never are. Real rails (the OUP and LWW
+  rails, URL words 90 to 165 points tall) pass as before.
+- **Tests** (`tests/testthat/test-upright-column-not-rail.R`): four
+  blocks of I / II / III at one x are untouched (3 expectations fail on
+  the unfixed code); a genuine rail with its tall words is still
+  stripped whole. The rail, axis, column and layout tests still pass,
+  and the fixture of issue 91 reads as long layout with both fixes.
+
 ## 94. "Allocated to one of four groups of 15 patients each" states the arm sizes
 
 **Status: fixed on `feat/groups-of-n-patients-each`, 2026-09-25**, from
