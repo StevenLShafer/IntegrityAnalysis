@@ -968,6 +968,7 @@
   # label-kind lines already absorbed into the row ABOVE them as the
   # wrapped second line of its label (see the data branch below)
   consumedLabel <- integer(0)
+  catHeaderAt   <- NA_integer_   # the line the open heading was read from (issue 68)
 
   # ---- THE HEADING ABOVE THE FIRST DATA LINE (issue 44, 2026-09-25) ----
   # The loop below starts at the first data line, so a variable printed
@@ -1034,6 +1035,7 @@
         next
       if (nchar(lbl) > 0 && nrow(lines[[i]]) <= 6) {
         catHeader <- lbl
+        catHeaderAt <- i
         # "Race, N (%)": the children below are counts-with-percents -
         # levels of ONE category variable, whatever shape their cells
         # take ("12 (33)", "12(33%)", a bare "0"). Checked BEFORE the
@@ -1157,6 +1159,26 @@
     if (nrow(toks) == 0) next
     joined   <- paste(lines[[i]]$text, collapse = " ")
     rawLabel <- substr(joined, 1, min(toks$start) - 1)
+    # A ROW LABEL ON THE LINE ABOVE ITS VALUES (2026-09-25, ISSUES.md issue
+    # 68; Rezk 2015, Clin Exp Obstet Gynecol, Loadsman corpus - the corpus
+    # session's batch 14 S1). In a narrow first column the name wraps to
+    # two lines and the typesetter centres the cells on the pair:
+    # "Duration of active phase" / "5.25 +/- 0.86  5.31 +/- 0.85" /
+    # "(hours)". The values' line carries no label at all, so the row went
+    # out as "Unnamed" and the name above it opened a category heading
+    # that nothing used. A value line with NO label directly beneath the
+    # line that opened the heading takes that line as its name - a level
+    # of a category always carries its own label, so a label-less value
+    # line under a heading is the heading's own wrapped name, never a
+    # level. The unit line beneath is then absorbed by the continuation
+    # rule below, as any wrapped second line is.
+    if (!nzchar(.ppSquish(rawLabel)) && !is.na(catHeaderAt) && catHeaderAt == i - 1L &&
+        !is.na(catHeader) && i - 1L > capIdx) {
+      rawLabel <- lineTexts[i - 1L]
+      say("  Row label \"", .ppSquish(rawLabel), "\" taken from the line above its values.")
+      catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
+      catHeaderAt <- NA_integer_
+    }
     # A ROW LABEL THAT WRAPS ONTO THE NEXT LINE (2026-09-24, Loadsman
     # corpus, Polat 2015 DA). "Amount of intraoperative  561.67 +/- ..."
     # with "fluid (ml)" on the line beneath, "Infusion duration of
