@@ -132,6 +132,28 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 56. "Group 60 50 40 30 20 Volunteers": a Group line whose values are the arms' names is the arm-name line
+
+**Status: fixed on `feat/group-name-line`, 2026-09-25**, from the corpus
+session's batch 5 finding K2 (CJA 1995;42:992, Saitoh).
+
+- **The defect.** Six arms named by their stimulating current, "Group 60
+  50 40 30 20 Volunteers", over "n 15 15 15 15 15 15". The line was data
+  to the classifier - the label "Group" with five plain numbers - so it
+  was skipped as a bare number and the six arms went unnamed (their N
+  came from the n row).
+- **What changed.** Beside the ordinal rule of issues 45 and 50: a data
+  line whose label is the word Group (or Arm, Treatment) and whose values
+  are all whole numbers, standing above the first line that holds a value
+  cell, is the arm-name line; reclassified as a label, its numbers name
+  the arms as printed and the words after them name the rest. A "Group"
+  row of counts below the first value line stays data.
+- **Tests** (`tests/testthat/test-group-name-line.R`): the rebuilt page
+  names its six arms "60" … "Volunteers" with N 15 from the n row; a
+  "Group" level row under a heading, below the values, is still a level.
+
+---
+
 ## 54. A variable the model adds to the baseline table is refused when its label names an outcome
 
 **Status: fixed on `feat/refuse-model-outcome-rows`, 2026-09-25**, from
