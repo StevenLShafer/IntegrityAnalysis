@@ -189,6 +189,9 @@ wrong entry would corrupt numbers invisibly.
   one split qualifies). A data line whose numbers are 1..k each behind the same word ("Group 1
   Group 2 Group 3 Group 4") is the arm-name line; a caption whose anchor line is the bare
   "Table 1" takes the numberless line beneath as its title.
+- **Arm N from a fraction row** (2026-09-25, issue 41). When the header printed no arm size
+  at all, an arm whose every "a/b" fraction cell (sex, ASA class) sums to one value takes it as
+  its N, with the source recorded; fractions that disagree leave N unknown.
 
 - **What OCR leaves under a scanned table** (2026-09-25, issue 46). A column fed only by
   lines that carry no row label is not an arm column and is dropped after clustering (a

@@ -674,6 +674,28 @@
         say("  arm ", k, ": N = ", n, " ", armNSource[k], ".")
       }
     }
+    # (a2) The arm's printed FRACTION cells (2026-09-25, ISSUES.md issue 41;
+    #     CJA 2003;50:342, whose only statement of the arm sizes is "Sex
+    #     (female/male) 6/9" in every arm). The parts of a sex or ASA
+    #     fraction sum to the arm: when every fraction cell of the arm
+    #     sums to one and the same value, that value is its N. Two
+    #     fraction rows that disagree ("6/9" and "5/8") leave N unknown -
+    #     one of them is not the whole arm, and the text cannot say which.
+    #     The same gate as (a): only a table that printed no arm size.
+    for (k in dataArms) {
+      if (!is.na(armN[k])) next
+      kt <- allToks[cols$assign(allToks$mid) == k & allToks$type == "fraction", ,
+                    drop = FALSE]
+      if (nrow(kt) == 0) next
+      sums <- vapply(strsplit(gsub("\\s", "", kt$text), "/"), function(p)
+        sum(suppressWarnings(as.integer(p))), numeric(1))
+      if (any(is.na(sums)) || length(unique(sums)) != 1L || sums[1] < 1) next
+      armN[k] <- as.integer(sums[1])
+      armNSource[k] <- sprintf(
+        "derived from %d printed a/b fraction cell(s) of this arm (the parts sum to the arm)",
+        nrow(kt))
+      say("  arm ", k, ": N = ", armN[k], " ", armNSource[k], ".")
+    }
   }
   # (b) The document text - the randomization sentence of the Methods, the
   #     abstract, or a CONSORT flow label with a text layer. Candidates and

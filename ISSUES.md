@@ -400,16 +400,29 @@ it is switched on, and may need a smaller weight.
 
 ---
 
-## 41. Arm sizes printed only as a sex fraction (open)
+## 41. Arm sizes printed only as a sex fraction
 
-**Status: open, 2026-09-25.** CJA2003_342 (Loadsman corpus) prints no
-"n =" anywhere in its table; the arm size is the sum of the "Sex
-(female/male) 6/9" fraction in every arm. The n (%) derivation of arm N
-(`.ppDeriveArmN`) has no counterpart for fraction cells, so the table
-parses with N missing in every arm and fails validation. The natural
-rule: when the header printed no arm size at all, and every fraction
-cell of an arm sums to the same value, that value is the arm's N
-(recorded with its source, as the n (%) derivation is).
+**Status: fixed on `feat/arm-n-from-fraction`, 2026-09-25** (filed
+2026-09-25 from the Loadsman corpus, CJA 2003;50:342).
+
+- **The defect.** The table prints no "n =" anywhere; its only statement
+  of the arm sizes is "Sex (female/male) 6/9" in every arm. The n (%)
+  derivation of arm N (`.ppDeriveArmN`) had no counterpart for a
+  fraction cell, so the table parsed with N missing in every arm and
+  failed validation.
+- **What changed.** Under the same gate as the n (%) derivation - only a
+  table that printed no arm size at all - an arm whose every printed
+  a/b fraction cell sums to one and the same value takes that value as
+  its N, with its source recorded ("derived from k printed a/b fraction
+  cell(s) of this arm"); two fraction rows that disagree leave N unknown,
+  one of them not being the whole arm. `reviewFlags()` names the source
+  beside the n (%) one.
+- **On the page.** CJA2003_342 now reads four arms of 15 (Sex, Age,
+  Weight, Height) and validates.
+- **Tests** (`tests/testthat/test-arm-n-from-fraction.R`): every arm's N
+  is the fraction's sum, with its source and flag, and the table
+  validates; disagreeing fractions leave that arm unknown while agreeing
+  ones are taken; one printed "(n = 15)" switches the derivation off.
 
 ---
 
