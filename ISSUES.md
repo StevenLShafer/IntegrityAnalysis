@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 72. The page's gutters are taken widest first, and no band is ever dropped
+
+**Status: fixed on `fix/widest-gutters-no-hole`, 2026-09-25**, from the
+corpus session's batch 16 finding V1 (Akkuş 2020, J Anesth 34:512; Loadsman
+corpus, page 4, Table 1, two arms of 49).
+
+- **The defect.** `.ppPageBands()` meant to keep the two widest
+  low-coverage runs as gutters, but sorted the candidates by width and
+  then re-sorted them by position before taking two - the two LEFTMOST
+  runs, whatever their width - and then dropped any band narrower than a
+  fifth of the page. On that page three runs qualified: two gaps inside
+  Table 1's own columns (19 and 12 points) and the page's real gutter
+  (25 points). The two table gaps were taken, the 55-point band between
+  them was dropped, and the words in it - the table's second arm, "Group
+  triple" and every one of its cells - belonged to no column and were
+  read by no candidate. The column-1 candidate read one arm; the
+  full-width candidate read the table interleaved with column-2 prose
+  and stopped at the first long prose line. On d04ccb6 the full-width
+  reading happened to win (3 variables x 2 arms, a junk "ard: " prefix
+  from the wrapped arm name, issue 73); on e88bd83 the one-arm column
+  reading read 11 variables and won, and the screen saw one arm.
+- **What changed.** The gutters are taken widest first, and a gutter is
+  kept only if every band it leaves is at least a fifth of the page wide;
+  a narrower one is skipped, not cut and discarded. No band is dropped,
+  so every word of the page lies in exactly one band. With issue 73 the
+  page reads 11 variables x 2 arms of 49 from column 1.
+- **Tests** (`tests/testthat/test-widest-gutters-no-hole.R`): a page of
+  word boxes with two table-internal gaps left of the real gutter gives
+  two bands cut at the gutter with every word in a band (fails on the
+  unfixed code); a genuine three-column page still gives three bands; a
+  gutter that would leave a band too narrow is skipped.
+
+---
+
 ## 71. The header's "(n = k)" count is a second opinion when the gap rule fuses two narrow columns
 
 **Status: fixed on `feat/columns-from-header-count`, 2026-09-25**, from the

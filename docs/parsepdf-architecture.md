@@ -232,6 +232,10 @@ wrong entry would corrupt numbers invisibly.
   the "(n = k)" header names more arms than the gap rule found, the full rows beneath it are cut
   at the k - 1 widest gaps, if those are real column gaps wider than any column's spread.
 
+- **Gutters widest first, no band dropped** (2026-09-25, issue 72): `.ppPageBands()` keeps a
+  low-coverage run as a gutter only if every band it leaves is at least a fifth of the page
+  wide, taking the widest runs first; every word of the page lies in exactly one band.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric

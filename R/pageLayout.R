@@ -98,15 +98,32 @@
   if (length(cand) == 0) return(single(pageWords))
 
   # Keep at most two gutters (a three-column layout); prefer the widest.
+  # THE WIDEST, AND NO HOLE (2026-09-25, ISSUES.md issue 72; Akkus 2020, J
+  # Anesth, Loadsman corpus): the first version sorted the candidates by
+  # width and then re-sorted them by position before taking two - the two
+  # LEFTMOST runs, whatever their width - and then dropped any band
+  # narrower than minBandFrac of the page. On that page three runs
+  # qualified: two gaps inside Table 1's own columns (19 and 12 points)
+  # and the page's real gutter (25 points). The two table gaps were
+  # taken, the 55-point band between them was dropped, and the words in
+  # it - the table's second arm, "Group triple" and every one of its
+  # cells - belonged to no column and were read by no candidate. The
+  # gutters are now taken widest first, and a gutter is kept only if
+  # every band it leaves is at least minBandFrac of the page wide; a
+  # narrower one is skipped, not cut and discarded. No band is ever
+  # dropped, so every word of the page lies in exactly one band.
   cand <- cand[order(r$lengths[cand], decreasing = TRUE)]
-  cand <- utils::head(sort(cand), 2)
-
-  cuts  <- left + (start[cand] + ends[cand]) / 2
+  cutOf <- function(k) left + (start[k] + ends[k]) / 2
+  chosen <- integer(0)
+  for (k in cand) {
+    if (length(chosen) >= 2L) break
+    edges <- sort(c(left - 1, cutOf(c(chosen, k)), right + 1))
+    if (min(diff(edges)) >= minBandFrac * W) chosen <- c(chosen, k)
+  }
+  if (length(chosen) == 0) return(single(pageWords))
+  cuts  <- sort(cutOf(chosen))
   edges <- c(left - 1, cuts, right + 1)
   bands <- data.frame(x0 = utils::head(edges, -1), x1 = utils::tail(edges, -1))
-  # A band narrower than minBandFrac of the page is not a text column.
-  bands <- bands[(bands$x1 - bands$x0) >= minBandFrac * W, , drop = FALSE]
-  if (nrow(bands) < 2) return(single(pageWords))
   bands$x0[1] <- -Inf
   bands$x1[nrow(bands)] <- Inf
   bands
