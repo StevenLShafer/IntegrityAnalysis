@@ -495,6 +495,17 @@ was already caught on current code by the merge's value-signature dedupe of
   trl, measure → meas., decm → dec.) in every category column either engine names;
   the conditional tokens resolve to the real base column and are left alone.
 
+Two more flags (issue 36, 2026-09-25, from the corpus session's findings and at
+Steve's instruction): a variable that prints the **same value with zero dispersion in
+every arm** ("%Edi 100.0 ± 0.0" in every group, by construction), or a **median pinned
+at its own quartile in every arm** ("0 (0–20)" for intraoperative ephedrine), carries
+no sampling information — its agreement is forced, and it sits at the attainable floor
+(one such row took a trial from p = 0.0084 to 0.00094); and **two variables printing
+identical N, mean and SD in every arm** are either one row read twice or the page as
+printed (retracted Saitoh trials print Age and Weight with the same numbers). Both are
+named by `reviewFlags()`; neither removes a row, because the corpus showed the
+duplicates are sometimes the data, so the reader decides.
+
 And one flag rather than a rule: a table in which **half or more of the mean (SD)
 cells print an SD larger than the mean** — with at least three such cells, so a one-
 or two-row table cannot trip it — is reported by `reviewFlags()` ("counts
