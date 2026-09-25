@@ -757,6 +757,15 @@
 # and "30" is a range, not a sign) is repaired only when it IS the
 # announced glyph.
 #
+# THE ANNOUNCED GLYPH MAY BE A LETTER (2026-09-25, issue 67; Fujii 2006,
+# PMID 17126782, the corpus session's batch 13 R1): a Symbol-font
+# plus-minus mapped to "F" - "Values are means F SD or numbers." over
+# "Age (y) 30 F 4 31 F 5 32 F 5 31 F 4". A single letter is never a
+# soup word on its own, but once the legend names it as the sign, the
+# letter between two numbers is the sign, two or more to a line as the
+# other announced notations require (the digit case, "mean 6 sd", stays
+# with the block walker's digitSD rule). "means" is accepted as "mean".
+#
 # `lines` is the block's list of word data frames (text, x, width, ...);
 # the lines from `capIdx + 1` on are read. Returns the lines with the
 # repaired words (the sign written as the plus-minus glyph, a glued SD
@@ -792,10 +801,10 @@
   # table's own caption line or its footnote
   annGlyph <- NA_character_
   for (txt in texts[c(if (capIdx >= 1L) capIdx, idx)]) {
-    m <- regmatches(txt, regexpr("(?i)\\bmean\\s+(\\S{1,4})\\s+s\\.?d\\b", txt, perl = TRUE))
+    m <- regmatches(txt, regexpr("(?i)\\bmeans?\\s+(\\S{1,4})\\s+s\\.?d\\b", txt, perl = TRUE))
     if (length(m) == 1L) {
       g <- strsplit(m, "\\s+")[[1]][2]
-      if (isSoup(g)) { annGlyph <- g; break }
+      if (isSoup(g) || grepl("^[A-Za-z]$", g)) { annGlyph <- g; break }
     }
   }
   announced <- !is.na(annGlyph)
@@ -819,7 +828,8 @@
     prevNum <- c(FALSE, isNum(s[-length(s)]))
     nextNum <- c(isNum(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
-    base <- prevNum & ((isSoup(s) & nextNum) | glued) & !true(s) & s != "+" &
+    isSign <- isSoup(s) | (announced & s == annGlyph)
+    base <- prevNum & ((isSign & nextNum) | glued) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph))
     hit  <- base & (atSlot | (announced & sum(base) >= 2L))
     if (!any(hit)) next
