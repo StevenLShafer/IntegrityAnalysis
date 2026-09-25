@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 94. "Allocated to one of four groups of 15 patients each" states the arm sizes
+
+**Status: fixed on `feat/groups-of-n-patients-each`, 2026-09-25**, from
+the corpus session's batch 24 AC2 (Fujii, Anaesthesia 1998;53:244, PMID
+9613269, the same table as Loadsman Anaesthesia1998_244).
+
+- **The defect.** The "k groups of n" reader (`.ppGroupsOfN()`) wanted
+  "into": "divided into four groups of 15". The Methods of this trial
+  say "allocated randomly to one of four groups of 15 patients each",
+  and with no N in the table all four arms of Age, Height, Weight and
+  Duration validated as missing N.
+- **What changed.** The pattern accepts "to one of" where it accepted
+  "into". Everything else about the statement - the verb before it,
+  the optional noun after the size, the "every statement for this arm
+  count must agree" rule of `.ppGroupNFor()` - is unchanged.
+- **On the page.** Four arms of 15 (Great toe-PTC, Thumb-PTC, Great
+  toe-TOF, Thumb-TOF) with the sentence as source; sixteen rows.
+- **Tests** (`tests/testthat/test-groups-of-n-patients-each.R`): the
+  helper on the sentence, the "into" form still read, a sentence with
+  neither refused; a rebuilt page with no N in the table gets four arms
+  of 15 (6 expectations fail on the unfixed code). The arm-size and
+  layout tests still pass.
+
+---
+
 ## 93. A figure's axis under the table is not a row, and the rail's short words go with the rail
 
 **Status: fixed on `fix/rail-strip-keeps-column`, 2026-09-25**, a
@@ -228,6 +253,49 @@ the corpus session's batch 23 on Fujii 2003 (PMID 12933396, Table 1
   rows and a heading over bare rows reads four named variables (7
   expectations fail on the unfixed code). The long-layout, canine,
   letter-group and Loadsman layout tests still pass.
+
+---
+
+## 90. The sign set as a digit ("47.357.9"), and a soup word glued to the SD alone ("50.1 k8.0")
+
+**Status: fixed on `feat/digit-fused-sign`, 2026-09-25**, from the
+corpus session's batch 23 on AAS1998_851 (Saitoh, Acta Anaesthesiol
+Scand 1998;42:851): after issue 85 Height read four arms, but Age
+("48.4k7.2 46.9Z7.7 47.357.9 44 50.1 k8.0") and Weight ("56.429.2
+56.7?9.0 57.8Z9.4 66 58.527.8") were still skipped as bare numbers
+with no SD.
+
+- **The defect.** Issue 85 reads a cell word with a LETTER where the
+  sign was, two or more to a line. Three cells on this page set the
+  sign as a digit, and one line splits its last cell into a bare
+  number and a soup word glued to the SD. The digit form is ambiguous
+  on its own ("47.357.9" could split three ways), so no rule read it.
+- **What changed.** A line with two or more sign cells (letter-fused
+  or the plus-minus glyph itself) fixes the precision of its cells:
+  one decimal count for the means, one for the SDs. With that settled,
+  `.ppRepairFusedSigns()` also reads (a) a word of two decimal points
+  as mean, one stray digit, SD - "47.3" "5" "7.9" is the only split at
+  one decimal each side - and (b) a soup word glued to an SD alone
+  ("k8.0") that follows a bare number of the line's mean precision
+  ("50.1"). Neither form is read on a line with fewer than two sign
+  cells; the digit form needs a decimal on each side; where the
+  line's sign cells disagree on precision only the letter form is
+  read. The letter form itself now also counts the line's true glyphs
+  toward its two-cell floor.
+- **On the page.** Age reads 48.4/46.9/47.3/50.1 (SD 7.2/7.7/7.9/8.0)
+  and Weight 56.4/56.7/57.8/58.5 (9.2/9.0/9.4/7.8), n 40/40/40/15,
+  beside Height as before; the volunteers flag still fires.
+- **Tests** (`tests/testthat/test-digit-fused-sign.R`): the helper on
+  the Age and Weight lines, a glyph line with one digit-fused cell, a
+  line with no sign cell (untouched) and a line whose precisions
+  disagree (letters only), with the split words' extents; a rebuilt
+  Saitoh page reads Age, Height and Weight across four arms (11
+  expectations fail on the unfixed code). The sign-repair and layout
+  tests still pass.
+
+---
+
+---
 
 ## 89. Three more ways a paper states its arm sizes, and the power statement that is not one
 

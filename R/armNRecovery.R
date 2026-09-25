@@ -411,7 +411,9 @@
   if (!length(txt)) return(NULL)
   j <- .ppSquish(paste(txt, collapse = " "))
   pat <- paste0("(?i)\\b(divided|allocated|assigned|randomi[sz]ed|separated|",
-                "split)\\b[^.;]{0,60}?\\binto\\s+([a-z0-9-]+)\\s+",
+                # "allocated to one of four groups of 15 patients each" (issue
+                # 94; PMID 9613269): "to one of" as well as "into"
+                "split)\\b[^.;]{0,60}?\\b(?:into|to\\s+one\\s+of)\\s+([a-z0-9-]+)\\s+",
                 "(?:equal\\s+)?groups?\\s+of\\s+([a-z0-9]+)",
                 "(?:\\s+(?:each|animals?|dogs?|rats?|pigs?|rabbits?|",
                 "patients?|subjects?|participants?))?")
