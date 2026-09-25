@@ -262,6 +262,10 @@ app_ui <- function(testNote = NULL)
             "benefit of the doubt (fail-safe, best case; such cells show",
             "orange in the table below, and are left blank where there",
             "are too many readings to count)"), value = TRUE, width = "100%"),
+          # Post-randomisation quantities (issue 74): shown only once a
+          # parsed table prints them; see the durations observers in
+          # app_server.R
+          uiOutput("durationsUi"),
           # The AI assist, bring-your-own-key (ISSUES.md issue 8). A
           # password-type field: the key never appears on screen, never
           # goes in a URL, is never stored or logged, and dies with the

@@ -119,7 +119,8 @@ function() {
 #* @serializer unboxedJSON
 #* @post /parse
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
-function(req, res, file = NULL) {
+#* @param durations:str Optional, on the URL: ?durations=exclude drops the rows a baseline table prints for post-randomisation quantities (durations of surgery and anaesthesia, blood loss, fluids); the default, include, keeps and flags them. Echoed in the reply when sent.
+function(req, res, file = NULL, durations = NULL) {
   # `file = NULL`: a multipart request whose part is not named `file` -
   # `somethingElse`, say - left the argument MISSING, and R raised on it
   # before the empty-part guard below could answer 422, so the caller got
@@ -146,8 +147,15 @@ function(req, res, file = NULL) {
   path <- file.path(work, basename(name))
   writeBin(file[[1]], path)
 
+  # the durations option (issue 74), judged before the document is read
+  dur <- IntegrityAnalysis:::.apiDurationsArg(durations)
+  if (!isTRUE(dur$ok)) {
+    res$status <- 422
+    return(list(ok = FALSE, stage = "request", file = name, reasons = dur$reason,
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL), deleted = TRUE))
+  }
   key <- req$HTTP_X_ANTHROPIC_KEY
-  r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key)
+  r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key, durations = dur$value)
   # a reason from a reader may quote the file's path (the docx zip
   # error does): the server's temp directory is not the caller's business
   r$reasons <- IntegrityAnalysis:::.apiScrubPath(r$reasons, work, name)
@@ -171,7 +179,7 @@ function(req, res, file = NULL) {
                 templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL),
                 deleted = TRUE))
   }
-  list(ok = TRUE, file = name, engine = r$engine,
+  out <- list(ok = TRUE, file = name, engine = r$engine,
        # scrubbed and length-bounded like /analyze's (screen
        # 2026-09-07-1654, F3): a flag quotes lines from the document
        flags = as.list(IntegrityAnalysis:::.apiSafeFlags(r$flags, work, name)),
@@ -183,6 +191,8 @@ function(req, res, file = NULL) {
        skipped = IntegrityAnalysis:::.apiSafeSkipped(r$skipped, work, name),
        templateCsv = IntegrityAnalysis:::.apiTemplateCsv(r$data),
        deleted = TRUE)
+  if (isTRUE(dur$sent)) out$durations <- dur$value   # echoed when sent (issue 74)
+  out
 }
 
 #* Parse (if needed), validate, and run the Monte Carlo
@@ -190,7 +200,8 @@ function(req, res, file = NULL) {
 #* @post /analyze
 #* @param file:file The document: PDF, Word (.docx), JATS XML (.xml), spreadsheet, or a picture of a table (jpg, png, tif).
 #* @param seed:int Optional Monte Carlo seed, 1 to 2147483647, sent as ?seed=N on the URL: the same document, seed and build give the same numbers. Echoed in the reply.
-function(req, res, file = NULL, seed = NULL) {
+#* @param durations:str Optional, on the URL: ?durations=exclude drops the rows a baseline table prints for post-randomisation quantities (durations of surgery and anaesthesia, blood loss, fluids); the default, include, keeps and flags them. Echoed in the reply when sent.
+function(req, res, file = NULL, seed = NULL, durations = NULL) {
   # `file = NULL`: see /parse (security audit 2026-09-10, S4)
   # the seed is judged before the upload is read: a bad one is a 422
   # that costs nothing.
@@ -223,6 +234,14 @@ function(req, res, file = NULL, seed = NULL) {
                   deleted = TRUE))
     }
   }
+  # the durations option (issue 74), judged like the seed, before the
+  # document is read
+  dur <- IntegrityAnalysis:::.apiDurationsArg(durations)
+  if (!isTRUE(dur$ok)) {
+    res$status <- 422
+    return(list(ok = FALSE, stage = "request", file = names(file)[1], reasons = dur$reason,
+                templateCsv = IntegrityAnalysis:::.apiTemplateCsv(NULL), deleted = TRUE))
+  }
   work <- file.path(tempdir(), paste0("api", basename(tempfile(""))))
   dir.create(work)
   on.exit(unlink(work, recursive = TRUE, force = TRUE), add = TRUE)
@@ -243,7 +262,7 @@ function(req, res, file = NULL, seed = NULL) {
   writeBin(file[[1]], path)
 
   key <- req$HTTP_X_ANTHROPIC_KEY
-  r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key)
+  r <- IntegrityAnalysis:::.apiReadUpload(path, name, apiKey = key, durations = dur$value)
   # a reason from a reader may quote the file's path (the docx zip
   # error does): the server's temp directory is not the caller's business
   r$reasons <- IntegrityAnalysis:::.apiScrubPath(r$reasons, work, name)
@@ -310,5 +329,6 @@ function(req, res, file = NULL, seed = NULL) {
   if (length(safeFlags)) out$flags <- as.list(safeFlags)
   # the seed the run used, when one was sent (2026-09-05)
   if (!is.null(seedValue)) out$seed <- seedValue
+  if (isTRUE(dur$sent)) out$durations <- dur$value
   out
 }

@@ -31,6 +31,68 @@
 # text - is the table's own and is never an outcome here; with no block
 # text (the AI-only route, where the model read the page without a
 # deterministic table beside it) the vocabulary alone decides.
+# THE DURATIONS CLASS (2026-09-25, ISSUES.md issue 74; Steve's decision of
+# 2026-09-25). A duration of surgery or of anaesthesia, the blood loss, the
+# fluids given: a baseline table often prints them, and whether they are
+# baseline quantities depends on WHEN randomisation happened. Randomised
+# at induction, they are measured after the intervention and do not
+# belong; randomised after surgery (a postoperative analgesia trial),
+# they precede the intervention like any other baseline variable, with
+# the same statistical standing. That is a trial-by-trial judgement, so
+# they are never refused as outcomes: the `durations` option of
+# parseBaselineTable() keeps them (the default, with a flag that names
+# them) or excludes them (to $skipped, with the reason), the app offers
+# the same choice as a radio button when a table prints them, and the
+# service takes it as ?durations=exclude. The one exception is a
+# duration the model brought in from ANOTHER table (issue 54): with the
+# chosen table's block text at hand, a duration not printed in it is
+# still refused as that table's row, not as an outcome.
+.ppDurationLabel <- function(labels) {
+  re <- paste0("(?i)duration of (the )?(surgery|surgical|operation|operative|procedure|an(a)?esthes|an(a)?esthetic)|",
+               "\\b(surgery|surgical|operation|operative|procedure|an(a)?esthesia|an(a)?esthetic)\\s+(time|duration|length)\\b|",
+               "\\b(length|time) of (the )?(surgery|operation|procedure|an(a)?esthesia)\\b|",
+               "\\bblood loss\\b|\\b(estimated|intra-?operative) (blood )?loss\\b|",
+               "\\b(i-d|u-d|incision.{1,3}delivery|uterine.{1,12}delivery)\\s*interval|",
+               "\\b(intra-?operative|total)?\\s*(fluids?|crystalloids?|colloids?)\\b.*(given|administered|infused|replacement|volume|\\bml\\b)|",
+               "\\bfluid (replacement|therapy|administration)\\b")
+  grepl(re, labels, perl = TRUE)
+}
+
+# Apply the `durations` option to a parsed table: "include" keeps the
+# rows of the durations class and flags them; "exclude" moves them to
+# $skipped with the reason and drops them from $data and $provenance.
+.ppApplyDurations <- function(out, durations = c("include", "exclude"),
+                              say = function(...) invisible(NULL)) {
+  durations <- match.arg(durations)
+  if (is.null(out) || is.null(out$data) || nrow(out$data) == 0) return(out)
+  isDur <- .ppDurationLabel(out$data$ROW)
+  if (!any(isDur)) return(out)
+  labs <- unique(out$data$ROW[isDur])
+  if (durations == "include") {
+    out$flags <- c(out$flags, paste0(
+      length(labs), " variable(s) may be post-randomisation quantities (durations of ",
+      "surgery or anaesthesia, blood loss, fluids): ", paste(labs, collapse = ", "),
+      " - kept; they belong only when randomisation followed them (exclude with ",
+      "durations = \"exclude\", or the app's Exclude durations option)"))
+    return(out)
+  }
+  say("Excluding ", length(labs), " duration variable(s) (durations = \"exclude\"): ",
+      paste(labs, collapse = ", "))
+  out$skipped <- rbind(out$skipped,
+                       data.frame(label = labs,
+                                  reason = paste("excluded by the durations option: a post-randomisation",
+                                                 "quantity (duration of surgery or anaesthesia, blood loss,",
+                                                 "fluids) - include it if randomisation followed it"),
+                                  text = "", stringsAsFactors = FALSE))
+  out$flags <- c(out$flags, paste0(length(labs), " duration variable(s) excluded by the ",
+                                   "durations option (see $skipped): ", paste(labs, collapse = ", ")))
+  out$data <- out$data[!isDur, , drop = FALSE]
+  rownames(out$data) <- NULL
+  if (!is.null(out$provenance))
+    out$provenance <- out$provenance[!out$provenance$ROW %in% labs, , drop = FALSE]
+  out
+}
+
 .ppOutcomeLabel <- function(labels, blockText = NULL) {
   outcomeRe <- paste0("(?i)\\btime to\\b|\\bonset\\b|first analgesic|rescue analges|",
                       "\\bvas\\b|\\bodi\\b|\\b(st|nd|rd|th)\\s+(week|month|day)\\b|",
@@ -38,9 +100,15 @@
                       "bradycardia|hypotension|nausea|vomit|pruritus|shivering|",
                       "satisfaction|complication|adverse|side.?effect|recovery|",
                       "extubation|emergence|success\\b|\\bat\\s+\\d+\\s*(h|min|hours?|minutes?)\\b|",
-                      "duration of (surgery|an(a)?esthesia|operation)|\\binterval\\b|",
                       "ephedrine|phenylephrine|atropine|neostigmine|consumption|\\btotal\\b.*\\bdose\\b")
+  # the durations class (issue 74) is judged with the outcomes only when
+  # the chosen table's block can vouch for a printed row; with no block
+  # (the model-only routes) a duration is never refused - the `durations`
+  # option decides its fate
+  isDur     <- .ppDurationLabel(labels)
   isOutcome <- grepl(outcomeRe, labels, perl = TRUE)
+  if (is.null(blockText) || !length(blockText)) isOutcome <- isOutcome & !isDur
+  else isOutcome <- isOutcome | isDur
   if (any(isOutcome) && !is.null(blockText) && length(blockText)) {
     blk <- tolower(.ppSquish(blockText))
     inBlock <- vapply(labels, function(lb) {
@@ -359,6 +427,14 @@ reviewFlags <- function(x) {
 #' @param tatrXml Path to the Table Transformer XML for this PDF (a
 #'   `*.tatr.xml` written by `python/tatr/tatrTables.py`), or a directory
 #'   holding `<stem>.tatr.xml`. When `NULL`, the model is run if available.
+#' @param durations `"include"` (the default) keeps the rows a baseline
+#'   table prints for post-randomisation quantities - durations of surgery
+#'   and of anaesthesia, blood loss, fluids given - and flags them;
+#'   `"exclude"` moves them to `$skipped` with the reason. Whether they
+#'   belong is a trial-by-trial judgement: randomised at induction they are
+#'   measured after the intervention; randomised after surgery (a
+#'   postoperative analgesia trial) they precede it like any other baseline
+#'   variable. The app offers the same choice when a table prints them.
 #'
 #' @return An object of class `ParsePDFTable`. `$engine` is `"heuristic"`,
 #'   `"ai"`, or `"hybrid"`; `$provenance` records the engine per row; and
@@ -379,6 +455,37 @@ reviewFlags <- function(x) {
 #' }
 #' @export
 parseBaselineTable <- function(pdfFile,
+                               trial         = tools::file_path_sans_ext(basename(pdfFile)),
+                               pages         = NULL,
+                               ai            = c("fallback", "never", "always"),
+                               prose         = TRUE,
+                               parenIsSD     = c("auto", "sd", "percent"),
+                               roundObsDelta = 1,
+                               pctApprox     = FALSE,
+                               model         = .ppDefaultModel,
+                               effort        = "medium",
+                               maxTokens     = 16000L,
+                               apiKey        = NULL,
+                               tatr          = c("auto", "never", "always"),
+                               tatrXml       = NULL,
+                               quiet         = FALSE,
+                               durations     = c("include", "exclude"))
+{
+  # The routes live in .ppParseBaselineTableCore(); the `durations` option
+  # (issue 74) is applied to whatever route produced the table, so the
+  # deterministic, hybrid and model-only readings of one document agree
+  # on which rows the screen counts.
+  durations <- match.arg(durations)
+  out <- .ppParseBaselineTableCore(pdfFile, trial = trial, pages = pages, ai = ai,
+                                   prose = prose, parenIsSD = parenIsSD,
+                                   roundObsDelta = roundObsDelta, pctApprox = pctApprox,
+                                   model = model, effort = effort, maxTokens = maxTokens,
+                                   apiKey = apiKey, tatr = tatr, tatrXml = tatrXml,
+                                   quiet = quiet)
+  .ppApplyDurations(out, durations, function(...) if (!quiet) message(...))
+}
+
+.ppParseBaselineTableCore <- function(pdfFile,
                                trial         = tools::file_path_sans_ext(basename(pdfFile)),
                                pages         = NULL,
                                ai            = c("fallback", "never", "always"),

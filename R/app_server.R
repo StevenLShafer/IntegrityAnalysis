@@ -280,6 +280,67 @@ app_server <- function(input, output, session) {
   # the trial (used for the N column when arm sizes were recovered).
   parseDerived <- reactiveVal(NULL)
 
+  # POST-RANDOMISATION QUANTITIES (2026-09-25, ISSUES.md issue 74; Steve's
+  # decision of 2026-09-25). A baseline table often prints durations of
+  # surgery and of anaesthesia, blood loss, fluids: measured after the
+  # intervention when the trial randomised at induction, before it when
+  # it randomised after surgery. The author's word is taken by default -
+  # the rows stay in - but the reader is told: when a parsed table prints
+  # them, a radio button appears with "Include durations" (the default,
+  # or ?durations=exclude on the page's address to start the other way)
+  # and "Exclude durations". Excluding blanks those rows' values in the
+  # grid, leaving their names as the parser's skipped lines are left, so
+  # nothing disappears silently; including restores the values. For a
+  # corpus the recommended route is two passes: parse to a spreadsheet,
+  # delete the post-baseline rows by hand, upload the edited spreadsheet.
+  durationsFound <- reactiveVal(FALSE)
+  durationsStash <- reactiveVal(NULL)    # the values blanked by "Exclude durations"
+  durationsMode <- reactive({
+    if (!is.null(input$durations)) return(input$durations)
+    qs <- tryCatch(shiny::parseQueryString(session$clientData$url_search),
+                   error = function(e) list())
+    q <- .iaQueryDurations(qs)
+    if (is.null(q)) "include" else q
+  })
+  output$durationsUi <- renderUI({
+    if (!isTRUE(durationsFound())) return(NULL)
+    radioButtons("durations",
+                 paste("A parsed table prints post-randomisation quantities (durations of",
+                       "surgery or anaesthesia, blood loss, fluids). They belong only when",
+                       "randomisation followed them - a judgement for each trial:"),
+                 choices = c("Include durations" = "include", "Exclude durations" = "exclude"),
+                 selected = isolate(durationsMode()), inline = TRUE, width = "100%")
+  })
+  observeEvent(input$durations, ignoreInit = TRUE, {
+    d <- reactiveData()
+    if (is.null(d) || !nrow(d)) return()
+    valueCols <- setdiff(names(d), c("TRIAL", "ROW"))
+    if (identical(input$durations, "exclude")) {
+      isDur <- .ppDurationLabel(d$ROW) & rowSums(!is.na(d[, valueCols, drop = FALSE])) > 0
+      if (!any(isDur)) return()
+      durationsStash(d[isDur, , drop = FALSE])
+      d[isDur, valueCols] <- NA
+      reactiveData(d)
+      outputComments(paste0("Exclude durations: ", sum(isDur), " row(s) blanked - ",
+                            paste(unique(d$ROW[isDur]), collapse = ", "),
+                            ". Their names stay in the table; choose Include durations to restore the values."))
+    } else {
+      st <- durationsStash()
+      if (is.null(st) || !nrow(st)) return()
+      key  <- paste(d$TRIAL, d$ROW)
+      skey <- paste(st$TRIAL, st$ROW)
+      # restore each stashed row into the first still-blank row of the
+      # same trial and name (rows come back in the order they were taken)
+      for (k in seq_len(nrow(st))) {
+        j <- which(key == skey[k] & rowSums(!is.na(d[, valueCols, drop = FALSE])) == 0)
+        if (length(j)) d[j[1], valueCols] <- st[k, valueCols]
+      }
+      durationsStash(NULL)
+      reactiveData(d)
+      outputComments(paste0("Include durations: ", nrow(st), " row(s) restored."))
+    }
+  })
+
   # The legend IS the error report (Steve's direction, 2026-08-19): no
   # explanatory text prints below the table, so each color carries its
   # explanation here, and every colored cell explains itself on hover.
@@ -1102,7 +1163,8 @@ app_server <- function(input, output, session) {
             ai = if (aiThis) "fallback" else "never",
             timeout = if (aiThis) 300 else 60,
             quiet = TRUE, pctApprox = isTRUE(input$pctApprox),
-            apiKey = if (nzchar(aiKey)) aiKey else NULL)
+            apiKey = if (nzchar(aiKey)) aiKey else NULL,
+            durations = isolate(durationsMode()))     # issue 74
           eng <- resList[[k]]$engine[1]
           if (!is.na(eng) && eng %in% c("hybrid", "ai", "ai-prose"))
             aiFilesUsed <<- aiFilesUsed + 1L
@@ -1156,6 +1218,15 @@ app_server <- function(input, output, session) {
             " variable(s), ", res$continuous[k], " with mean and SD."))
           d <- r$data
           d$TRIAL <- files$stem[i]   # opaque temp name -> the user's name
+          # the table prints post-randomisation quantities: say so, and
+          # show the Include/Exclude durations choice (issue 74)
+          durFlag <- grep("post-randomisation quantities|duration variable\\(s\\) excluded",
+                          r$flags, value = TRUE)
+          if (length(durFlag)) {
+            durationsFound(TRUE)
+            outputComments(paste0(files$name[i], ": ", durFlag[1],
+                                  ". The Include/Exclude durations choice above the table applies to them."))
+          }
           # Table lines the parser could not use become GRID ROWS - the
           # label in ROW, everything else empty - instead of log text
           # (Steve's direction, 2026-08-19). Their ROW cells paint red

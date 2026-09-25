@@ -777,6 +777,19 @@ m <- 100000
   if (!length(i)) NULL else qs[[i[1]]]
 }
 
+# The durations option as the page's address spells it (issue 74; Steve,
+# 2026-09-25): ?durations=exclude, in any case, drops the rows a baseline
+# table prints for post-randomisation quantities; ?durations=include (the
+# default) keeps and flags them. Anything else is ignored, as an unknown
+# key would be. Returns "include", "exclude" or NULL.
+.iaQueryDurations <- function(qs) {
+  if (is.null(qs) || !length(qs) || is.null(names(qs))) return(NULL)
+  i <- which(tolower(trimws(names(qs))) == "durations")
+  if (!length(i)) return(NULL)
+  v <- tolower(trimws(as.character(qs[[i[1]]])))
+  if (v %in% c("include", "exclude")) v else NULL
+}
+
 # After normalizing, two source columns can collapse onto one name (a
 # frame carrying both NUMBER and N ends with two called N). R's $ and
 # [[ ]] silently take the FIRST, so the reader and the writer can
