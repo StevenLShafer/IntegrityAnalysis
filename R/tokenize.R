@@ -39,7 +39,17 @@
 .ppTokenRegex <- local({
   NUM <- .ppNUM
   paste0(
-    "(?<![A-Za-z0-9_.])(?:",
+    # A HYPHENATED CODE IS ONE WORD (2026-09-25, ISSUES.md issue 104; Kilic
+    # 2023, Cukurova Med J, the corpus session's batch 25 AD1): the spinal
+    # levels "L2-3", "L3-4", "L4-5" head three rows of counts, and the "3"
+    # after the hyphen started a token - the first guard looks only at the
+    # character before the digit, and that is the hyphen. The label was
+    # cut to "L2", the "3" fed a phantom arm column at the label's x, and
+    # "L2-3 12(57.1) 12(57.1)" read as a continuous row. A digit run whose
+    # hyphen (or dash) follows a letter or digit is part of that word. A
+    # range in a cell ("31-57") is untouched: the interval alternative
+    # takes it whole from its first number.
+    "(?<![A-Za-z0-9_.])(?<![A-Za-z0-9][-\u2013\u2212])(?:",
     # the BULLET (U+2022) is what a scanned CJA page's plus-minus becomes
     # in its OCR text layer ("56.7 \u2022 6.9", CJA 1995 and 1997, ISSUES.md
     # issue 45); a bullet between two numbers means nothing else
