@@ -18,12 +18,15 @@ pairedPdf <- function(file = file.path(tempdir(), "pairedColumns.pdf")) {
     list(list(x = 225, y = 80, text = "Saline", adj = 0.5), list(x = 425, y = 80, text = "Milrinone", adj = 0.5)),
     list(list(x = vx[1], y = 96, text = "Before a", adj = 0.5), list(x = vx[2], y = 96, text = "After b", adj = 0.5),
          list(x = vx[3], y = 96, text = "Before a", adj = 0.5), list(x = vx[4], y = 96, text = "After b", adj = 0.5)),
+    rowCells(106, "", c("(n = 9)", "(n = 9)", "(n = 9)", "(n = 9)"), vx, labelX = 53),
     rowCells(114, "SBP (mmHg)", c("144 \u00b1 28", "142 \u00b1 28", "141 \u00b1 29", "140 \u00b1 30"), vx, labelX = 53),
     rowCells(132, "MBP (mmHg)", c("117 \u00b1 20", "116 \u00b1 20", "116 \u00b1 21", "113 \u00b1 22"), vx, labelX = 53),
     rowCells(150, "HR (bpm)", c("119 \u00b1 31", "120 \u00b1 33", "111 \u00b1 28", "116 \u00b1 29"), vx, labelX = 53),
     rowCells(168, "CO (L/min)", c("1.65 \u00b1 0.54", "1.41 \u00b1 0.40", "1.35 \u00b1 0.29", "1.83 \u00b1 0.47"), vx, labelX = 53),
-    list(list(x = 53, y = 196, text = "Values are mean \u00b1 SD. Nine dogs were studied in each group.", adj = 0)),
-    list(list(x = 53, y = 40, text = "The dogs were divided into two groups of nine each.", adj = 0)),
+    list(list(x = 53, y = 186, text = "Milrinone dose (ug/kg/min)", adj = 0),
+         list(x = vx[2], y = 186, text = "0.5 \u00b1 0.0", adj = 0.5), list(x = vx[4], y = 186, text = "0.5 \u00b1 0.0", adj = 0.5)),
+    list(list(x = 53, y = 206, text = "Values are mean \u00b1 SD.", adj = 0)),
+    list(list(x = 53, y = 40, text = "Hemodynamic variables were recorded before and after treatment.", adj = 0)),
     # body text across the page, as on a real page, so that no gutter splits the table into columns
     list(list(x = 53, y = 230, text = "Hemodynamic variables did not differ between the groups before treatment, and milrinone increased", adj = 0)),
     list(list(x = 53, y = 242, text = "cardiac output and decreased systemic vascular resistance after treatment in every animal studied.", adj = 0)))
@@ -41,6 +44,11 @@ test_that("two groups over before/after pairs read as two arms from the before c
   expect_identical(cont$MEAN[cont$ROW == "SBP"], c(144, 141))
   expect_identical(cont$MEAN[grepl("^CO", cont$ROW)], c(1.65, 1.35))
   expect_false(any(grepl("After|Before", c(r$arms$arm, cont$ROW))))
+  # the arm N comes from the "(n = 9)" row beneath the pair line, and the row
+  # whose only cells sat under the After columns is reported, not dropped
+  expect_true(any(grepl("Milrinone dose", r$skipped$label)))
+  expect_true(any(grepl("after-treatment", r$skipped$reason)))
+  expect_false(any(grepl("Milrinone dose", cont$ROW)))
 })
 
 test_that("a plain four-arm header is untouched by the pair rule", {

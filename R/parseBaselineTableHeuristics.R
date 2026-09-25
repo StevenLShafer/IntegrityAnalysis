@@ -716,10 +716,11 @@
   # are matched to the pair line's words by position, not by column
   # index: wide cells such as "5921 +/- 1603" can split the gap rule's
   # columns before the header count settles them.
+  pairLine <- NA_integer_; pairOnlyRows <- list()
   if (cols$n >= 2L) {
     firstWord <- "(?i)^(before|baseline|pre|pre-?op(erative)?|pre-?treatment|basal|initial|control|0\\s*min|t0)$"
     laterWord <- "(?i)^(after|post|post-?op(erative)?|post-?treatment|\\d+\\s*(min|h|hr|hours?|days?|wk|weeks?)|t\\d+|end|final|recovery)$"
-    pairLine <- NA_integer_; pairWords <- NULL
+    pairWords <- NULL
     for (h in which(kind %in% c("header", "label"))) {
       if (h <= capIdx || h >= firstData) next
       L <- lines[[h]]
@@ -749,6 +750,16 @@
         gone <- t[nearestLater(t$mid), , drop = FALSE]
         if (nrow(gone) == 0) next
         L <- lines[[i]]
+        # a row whose every cell sits under an "after" word has no baseline
+        # value; it is reported among the skipped lines, not silently dropped
+        # (CodeRabbit on PR #419)
+        if (nrow(gone) == nrow(t)) {
+          lbl <- .ppSquish(substr(paste(L$text, collapse = " "), 1, min(t$start) - 1))
+          pairOnlyRows[[length(pairOnlyRows) + 1L]] <- data.frame(
+            label = .ppCleanLabel(lbl), text = lineTexts[i],
+            reason = "values only in the after-treatment columns - no baseline value; enter by hand if the page has one",
+            stringsAsFactors = FALSE)
+        }
         wMid <- L$x + L$width / 2
         inGone <- vapply(wMid, function(m) any(m >= gone$x0 - 1 & m <= gone$x1 + 1), logical(1))
         L <- L[!inGone, , drop = FALSE]
@@ -825,8 +836,16 @@
     nameRow <- headerAt[1] - 1L
     keepNameRow <- nameRow %in% headerIdx &&
       nrow(lines[[nameRow]]) <= cols$n * 3 + 2
+    # the group-name row above a paired timepoint line (issue 111) stays a
+    # header line too: with the pair line gone, an "(n = k)" row beneath it
+    # is the first header and the names two rows above would be filtered
+    # out, leaving the arms nameless (CodeRabbit on PR #419)
+    pairNameRow <- if (!is.na(pairLine)) pairLine - 1L else NA_integer_
+    keepPairNameRow <- !is.na(pairNameRow) && pairNameRow %in% headerIdx &&
+      nrow(lines[[pairNameRow]]) <= cols$n * 3 + 2
     headerIdx <- headerIdx[headerIdx >= headerAt[1] |
-                             (keepNameRow & headerIdx == nameRow)]
+                             (keepNameRow & headerIdx == nameRow) |
+                             (keepPairNameRow & headerIdx == pairNameRow)]
   }
   # The same fence for EVERY label line that would name the arms (issue
   # 46): with no "(n = k)" header on the page at all, the footnote
@@ -1168,6 +1187,8 @@
   # ---- Walk the data lines and build output rows --------------------------
   outRows      <- list()
   skipped      <- list()
+  for (por in pairOnlyRows) skipped[[length(skipped) + 1L]] <-
+    data.frame(label = por$label, reason = por$reason, text = por$text, stringsAsFactors = FALSE)
   catHeader    <- NA_character_
   catHeaderPct <- FALSE        # did the category header announce percentages?
   catHeaderNPct <- FALSE       # ... or "N (%)" cells (counts with percents)?
