@@ -253,8 +253,26 @@
       }
       next
     }
-    nDataSeen <- nDataSeen + 1L
     t <- tokensByLine[[i]]
+    # A HEADING WITH A STRAY DIGIT (2026-09-25, ISSUES.md issue 106; the
+    # corpus session's batch 25 AD7, PMIDs 10589648, 11004073, 11573601):
+    # "Pdi (cm H2O)" prints its subscript as a word of its own, "CO
+    # (L/min-1)" its superscript as "21", so the heading line carries a
+    # bare number, the classifier calls it data, and the rows beneath it
+    # take the heading ABOVE - "PAOP (mm Hg) 2" for the cardiac output
+    # rows, "Haemodynamics: 20 Hz stimulation" for Pdi's. A data line
+    # whose every token is a bare integer, none of them a value under the
+    # Baseline column, with letters among its words, is a heading; the
+    # bare numbers are dropped from its text.
+    if (!is.null(t) && nrow(t) > 0 && all(t$type == "plain") &&
+        all(!is.na(t$num1) & t$num1 == round(t$num1)) &&
+        !any(abs(t$mid - xBase) <= tol) &&
+        any(grepl("[A-Za-z]", lines[[i]]$text))) {
+      w  <- lines[[i]]$text
+      ht <- .ppSquish(paste(w[!grepl("^[0-9]+$", w)], collapse = " "))
+      if (nzchar(ht) && length(strsplit(ht, " ", fixed = TRUE)[[1]]) <= 5L) { heading <- ht; next }
+    }
+    nDataSeen <- nDataSeen + 1L
     if (is.null(t) || nrow(t) == 0) next
     g <- which(t$type == "plain" & !is.na(t$num1) & t$num1 == round(t$num1) &
                  t$num1 >= 1 & t$num1 <= 12 & abs(t$mid - xGroup) <= tol)

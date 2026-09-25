@@ -2810,8 +2810,14 @@ parseBaselineTableHeuristics <- function(pdfFile,
     # A table whose caption announces baseline data beats any table whose
     # caption does not, however large the latter is. Only within one class
     # does the parse score decide.
+    # ON EQUAL SCORES THE LOWER TABLE NUMBER WINS (2026-09-25, issue 102;
+    # PMID 11226115): Table 1 "Hemodynamic Data and Changes" and Table 2
+    # "Changes in Pdi ..." parse to the same score, and the first table is
+    # the one a trial's baseline data conventionally occupy. Before this
+    # the earlier candidate in caption-score order kept the tie.
     better <- if (strongOrdered[i] != bestStrong) strongOrdered[i] else
-      sc > bestScore
+      sc > bestScore || (sc == bestScore && !is.null(bestCand) &&
+                           .ppTableNumber(cc$caption) < .ppTableNumber(bestCand$caption))
     if (better) {
       bestScore  <- sc; best <- res; bestCand <- cc
       bestStrong <- strongOrdered[i]
