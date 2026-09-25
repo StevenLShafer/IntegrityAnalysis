@@ -242,6 +242,11 @@ wrong entry would corrupt numbers invisibly.
 - **A stratum's name is at the row-label margin** (2026-09-25, issue 73): a labelled "(n = k)"
   line whose name begins inside an arm column is a wrapped arm name's second line, not a stratum.
 
+- **Letter groups and a "Pre-<word>" column in the long layout** (2026-09-25, issue 76): the
+  repeated-measures reader takes "C"/"N" (or a roman numeral) under Group as the group label,
+  "Pre-fatigue" as the baseline column, names the arms from the legend "C = control", and takes a
+  group's size from "(Group C, n = 10)" in the text.
+
 ### 05 — Parsing one block
 
 Within a candidate block: words cluster into lines by `y`; each line is tokenized into numeric
