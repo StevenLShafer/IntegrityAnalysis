@@ -132,32 +132,6 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
-## 81. A level row in the editors' view carries its variable
-
-**Status: implemented on `feat/editors-view-level-names`, 2026-09-25**, to
-Steve's direction of 2026-09-25.
-
-- **The gap.** The editors' view (the journal-style table the app
-  downloads and the API returns as `journalTables`) printed a category's
-  levels as indented rows under a "Sex, n" heading: "    MALE", "
-  FEMALE". The grid's level columns are shared across variables, and
-  once the indent is lost to a spreadsheet or a CSV a sheet reading
-  "MALE, FEMALE, 1, 2, 3, 1, 2, 6, 7" does not say that 1-3 are ASA
-  classes and 1, 2, 6, 7 are pain categories.
-- **What changed.** `buildBaselineTables()` names each level row for
-  its variable - "Sex: MALE", "ASA: 1", "Pain score: 6" - under the
-  heading as before; a column already named for its variable is not
-  prefixed twice. The wide reader, which reads the editors' view back
-  into the template, gives the bare level back under its heading, so
-  the round trip returns the column MALE, not a new column "SEX: MALE".
-- **Tests** (`tests/testthat/test-baseline-view.R`): the level rows carry
-  the variable and no indented row remains; levels shared between ASA
-  and a pain score read unambiguously. The editors'-view and stacked
-  Baseline Tables round-trip tests of `test-wide-table.R` pass with the
-  named rows.
-
----
-
 ## 82. The announced "mean + SD" rule's two-cell floor counts the cells already read
 
 **Status: fixed on `fix/plus-rule-counts-read-cells`, 2026-09-25**, from
@@ -183,6 +157,32 @@ the corpus session's batch 19 finding Y4 (Saitoh, Can J Anaesth
   arm of Age (fails on the unfixed code); a lone "5 + 2" on a line with no
   cell, off the sign columns, is still refused under an announced "mean +
   SD". The issue 45, 65, 70 and 77 tests still pass.
+
+---
+
+## 81. A level row in the editors' view carries its variable
+
+**Status: implemented on `feat/editors-view-level-names`, 2026-09-25**, to
+Steve's direction of 2026-09-25.
+
+- **The gap.** The editors' view (the journal-style table the app
+  downloads and the API returns as `journalTables`) printed a category's
+  levels as indented rows under a "Sex, n" heading: "    MALE", "
+  FEMALE". The grid's level columns are shared across variables, and
+  once the indent is lost to a spreadsheet or a CSV a sheet reading
+  "MALE, FEMALE, 1, 2, 3, 1, 2, 6, 7" does not say that 1-3 are ASA
+  classes and 1, 2, 6, 7 are pain categories.
+- **What changed.** `buildBaselineTables()` names each level row for
+  its variable - "Sex: MALE", "ASA: 1", "Pain score: 6" - under the
+  heading as before; a column already named for its variable is not
+  prefixed twice. The wide reader, which reads the editors' view back
+  into the template, gives the bare level back under its heading, so
+  the round trip returns the column MALE, not a new column "SEX: MALE".
+- **Tests** (`tests/testthat/test-baseline-view.R`): the level rows carry
+  the variable and no indented row remains; levels shared between ASA
+  and a pain score read unambiguously. The editors'-view and stacked
+  Baseline Tables round-trip tests of `test-wide-table.R` pass with the
+  named rows.
 
 ---
 
