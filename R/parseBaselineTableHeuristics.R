@@ -1684,7 +1684,19 @@
           if (t$num1 > 0) nz <- nz + 1L
         }
         need <- if (is.finite(minDec) && minDec >= 1) 2L else 3L
-        length(unique(sig)) >= need && nz >= 1L
+        # IDENTICAL CELLS UNDER A CATEGORY HEADING (2026-09-25, ISSUES.md
+        # issue 105; Kilic 2023, Cukurova Med J, the corpus session's batch
+        # 25 AD1): "L2-3 12(57.1) 12(57.1)" under "Surgical Level" - the
+        # same count and percentage in both arms of 21. The distinct
+        # signatures the rule wants guard against a coincidence in one arm
+        # being echoed by chance in another; two arms printing the same
+        # cell is one signature, and the row read as mean 12, SD 57.1. Under
+        # a category heading - the levels of one variable, whose siblings
+        # on the page are n (%) rows - every arm's cell checking as n / N
+        # is evidence enough, identical or not: the cells are counted, not
+        # the distinct signatures. Elsewhere the rule stands.
+        nSig <- if (!is.na(catHeader)) length(sig) else length(unique(sig))
+        nSig >= need && nz >= 1L
       })
       decision <-
         if (parenIsSD == "sd") "sd"
