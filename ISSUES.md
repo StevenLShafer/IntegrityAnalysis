@@ -132,6 +132,39 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 67. A legend that names a letter as the plus-minus ("Values are means F SD") makes that letter the sign
+
+**Status: fixed on `feat/announced-letter-glyph`, 2026-09-25**, from the
+corpus session's batch 13 finding R1 (Fujii 2006, PMID 17126782).
+
+- **The defect.** The Symbol-font plus-minus is mapped to "F" throughout
+  Table 1 - "Age (y) 30 F 4 31 F 5 32 F 5 31 F 4" - and the legend reads
+  "Values are means F SD or numbers." The deterministic engine read two
+  variables and one arm, so the stratum lines of issue 55 ("Young
+  patients (n = 80)", "Elderly patients (n = 80)") had no rows to prefix,
+  and the trial's reading was the model's alone: a different shape on each
+  run (32 prefixed rows and p 0.003 on one build, eight arms and p 0.9999
+  on the next - the pooled-strata value). The corpus session's guess, that
+  issue 63's "[ranges]" rule stripped the stratum line's "[n = 60]", was
+  not it: that rule removes "[ranges]"/"[range]"/"[min-max]" only, and the
+  deterministic reading is identical on d40fbbb, e4660eb, d024752 and
+  8e8fbd5.
+- **What changed.** The announcement scan of `.ppRepairPlusMinusGlyphs()`
+  (issue 65) accepts "means" as "mean", and a single letter as the
+  announced glyph; the letter between two numbers is then the sign, two
+  or more to a line as the other announced notations require. A letter is
+  never a sign unannounced, and only the announced letter is one. The
+  digit case ("mean 6 sd") stays with the block walker's digitSD rule.
+- **On the page.** 10 variables x 4 arms of 20, nothing skipped, every
+  row prefixed by its stratum - deterministic, no model needed.
+- **Tests** (`tests/testthat/test-announced-letter-glyph.R`): the helper
+  on hand-built lines (announced letter repaired, unannounced left, "means
+  and SD" names no glyph, another letter is not the sign); a rebuilt page
+  reads its three continuous variables and validates. Both fail on the
+  unfixed code.
+
+---
+
 ## 65. A scanned page's plus-minus soup is repaired by the column where the other rows set the sign
 
 **Status: fixed on `feat/ocr-plusminus-slots`, 2026-09-25**, from the corpus
