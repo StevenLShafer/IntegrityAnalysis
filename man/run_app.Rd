@@ -4,7 +4,7 @@
 \alias{run_app}
 \title{Launch the Integrity Analysis Shiny app}
 \usage{
-run_app(testNote = NULL, countUsage = is.null(testNote), seed = NULL)
+run_app(testNote = NULL, countUsage = is.null(testNote))
 }
 \arguments{
 \item{testNote}{optional single string shown as a prominent banner under
