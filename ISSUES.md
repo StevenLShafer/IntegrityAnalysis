@@ -132,6 +132,58 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 158. A sign never follows a sign
+
+**Status: fixed on `fix/symbol-font-sign-beside-an-equal-sd`, 2026-09-27**,
+from the corpus session's batch 32 AM3 (A&A 1999, PMID 10439770; two arms
+of 60) - a regression that issue 148 exposed.
+
+- **The defect.** The symbol font gives the plus-minus as a "6", announced
+  as such in the footnote ("Values are mean 6 SD"), and the Height row
+  reads "155 6 6 154 6 5": the sign, then an SD that is also 6. Both
+  words are the announced glyph between two numbers, and on a line with
+  two or more such words the announced rule takes every one of them, so
+  the SD became a second sign and the Granisetron Height cell was lost.
+  Before issue 148 admitted the table (its "(n 5 60)" header) the loss was
+  invisible.
+- **What changed.** In the slot repair, where a hit follows a hit the
+  second is the number: two adjacent words cannot both be the sign.
+- **On the page.** Height 155 +/- 6 / 154 +/- 5 in both arms; 14 cells.
+- **Tests** (`tests/testthat/test-announced-soup-marks-slots.R`,
+  extended): the paper's Age, Height and Weight rows under "Values are
+  mean 6 SD" - Height keeps both cells (1 of 2 expectations fails on the
+  unfixed code). The announced-soup, slot
+  and Loadsman layout tests still pass.
+
+---
+
+## 157. The arm columns sign neither a Range row nor a mean (SD) block
+
+**Status: fixed on `fix/range-row-is-never-signed`, 2026-09-27**, from the
+corpus session's batch 32 AM2 (Clin Ther 2003, PMID 12749510; two arms of
+60) - a regression of issue 152.
+
+- **The defect.** A mean (SD) table - "Age, y 44 (9) 45 (8)" - has no
+  sign glyph either, so issue 152's arm columns were read; its "Range
+  23-63 21-65" sub-rows lose their dashes in the text layer, and "Range 21
+  65" - two numbers a dozen points apart at an arm's centre - was signed
+  into a cell of 21 +/- 65 and scored (p 0.214 on two false rows).
+- **What changed.** Two guards in the slot repair: the arm columns are
+  read only when no row of the block carries an "a (b)" cell (a block
+  that prints its dispersions in brackets prints none after a lost sign),
+  and a row whose label says it is a range - "Range", "min-max", "IQR" -
+  is never signed against them.
+- **On the page.** The two Range rows are skipped as ranges; Age, Weight
+  and both durations as before (Height's "(I I)" SDs are issue 149's
+  class under a Mean (SD) label the page does not print).
+- **Tests** (`tests/testthat/test-arm-columns-as-slots.R`, extended): a
+  mean (SD) block with a Range row is left alone entirely; a bare-pair
+  block signs its Age row and leaves its Range row (3 expectations fail on
+  the unfixed code). The slot,
+  size-sign and Loadsman layout tests still pass.
+
+---
+
 ## 156. A heading that carries the count notation may run longer
 
 **Status: fixed on `fix/level-under-a-count-heading-is-a-count`,

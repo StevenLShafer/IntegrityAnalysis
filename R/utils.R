@@ -1520,8 +1520,21 @@
   # centres serve rule (b) as its slots - and nothing else: no letter or
   # soup is read as a sign against them, only two numbers straddling the
   # arm's centre with the usual gap.
+  # ... AND ONLY IN A BLOCK WHOSE CELLS ARE BARE PAIRS (2026-09-27, ISSUES.md
+  # issue 157; Clin Ther 2003, PMID 12749510, the corpus session's batch
+  # 32 AM2). A mean (SD) table - "Age, y 44 (9) 45 (8)" - has no sign
+  # glyph either, and its "Range 23-63 21-65" sub-rows lose their dashes
+  # in the text layer: "Range 21 65" is two numbers a dozen points apart,
+  # and the arm columns signed it into a cell of 21 +/- 65 that was then
+  # scored. A block that prints its dispersions in brackets does not
+  # print them after a lost sign: when any row of the block carries an
+  # "a (b)" cell, the arm columns are not read.
   armSlots <- numeric(0)
-  if (nTrue == 0L && length(slots) == 0L) {
+  hasParenCell <- any(vapply(idx, function(i) {
+    s <- lines[[i]]$text
+    any(isNum(s[-length(s)]) & grepl("^\\([0-9]+(?:[.,][0-9]+)?\\)[*a-z]?$", s[-1L], perl = TRUE))
+  }, logical(1)))
+  if (nTrue == 0L && length(slots) == 0L && !hasParenCell) {
     sizeGrp <- "\\(\\s*[Nn]\\.?\\s*[=:~]?\\s*[0-9]{1,4}\\s*\\)"
     for (i in idx) {
       L <- lines[[i]]; s <- L$text
@@ -1636,6 +1649,18 @@
     # with the sign itself, or at any slot under an announced soup (issue 77)
     atStrong <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
     hit <- hit | (s == "+" & prevNum & nextNum & (atStrong | (announced & atSlot)))
+    # A SIGN NEVER FOLLOWS A SIGN (2026-09-27, ISSUES.md issue 158; A&A 1999,
+    # PMID 10439770, the corpus session's batch 32 AM3; two arms of 60). The
+    # symbol font gives the plus-minus as a "6", announced as such in the
+    # footnote ("Values are mean 6 SD"), and the Height row reads "155 6 6
+    # 154 6 5": the sign, then an SD that is also 6. Both words are the
+    # announced glyph between two numbers, and the announced rule takes
+    # every such word on a line with two or more of them - so the SD
+    # became a second sign and the first cell was lost. Two adjacent
+    # words cannot both be the sign: where a hit follows a hit, the second
+    # is the number.
+    adjacentHit <- hit & c(FALSE, hit[-length(hit)])
+    hit[adjacentHit] <- FALSE
     # (b) the sign dropped entirely: two numbers straddling such a slot with
     # a gap of 4 to 20 points between them (issue 77)
     back   <- if (announced) slots else if (length(strong)) strong else armSlots   # the arm columns when no glyph exists (issue 152)
@@ -1647,6 +1672,11 @@
       firstNum <- which(isNum(s))[1]
       labelTxt <- if (!is.na(firstNum) && firstNum > 1L) paste(s[seq_len(firstNum - 1L)], collapse = " ") else ""
       if (grepl("(?i)\\(\\s*n\\s*\\)|\\bno\\.?\\b|n\\s*\\(\\s*%\\s*\\)|%|/", labelTxt, perl = TRUE)) usingArm <- FALSE
+      # ... nor a row whose label IS a range's - "Range", "min-max", "IQR" at
+      # its start - whose two numbers are a range's ends with the dash lost
+      # (issue 157); "Age (years) (range) 8.4 3.2 (2-12)" keeps its mean
+      # and SD, the range word being an annotation of the label
+      if (grepl("(?i)^\\s*(ranges?\\b|min-?max|IQR\\b|interquartile)", labelTxt, perl = TRUE)) usingArm <- FALSE
     }
     if (!announced && !length(strong) && !usingArm) back <- numeric(0)
     xEnd   <- L$x + L$width
