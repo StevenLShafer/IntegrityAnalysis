@@ -34,14 +34,15 @@ raisedCellPdf <- function(file = file.path(tempdir(), "raisedCell.pdf")) {
   vx <- c(220, 291, 362)
   cells <- c(
     list(list(x = 77, y = 60, text = "Table 1. Demographic data", adj = 0)),
-    rowCells(80, "", c("Group I (n = 16)", "Group II (n = 18)", "Group III (n = 17)"), vx, labelX = 77),
+    rowCells(80, "", c("Group A", "Group B", "Group C"), vx + 12, labelX = 77),
+    rowCells(92, "", c("(n = 16)", "(n = 18)", "(n = 17)"), vx + 12, labelX = 77),
     rowCells(100, "Age (years)", c(paste("35.2", pm, "8.1"), paste("33.9", pm, "7.4"), paste("34.6", pm, "9.0")), vx, labelX = 77),
     rowCells(118, "Weight (kg)", c(paste("70.1", pm, "9.2"), paste("68.4", pm, "8.8"), paste("71.0", pm, "10.1")), vx, labelX = 77),
     # the middle cell five points higher than its row
     list(list(x = 77, y = 136, text = "Duration of anaesthesia (min)", adj = 0),
-         list(x = vx[1], y = 136, text = paste("90.68", pm, "33.80"), adj = 0),
-         list(x = vx[2], y = 131, text = paste("84.94", pm, "26.71"), adj = 0),
-         list(x = vx[3], y = 136, text = paste("90.05", pm, "23.94"), adj = 0)),
+         list(x = vx[1], y = 136, text = paste("90.68", pm, "33.80"), adj = 0.5),
+         list(x = vx[2], y = 131, text = paste("84.94", pm, "26.71"), adj = 0.5),
+         list(x = vx[3], y = 136, text = paste("90.05", pm, "23.94"), adj = 0.5)),
     list(list(x = 77, y = 170, text = paste("Values are mean", pm, "SD."), adj = 0)))
   makeTablePdf(file, cells)
 }
