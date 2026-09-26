@@ -779,9 +779,16 @@
     s <- lines[[i]]$text
     if (length(s) < 2L) next
     afterSign <- c(FALSE, grepl(signRe, s[-length(s)], perl = TRUE))
+    # ... AND BEFORE IT (2026-09-27, ISSUES.md issue 136; Anesth Analg
+    # 2002, PMID 12182258, the corpus session's batch 28 AG7): "Duration of
+    # anesthesia, min 20l +/- 40 205 +/- 40 ..." - the OCR's l for the 1 of
+    # the MEAN "201", the sign genuine after it. The word before a genuine
+    # sign glyph is the cell's mean as surely as the word after it is the
+    # SD, and it is read the same way.
+    beforeSign <- c(grepl(signRe, s[-1L], perl = TRUE), FALSE)
     lookalike <- grepl("^[0-9lI|Oo]+(?:[.,][0-9lI|Oo]+)?$", s, perl = TRUE) &
       grepl("[0-9]", s) & grepl("[lI|Oo]", s)
-    hit <- afterSign & lookalike
+    hit <- (afterSign | beforeSign) & lookalike
     if (!any(hit)) next
     s[hit] <- chartr("lI|Oo", "11100", s[hit])
     lines[[i]]$text <- s
