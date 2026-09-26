@@ -132,6 +132,58 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 136. A look-alike letter among the digits of the mean before the sign
+
+**Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
+from the corpus session's batch 28 AG7 (Anesth Analg 2002, PMID 12182258;
+four arms of 20).
+
+- **The defect.** "Duration of anesthesia, min 20l +/- 40 205 +/- 40 207
+  +/- 41 204 +/- 49": the OCR's lowercase l for the 1 of the mean "201",
+  the sign genuine after it. Issue 116 reads such a letter in the SD
+  after the sign; the mean before it was not looked at, so the word was
+  no number and the first cell was lost (23 of 24 cells).
+- **What changed.** `.ppRepairLetterDigitsAfterSign()` reads the word
+  before a genuine sign glyph as it reads the word after it: a run of
+  digits and the look-alikes l, I, |, O and o, with at least one digit
+  and one look-alike, becomes the number.
+- **On the page.** Duration of anesthesia reads 201 +/- 40, 205 +/- 40,
+  207 +/- 41, 204 +/- 49; 24 cells.
+- **Tests** (`tests/testthat/test-letter-in-the-mean-before-the-sign.R`):
+  the helper on "20l" before a sign and "4O" after one (both read) and
+  "I2" beside no sign (left); a rebuilt page reads the first Duration
+  cell (4 of 5 expectations fail on the unfixed code). The letter-l-in-
+  SD, size-zero, slot and Loadsman layout tests still pass.
+
+---
+
+## 135. A per-cell n in brackets may carry a footnote mark, and may end the cell
+
+**Status: fixed on `fix/bracket-n-with-footnote-mark`, 2026-09-27**, from
+the corpus session's batch 28 AG6 (CJA 1999, PMID 10522590; two arms of
+40).
+
+- **The defect.** "Last menstrual cycle (days) 16 <bullet> 3[35]* 16
+  <bullet> 3[35]*": the per-cell n of issue 109 in brackets after the
+  SD, with the paper's footnote star after the bracket. Issue 109's
+  pattern is anchored at the word's end and missed the star; and it
+  looked only at a word spanning the whole cell or one after it, while
+  here the bracket sits in the word that ENDS the cell ("3[35]*" after
+  "16 <bullet>"). The row took the arm's 40 for its N.
+- **What changed.** The bracket may be followed by a footnote mark
+  (a star, a letter a to d, a dagger, a double dagger or a section
+  sign), and the word that ends the cell is searched as well as the
+  words spanning or following it.
+- **On the page.** The menstrual row reads 16 +/- 3 with N 35 and 35;
+  nothing else moves.
+- **Tests** (`tests/testthat/test-bracket-n-with-footnote-mark.R`): a
+  rebuilt page with "16 +/- 3[35]*" in both arms gives the row N 35/35
+  and the rows above the arm's 40 (1 of 5 expectations fails on the
+  unfixed code). The bracket per-cell n and Loadsman layout tests still
+  pass.
+
+---
+
 ## 134. A cell set half a line above or below its row rejoins the row
 
 **Status: fixed on `fix/raised-cell-rejoins-its-row`, 2026-09-27**, from the
@@ -161,6 +213,8 @@ corpus; three arms of 16, 18 and 17).
   expectations fail on the unfixed code). The Loadsman layout, canine
   long-layout, junk-row, paired-column, label-above-values and stratum
   tests still pass.
+
+---
 
 ## 133. The levels of one variable share a notation
 
@@ -259,6 +313,41 @@ from the corpus session's batch 28 AG2 (Am J Obstet Gynecol 2000, PMID
   variables in three arms of 40, the menstrual cells with N 38/37/38, the
   rows beneath with N 40 and clean names (5 of 7 expectations fail on the
   unfixed code). The bracket per-cell n, header-N, stratum and Loadsman
+  layout tests still pass.
+
+---
+## 130. A digit set for the sign at a slot is the sign, not a number
+
+**Status: fixed on `fix/digit-for-the-sign-at-a-slot`, 2026-09-27**, from
+the corpus session's batch 28 AG1 (Anesth Analg 1998, PMID 9495425, a
+scan; three arms of 50) and its false-cell audit.
+
+- **The defect.** The scan sets the sign as a digit: "972 29" for "97
+  +/- 29" (the 2 glued to the mean) and "5.5 2 0.7" for "5.5 +/- 0.7"
+  (the 2 on its own at the sign column). Rule (b) of the slot repair
+  (issue 77) saw two numbers straddling a slot and put the sign between
+  them, building "972 +/- 29" and "5.5 +/- 2" - two values that are not
+  on the page, which the false-cell audit found.
+- **What changed.** Before rule (b) fires, two forms are judged: (c) a
+  word of one digit standing at the slot, with a number before it and a
+  number close after it, is the sign - no cell has three numbers, and a
+  one-digit SD is never followed by another number within the arm's
+  width; (d) the number before the gap has one more digit before its
+  point than every other mean on the line (972 among 95 and 98), and
+  that last digit ends at the slot: the digit is the sign, and the word
+  is split there. A dropped sign between numbers of the line's own
+  length is repaired as before.
+- **On the page.** Duration of anesthesia reads 97 +/- 29, 95 +/- 23,
+  98 +/- 27 and Morphine 5.5 +/- 0.8, 5.5 +/- 0.7, 5.4 +/- 0.7; 15 cells,
+  all as printed. Age ("44 k 7(2359)", the range glued to the SD) is
+  still unread.
+- **Tests** (`tests/testthat/test-digit-for-the-sign-at-a-slot.R`): the
+  slot repair on a block with the glued "972", the lone "2" and a dropped
+  sign between numbers of the line's own length (the first two read as
+  the sign in the digit's place, the third repaired as before); a
+  rebuilt page reads 97 +/- 29 and 5.5 +/- 0.7 (5 of 9 expectations fail
+  on the unfixed code). The soup-glued, digit-colon, "-I-", slot,
+  tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman
   layout tests still pass.
 
 ---
