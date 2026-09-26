@@ -81,8 +81,19 @@
 # branch keys on its margins (see .iaCategoryKey). Rows with different
 # inputs get different keys and are mapped, as before, through their
 # own draws.
+# ... AND NEVER AN INPUT THE SIMULATION DOES NOT READ (outside statistical
+# audit 2026-09-26, F1; ISSUES.md issue 167). SE was in the key. No
+# simulate closure reads it - the continuous null is drawn from N, SD and
+# the precisions, and a median row carries no SE at all - so a row
+# supplied with the mathematically redundant SE = SD / sqrt(N) beside its
+# SD, and the same row without it, were two laws with two mappings: the
+# audit's five shared-law rows read 0.011650 without an SE column and
+# 0.008575 with one on a single row, the same draws through one law giving
+# 0.010285. The key is now the inputs the simulation reads and only them;
+# SE is validated (non-negative, never beside a missing SD) and carried,
+# but it names nothing about the law.
 .iaNullKey <- function(kind, ROWS, direct = NULL) {
-  cols <- intersect(c("N", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
+  cols <- intersect(c("N", "SD", "Q1", "Q3", "ROUND_MEAN",
                       "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(ROWS))
   # The arms are a MULTISET (final-brief independent audit 2026-09-11,
   # F1, read across from the categorical key): the statistic and the
@@ -898,8 +909,13 @@
 #'   P < 0.001, then a blank spacer row.
 #' @noRd
 P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
-                   excluded = NULL)
+                   excluded = NULL, deadline = NULL)
 {
+  # deadline: the app's wall-clock ceiling (issue 165; .iaAnalysisSeconds).
+  # Checked below at the top of every row of every stage, the unit at
+  # which the work is spent, so a single trial built to run for a day is
+  # stopped within one row's draw of the ceiling. NULL runs to the end:
+  # the API has its own compute budget and no ceiling here.
   # excluded: optional frame of the rows validateData() left out of DATA
   # (its Excluded element: TRIAL, ROW, REASON, ...), so that they are
   # counted on the Summary line and listed in the results - independent
@@ -1620,6 +1636,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
     sumZ <- numeric(s); zObs <- 0
     held <- vector("list", length(rows))     # draws kept ONLY for rows whose law is shared
     for (j in usable) {
+      if (!is.null(deadline) && Sys.time() >= deadline) stop(.iaAnalysisTimeout(TRIAL))   # issue 165
       sims <- rows[[j]]$sim$simulate(s)      # in the same order as always: the stream is unchanged
       obs  <- rows[[j]]$sim$obs
       # A statistic that is zero up to floating-point dust IS zero. Since
