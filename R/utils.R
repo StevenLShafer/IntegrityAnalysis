@@ -1292,14 +1292,46 @@
     # only a LABELLED line: a figure's axis ticks under a scanned table
     # ("15 20 25 30 35 40", issue 46) have no row label, and two of them
     # straddling a slot are not a cell
+    # A DIGIT FOR THE SIGN (2026-09-27, ISSUES.md issue 130; Anesth Analg
+    # 1998, PMID 9495425, the corpus session's batch 28 AG1 - the two false
+    # cells its false-cell audit found). The scan sets the sign as a
+    # digit: "972 29" for "97 +/- 29" (the 2 glued to the mean) and "5.5 2
+    # 0.7" for "5.5 +/- 0.7" (the 2 on its own at the sign column). Rule
+    # (b) saw two numbers straddling a slot and put the sign between
+    # them, building "972 +/- 29" and "5.5 +/- 2" - values that are not on
+    # the page. Two forms, both judged before rule (b) fires:
+    # (c) a word of ONE digit standing at the slot, with a number before
+    #     it and a number close after it, is the sign, not a number: no
+    #     cell has three numbers, and a one-digit SD is never followed by
+    #     another number within the arm's width;
+    # (d) the number before the gap has one more digit before its point
+    #     than every other mean on the line (972 among 95 and 98), and
+    #     that last digit ends at the slot: the digit is the sign, and
+    #     the word is split there.
+    digitSign <- logical(nrow(L)); splitDigit <- logical(nrow(L))
+    intDigits <- function(x) nchar(sub("[.,].*$", "", x))
     if (length(back) && !isNum(s[1])) for (k in seq_len(nrow(L) - 1L)) {
       if (!isNum(s[k]) || !isNum(s[k + 1L])) next
       if (grepl("^-", s[k + 1L], perl = TRUE)) next   # a negative number is never an SD
       gap <- L$x[k + 1L] - xEnd[k]
       if (gap < 4 || gap > 20) next
-      if (any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1)) gapHit[k] <- TRUE
+      if (!any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1)) next
+      if (grepl("^[0-9]$", s[k + 1L], perl = TRUE) && k + 2L <= nrow(L) && isNum(s[k + 2L]) &&
+          any(abs(back - L$x[k + 1L]) <= tol) && L$x[k + 2L] - xEnd[k + 1L] <= 20) {
+        digitSign[k + 1L] <- TRUE
+        next
+      }
+      others <- setdiff(which(isNum(s) & c(true(s[-1L]) | hit[-1L], FALSE)), k)
+      if (intDigits(s[k]) >= 2L && length(others) >= 1L &&
+          all(intDigits(s[others]) == intDigits(s[k]) - 1L) &&
+          any(abs(back - xEnd[k]) <= tol)) {
+        splitDigit[k] <- TRUE
+        next
+      }
+      gapHit[k] <- TRUE
     }
-    if (!any(hit) && !any(gapHit) && !any(meanGlued)) next
+    hit <- hit | digitSign
+    if (!any(hit) && !any(gapHit) && !any(meanGlued) && !any(splitDigit)) next
     out <- vector("list", nrow(L))
     for (k in seq_len(nrow(L))) {
       if (meanGlued[k] && !hit[k]) {
@@ -1308,6 +1340,14 @@
         w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
         w1$text <- mgTail[[k]][2]; w1$width <- L$width[k] * mgFrac[k]
         w2$text <- .ppPLUSMINUS; w2$x <- mgX[k]; w2$width <- L$width[k] * (1 - mgFrac[k])
+        out[[k]] <- rbind(w1, w2)
+      } else if (splitDigit[k]) {
+        # "972" at the slot: "97", then the sign in the last digit's place
+        repaired <- repaired + 1L
+        nc <- nchar(s[k]); f <- (nc - 1) / nc
+        w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
+        w1$text <- substr(s[k], 1, nc - 1); w1$width <- L$width[k] * f
+        w2$text <- .ppPLUSMINUS; w2$x <- L$x[k] + L$width[k] * f; w2$width <- L$width[k] * (1 - f)
         out[[k]] <- rbind(w1, w2)
       } else if (!hit[k]) {
         out[[k]] <- L[k, , drop = FALSE]
