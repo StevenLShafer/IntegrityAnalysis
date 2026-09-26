@@ -1636,6 +1636,18 @@
     # with the sign itself, or at any slot under an announced soup (issue 77)
     atStrong <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
     hit <- hit | (s == "+" & prevNum & nextNum & (atStrong | (announced & atSlot)))
+    # A SIGN NEVER FOLLOWS A SIGN (2026-09-27, ISSUES.md issue 158; A&A 1999,
+    # PMID 10439770, the corpus session's batch 32 AM3; two arms of 60). The
+    # symbol font gives the plus-minus as a "6", announced as such in the
+    # footnote ("Values are mean 6 SD"), and the Height row reads "155 6 6
+    # 154 6 5": the sign, then an SD that is also 6. Both words are the
+    # announced glyph between two numbers, and the announced rule takes
+    # every such word on a line with two or more of them - so the SD
+    # became a second sign and the first cell was lost. Two adjacent
+    # words cannot both be the sign: where a hit follows a hit, the second
+    # is the number.
+    adjacentHit <- hit & c(FALSE, hit[-length(hit)])
+    hit[adjacentHit] <- FALSE
     # (b) the sign dropped entirely: two numbers straddling such a slot with
     # a gap of 4 to 20 points between them (issue 77)
     back   <- if (announced) slots else if (length(strong)) strong else armSlots   # the arm columns when no glyph exists (issue 152)

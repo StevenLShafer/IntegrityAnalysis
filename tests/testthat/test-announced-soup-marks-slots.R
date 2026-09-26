@@ -59,3 +59,21 @@ test_that("a rebuilt page under 'mean ~ SD' reads all three arms of both duratio
   expect_identical(cont$MEAN[cont$ROW == "Duration of anaesthesia"], c(108, 108, 104))
   expect_identical(cont$SD[cont$ROW == "Duration of anaesthesia"], c(38, 34, 40))
 })
+
+# THE ANNOUNCED DIGIT BESIDE AN SD OF THE SAME DIGIT (issue 158; A&A 1999,
+# PMID 10439770): "Height (cm) 155 6 6 154 6 5" under "Values are mean 6 SD"
+# - the second 6 is the SD, not another sign.
+test_that("an announced digit glyph followed by an SD of the same digit signs once", {
+  w <- function(text, x, width) data.frame(text = text, x = x, width = width, stringsAsFactors = FALSE)
+  L <- function(...) do.call(rbind, list(...))
+  lines <- list(
+    L(w("Table", 44, 22), w("1.", 70, 6)),
+    L(w("Age", 44, 12), w("(yr)", 59, 11), w("44", 165, 7), w("6", 174, 5), w("9", 181, 3), w("44", 234, 7), w("6", 243, 5), w("7", 250, 3)),
+    L(w("Height", 44, 21), w("(cm)", 67, 13), w("155", 162, 10), w("6", 174, 5), w("6", 181, 3), w("154", 230, 10), w("6", 243, 5), w("5", 250, 3)),
+    L(w("Weight", 44, 22), w("(kg)", 67, 13), w("55", 165, 7), w("6", 174, 5), w("8", 181, 3), w("55", 234, 7), w("6", 243, 5), w("8", 250, 3)),
+    L(w("Values", 44, 25), w("are", 72, 12), w("mean", 88, 20), w("6", 112, 5), w("SD", 120, 12)))
+  r <- .ppRepairPlusMinusGlyphs(lines, capIdx = 1L)
+  pm <- "±"
+  expect_identical(r$lines[[3]]$text, c("Height", "(cm)", "155", pm, "6", "154", pm, "5"))
+  expect_identical(r$lines[[2]]$text, c("Age", "(yr)", "44", pm, "9", "44", pm, "7"))
+})
