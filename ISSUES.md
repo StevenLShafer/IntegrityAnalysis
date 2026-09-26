@@ -132,6 +132,46 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 148. A size group without its sign, or with a hyphen for it
+
+**Status: fixed on `fix/size-group-without-its-sign`, 2026-09-27**, from the
+corpus session's batch 31 part 2 (Clin Ther 2008, PMID 19108790, four arms
+of 25; A&A 1999, PMID 10439770, two of 60; Clin Ther 2005, PMID 16117980,
+four of 20; Clin Ther 2003, PMID 12749510, two of 60).
+
+- **The defect.** Every cell of these tables read and no arm had an N.
+  The headers print "(n 25) (n 25) (n 25) (n 25)" with the four equals
+  signs set by the text layer on a line of their own three points below;
+  "(n 5 60) (n 5 60)" from a symbol font whose equals sign reads as a
+  digit (the same font gives "44 6 9" for 44 +/- 9); "(n - 20)" with the
+  equals sign OCR'd as a hyphen; "(n -- 60)"; "(n--3o) (,--30)" whole
+  (CJA 1997, PMID 9260009). Every size pattern in the engine wants "n"
+  then "=", ":" or "~" then the digits.
+- **What changed.** `.ppRepairSizeSign()` (utils.R), run with the other
+  text-layer repairs before the letter-O size repair: within a bracketed
+  group - "(n" followed by the digits and their bracket, or by a sign
+  word (a hyphen, one or two, a dash, a minus sign, or a lone digit) and
+  then the digits, or by the sign glued to the digits, or the whole group
+  as one word with the hyphens inside it - a missing sign is written in
+  and the hyphen or digit is read as the equals sign; a comma for the n
+  ("(,--30)") is the n when a genuine group stands beside it; the digits
+  may carry a letter O, which the letter-O repair then reads. A line of
+  nothing but equals signs right after a repaired line is emptied (or its
+  signs join the arm names: "Propofol ="). Nothing outside such a
+  bracketed group is touched: "n 25 patients" in prose stays.
+- **On the pages.** The five papers' arms take their printed sizes; the
+  cells were already right.
+- **Tests** (`tests/testthat/test-size-group-without-its-sign.R`): the
+  repair on the four spellings, with prose and a line of bare equals
+  signs left alone; a rebuilt page of the 19108790 shape (signs on their
+  own line, Mean (SD)/Range sub-rows) reading four arms of 25; a rebuilt
+  page of the 16117980 shape ("(n - 20)" under dose heads, caption "(N -
+  80)") reading four arms of 20 and no arm of 80 (4 expectations fail and 1
+  errors on the unfixed code, which lacks the repair). The header-N, stratum, layout and Loadsman
+  tests still pass.
+
+---
+
 ## 147. Minerva's page: a small-caps caption, "(N.=50)", and a descriptor under the names
 
 **Status: fixed on `fix/n-dot-equals-size`, 2026-09-26**, from the Loadsman

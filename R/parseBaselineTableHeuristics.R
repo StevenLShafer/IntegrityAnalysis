@@ -198,6 +198,15 @@
   }
   # ... and a letter O for a zero inside an "(n = k)" group (issue 75;
   # PMID 10522590's "(n=4O)"): see .ppRepairSizeZeros() in utils.R
+  # "(n 25)", "(n - 20)", "(n -- 60)" - the size group's sign missing or a
+  # hyphen (issue 148): see .ppRepairSizeSign() in utils.R; before the
+  # letter-O repair, whose split form wants the "=" in place
+  rep <- .ppRepairSizeSign(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Wrote the equals sign into ", rep$repaired, " size line(s) (\"(n 25)\", \"(n - 20)\").")
+  }
   rep <- .ppRepairSizeZeros(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
