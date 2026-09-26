@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 155. One cohort's before-and-after table is no baseline table
+
+**Status: fixed on `fix/one-cohort-pre-post-table-is-no-baseline`,
+2026-09-26**, from the corpus session's batch 31 part 1 AJ1 (CJA 2000,
+PMID 10730740, canine landiolol under theophylline; four groups of 9/9/8/8).
+
+- **The defect.** Table I, "Hemodynamic changes after theophylline
+  intoxication", heads its two columns "Pre-intoxication" and
+  "Post-intoxication": the whole cohort before and after, not two arms.
+  The engine scored it as two arms with no N (12 rows, score 26) ahead of
+  the paper's real baseline table (Table II, a long layout by dose).
+  Issue 111's paired-timepoint rule wanted two or more pairs - one per
+  arm - and did not know the hyphenated compounds.
+- **What changed.** In the paired-timepoint rule, a header of exactly one
+  first/later pair over a block of exactly two columns has no arms in it:
+  the block is refused with a message and the document's other tables are
+  tried. Any hyphenated "pre-" and "post-" compound is a first and a
+  later word.
+- **On the page.** Table I is refused. Table II (variable headings over
+  four dose rows each with its own "(n = 9)", columns Baseline / Landiolol
+  / After cessation) does not yet read - the long-layout reader wants
+  group labels, not dose lines - and the document falls to Table III,
+  plasma concentrations by phase, whose columns "Baseline / Intoxication
+  / Landiolol" come out as arms with an N on one: the timepoint-columns
+  class, not scoreable, and the next thing to teach.
+- **Tests** (`tests/testthat/test-one-cohort-pre-post-table.R`): a rebuilt
+  document with a ten-row Pre-/Post- table over a small three-arm table
+  with a bland caption and no printed sizes - the paper's own shape -
+  reads the second (three arms, no haemodynamic row) where the unfixed
+  code scores the Pre/Post table (3 of 3 expectations fail on the unfixed
+  code). The paired-column and Loadsman layout tests still pass.
+
+---
+
 ## 154. "Group 1 Group 2" is a header line, and "included 100 pregnant women" is a size
 
 **Status: fixed on `fix/group-number-header-and-included-n`, 2026-09-26**,
