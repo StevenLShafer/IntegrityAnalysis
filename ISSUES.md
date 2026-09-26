@@ -153,7 +153,10 @@ five arms of 20).
   it a word of one to three look-alike letters (l, I, t, |) standing
   directly before a bare number that a bracket group follows is that
   number's first digits and joins it; the bracket repair then runs as
-  before. A row with no "mean" in its label ("Smokers (n) t 6 (30)") is
+  before. The letters must stand against the number, within six points,
+  as a digit set apart does: a label's unit a column away from the first
+  cell ("Volume, mean (SD), l 6 (3)") is not a digit (CodeRabbit on PR
+  #473). A row with no "mean" in its label ("Smokers (n) t 6 (30)") is
   untouched.
 - **On the page.** The menstrual row 16 (3) in every arm, Duration of
   anesthesia 106/117/106/112/118, Height in all five arms; the false

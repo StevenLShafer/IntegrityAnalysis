@@ -766,9 +766,14 @@
     # the leading look-alikes first, so the bracket rule below sees whole
     # numbers; the label ends where the first number - or the look-alike
     # that leads it - begins
+    # ... and the letters stand against the number - within six points -
+    # as a digit set apart does; a label's unit ("Volume, mean (SD), l")
+    # sits a column's width away from the first cell (CodeRabbit on PR #473)
+    gapNext <- c(L$x[-1L] - (L$x[-nrow(L)] + L$width[-nrow(L)]), Inf)
     lead <- grepl("^[lIt|]{1,3}$", s, perl = TRUE) &
       c(isNum(s[-1L]), FALSE) &
-      c(grepl("^\\(", s[-(1:2)], perl = TRUE), FALSE, FALSE)
+      c(grepl("^\\(", s[-(1:2)], perl = TRUE), FALSE, FALSE) &
+      gapNext <= 6
     labelEnd <- min(firstNum, which(lead), na.rm = TRUE) - 1L
     if (labelEnd < 1L) next
     labelTxt <- paste(s[seq_len(labelEnd)], collapse = " ")

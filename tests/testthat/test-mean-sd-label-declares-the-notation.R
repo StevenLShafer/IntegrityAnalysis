@@ -65,15 +65,25 @@ test_that("a Mean (SD) or Mean (SO) sub-row under a variable heading reads as me
 # TAIL (issue 161; Clin Ther 2004, PMID 15336470): "t 6 (3)" is 16 (3), "II
 # 7 (33)" is 117 (33), and "155 (I I)" is 155 (11) on such a row too.
 test_that("look-alike letters before a mean, on a row whose label says mean (SD), are its first digits", {
-  line <- function(...) { w <- c(...); data.frame(text = w, x = seq(60, by = 30, length.out = length(w)), width = 12, stringsAsFactors = FALSE) }
-  lines <- list(line("Table"),
-                line("Last", "menstrual", "cycle,", "mean", "(SD),", "d", "t", "6", "(3)", "16", "(3)", "l", "6", "(3)"),
-                line("Duration", "of", "anesthesia,", "mean", "(SD),", "min", "106", "(35)", "II", "7", "(33)", "II", "8", "(29)"),
-                line("Height,", "mean", "(SD),", "cm", "159", "(10)", "155", "(I", "I)"),
-                line("Smokers", "(n)", "t", "6", "(30)"))
+  # words with their x and width: the look-alike stands against its number
+  # (a gap of two or three points), the label's words far to the left
+  W <- function(text, x, width) data.frame(text = text, x = x, width = width, stringsAsFactors = FALSE)
+  L <- function(...) do.call(rbind, list(...))
+  lines <- list(
+    L(W("Table", 52, 22)),
+    L(W("Last", 52, 13), W("menstrual", 68, 33), W("cycle,", 107, 18), W("mean", 128, 18), W("(SD),", 151, 17), W("d", 171, 4),
+      W("t", 261, 1), W("6", 264, 3), W("(3)", 272, 8), W("16", 454, 7), W("(3)", 464, 9), W("l", 508, 1), W("6", 511, 3), W("(3)", 518, 9)),
+    L(W("Duration", 52, 29), W("of", 86, 6), W("anesthesia,", 96, 35), W("mean", 135, 18), W("(SD),", 158, 17), W("min", 178, 11),
+      W("106", 257, 11), W("(35)", 272, 13), W("II", 322, 4), W("7", 329, 3), W("(33)", 337, 13), W("II", 503, 4), W("8", 511, 3), W("(29)", 518, 13)),
+    L(W("Height,", 52, 23), W("mean", 78, 18), W("(SD),", 101, 17), W("cm", 121, 9), W("159", 257, 11), W("(10)", 272, 13), W("155", 388, 11), W("(I", 403, 4), W("I)", 411, 4)),
+    # a label's unit "l" (litres) a column away from the first cell is not a digit
+    L(W("Volume,", 52, 26), W("mean", 82, 18), W("(SD),", 105, 17), W("l", 126, 2), W("6", 257, 3), W("(3)", 264, 8), W("7", 388, 3), W("(2)", 395, 8)),
+    # no "mean" in the label: untouched
+    L(W("Smokers", 52, 30), W("(n)", 86, 12), W("t", 261, 1), W("6", 264, 3), W("(30)", 272, 13)))
   r <- .ppRepairLookAlikeBracketSd(lines, capIdx = 1L)
   expect_identical(r$lines[[2]]$text, c("Last", "menstrual", "cycle,", "mean", "(SD),", "d", "16", "(3)", "16", "(3)", "16", "(3)"))
   expect_identical(r$lines[[3]]$text, c("Duration", "of", "anesthesia,", "mean", "(SD),", "min", "106", "(35)", "117", "(33)", "118", "(29)"))
   expect_identical(r$lines[[4]]$text, c("Height,", "mean", "(SD),", "cm", "159", "(10)", "155", "(11)"))
-  expect_identical(r$lines[[5]]$text, c("Smokers", "(n)", "t", "6", "(30)"))
+  expect_identical(r$lines[[5]]$text, c("Volume,", "mean", "(SD),", "l", "6", "(3)", "7", "(2)"))
+  expect_identical(r$lines[[6]]$text, c("Smokers", "(n)", "t", "6", "(30)"))
 })
