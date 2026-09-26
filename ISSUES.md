@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 138. A "P values" heading over a column with no cells of its own
+
+**Status: fixed on `fix/p-values-heading-over-no-column`, 2026-09-27**, from
+the corpus session's batch 28 AG3 (EJA 1998, PMID 9587723; four arms of 30
+on a page printed sideways).
+
+- **The defect.** The header ends "(n =30) P values" and the P column
+  beneath holds "NS" on every row - no token, so no column of its own.
+  Its words fell to the nearest column, the fourth arm's, whose name
+  became "Placebo P values"; the p-value column test took the name at
+  its word and dropped the Placebo arm with every cell in it (Age,
+  Height, Weight and both durations in three arms of four).
+- **What changed.** Before the p-value column test, a name that carries
+  the P-values phrase (P value, P-values, significance; the hyphen may
+  be a dash or the minus sign) together with an arm's own words has the
+  phrase stripped and the arm kept. A name that is the phrase alone
+  still marks the p-value column, which is dropped as before.
+- **On the page.** Four arms of 30 - Granisetron, Droperidol,
+  Metoclopramide, Placebo - and 20 cells; the Placebo cells 47.7 +/- 9.1,
+  156.2 +/- 6.5, 56.9 +/- 8.2, 86.2 +/- 26.7, 110.2 +/- 25.8 as printed.
+- **Tests** (`tests/testthat/test-p-values-heading-over-no-column.R`): a
+  rebuilt page with a P-values heading over a column of "NS" reads four
+  arms with their names (1 of 6 expectations fails on the unfixed code:
+  the fourth arm named "Placebo P-values" or dropped); a P-values column
+  with numbers of its own is still dropped. The header-N and Loadsman
+  layout tests still pass.
+
+---
+
 ## 137. One letter-fused cell and one digit-fused cell are two witnesses
 
 **Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
