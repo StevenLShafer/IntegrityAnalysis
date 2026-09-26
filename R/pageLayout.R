@@ -801,6 +801,21 @@
 # A line of dose sub-heads - "25 mg 50 mg 75 mg Vehicle" - every number on
 # it followed by a unit word, at least two of them, and no cell glyph
 # (issue 143; see the block walker's classification)
+# A LINE OF GROUP NUMBERS - "Group 1 Group 2", "Group I Group II" - as the
+# first line of a wrapped arm header (issue 154): every number on it is
+# preceded by "Group" or "Arm" - one or more of them, since the names may
+# wrap so that "Group 1" and "Group 2" fall on different lines - and
+# nothing else numeric stands on the line.
+.ppGroupNumberLine <- function(L) {
+  s <- L$text
+  if (length(s) < 2L) return(FALSE)
+  isNum <- grepl("^[0-9]{1,2}[.)]?$|^[IVX]{1,4}[.)]?$", s, perl = TRUE)
+  if (sum(isNum) < 1L) return(FALSE)
+  prev <- c("", s[-length(s)])
+  afterGroup <- grepl("(?i)^(group|groups|arm|grp[.]?)$", prev, perl = TRUE)
+  all(afterGroup[isNum]) && !any(grepl("[0-9]", s[!isNum], perl = TRUE))
+}
+
 .ppDoseHeadLine <- function(line) {
   s <- line$text
   if (length(s) < 2L) return(FALSE)

@@ -132,6 +132,49 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 154. "Group 1 Group 2" is a header line, and "included 100 pregnant women" is a size
+
+**Status: fixed on `fix/group-number-header-and-included-n`, 2026-09-26**,
+from the corpus session's batch 31 part 1 AJ3 (Rezk 2016, J Matern Fetal
+Neonatal Med, the Loadsman corpus; two arms of 100).
+
+- **The defect.** All ten cells read (Age, Parity, GA, BMI, ANC visits),
+  the arms went out nameless and without an N. The arm names wrap over
+  three lines - "Group 1 | Group 2", "(Lactoferrin | (Ferrous", "group) |
+  group) t-test p value" - and the first line's two numbers made it a
+  data row (skipped as a bare count), so no header line named the arms.
+  The sizes are in the Methods as "Group 1 (Lactoferrin group): included
+  100 pregnant women who received ...", a sentence with no "n =" that the
+  recovery ladder never saw.
+- **What changed.** (1) `.ppGroupNumberLine()` (pageLayout.R): before the
+  first data row, a line whose every number is "Group" or "Arm" followed
+  by a small integer or a roman numeral - one or more of them, since the
+  wrapped names may put "Group 1" and "Group 2" on different lines - and
+  nothing else numeric, is a header line. (2) `.ppArmNCandidatesFromText()`
+  (armNRecovery.R) takes a group's size stated as a sentence about the
+  group - "included", "comprised", "consisted of", "contained",
+  "enrolled" and then the count with its noun - as a candidate whose
+  context is the words before it, matched to the arm names as an "(n =
+  k)" mention is; the count may be followed by its noun or by an
+  adjective of the people ("included 100 pregnant"), since a two-column
+  page's text breaks the sentence there. (3) `.ppFillArmNFromText()`:
+  when the statements about one arm disagree - the CONSORT diagram's
+  "Lactoferrin (n=110)" against the Methods' "included 100" - a
+  statement of the analysed, included or completed group outranks one of
+  allocation, randomisation or assignment, and the arm takes it when it is the
+  one size left.
+- **On the page.** Two arms, "Group 1 (Lactoferrin group)" and "Group 2
+  (Ferrous group)", each of 100 from the Methods; the ten cells as before.
+- **Tests** (`tests/testthat/test-group-number-header-and-included-n.R`):
+  the header-line test on group numbers, roman numerals and two controls;
+  the candidates and the fill from the two Methods sentences; a rebuilt
+  page of the shape reading two named arms of 100 (1 expectation fails and
+  1 errors on the unfixed code, which lacks the header-line helper). The
+  dose-head, arm-N recovery, deterministic arm-N, n-of-each and Loadsman
+  layout tests still pass.
+
+---
+
 ## 150. The caption's and footnote's spellings of "n per group"
 
 **Status: fixed on `fix/caption-count-per-group`, 2026-09-26**, from the
