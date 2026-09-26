@@ -132,6 +132,42 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 129. A letter alone at a slot, and soup glued to the mean, are the sign
+
+**Status: fixed on `fix/soup-glued-to-the-mean`, 2026-09-27**, from the
+corpus session's batch 28 AG1 (Anesth Analg 1998, PMID 9495425, a scan;
+three arms of 50 under "Values are expressed as mean +- SD or n").
+
+- **The defect.** The scan sets the sign as "?" and "k" on their own
+  ("154 ? 5", "98 k 27") and as a glyph glued to the MEAN ("55? 8",
+  "71+ 29", "75? 27"). Neither is a soup word - a letter has no stroke,
+  and the glued form is a number with a tail - so the third arm read
+  nowhere, the columns fell to two, and the two "arms" carried arms 1
+  and 2 on some rows and 2 and 3 on others (Height 156/154 for 154/156/
+  154).
+- **What changed.** In the slot repair: at a slot the block's other rows
+  set, a single letter or question mark between two numbers is the sign
+  (the fused-sign repair's alphabet, one character, less the exponent e
+  and the dimension x), and a number with one or two such glyphs glued
+  to its end, followed by a number, is the mean and its sign when the
+  glued glyph stands at the slot - split as the glued SD form is, the
+  sign in the glyph's place. Both need the slot; a letter between two
+  numbers elsewhere on a line is left alone.
+- **On the page.** Three arms of 50; Height, Weight, both durations and
+  Morphine in every arm, 15 cells. Two of them are false - "972 +/- 29"
+  (the sign set as a digit glued to the mean, 97 +/- 29 on the page)
+  and "5.5 +/- 2" (a lone digit for the sign, 5.5 +/- 0.7) - and are
+  issue 130. Age ("44 k 7(2359)", the range glued to the SD) is still
+  unread.
+- **Tests** (`tests/testthat/test-soup-glued-to-the-mean.R`): the slot
+  repair on a block with the lone "?" and "k" and the glued "55?" and
+  "71+" at slots two rows of genuine signs set (all read, the split sign
+  in the glyph's place) and a "k" between numbers away from the slots
+  (left); a rebuilt page with the forms reads three arms and every cell
+  (8 of 11 expectations fail on the unfixed code). The digit-colon,
+  "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
+  and Loadsman layout tests still pass.
+
 ## 126. A stray dot fused before a decimal number is dropped
 
 **Status: fixed on `fix/stray-dot-before-decimal`, 2026-09-26**, from the
