@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 167. An unused SE column split an otherwise identical null law
+
+**Status: fixed on `fix/null-law-key-ignores-unused-se`, 2026-09-27**,
+from the outside statistical audit of 2026-09-26 (F1, P2 numerical;
+report held locally under `.audit/`).
+
+- **The defect.** `.iaNullKey()` included SE among the inputs that name a
+  continuous row's null law, but no simulate closure reads SE: the
+  continuous null is drawn from N, SD and the precisions. A row supplied
+  with the redundant SE = SD / sqrt(N) beside its SD and the same row
+  without it were therefore two laws with two score mappings - the
+  tie-splitting error the shared-law mechanism (audit 2026-09-10 F1)
+  exists to prevent, by a new door. The audit's five shared-law rows
+  (two arms, N 30, SD 6, integer means; one row printed (-1, +1), the
+  rest (0, 0)) read 0.011650 without an SE column and 0.008575 with one
+  on the (-1, +1) row; the same draws mapped through one law give
+  0.010285, and an independent two-million-replicate reference 0.01073.
+- **What changed.** SE is out of the key. It is still validated
+  (non-negative; never beside a missing SD) and carried through, but it
+  names nothing about the law. Q1/Q3 and ROUND_DISPERSION stay: the
+  median draw and the SD interval read them.
+- **Tests** (`tests/testthat/test-null-law-key-ignores-unused-se.R`):
+  the key is identical with SE present, blank or absent, and differs
+  when an input the simulation reads differs; through the upload reader
+  and the analysis handler at seed 42 the two CSVs give bit-identical
+  results, inside the 99.9% binomial interval of the audit's reference
+  at 100,000 replicates (UNFIXED: 0.008575, outside it, and the two
+  files differ).
+
+---
+
 ## 164. A modest multi-sheet workbook was refused as a decompression bomb
 
 **Status: fixed on `fix/xlsx-text-budget-counts-shared-strings-per-sheet`,
