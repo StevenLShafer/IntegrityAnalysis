@@ -695,6 +695,19 @@ app_server <- function(input, output, session) {
         all(is.na(edited$TRIAL) |
             trimws(as.character(edited$TRIAL)) == ""))
       edited$TRIAL <- 1
+    # THE EDITED GRID IS BOUNDED AS AN UPLOADED SHEET IS (outside security
+    # review, 2026-09-26). An uploaded spreadsheet is refused before it is
+    # read into the table when a cell exceeds .ppMaxCellChars or the text
+    # exceeds .iaMaxTableTextBytes (screen 2026-09-10-2047, F2); the grid
+    # is the same table by another door, and Apply Edits handed whatever
+    # the browser sent straight to validation. The same preflight runs
+    # here, so a cell typed or pasted into the grid meets the bound the
+    # upload met, and the table of record stays what was last validated.
+    msg <- .iaTableTextRefusal(edited)
+    if (!is.null(msg)) {
+      outputComments(paste0("The edited table was not accepted: ", msg, "."))   # outputComments escapes
+      return()
+    }
     # A fresh validation pass gets a fresh log, and any previous results
     # are discarded - the edited table is now the data of record.
     commentsLog(NULL)
@@ -1372,6 +1385,17 @@ app_server <- function(input, output, session) {
         for (nm in setdiff(allCols, names(d))) d[[nm]] <- NA
         d[, allCols, drop = FALSE]
       }))
+      # THE COMBINED TABLE IS BOUNDED AS ONE (outside security review,
+      # 2026-09-26): each spreadsheet met the text bound on its own above,
+      # and the parsed documents' cells are short by construction, but the
+      # frames concatenate - and append to a table already on the grid -
+      # so the bound is checked once more on what the grid will hold.
+      msg <- .iaTableTextRefusal(DATA)
+      if (!is.null(msg)) {
+        outputComments(paste0("The combined table was not accepted: ", msg, "."))   # outputComments escapes
+        DATA <<- NULL
+        return()
+      }
       if (nPrior > 0) {
         outputComments(paste0(
           "Appended ", length(frames) - nPrior, " file(s) to the ",
