@@ -766,6 +766,20 @@
 
 .ppLineText <- function(line) .ppSquish(paste(line$text, collapse = " "))
 
+# A line of dose sub-heads - "25 mg 50 mg 75 mg Vehicle" - every number on
+# it followed by a unit word, at least two of them, and no cell glyph
+# (issue 143; see the block walker's classification)
+.ppDoseHeadLine <- function(line) {
+  s <- line$text
+  if (length(s) < 2L) return(FALSE)
+  unit <- "(?i)^(mg|g|\u00b5g|ug|mcg|ng|ml|mL|l|IU|U|%|min|h|hr|hrs|mmol|mEq|mg/kg|\u00b5g/kg|ug/kg|mcg/kg)[.,;)]?$"
+  isNumW <- grepl("^[0-9]+(?:[.,][0-9]+)?$", s, perl = TRUE)
+  if (sum(isNumW) < 2L) return(FALSE)
+  if (any(grepl("[\u00b1\u2022\u2afe(\\[]|\\+/-", s, perl = TRUE))) return(FALSE)
+  followed <- c(grepl(unit, s[-1L], perl = TRUE), FALSE)
+  all(followed[isNumW])
+}
+
 # ---------------------------------------------------------------------------
 # 1-D clustering of token midpoints into table columns
 # ---------------------------------------------------------------------------
