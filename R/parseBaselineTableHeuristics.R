@@ -2181,9 +2181,16 @@
         wx0 <- d$x; wx1 <- d$x + d$width
         own <- which(wx0 <= t$x0 + 1 & wx1 >= t$x1 - 1)
         after <- which(wx0 >= t$x1 - 1 & wx0 <= t$x1 + 6)
+        # ... and the word that ENDS the cell, "3[35]*" after "16 +/-" (issue
+        # 135): neither a word spanning the whole cell nor one after it
+        last <- which(wx0 <= t$x1 - 1 & wx1 >= t$x1 - 1 & wx0 > t$x0)
         k <- NA_integer_
-        for (w in c(own, after)) {
-          m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*$", d$text[w], perl = TRUE))
+        # ... the bracket may carry the paper's footnote mark after it,
+        # "3[35]*" (2026-09-27, ISSUES.md issue 135; CJA 1999, PMID 10522590,
+        # the corpus session's batch 28 AG6): anchored at the word's end, the
+        # pattern missed it and the row took the arm's 40 for 35
+        for (w in c(own, last, after)) {
+          m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*[*a-d\u2020\u2021\u00a7]?\\s*$", d$text[w], perl = TRUE))
           if (length(m) && nzchar(m)) { k <- as.integer(gsub("\\D", "", m)); break }
         }
         # ... OR IN PARENTHESES AS "(n = 38*)" RIGHT AFTER THE CELL (issue
