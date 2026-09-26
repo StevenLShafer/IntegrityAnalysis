@@ -169,6 +169,14 @@
   # genuine glyphs the slot rule leans on.
   # ... and before that, a stray dot fused to a decimal number (".5.0";
   # issue 126): see .ppRepairStrayDots() in utils.R
+  # ... and, first of all, a decimal SD split at its point ("5." "I";
+  # issue 127): see .ppRepairSplitDecimals() in utils.R
+  rep <- .ppRepairSplitDecimals(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Joined ", rep$repaired, " decimal number(s) split at the point (\"5. I\").")
+  }
   rep <- .ppRepairStrayDots(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
