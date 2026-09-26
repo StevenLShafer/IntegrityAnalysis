@@ -542,6 +542,18 @@ the analysis needs quartiles (Q1/Q3), not the range”).</p></li>
 type of its row: an SD on a median/IQR row, continuous entries on a
 category row, a median outside its own quartiles, an SE standing in for
 a missing SD.</p></li>
+<li><p><strong>Lavender — warning.</strong> The table passed validation,
+but the value looks suspect: an SD larger than its mean (plausible for a
+skewed quantity such as a duration or a dose, implausible for a
+symmetric one), a row printing the same value with no dispersion in
+every arm (fixed by design or by a floor, not a sample), a row printing
+the same mean and SD in every arm (check the page for a column copied
+across arms or a duplicated variable; if the arms are separate samples
+the row stays in — agreement this close is what the screen weighs), or a
+row identical in N, mean and SD to another row of the same trial (a
+duplicate?). The analysis runs either way; the log lists the rows, and
+hovering the cell gives the reason. Check them against the
+manuscript.</p></li>
 <li><p><strong>Green — derived or AI-read.</strong> The parser computed
 the value (a percentage converted to a count, or an arm N recovered from
 the document), or the AI assist read the line off the page (its ROW cell
@@ -1209,6 +1221,24 @@ and every row’s, is 0.1 or more stops there; one below 0.1 escalates to
 where it matters — unremarkable trials finish fast, borderline ones get
 a p with a Monte Carlo standard error of about 0.002 instead of 0.007,
 alarming ones get the precision a small p needs.</p>
+<p><strong>Post-randomisation quantities.</strong> A baseline table
+often prints durations of surgery and of anaesthesia, the blood loss,
+the fluids given. Whether they are baseline values depends on when the
+trial randomised: at induction, they were measured after the
+intervention and do not belong; after surgery (a postoperative analgesia
+trial), they precede the intervention like any other baseline variable.
+That is a judgement for each trial, and the app takes the author’s word
+by default: the rows stay in, the log names them, and a choice appears
+above the table - <em>Include durations</em> (the default) and
+<em>Exclude durations</em>. Excluding blanks those rows’ values (their
+names stay, as the parser’s unusable lines do, so nothing disappears
+silently); including restores them. To start the other way, add
+<code>?durations=exclude</code> to the page’s address (in any case,
+beside a seed: <code>?seed=12345&amp;durations=exclude</code>). For a
+corpus the recommended route is two passes: parse the PDFs, download the
+spreadsheet, scan it for entries that are likely post-baseline and
+delete those rows, then upload the edited spreadsheet for the analysis
+of human-adjudicated baseline variables.</p>
 <p><strong>Reproducing a result exactly.</strong> An unseeded Monte
 Carlo is not meant to give identical numbers from run to run: two runs
 of the same table differ within the reported Monte Carlo interval. To
@@ -1469,10 +1499,14 @@ bold row gives the <strong>overall P for the entire analysis</strong> —
 a closed-form Stouffer (sum-of-z) combination of the trial P values
 against the normal table. That is a different procedure from the
 within-trial combination, which is judged against its own simulated
-null: across trials the P values are treated as continuous and
-independent, and a trial reported as “&lt;0.0001” enters as 0.0001, on
-the conservative side. This is the step Carlisle took to reach a single
-p for the whole body of Fujii’s work (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>):
+null: across trials the P values are treated as independent and uniform
+under the null (an approximation — they are Monte Carlo mid-p estimates
+under fitted models), and each trial enters as its numerical estimate,
+the floored mid-p, 1/(replicates + 1) at the smallest, not as the
+“&lt;0.0001” it is displayed as. No Monte Carlo interval is given for
+the overall P, and a very small overall P is not evidence of equally
+fine Monte Carlo resolution. This is the step Carlisle took to reach a
+single p for the whole body of Fujii’s work (<a href="https://pubmed.ncbi.nlm.nih.gov/22404311/">PMID 22404311</a>):
 each trial may look only mildly improbable, but improbability
 <em>accumulates</em>, and the overall P is where a pattern across an
 author’s trials becomes visible. Trials whose P could not be computed

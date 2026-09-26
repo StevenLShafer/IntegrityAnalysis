@@ -1157,9 +1157,13 @@ a closing bold row gives the **overall P for the entire analysis** — a
 closed-form Stouffer (sum-of-z) combination of the trial P values
 against the normal table. That is a different procedure from the
 within-trial combination, which is judged against its own simulated
-null: across trials the P values are treated as continuous and
-independent, and a trial reported as "<0.0001" enters as 0.0001, on the
-conservative side. This is the step Carlisle took to
+null: across trials the P values are treated as independent and uniform
+under the null (an approximation — they are Monte Carlo mid-p estimates
+under fitted models), and each trial enters as its numerical estimate,
+the floored mid-p, 1/(replicates + 1) at the smallest, not as the
+"<0.0001" it is displayed as. No Monte Carlo interval is given for the
+overall P, and a very small overall P is not evidence of equally fine
+Monte Carlo resolution. This is the step Carlisle took to
 reach a single p for the whole body of Fujii's work
 ([PMID 22404311](https://pubmed.ncbi.nlm.nih.gov/22404311/)): each trial
 may look only mildly improbable, but improbability *accumulates*, and
