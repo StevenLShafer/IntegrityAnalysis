@@ -167,6 +167,14 @@
   # numbers, alone or glued ("54.2 -I-7.1"; issue 123): see
   # .ppRepairDashIDash() in utils.R. Restored first, its signs are the
   # genuine glyphs the slot rule leans on.
+  # ... and before that, a stray dot fused to a decimal number (".5.0";
+  # issue 126): see .ppRepairStrayDots() in utils.R
+  rep <- .ppRepairStrayDots(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Dropped a stray dot fused before ", rep$repaired, " decimal number(s) (\".5.0\").")
+  }
   rep <- .ppRepairDashIDash(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
