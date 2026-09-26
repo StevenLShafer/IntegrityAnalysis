@@ -211,7 +211,7 @@
   if (rep$repaired > 0L) {
     lines <- rep$lines
     lineTexts <- vapply(lines, .ppLineText, character(1))
-    say("Read a look-alike letter as a digit in ", rep$repaired, " SD(s) after the sign (\"l0\").")
+    say("Read a look-alike letter as a digit in ", rep$repaired, " number(s) beside the sign (\"l0\", \"20l\").")
   }
   # ... and the sign fused inside the cell word, "48.4k7.2" (issue 85;
   # Saitoh 1998): see .ppRepairFusedSigns() in utils.R

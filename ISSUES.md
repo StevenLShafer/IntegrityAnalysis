@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 136. A look-alike letter among the digits of the mean before the sign
+
+**Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
+from the corpus session's batch 28 AG7 (Anesth Analg 2002, PMID 12182258;
+four arms of 20).
+
+- **The defect.** "Duration of anesthesia, min 20l +/- 40 205 +/- 40 207
+  +/- 41 204 +/- 49": the OCR's lowercase l for the 1 of the mean "201",
+  the sign genuine after it. Issue 116 reads such a letter in the SD
+  after the sign; the mean before it was not looked at, so the word was
+  no number and the first cell was lost (23 of 24 cells).
+- **What changed.** `.ppRepairLetterDigitsAfterSign()` reads the word
+  before a genuine sign glyph as it reads the word after it: a run of
+  digits and the look-alikes l, I, |, O and o, with at least one digit
+  and one look-alike, becomes the number.
+- **On the page.** Duration of anesthesia reads 201 +/- 40, 205 +/- 40,
+  207 +/- 41, 204 +/- 49; 24 cells.
+- **Tests** (`tests/testthat/test-letter-in-the-mean-before-the-sign.R`):
+  the helper on "20l" before a sign and "4O" after one (both read) and
+  "I2" beside no sign (left); a rebuilt page reads the first Duration
+  cell (4 of 5 expectations fail on the unfixed code). The letter-l-in-
+  SD, size-zero, slot and Loadsman layout tests still pass.
+
+---
+
 ## 133. The levels of one variable share a notation
 
 **Status: fixed on `fix/sibling-levels-share-the-count-reading`, 2026-09-27**,
