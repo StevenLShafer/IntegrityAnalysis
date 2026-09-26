@@ -160,6 +160,33 @@ three arms of 30).
 
 ---
 
+## 151. A legend line of abbreviations ends the block
+
+**Status: fixed on `fix/legend-line-ends-the-block`, 2026-09-26**, from the
+corpus session's batch 31 part 2 AK5 (Clin Ther 2007, PMID 17697904; four
+arms of 60).
+
+- **The defect.** "LID/MET 40/2.5 = lidocaine/metoclopramide 40/2.5 mg;
+  LID/MET 40/5 = lidocaine/metoclopramide 40/5 mg; ..." follows the
+  table's last row with no footnote mark. Read as a data row, its doses -
+  40/2.5, 40/5 - are numbers at the label column's x: they seeded a fifth
+  column under the heading "Characteristic", the header's first "(n =
+  60)" went to that column, and the first arm went out without a size
+  while the other three had 60.
+- **What changed.** The block-ending pattern takes a line that defines
+  two or more abbreviations, "A = words; B = words": the table's legend,
+  ending the block as "Abbreviations:" does.
+- **On the page.** Four arms of 60; 16 cells as before.
+- **Tests** (`tests/testthat/test-legend-line-ends-the-block.R`): a
+  rebuilt page of the shape - the dose sub-heads under "LID/MET", four
+  "(n = 60)", three rows, the two-line legend and a starred footnote -
+  reads four arms of 60 with no legend text in a row name (2 of 4 expectations fail on the unfixed
+  code). The
+  stratum-header, Loadsman-layout, manuscript-layout and dose-head tests
+  still pass.
+
+---
+
 ## 150. The caption's and footnote's spellings of "n per group"
 
 **Status: fixed on `fix/caption-count-per-group`, 2026-09-26**, from the
