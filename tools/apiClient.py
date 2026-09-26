@@ -37,9 +37,45 @@ def usage():
     sys.exit(2)
 
 
+# THE CLIENT DOES NOT FOLLOW REDIRECTS, AND A REMOTE SERVICE MUST BE HTTPS
+# (outside security review, 2026-09-26). Python's default opener follows a
+# 3xx wherever it points and re-sends the request's headers there, so a
+# redirecting endpoint - or anything between the client and it - would
+# receive the bearer token, and a plain http:// base URL would carry the
+# token and the manuscript in clear. A redirect is reported as a wrong
+# base URL and nothing is re-sent; http:// is accepted only for a service
+# on this machine (the guide's local-run examples).
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None                         # urlopen raises HTTPError(3xx)
+
+
+_opener = urllib.request.build_opener(_NoRedirect)
+_LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1", "[::1]")
+
+
+def check_base(base):
+    u = urllib.parse.urlsplit(base)
+    host = (u.hostname or "").lower()
+    if u.scheme == "https" or (u.scheme == "http" and host in _LOCAL_HOSTS):
+        return
+    print("the service URL must be https:// (http:// only for a service on this machine): %s" % base)
+    sys.exit(2)
+
+
+def redirected(e):
+    """A 3xx from the service: say where it pointed, send nothing there."""
+    if 300 <= e.code < 400:
+        print("the service answered %d with a redirect to %s; this client does not follow "
+              "redirects with your token - check the base URL with the operator"
+              % (e.code, e.headers.get("Location", "(no Location header)")))
+        return True
+    return False
+
+
 def health(base):
     try:
-        with urllib.request.urlopen(base + "/health", timeout=30) as r:
+        with _opener.open(base + "/health", timeout=30) as r:
             body = json.loads(r.read().decode("utf-8"))
             build = body.get("commit")
             print("health: %d  ok=%s%s%s" % (
@@ -47,6 +83,11 @@ def health(base):
                 "  build %s" % build[:8] if build else "",
                 "  %s" % body["engine"] if body.get("engine") else ""))
             return True
+    except urllib.error.HTTPError as e:
+        if redirected(e):
+            return False
+        print("health: %s answered HTTP %d" % (base, e.code))
+        return False
     except Exception as e:  # noqa: BLE001 - report and stop
         print("health: could not reach %s - %s" % (base, e))
         return False
@@ -89,6 +130,7 @@ def main(argv):
     if len(argv) < 2 or argv[0] not in ("health", "parse", "analyze"):
         usage()
     verb, base = argv[0], argv[1].rstrip("/")
+    check_base(base)
     if not health(base) or verb == "health":
         sys.exit(0 if verb == "health" else 1)
     if len(argv) < 3:
@@ -115,9 +157,11 @@ def main(argv):
                                           "Content-Length": str(len(body))})
     t0 = time.time()
     try:
-        with urllib.request.urlopen(req, timeout=900 if verb == "analyze" else 300) as r:
+        with _opener.open(req, timeout=900 if verb == "analyze" else 300) as r:
             status, raw = r.status, r.read()
     except urllib.error.HTTPError as e:      # 4xx/5xx still carry a JSON body
+        if redirected(e):
+            sys.exit(1)
         status, raw = e.code, e.read()
     except Exception as e:  # noqa: BLE001
         print("%s: request failed - %s" % (verb, e))
