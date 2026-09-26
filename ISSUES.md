@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 125. A digit and a colon standing alone at a slot is the sign
+
+**Status: fixed on `fix/digit-colon-alone-at-slot`, 2026-09-26**, from the
+corpus session's AF7 (CJA 1996, PMID 8706192, a scan; four arms of 25).
+
+- **The defect.** The Awakening time line reads "6.1 5:2.5 6.2 5:22.8
+  6.0 5:3.0 9.2 5: 5.5*" - the fourth arm's sign set as "5:" on its own,
+  the SD after it with the paper's significance star. The glued "5:2.5"
+  is read (issue 70), but "5:" alone is no soup word (a digit is not a
+  stroke) and "5.5*" is no number, so the cell was lost and the row read
+  three arms of four. (The 22.8 is the page's own misprint.)
+- **What changed.** In the slot repair, a word of one digit and a colon
+  standing between a number and a number that may carry a footnote mark
+  ("5.5*", "10t"), at a slot the block's other rows set, is the sign. A
+  ratio has digits on both sides of its colon, a time has two, and away
+  from a slot the word is left alone.
+- **On the page.** Awakening time reads 6.1 +/- 2.5, 6.2 +/- 22.8, 6.0
+  +/- 3.0, 9.2 +/- 5.5 in four arms.
+- **Tests** (`tests/testthat/test-digit-colon-alone-at-slot.R`): the
+  slot repair on a block with the lone "5:" at a slot (read) and a ratio
+  line's "2:" away from the slots (left); a rebuilt page reads the fourth
+  arm's Awakening time (4 expectations fail on the unfixed code). The
+  "-I-", slot, announced-soup, glued-digit-colon, minus-digit and
+  Loadsman layout tests still pass.
+
 ## 124. "-1-" between two numbers is the plus-minus sign too
 
 **Status: fixed on `fix/dash-one-dash-is-the-sign`, 2026-09-26**, from the
