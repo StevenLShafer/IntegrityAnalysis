@@ -1756,7 +1756,17 @@
       if (grepl("(?i)https?://|www\\.|downloaded\\s+from|copyright|©",
                 lineTexts[i], perl = TRUE))
         next
-      if (nchar(lbl) > 0 && nrow(lines[[i]]) <= 6) {
+      # A HEADING THAT CARRIES THE COUNT NOTATION MAY RUN LONGER (2026-09-27,
+      # ISSUES.md issue 156; Clin Ther 2003, PMID 14749148, the corpus
+      # session's batch 32 AM1; four arms of 25). "Type of surgery, no. (%)
+      # of patients" is seven words, one over the six that fence prose out
+      # of the headings, so the levels beneath it - "Tympanoplasty 17 (68)
+      # 18 (72) ..." - had no heading, read as mean (SD), and once the
+      # caption's N admitted the table (issue 150) eight false cells were
+      # scored. A label line that names the count notation - "no. (%)",
+      # "n (%)" - is a heading by that very tag; it may run to ten words.
+      nPctTag <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i], perl = TRUE)
+      if (nchar(lbl) > 0 && (nrow(lines[[i]]) <= 6 || (nPctTag && nrow(lines[[i]]) <= 10))) {
         catHeader <- lbl
         catHeaderAt <- i
         # "Race, N (%)": the children below are counts-with-percents -
