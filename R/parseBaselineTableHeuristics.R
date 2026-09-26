@@ -307,6 +307,10 @@
         next
       }
       L <- lines[[i]]; drop <- logical(nrow(L)); found <- list()
+      # a "(n = k)" group as a run of the line's words, closed by its
+      # bracket (a trailing full stop or comma may follow the bracket:
+      # "(n=2)." in a flow diagram's box)
+      grpRe <- "^\\(\\s*[Nn]\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)[.,;:]?$"
       for (ci in cellIdx) {
         aft <- which(L$x >= cellToks$x1[ci] - 1 & L$x <= cellToks$x1[ci] + 40 & !drop)
         if (!length(aft)) next
@@ -314,7 +318,7 @@
         for (m in seq_along(aft)) {
           run <- aft[seq_len(m)]
           txtA <- paste(L$text[run], collapse = " ")
-          if (grepl("^\\(\\s*[Nn]\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)$", txtA, perl = TRUE)) {
+          if (grepl(grpRe, txtA, perl = TRUE)) {
             found[[length(found) + 1L]] <- data.frame(x0 = cellToks$x0[ci],
                                                       n = as.integer(gsub("\\D", "", txtA)))
             drop[run] <- TRUE
@@ -322,8 +326,39 @@
           }
         }
       }
-      if (length(found)) {
-        cellNByLine[[i]] <- do.call(rbind, found)
+      # EVERY OTHER "(n = k)" GROUP ON THE ROW LEAVES IT TOO (2026-09-27,
+      # ISSUES.md issue 131, second cut; Rezk 2018, Gynecol Endocrinol,
+      # the Loadsman corpus, the corpus session's batch 30). The paper sets
+      # its Table 1 in the right-hand column beside the CONSORT flow
+      # diagram of the left; read full width, the diagram's boxes share
+      # the table's lines: "Randomized (n=209) FSH (IU/L) 5.3 +/- 1.4 5.5
+      # +/- 1.2 1.09", "Excluded (n=16) Body mass index ... 24.2 +/- 4.3
+      # ...". The first cut made such a line a data row and read the
+      # groups AFTER its cells; the groups before them stayed, and their
+      # numbers - 209, 16 - are what the tokenizer makes of "(n=209)":
+      # they seeded a column of their own left of the arms, the header
+      # line's "Assessed for eligibility (n=225)" named it, and the table
+      # read three arms, the first called "eligibility" with an N of 225
+      # and no cell on any row. A "(n = k)" group on a row of cells is a
+      # count wherever it stands, never a cell: the ones that follow a
+      # cell are keyed to it above; the rest leave the line unkeyed.
+      j <- 1L
+      while (j <= nrow(L)) {
+        if (!drop[j] && grepl("^\\(", L$text[j], perl = TRUE)) {
+          hit <- FALSE
+          for (m in seq_len(min(4L, nrow(L) - j + 1L))) {
+            run <- seq(j, j + m - 1L)
+            if (any(drop[run])) break
+            if (grepl(grpRe, paste(L$text[run], collapse = " "), perl = TRUE)) {
+              drop[run] <- TRUE; j <- j + m; hit <- TRUE; break
+            }
+          }
+          if (hit) next
+        }
+        j <- j + 1L
+      }
+      if (length(found)) cellNByLine[[i]] <- do.call(rbind, found)
+      if (any(drop)) {
         lines[[i]] <- L[!drop, , drop = FALSE]
         rownames(lines[[i]]) <- NULL
         lineTexts[i] <- .ppLineText(lines[[i]])
@@ -1149,8 +1184,28 @@
       else (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
       spans  <- c(spans, thisSpan)
       colk   <- cols$assign(xRef)
+      # A COUNT FAR FROM EVERY COLUMN IS NO ARM'S SIZE (2026-09-27, ISSUES.md
+      # issue 131, second cut; Rezk 2018, Gynecol Endocrinol, the Loadsman
+      # corpus). The CONSORT flow diagram beside the table puts "Assessed
+      # for eligibility (n=225)" on the header line, 250 points left of the
+      # first arm's column; the nearest-column assignment gave that arm an
+      # N of 225 for its printed 102. The name-word rule above (issue 37)
+      # reads the column from the word before the count, and the same
+      # fence the arm-name assembly below applies - a word belongs to a
+      # column only within three-quarters of the column gap of its
+      # centre - applies here. When the word before the count is outside
+      # it - "Variable (N = 20) (N = 25)", the row-label heading before the
+      # first count - the count's own midpoint is tried, as for a count
+      # with no word before it; a count outside the fence by both
+      # readings is nobody's size.
+      fence  <- if (cols$n > 1) min(diff(sort(cols$centers))) * 0.75 else 100
+      if (abs(cols$centers[colk] - xRef) >= fence) {
+        xRef <- (d$x[wFirst] + d$x[wLast] + d$width[wLast]) / 2
+        colk <- cols$assign(xRef)
+      }
+      nearK  <- abs(cols$centers[colk] - xRef) < fence
       nval   <- suppressWarnings(as.integer(gsub("\\D", "", substr(joined, s, e))))
-      if (!is.na(nval) && is.na(armN[colk])) armN[colk] <- nval
+      if (nearK && !is.na(nval) && is.na(armN[colk])) armN[colk] <- nval
     }
     nSpanWords[[as.character(i)]] <- unique(spans)
   }
@@ -3250,6 +3305,22 @@ parseBaselineTableHeuristics <- function(pdfFile,
     cc
   })
   best <- NULL; bestScore <- -Inf; bestCand <- NULL; bestStrong <- FALSE
+  # THE COLUMN READING OF A CAPTION IS PREFERRED TO A FULL-WIDTH READING
+  # THAT READS THE SAME CELLS (2026-09-27, ISSUES.md issue 131, second cut;
+  # Rezk 2018, Gynecol Endocrinol, the Loadsman corpus). Table 1 stands in
+  # the right-hand column beside the CONSORT flow diagram; read full
+  # width, the diagram's boxes join the rows' labels - "Excluded Body
+  # mass index", "criteria -Declined: Randomized FSH (IU/L)" - and that
+  # reading out-scored the column reading by one skipped line: a level
+  # row the column reading skips for want of a heading took a box's words
+  # for its label. Two readings of one caption that reach the same cells,
+  # variables and arms are the same table; the one that read it with the
+  # neighbouring column's words left out is the one to keep. A table that
+  # spans the page's columns reads MORE cells full width and is chosen
+  # as before.
+  colSig <- list()
+  sigOf  <- function(cc, res) paste(cc$page, .ppSquish(as.character(cc$caption)), "|",
+                                    sum(!is.na(res$data$MEAN)), length(unique(res$data$ROW)), nrow(res$arms))
   # A straddle (see .ppSetAsideStraddles) is parsed like any candidate but
   # DEFERRED: it competes only if its twin - the single-table reading of
   # the same first table on the same page - yields no usable rows. Twins
@@ -3294,6 +3365,14 @@ parseBaselineTableHeuristics <- function(pdfFile,
         sc, " + caption ", 2 * cc$capScore,
         if (!is.null(cc$straddleTwin)) " - straddles two tables; deferred" else "", ".")
     sc <- sc + 2 * cc$capScore
+    sig <- sigOf(cc, res)
+    if (cc$mode == "columns") {
+      colSig[[sig]] <- TRUE
+    } else if (isTRUE(colSig[[sig]])) {
+      say("  The column reading of this caption read the same cells, variables and arms; ",
+          "the full-width reading adds only the neighbouring column's words - not preferred.")
+      next
+    }
     tk <- .ppTwinKey(cc)
     if (!is.na(tk)) twinParsed <- c(twinParsed, tk)
     if (!is.null(cc$straddleTwin)) {
