@@ -59,10 +59,28 @@ m <- 100000
 # it is clamped there, which keeps the fail-safe reconstruction's integer
 # arithmetic and r2dtable's allocations within what one machine can hold.
 # Set it in ~/.Renviron before R starts, since it is fixed at load.
-.iaMaxArmN <- local({
+#
+# READ IN .onLoad, NOT AT THE TOP LEVEL. An installed package's top-level
+# values are evaluated when it is INSTALLED and stored in its lazy-load
+# database, so a Sys.getenv() at the top level would read the build
+# machine's environment once and never the user's: R-CMD-check on PR #490
+# ran the test in a child with INTEGRITY_MAX_ARM_N = 20000 and read 5,000
+# (locally, load_all() sources the file and hid the difference). The
+# default below is what the installed image holds; .onLoad, which runs on
+# every load (library() and load_all() alike), replaces it - and the API's
+# copy .apiMaxN, taken from it at install time - from the environment of
+# the session that loads the package.
+.iaMaxArmN <- 5000L
+.iaArmCapFromEnv <- function() {
   v <- suppressWarnings(as.numeric(Sys.getenv("INTEGRITY_MAX_ARM_N", "5000")))
   if (length(v) != 1L || !is.finite(v) || v < 2) 5000L else as.integer(min(v, 1e7))
-})
+}
+.onLoad <- function(libname, pkgname) {
+  ns <- asNamespace(pkgname)
+  v <- .iaArmCapFromEnv()
+  assign(".iaMaxArmN", v, envir = ns)
+  assign(".apiMaxN", v, envir = ns)
+}
 # A WALL-CLOCK CEILING ON ONE ANALYSIS (2026-09-27, ISSUES.md issue 165;
 # Steve's decision after the outside security review of 2026-09-26). The
 # app runs the Monte Carlo inside the R process that serves the page, so

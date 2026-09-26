@@ -139,10 +139,13 @@ at Steve's request the same day: "I'm happy to have my local computer
 take as long as necessary. I just don't want shinyapps.io to spend hours
 on something that takes the app offline."
 
-- **What changed.** `.iaMaxArmN` is read once at package load from
-  `INTEGRITY_MAX_ARM_N` (unset: 5,000; below 2 or not a number: 5,000;
-  above ten million: clamped there), and the API's `.apiMaxN` follows it
-  as before. `.iaAppDrawBudget()` reads `INTEGRITY_APP_DRAW_BUDGET`
+- **What changed.** `.iaMaxArmN` is set once at package load, in
+  `.onLoad`, from `INTEGRITY_MAX_ARM_N` (unset: 5,000; below 2 or not a
+  number: 5,000; above ten million: clamped there), and the API's
+  `.apiMaxN` with it. Not at the top level of a source file: an
+  installed package's top-level values are frozen at install time in its
+  lazy-load database, which R-CMD-check showed on the first push (the
+  child read 5,000 with the variable set) while `load_all()` hid it. `.iaAppDrawBudget()` reads `INTEGRITY_APP_DRAW_BUDGET`
   when the option is not set (unset: ten times the API's budget).
   `INTEGRITY_ANALYZE_SECONDS` (issue 165) already existed. The deployed
   server sets none of the three, so shinyapps.io keeps its limits; the
