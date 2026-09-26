@@ -211,6 +211,14 @@
     lineTexts <- vapply(lines, .ppLineText, character(1))
     say("Wrote the equals sign into ", rep$repaired, " size line(s) (\"(n 25)\", \"(n - 20)\").")
   }
+  # ... and the letter-O size repair follows it here, so "(n = 3o)" is a whole
+  # group when the slot repair reads the arm columns (CodeRabbit on PR #464)
+  rep <- .ppRepairSizeZeros(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
+  }
   rep <- .ppRepairPlusMinusGlyphs(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
@@ -220,12 +228,6 @@
   }
   # ... and a letter O for a zero inside an "(n = k)" group (issue 75;
   # PMID 10522590's "(n=4O)"): see .ppRepairSizeZeros() in utils.R
-  rep <- .ppRepairSizeZeros(lines, capIdx)
-  if (rep$repaired > 0L) {
-    lines <- rep$lines
-    lineTexts <- vapply(lines, .ppLineText, character(1))
-    say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
-  }
   # ... and a letter l, I or O among the digits of an SD right after the sign
   # (issue 116; PMID 9717598's "58 <bullet> l0"): see
   # .ppRepairLetterDigitsAfterSign() in utils.R

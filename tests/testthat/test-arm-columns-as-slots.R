@@ -24,8 +24,13 @@ test_that("with no sign glyph in the block, two numbers straddling a header grou
     L(w("Age(yrs)", 55, 31), w("45", 273, 8), w("12", 294, 8), w("44", 392, 8), w("11", 412, 8), w("45", 512, 8), w("11", 532, 8)),
     L(w("Gender(male/female)", 55, 83), w("(n)", 141, 12), w("26/24", 283, 22), w("26/24", 402, 22), w("26/24", 521, 22)),
     L(w("Weight", 55, 26), w("(kg)", 84, 16), w("58", 273, 8), w("9", 294, 4), w("58", 392, 8), w("8", 412, 4), w("59", 512, 8), w("8", 532, 4)),
-    L(w("Indomethacin", 55, 52), w("(n)", 111, 12), w("32", 290, 8), w("32", 409, 8), w("31", 528, 8)))
+    L(w("Indomethacin", 55, 52), w("(n)", 111, 12), w("32", 290, 8), w("32", 409, 8), w("31", 528, 8)),
+    # a count row whose counts are separate words an arm apart (CodeRabbit on PR #464)
+    L(w("Sex", 55, 12), w("(male/female)", 70, 55), w("26", 273, 8), w("24", 294, 8), w("26", 392, 8), w("24", 412, 8), w("26", 512, 8), w("24", 532, 8)),
+    L(w("Smokers", 55, 30), w("(n)", 88, 12), w("6", 273, 4), w("7", 294, 4), w("6", 392, 4), w("6", 412, 4), w("5", 512, 4), w("7", 532, 4)))
   r <- .ppRepairPlusMinusGlyphs(lines, capIdx = 1L)
+  expect_identical(r$lines[[8]]$text, c("Sex", "(male/female)", "26", "24", "26", "24", "26", "24"))
+  expect_identical(r$lines[[9]]$text, c("Smokers", "(n)", "6", "7", "6", "6", "5", "7"))
   expect_identical(r$lines[[4]]$text, c("Age(yrs)", "45", pm, "12", "44", pm, "11", "45", pm, "11"))
   expect_identical(r$lines[[6]]$text, c("Weight", "(kg)", "58", pm, "9", "58", pm, "8", "59", pm, "8"))
   expect_identical(r$lines[[5]]$text, c("Gender(male/female)", "(n)", "26/24", "26/24", "26/24"))
@@ -34,6 +39,16 @@ test_that("with no sign glyph in the block, two numbers straddling a header grou
   r0 <- .ppRepairPlusMinusGlyphs(lines[-3], capIdx = 1L)
   expect_identical(r0$lines[[3]]$text, c("Age(yrs)", "45", "12", "44", "11", "45", "11"))
   expect_identical(r0$repaired, 0L)
+  # the footnote's unspaced announcement may name a digit or a soup mark
+  ann <- function(foot) {
+    ls <- list(L(w("Table", 55, 22)),
+               L(w("Age", 55, 14), w("45", 273, 8), w("6", 285, 4), w("12", 294, 8), w("44", 392, 8), w("6", 404, 4), w("11", 412, 8)),
+               L(w("Weight", 55, 26), w("58", 273, 8), w("6", 285, 4), w("9", 294, 4), w("58", 392, 8), w("6", 404, 4), w("8", 412, 4)),
+               L(w(foot, 55, 120)))
+    .ppRepairPlusMinusGlyphs(ls, capIdx = 1L)$lines[[2]]$text
+  }
+  expect_identical(ann("Values are means6SD, or number;"), c("Age", "45", pm, "12", "44", pm, "11"))
+  expect_identical(ann("Values are means SD, or number;"), c("Age", "45", "6", "12", "44", "6", "11"))
 })
 
 noGlyphPdf <- function(file = file.path(tempdir(), "noGlyph.pdf")) {

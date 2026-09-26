@@ -1447,7 +1447,10 @@
     # stands between every mean and its SD in the table ("45 6 12"). The
     # announcement is read with optional spaces, and a lone digit is a
     # glyph it may name; a bracket is not ("mean (SD)" announces nothing).
-    mm <- regmatches(txt, regexec("(?i)\\bmeans?(?:\\s+(\\S{1,4})\\s+|([0-9]))s\\.?\\s?d\\.?\\b", txt, perl = TRUE))[[1]]
+    # (the unspaced glyph may be a digit or a letter-free soup mark - "mean+-SD",
+    # "means6SD"; never a letter, or "means SD" would announce its own "s";
+    # CodeRabbit on PR #464)
+    mm <- regmatches(txt, regexec("(?i)\\bmeans?(?:\\s+(\\S{1,4})\\s+|([0-9]|[-+:~_\u2212\u2013\u00b7\u2022\u00b1]{1,4}))s\\.?\\s?d\\.?\\b", txt, perl = TRUE))[[1]]
     if (length(mm) == 3L) {
       g <- if (nzchar(mm[2])) mm[2] else mm[3]
       if (isSoup(g) || grepl("^[A-Za-z0-9]$", g)) { annGlyph <- g; break }
@@ -1637,6 +1640,15 @@
     # a gap of 4 to 20 points between them (issue 77)
     back   <- if (announced) slots else if (length(strong)) strong else armSlots   # the arm columns when no glyph exists (issue 152)
     usingArm <- !announced && !length(strong) && length(armSlots) > 0L
+    # ... and not on a row whose label says it counts - "Sex (male/female) 26
+    # 24 26 24", "Smokers (n)", "n (%)" - where two counts an arm apart
+    # would pass for a mean and its SD (CodeRabbit on PR #464)
+    if (usingArm) {
+      firstNum <- which(isNum(s))[1]
+      labelTxt <- if (!is.na(firstNum) && firstNum > 1L) paste(s[seq_len(firstNum - 1L)], collapse = " ") else ""
+      if (grepl("(?i)\\(\\s*n\\s*\\)|\\bno\\.?\\b|n\\s*\\(\\s*%\\s*\\)|%|/", labelTxt, perl = TRUE)) usingArm <- FALSE
+    }
+    if (!announced && !length(strong) && !usingArm) back <- numeric(0)
     xEnd   <- L$x + L$width
     gapHit <- logical(nrow(L))
     # only a LABELLED line: a figure's axis ticks under a scanned table

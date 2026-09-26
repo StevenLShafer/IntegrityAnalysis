@@ -187,7 +187,14 @@ Paediatr Anaesth 2001, PMID 11123735; Paediatr Anaesth 2002, PMID
   plus-minus as a "6", the same "6" standing between every mean and its
   SD, PMID 10386280), and the C1 control characters go with the C0 ones
   (Paediatr Anaesth's layer sets its sign as U+008B, a word of its own
-  between the mean and the SD, PMIDs 11123735 and 11903942).
+  between the mean and the SD, PMIDs 11123735 and 11903942). After
+  CodeRabbit's review of the PR: the letter-O size repair also runs before
+  the slot repair, so "(n = 3o)" is a whole group when the arm columns are
+  read; the unspaced announcement may name a letter-free soup mark as well
+  as a digit ("mean+-SD"), never a letter; and a row whose label says it
+  counts - "(n)", "no.", "n (%)", a fraction such as "(male/female)" - is
+  not signed against the arm columns, where two counts an arm apart would
+  pass for a mean and its SD.
 - **On the pages.** 10386280: three arms of 50, Age, Height, Weight,
   the menstrual row and both durations as printed, 18 cells (main: none).
   11123735: two arms of 30, 12 cells (main: one false cell). 11903942:
