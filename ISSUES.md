@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 133. The levels of one variable share a notation
+
+**Status: fixed on `fix/sibling-levels-share-the-count-reading`, 2026-09-27**,
+from the corpus session's batch 29 AH1 (Biricik 2024, J PeriAnesthesia
+Nursing, Loadsman corpus; four arms of 28).
+
+- **The defect.** Under "Type of surgery", "Adenoidectomy 7 (25) 10
+  (35.7) 8 (28.6) 8 (28.6)" checked as n (%) in every arm and read as
+  counts; "Tonsillectomy 11 (39.3) 13 (46.3) 10 (35.7) 9 (32.1)" did not
+  - 13 of 28 is 46.4, and the page prints 46.3 - so the cells could not
+  vouch, the footnote's "mean +/- SD" won, and the row read as a
+  continuous variable 11 +/- 39.3 / 13 +/- 46.3 / 10 +/- 35.7 / 9 +/-
+  32.1: four false cells that carried the trial's p.
+- **What changed.** A heading's levels are the categories of one
+  variable and are printed alike. When a level reads as n (%) by its own
+  cells, the heading's position and the level's label x are kept; a
+  later "a (b)" row at the same indentation under the same heading is a
+  level of counts too, a misprinted percentage notwithstanding. (The
+  heading itself closes at the first n (%) level, as issue 105 notes, so
+  the position is kept rather than the open heading.)
+- **On the page.** Tonsillectomy is a category with its complement
+  beside Adenoidectomy and the combined row; Age, Weight, Duration of
+  surgery and Extubating time as before.
+- **Tests** (`tests/testthat/test-sibling-levels-share-the-count-reading.R`):
+  a rebuilt page with the three levels under "Type of surgery", the
+  second with the misprinted percentage, reads no continuous
+  Tonsillectomy row and the row as a category (3 of 6 expectations fail
+  on the unfixed code). The identical-cells, degenerate-category,
+  count-percent, label-fragment and Loadsman layout tests still pass.
+
+---
+
 ## 132. A fraction in parentheses is label text, not a cell
 
 **Status: fixed on `fix/parenthesised-fraction-is-label-text`, 2026-09-27**,

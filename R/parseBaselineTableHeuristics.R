@@ -1424,6 +1424,10 @@
   catHeader    <- NA_character_
   catHeaderPct <- FALSE        # did the category header announce percentages?
   catHeaderNPct <- FALSE       # ... or "N (%)" cells (counts with percents)?
+  # the last level read as n (%) by its own cells: the heading it stood
+  # under and the x of its label (issue 133)
+  pctLevelHeadingAt <- NA_integer_
+  pctLevelX         <- NA_real_
   catColumns   <- character(0)
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
@@ -2070,11 +2074,33 @@
         # mean of 12 with an SD of 33 because the footnote also said
         # "mean (SD)" (vocacapsaicin corpus, 2026-08-22).
         else if (!is.na(catHeader) && catHeaderNPct) "percent"
+        # THE LEVELS OF ONE VARIABLE SHARE A NOTATION (2026-09-27, ISSUES.md
+        # issue 133; Biricik 2024, J PeriAnesthesia Nursing, Loadsman corpus
+        # - the corpus session's batch 29 AH1; four arms of 28). Under "Type
+        # of surgery", "Adenoidectomy 7 (25) 10 (35.7) 8 (28.6) 8 (28.6)"
+        # checked as n (%) in every arm and read as counts; "Tonsillectomy
+        # 11 (39.3) 13 (46.3) 10 (35.7) 9 (32.1)" did not - 13 of 28 is
+        # 46.4, and the page prints 46.3 - so the cells could not vouch,
+        # the footnote's "mean +/- SD" won, and the row read as a
+        # continuous variable 11 +/- 39.3: four false cells that carried the
+        # trial's p. A heading's levels are the categories of ONE variable
+        # and are printed alike: a row set at the same indentation as a
+        # level that read as n (%) by its own cells, under the same
+        # heading, is a level of counts too, a misprinted percentage
+        # notwithstanding. (The heading itself closes at the first n (%)
+        # level - see issue 105's note - so the heading's POSITION and the
+        # level's label x are kept, not the open heading.)
+        else if (!is.na(catHeaderAt) && identical(pctLevelHeadingAt, catHeaderAt) &&
+                 !is.na(pctLevelX) && abs(lines[[i]]$x[1] - pctLevelX) <= 2) "percent"
         else if (labelContinuous || footSaysMeanSD) "sd"
         else if (tableHasPlusMinus) "percent"
         else if (footSaysPercent) "percent"
         else "sd"
       mainType <- if (decision == "sd") "meanSD" else "nPct"
+      if (decision == "percent" && cellsSayPct && !is.na(catHeaderAt)) {
+        pctLevelHeadingAt <- catHeaderAt
+        pctLevelX         <- lines[[i]]$x[1]
+      }
       if (parenIsSD == "auto" && cellsSayPct)
         say("  \"", label, "\": read \"a (b)\" as n (%) - in every arm the ",
             "bracketed number is the first as a percentage of the arm N.")
