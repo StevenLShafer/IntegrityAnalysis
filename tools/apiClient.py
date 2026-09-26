@@ -21,6 +21,8 @@ INTEGRITY_API_TOKEN environment variable; /health needs none. Written
 2026-09-03 by Claude Code (model Claude Fable 5.1) at Steve Shafer's
 request, beside the R client.
 """
+import csv
+import io
 import json
 import mimetypes
 import os
@@ -69,6 +71,23 @@ def multipart(fields, file_field, path):
     return b"".join(parts), "multipart/form-data; boundary=" + boundary
 
 
+def formula_cells(text):
+    """Count the cells a spreadsheet would read as a formula: a cell that
+    begins with =, @, a tab or a carriage return, or with + or - and then
+    something other than a number ("-0.5" is a number; "-cmd" is not)."""
+    n = 0
+    for row in csv.reader(io.StringIO(text)):
+        for cell in row:
+            if not cell:
+                continue
+            c = cell[0]
+            if c in "=@\t\r":
+                n += 1
+            elif c in "+-" and not cell[1:2].isdigit() and cell[1:2] != ".":
+                n += 1
+    return n
+
+
 def save_csv(stem, suffix, text):
     if not text:
         return
@@ -76,6 +95,20 @@ def save_csv(stem, suffix, text):
     with open(out, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     print("  wrote %s (%d rows)" % (out, text.count("\n") - 1))
+    # THE TEMPLATE IS SAVED VERBATIM, AND SAID SO WHEN THAT MATTERS (outside
+    # security review, 2026-09-26). templateCsv is the round-trip payload -
+    # the service must accept it back unchanged, so the client cannot
+    # sanitise its labels as the results CSV's are - but it is written as
+    # an ordinary .csv beside the input, and a label a spreadsheet would
+    # read as a formula ("=...", "@...", "+text") is a manuscript's own
+    # text. When such a cell is present the user is told, and told to edit
+    # the file in a text editor rather than open it in spreadsheet software.
+    if suffix == "template":
+        k = formula_cells(text)
+        if k:
+            print("  note: %d cell(s) in %s begin with a character spreadsheet software reads as a "
+                  "formula (=, +, -, @); the file is kept exactly as the service returned it so it "
+                  "can be sent back - edit it in a text editor, not in a spreadsheet" % (k, out))
 
 
 def main(argv):

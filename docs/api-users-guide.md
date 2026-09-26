@@ -298,7 +298,12 @@ Values in the CSVs are sanitised against spreadsheet formula injection:
 a cell that would begin with `=`, `+`, `-`, `@`, a tab or a carriage
 return is prefixed with an apostrophe, in `resultsCsv` and the journal
 tables. `templateCsv` is
-verbatim, because it must round-trip.
+verbatim, because it must round-trip: a label that begins with `=`, `+`
+or `@` arrives exactly as the manuscript printed it. Treat a saved
+template as the manuscript's text, not as a spreadsheet you have
+checked: edit it in a text editor rather than opening it in spreadsheet
+software, which may read such a label as a formula. The supplied clients
+(section 9) say so when the template they save carries such a cell.
 
 ### `/analyze`, HTTP 422 — read, but not analysable
 

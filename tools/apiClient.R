@@ -127,11 +127,33 @@ if (!is.null(b$overallP)) say("  overall p: ", b$overallP)
 
 # the CSVs the reply carries, saved beside the input
 stem <- tools::file_path_sans_ext(file)
+# THE TEMPLATE IS SAVED VERBATIM, AND SAID SO WHEN THAT MATTERS (outside
+# security review, 2026-09-26; the Python twin has the same note).
+# templateCsv is the round-trip payload - the service must accept it back
+# unchanged, so the client cannot sanitise its labels as the results CSV's
+# are - but it is written as an ordinary .csv beside the input, and a label
+# a spreadsheet would read as a formula ("=...", "@...", "+text") is a
+# manuscript's own text. A cell that begins with =, @, a tab or a carriage
+# return, or with + or - and then something other than a number ("-0.5" is
+# a number; "-cmd" is not), is counted, and the user is told to edit the
+# file in a text editor rather than open it in spreadsheet software.
+formulaCells <- function(txt) {
+  d <- tryCatch(utils::read.csv(text = txt, header = FALSE, colClasses = "character",
+                                check.names = FALSE, na.strings = character(0)),
+                error = function(e) NULL)
+  if (is.null(d)) return(0L)
+  cells <- unlist(d, use.names = FALSE)
+  sum(grepl("^[=@\t\r]", cells) | grepl("^[-+](?![0-9.])", cells, perl = TRUE))
+}
 saveCsv <- function(txt, suffix) {
   if (is.null(txt) || !nzchar(txt)) return(invisible())
   out <- paste0(stem, "-", suffix, ".csv")
   writeLines(txt, out)
   say("  wrote ", out, " (", length(strsplit(txt, "\n")[[1]]) - 1L, " rows)")
+  if (suffix == "template" && (k <- formulaCells(txt)) > 0L)
+    say("  note: ", k, " cell(s) in ", out, " begin with a character spreadsheet software reads as a ",
+        "formula (=, +, -, @); the file is kept exactly as the service returned it so it can be sent ",
+        "back - edit it in a text editor, not in a spreadsheet")
 }
 saveCsv(b$templateCsv, "template")
 saveCsv(b$resultsCsv, "results")
