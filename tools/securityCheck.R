@@ -1229,6 +1229,32 @@ if (length(avDef) != 1L || !length(avCall))
              "without it a block declines by enumerating itself (153 s at",
              "an arm of 500,000; screen 2026-09-08-2100 F1)"))
 
+## 9 - every privacy statement names the one exception --------------------
+# (outside security review, 2026-09-26). The app sends document content
+# to a third party in exactly one case - the user enters their own
+# Anthropic key - and the app's own banner (R/app_ui.R) and the data-
+# handling statement (docs/data-handling.md) say so. The landing page
+# (site/index.html) is published from this tree too, and it once kept
+# the unconditional promise after the exception existed; a reader
+# deciding whether unpublished material may be used with the service
+# reads the landing page first. Every statement names the exception,
+# and the landing page points at the full statement.
+privacyFiles <- c("site/index.html", "R/app_ui.R", "docs/data-handling.md")
+for (f in privacyFiles) {
+  if (!file.exists(f)) { note(paste0(f, ": privacy statement file missing")); next }
+  src <- readLines(f, warn = FALSE, encoding = "UTF-8")
+  if (!any(grepl("Anthropic", src, fixed = TRUE)))
+    note(paste0(f, ": the privacy statement must name the one exception - document content ",
+                "goes to Anthropic only when the user enters their own key"))
+}
+if (file.exists("site/index.html")) {
+  src <- readLines("site/index.html", warn = FALSE, encoding = "UTF-8")
+  if (any(grepl("no document content is ever sent", src, fixed = TRUE)))
+    note("site/index.html: the unconditional 'never sent' promise is stale - the opt-in AI exception exists")
+  if (!any(grepl("guide.html#data-handling", src, fixed = TRUE)))
+    note("site/index.html: the privacy paragraph must link to the full data-handling statement (guide.html#data-handling)")
+}
+
 ## ------------------------------------------------------------------------
 if (length(fail)) {
   cat("SECURITY CHECK FAILED:
@@ -1238,5 +1264,5 @@ if (length(fail)) {
   quit(status = 1)
 }
 cat("Security check passed:", length(rFiles), "R/ files,",
-    "8 property groups.
+    "9 property groups.
 ")
