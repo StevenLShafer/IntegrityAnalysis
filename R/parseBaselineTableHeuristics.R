@@ -460,7 +460,12 @@
       if (seenData) {
         # words that carry a letter or a digit: a rule rendered as
         # punctuation fragments is not prose (issue 153)
-        if (sum(grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE)) > 8 || blankRun >= 3) {
+        # ... and a line that names the count notation - "Type of surgery,
+        # no. (%) of patients" - is a heading, not prose, up to ten words
+        # (issue 156; CodeRabbit on PR #468)
+        nWordy <- sum(grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE))
+        isCountHead <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", txt, perl = TRUE) && nWordy <= 10
+        if ((nWordy > 8 && !isCountHead) || blankRun >= 3) {
           kind[i] <- "stop"
           break
         }
@@ -1713,7 +1718,10 @@
     for (j in pre) {
       lbl <- .ppCleanLabel(lineTexts[j])
       L   <- lines[[j]]
-      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L || nrow(L) > 6) next
+      # a heading that names the count notation may run to ten words here
+      # too (issue 156; CodeRabbit on PR #468)
+      preTag <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[j], perl = TRUE)
+      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L || nrow(L) > (if (preTag) 10 else 6)) next
       if (max(L$x + L$width) >= min(cols$centers) - 20) next
       if (grepl(paste0("(?i)\\b(values?|data|results?|numbers?)\\s+(are|were|is)\\b|",
                        "\\bexpressed\\b|\\bpresented\\b|\\bshown\\b"),
@@ -2233,7 +2241,13 @@
       # N (%)" beneath it): the continuation is a label-kind line, and
       # its tag is this row's notation evidence (vocacapsaicin corpus,
       # 2026-08-22).
+      # ... and only a SHORT continuation carries it: a label line of five
+      # or more words beneath the row is the next variable's heading, not
+      # this row's tag - "Days since last menstrual cycle 16 (3)" over "Type
+      # of surgery, no. (%) of patients" read as counts (issue 156; Clin
+      # Ther 2003, PMID 14749148)
       nextLabelPct <- i < length(kind) && kind[i + 1] == "label" &&
+        nrow(lines[[i + 1]]) <= 4L &&
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
