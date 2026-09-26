@@ -5628,8 +5628,16 @@ where the reproducibility claim is made.
 
 ## 26. An asynchronous API, for trials the synchronous one must refuse
 
-**Status: open.** Surfaced 2026-08-27 when Steve asked whether capping
-N at 10,000 would solve the compute-product problem.
+**Status: open, deferred by decision (Steve, 2026-09-26).** Building this
+is the right long-term answer to the synchronous compute on the public
+app, which two outside security reviews (2026-09-10, 2026-09-26) have
+raised; it is deferred until the move from shinyapps.io to Posit Connect
+Cloud, because that transition may change the architecture again. Until
+then the interim risk is accepted on the shinyapps.io professional plan's
+worker allocation, and no app-side draw budget is added: it would refuse
+the large single trials the API's refusal text deliberately routes here.
+Surfaced 2026-08-27 when Steve asked whether capping N at 10,000 would
+solve the compute-product problem.
 
 The `/analyze` compute budget bounds the WORST case — every row
 escalating to 100,000 replicates. The typical case is about 100x
