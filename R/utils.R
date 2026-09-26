@@ -725,6 +725,56 @@
 # Collapse repeated whitespace and trim.
 .ppSquish <- function(x) trimws(gsub("\\s+", " ", x))
 
+# LOOK-ALIKE LETTERS IN THE BRACKETED SD OF A "MEAN (SD)" ROW (2026-09-26,
+# ISSUES.md issue 149; Clin Ther 2003, PMID 12809962, and Clin Ther 2004,
+# PMID 15336470, the corpus session's batch 31 part 3 AL7 and AL8). The
+# Clinical Therapeutics tables set each variable as a heading over a "Mean
+# (SD)" sub-row, and the OCR of the SD in its brackets reads "(I 0)" for
+# (10), "(L I)" and "(l i)" for (11), "(t2)" for (12), "(tt)" for (11):
+# the letters l, I, i, L, t and | for the digit 1, O and o for 0. Such a
+# cell is no "a (b)" cell, the row's mean stood alone and was read as a
+# count of a category level named "Mean", and the table failed with "two
+# columns normalize to the same name: MEAN". On a row whose label begins
+# with "Mean" - the row that says its cells are mean (SD) - a bracket
+# group of one to four such characters, at least one of them a letter,
+# following a bare number, is that number's SD: the letters become their
+# digits and the group one word. Nothing on any other row is touched.
+.ppRepairLookAlikeBracketSd <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  isNum <- function(x) grepl("^[0-9]+(?:[.,][0-9]+)?$", x, perl = TRUE)
+  look  <- "^(?=[0-9lIiLtO|o]*[lIiLtO|o])[0-9lIiLtO|o]{1,4}$"
+  for (i in seq(capIdx + 1L, n)) {
+    L <- lines[[i]]; s <- L$text
+    if (length(s) < 3L || !grepl("(?i)^mean", s[1], perl = TRUE)) next
+    keep <- rep(TRUE, length(s)); hit <- FALSE
+    k <- 2L
+    while (k <= length(s)) {
+      if (isNum(s[k]) && k < length(s) && grepl("^\\(", s[k + 1L], perl = TRUE)) {
+        # the group: from the word that opens the bracket to the one that closes it (at most three words)
+        j <- k + 1L; found <- FALSE
+        while (j <= min(k + 3L, length(s))) {
+          if (grepl("\\)[.,;*]*$", s[j], perl = TRUE)) { found <- TRUE; break }
+          j <- j + 1L
+        }
+        if (found) {
+          inner <- gsub("^\\(|\\)[.,;*]*$", "", paste(s[seq(k + 1L, j)], collapse = ""), perl = TRUE)
+          if (grepl(look, inner, perl = TRUE)) {
+            s[k + 1L] <- paste0("(", chartr("lIiLt|Oo", "11111100", inner), ")")
+            L$width[k + 1L] <- L$x[j] + L$width[j] - L$x[k + 1L]
+            if (j > k + 1L) keep[seq(k + 2L, j)] <- FALSE
+            hit <- TRUE; repaired <- repaired + 1L
+          }
+        }
+        k <- j + 1L; next
+      }
+      k <- k + 1L
+    }
+    if (hit) { L$text <- s; lines[[i]] <- L[keep, , drop = FALSE]; rownames(lines[[i]]) <- NULL }
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # A LETTER O FOR A ZERO IN AN ARM SIZE (2026-09-25, ISSUES.md issue 75;
 # Fujii 1999, Can J Anaesth, PMID 10522590 - the corpus session's batch 17
 # W2). The scanned page's text layer prints the header sizes as "(n=4O)"
