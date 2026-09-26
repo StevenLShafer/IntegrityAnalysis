@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 171. The guides claimed exactness and calibration the procedure does not establish
+
+**Status: fixed on `docs/exactness-claims-qualified`, 2026-09-26**, from
+the outside statistical audit of 2026-09-26 (F5, P2 inference; report
+held locally under `.audit/`). Documentation only, harmonised to the
+methods paper's already-qualified language.
+
+- **The defect.** The Markdown called the Monte Carlo interval "exact
+  Clopper–Pearson", said the "<0.0001" bound was "unaffected" by the
+  stopping rule, described the floor as making the test exact-valid,
+  said the attainable floor depends "never on the data", called
+  fail-safe counts "conservative" without qualification, and explained
+  the one-in-100 rate by independence alone. Three uncertainties were
+  run together: the model's fit to the trial, the calibration of a
+  mid-p under a fitted model with adaptive stopping (a single balanced
+  binary variable in two arms of 5,000 sits below 0.01 in 1.6% of
+  honest tables; enumerated coverage of the stopped interval runs 93.4%
+  to 95.4%), and Monte Carlo error.
+- **What changed.** The interval is "calculated from Clopper–Pearson
+  tail limits; nominal coverage is qualified by adaptive stopping and,
+  for trial sums, by estimated score mappings"; the floor prevents a
+  zero and is not the plus-one rank construction; the attainable floor
+  depends on printing, sample size, fitted spread and position on the
+  grid, not on which arm printed which value; fail-safe counts give the
+  highest among scored candidates, a bounded search; the caveat names
+  discreteness beside independence. The `P_Calc.R` design comment says
+  the same. The methods paper already did (sections on the interval,
+  the floor and the bound).
+
+---
+
 ## 170. The across-trial combination is described as it was, not as it is
 
 **Status: fixed on `docs/overall-p-combines-the-numbers`, 2026-09-26**,

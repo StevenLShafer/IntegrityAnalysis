@@ -757,10 +757,13 @@ paper [6] discusses them at length. A trial flagged here deserves
 scrutiny of the original data, not summary judgment.
 
 **CAVEAT: Chance alone will produce P ≤ 0.05 in about 1 in 20 honest
-papers, and P ≤ 0.01 in about 1 in 100** (about, because the
+papers, and P ≤ 0.01 in about 1 in 100** (about, for two reasons: the
 combination treats the variables as independent, and a table that
 reports weight and BMI, or a measurement and its categorised version,
-repeats some of its evidence; see [statistics.md](statistics.md)).
+repeats some of its evidence; and the P is a mid-p on discrete outcomes
+under a fitted model, so it is not exactly uniform — a single balanced
+binary variable in two arms of 5,000 sits below 0.01 in 1.6% of honest
+tables; see [statistics.md](statistics.md)).
 **Research fraud should never be alleged by
 a single manuscript flagged by IntegrityAnalysis. Confirmation such as
 multiple suspicious papers (e.g., Fujii, Boldt) should be sought.
@@ -834,8 +837,9 @@ beat it; its interval says so instead.) For integer age at 1,000 per arm the flo
 0.27, and the note means the row cannot alarm and should not be read as
 reassurance either. For a row printed to two decimals the floor is
 small, and a row at it alarms; the note then means this is as far as
-the row can go. The floor depends on the printing and the sample size,
-never on the data.
+the row can go. The floor depends on the printing, the sample size, the
+fitted spread and where the population sits relative to the grid, not
+on which arm printed which value.
 
 The combination step (next section) removes the same assumption one
 level up: the summed evidence of a trial's rows is judged against its
@@ -973,7 +977,8 @@ matched is floored at 1 divided by (replicates + 1). A p is displayed as
 (the exact binomial confidence bound) on the count of replicates at or
 below the observed statistic clears 1 in 10,000; otherwise the estimate
 itself is shown. The P column carries the estimate alone; every row's
-exact 95% Monte Carlo interval sits in its own column ("0.27 to 0.33"
+95% Monte Carlo interval (Clopper–Pearson tail limits; nominal, since
+the batch is the one the staging stopped at) sits in its own column ("0.27 to 0.33"
 for an unremarkable row at 1,000 replicates), so you always know how
 much simulation noise is in a p. The interval is about the simulation,
 not the data: it says how precisely the replicates pinned that row's p.
@@ -995,9 +1000,11 @@ combine to about 4 × 10⁻¹¹ by the closed form (eight rows at p = 0.05
 to about 1.6 × 10⁻⁶). The trial p is floored and displayed by the same
 rules as a row's (see *How many simulations?* above): floored at 1
 divided by (replicates + 1), shown as "<0.0001" only when its upper
-bound licenses it, and — when it falls below 0.001 — carrying an exact
-**95% Monte Carlo interval** ("0 to 3.7e-05" at 100,000 replicates)
-rather than a number the simulation could not resolve.
+bound licenses it, and — when it falls below 0.001 — carrying a
+**95% Monte Carlo interval** ("0 to 3.7e-05" at 100,000 replicates;
+nominal, as for a row, and the trial's score mappings are estimated
+from the same draws that are scored) rather than a number the
+simulation could not resolve.
 
 The rows are treated as independent: two variables that carry the same
 information (weight and BMI, a measurement and its categorised version)
