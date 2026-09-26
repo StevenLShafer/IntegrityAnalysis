@@ -1188,8 +1188,22 @@
     # between two positive numbers at the sign column of a baseline table
     # is not a thing a page prints.
     minusDigit <- announced & grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & prevNum & nextNum & atSlot
+    # A DIGIT AND A COLON STANDING ALONE AT A SLOT (2026-09-26, ISSUES.md
+    # issue 125; CJA 1996, PMID 8706192, the corpus session's AF7): the
+    # Awakening time line reads "6.1 5:2.5 6.2 5:22.8 6.0 5:3.0 9.2 5:
+    # 5.5*" - the fourth arm's sign set as "5:" on its own, the SD after
+    # it with the paper's significance star. The glued "5:2.5" is read
+    # (issue 70) but "5:" alone is no soup word (a digit is not a stroke)
+    # and "5.5*" is no number, so the cell was lost and the row read
+    # three arms of four. A word of one digit and a colon, between a
+    # number and a number that may carry a footnote mark, at a slot the
+    # block's other rows set, is the sign: a ratio has digits on both
+    # sides of its colon, and a time has two.
+    isNumMark <- function(x) grepl(paste0("^", .ppNUM, "[*a-z]{0,2}$"), x, perl = TRUE)
+    nextNumMark <- c(isNumMark(s[-1L]), FALSE)
+    digitColon <- grepl("^[0-9]:$", s, perl = TRUE) & prevNum & nextNumMark & atSlot
     isSign <- isSoup(s) | (announced & s == annGlyph) | minusDigit
-    base <- prevNum & ((isSign & nextNum) | glued) & !true(s) & s != "+" &
+    base <- prevNum & ((isSign & nextNum) | glued | digitColon) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph))
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
