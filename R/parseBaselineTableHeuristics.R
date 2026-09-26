@@ -1008,14 +1008,32 @@
   # columns before the header count settles them.
   pairLine <- NA_integer_; pairOnlyRows <- list()
   if (cols$n >= 2L) {
-    firstWord <- "(?i)^(before|baseline|pre|pre-?op(erative)?|pre-?treatment|basal|initial|control|0\\s*min|t0)$"
-    laterWord <- "(?i)^(after|post|post-?op(erative)?|post-?treatment|\\d+\\s*(min|h|hr|hours?|days?|wk|weeks?)|t\\d+|end|final|recovery)$"
+    # ... "Pre-intoxication" and "Post-intoxication" are a pair too: any
+    # hyphenated pre-/post- compound, the hyphen as a text layer may set it
+    # (a minus sign or an en dash) (issue 155)
+    firstWord <- "(?i)^(before|baseline|pre|pre-?op(erative)?|pre-?treatment|pre[-\u2212\u2013][a-z]+|basal|initial|control|0\\s*min|t0)$"
+    laterWord <- "(?i)^(after|post|post-?op(erative)?|post-?treatment|post[-\u2212\u2013][a-z]+|\\d+\\s*(min|h|hr|hours?|days?|wk|weeks?)|t\\d+|end|final|recovery)$"
     pairWords <- NULL
     for (h in which(kind %in% c("header", "label"))) {
       if (h <= capIdx || h >= firstData) next
       L <- lines[[h]]
       keepW <- !grepl("^[a-z]$", L$text)          # footnote letters "a", "b" beside the words
       w <- L$text[keepW]
+      # ONE COHORT'S BEFORE-AND-AFTER TABLE IS NO BASELINE TABLE (2026-09-26,
+      # ISSUES.md issue 155; CJA 2000, PMID 10730740, the corpus session's
+      # batch 31 part 1 AJ1). "Pre-intoxication | Post-intoxication" over
+      # two columns of twelve haemodynamic rows: the whole cohort before
+      # and after theophylline, not two arms, and the engine scored it as
+      # two arms with no N (12 rows, score 26) ahead of the paper's real
+      # baseline table. A header of exactly one first/later pair over a
+      # block of exactly two columns has no arms in it at all: the block is
+      # refused, and the document's other tables are tried.
+      if (length(w) == 2L && cols$n == 2L &&
+          grepl(firstWord, w[1], perl = TRUE) && grepl(laterWord, w[2], perl = TRUE)) {
+        say("  Header line \"", .ppSquish(lineTexts[h]), "\": one cohort before and after - ",
+            "no arms in this table; refused.")
+        return(NULL)
+      }
       if (length(w) < 4L || length(w) %% 2L != 0L) next
       isFirst <- grepl(firstWord, w, perl = TRUE); isLater <- grepl(laterWord, w, perl = TRUE)
       odd <- seq(1L, length(w), by = 2L); even <- seq(2L, length(w), by = 2L)
