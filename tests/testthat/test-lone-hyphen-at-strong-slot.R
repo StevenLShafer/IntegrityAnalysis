@@ -27,6 +27,32 @@ test_that("the slot repair reads a lone hyphen at a strong slot as the sign, and
   expect_identical(r$lines[[5]]$text, c("Age", "range", "3", "-", "12"))
 })
 
+# THE PLACEHOLDER DASH OF A LONG-LAYOUT TABLE (issue 142, second cut; Anesth
+# Analg 2004, PMID 15281514): "HR (bpm) I 142 <sign> 13 - 142 <sign> 13 ..."
+# - the dash is the Fatigue cell of a group without fatigue, at the slot
+# where the other groups' rows set a sign. It stands between two numbers
+# at a strong slot, but the number before it is an SD (a sign precedes it)
+# and the number after it is a mean (a sign follows it): the dash is a
+# cell, not a sign.
+test_that("a lone dash between two other cells' numbers at a strong slot stays a dash", {
+  w <- function(text, x) data.frame(text = text, x = x, width = c(4, 6)[1 + (nchar(text) > 1)] * pmax(1, nchar(text)) / 2 + 2,
+                                    stringsAsFactors = FALSE)
+  L <- function(...) do.call(rbind, list(...))
+  s <- "⫾"
+  lines <- list(
+    L(w("Table", 44), w("1.", 70)),
+    L(w("HR", 44), w("(bpm)", 60), w("I", 144), w("142", 180), w(s, 195), w("13", 205), w("–", 250), w("142", 292), w(s, 308), w("13", 318), w("142", 362), w(s, 378), w("13", 388)),
+    L(w("II", 144), w("143", 180), w(s, 195), w("10", 205), w("–", 250), w("127", 292), w(s, 308), w("9*", 318), w("142", 362), w(s, 378), w("11", 388)),
+    L(w("III", 144), w("143", 180), w(s, 195), w("12", 205), w("142", 233), w(s, 249), w("11", 259), w("143", 292), w(s, 308), w("11", 318), w("141", 362), w(s, 378), w("10", 388)),
+    L(w("IV", 144), w("141", 180), w(s, 195), w("11", 205), w("142", 233), w(s, 249), w("10", 259), w("125", 292), w(s, 308), w("10*", 318), w("142", 362), w(s, 378), w("9", 388)))
+  r <- .ppRepairPlusMinusGlyphs(lines, capIdx = 1L)
+  # the genuine glyphs stay as printed (the tokenizer knows them); the
+  # dashes stay dashes
+  expect_identical(r$lines[[2]]$text, c("HR", "(bpm)", "I", "142", s, "13", "–", "142", s, "13", "142", s, "13"))
+  expect_identical(r$lines[[3]]$text, c("II", "143", s, "10", "–", "127", s, "9*", "142", s, "11"))
+  expect_identical(r$lines[[4]]$text[6], s)
+})
+
 loneHyphenPdf <- function(file = file.path(tempdir(), "loneHyphen.pdf")) {
   vx <- c(178, 245)
   cell <- function(y, k, mean, sign, sd) list(

@@ -1399,7 +1399,24 @@
     # STRONG slot - one set by genuine glyphs on two or more lines - it is
     # the sign, and the row's other cell says so too.
     atStrong0 <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
-    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0
+    # ... BUT NOT A PLACEHOLDER BETWEEN TWO CELLS (2026-09-27, ISSUES.md
+    # issue 142, second cut; Anesth Analg 2004, PMID 15281514, the corpus
+    # session's batch 30 AI2). A long-layout table whose Fatigue column
+    # prints an en dash for the two groups without fatigue, at the column
+    # where the other groups' rows set a sign: "HR (bpm) I 142 +/- 13 -
+    # 142 +/- 13 ...". The dash stands between two numbers at a strong
+    # slot and was read as the sign, so the row's cells fused across it
+    # and the long-layout reader no longer engaged: 32 cells became 173
+    # rows without an N. The number before a sign is a MEAN, and a mean is
+    # never itself preceded by a sign; the number after a sign is an SD,
+    # never itself followed by one. When the word two before the dash, or
+    # the word two after it, is a genuine sign glyph, the numbers on either
+    # side of the dash belong to other cells and the dash is a cell of its
+    # own - a placeholder - and stays.
+    twoBefore <- c(FALSE, FALSE, true(s)[seq_len(max(0L, length(s) - 2L))])
+    twoAfter  <- c(true(s)[-seq_len(min(2L, length(s)))], FALSE, FALSE)[seq_along(s)]
+    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0 &
+      !twoBefore & !twoAfter
     base <- prevNum & ((isSign & nextNum) | glued | digitColon | letterSign) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph) | letterSign | dashAtStrong)
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
