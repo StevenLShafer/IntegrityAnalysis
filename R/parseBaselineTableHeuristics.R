@@ -155,7 +155,18 @@
     # "*No significant between-group differences were found." (Fujii
     # 2006, PMID 16982288, issue 55) ran on into the block and the prose
     # beneath it seeded a phantom column
-    "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]")
+    "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]",
+    # A LEGEND LINE OF A\\REVIATIONS ENDS THE BLOCK (2026-09-26, ISSUES.md
+    # issue 151; Clin Ther 2007, PMID 17697904, the corpus session's batch
+    # 31 part 2 AK5). "LID/MET 40/2.5 = lidocaine/metoclopramide 40/2.5 mg;
+    # LID/MET 40/5 = lidocaine/metoclopramide 40/5 mg; ..." follows the
+    # table's last row with no footnote mark, and its doses - 40/2.5,
+    # 40/5 - are numbers at the label column's x: they seeded a fifth
+    # column under the label heading, the header's first "(n = 60)" went
+    # to it, and the first arm lost its size. A line that defines two or
+    # more abbreviations - "A = words; B = words" - is the table's legend,
+    # and the block ends there as it does at "Abbreviations:".
+    "|^[^=]{1,60}\\s=\\s[^=;]{2,80};\\s*[^=]{1,60}\\s=\\s")
   footnoteInfo <- character(0)   # kept to help disambiguate "a (b)" cells
 
   # A SCANNED PAGE'S PLUS-MINUS SOUP IS REPAIRED FIRST (2026-09-25,
