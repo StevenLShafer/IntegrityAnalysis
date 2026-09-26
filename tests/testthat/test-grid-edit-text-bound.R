@@ -38,6 +38,29 @@ test_that("a grid cell over the cell limit is refused by Apply Edits, and one at
   })
 })
 
+test_that("an upload whose combination with the grid exceeds the table bound is refused, and the grid stays", {
+  # the table on the grid and the uploaded sheet each hold half the bound
+  # and a little more; each passes alone, together they do not
+  nRows <- ceiling(.iaMaxTableTextBytes / 2 / .ppMaxCellChars) + 50L
+  label <- strrep("c", .ppMaxCellChars)
+  half <- data.frame(TRIAL = 1, ROW = rep(label, nRows), N = 25, MEAN = 54.1, SD = 9.2,
+                     ROUND_MEAN = 1, ROUND_OBSERVATION = 1, stringsAsFactors = FALSE)
+  csv <- file.path(tempdir(), "half-the-bound.csv")   # under tempdir(): the purge on exit is tempdir-guarded
+  utils::write.csv(half, csv, row.names = FALSE)
+  shiny::testServer(app_server, {
+    session$setInputs(dataGrid = half)
+    session$setInputs(upload = data.frame(name = "half-the-bound.csv", datapath = csv,
+                                          stringsAsFactors = FALSE))
+    log <- shiny::isolate(commentsLog())
+    expect_true(any(grepl("combined table was not accepted", log, fixed = TRUE)))
+    expect_true(any(grepl("MB of text", log, fixed = TRUE)))
+    # the session's table is not the refused combination, and the grid is
+    # what it was
+    expect_true(is.null(session$env$DATA) || nrow(session$env$DATA) <= nRows)
+    expect_equal(nrow(currentGrid()), nRows)   # ceiling() made nRows a double
+  })
+})
+
 test_that("a grid whose text exceeds the table bound is refused by Apply Edits", {
   shiny::testServer(app_server, {
     session$setInputs(blank = 1)

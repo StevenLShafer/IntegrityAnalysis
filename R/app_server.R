@@ -1380,7 +1380,7 @@ app_server <- function(input, output, session) {
       # different category columns; absent columns fill with NA, which is
       # exactly what the category rules expect).
       allCols <- unique(unlist(lapply(frames, function(f) names(f$data))))
-      DATA <<- do.call(rbind, lapply(frames, function(f) {
+      combined <- do.call(rbind, lapply(frames, function(f) {
         d <- f$data
         for (nm in setdiff(allCols, names(d))) d[[nm]] <- NA
         d[, allCols, drop = FALSE]
@@ -1389,13 +1389,19 @@ app_server <- function(input, output, session) {
       # 2026-09-26): each spreadsheet met the text bound on its own above,
       # and the parsed documents' cells are short by construction, but the
       # frames concatenate - and append to a table already on the grid -
-      # so the bound is checked once more on what the grid will hold.
-      msg <- .iaTableTextRefusal(DATA)
+      # so the bound is checked once more on what the grid will hold,
+      # BEFORE it becomes the session's table: a refused combination
+      # leaves the table on the grid, and the session's data, as they
+      # were (CodeRabbit on the review's PR), and the log says how to get
+      # back to an analysable state.
+      msg <- .iaTableTextRefusal(combined)
       if (!is.null(msg)) {
-        outputComments(paste0("The combined table was not accepted: ", msg, "."))   # outputComments escapes
-        DATA <<- NULL
+        outputComments(paste0("The combined table was not accepted: ", msg,   # outputComments escapes
+                              ". The table on the grid is unchanged; click Apply Edits & ",
+                              "Revalidate to analyze it as it stands."))
         return()
       }
+      DATA <<- combined
       if (nPrior > 0) {
         outputComments(paste0(
           "Appended ", length(frames) - nPrior, " file(s) to the ",
