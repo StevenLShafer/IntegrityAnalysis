@@ -167,6 +167,72 @@ of 80; not analysed until now, "N missing").
   Loadsman layout, canine long-layout, stratum, paired-column,
   header-cut and isolated-column tests still pass.
 
+---
+
+## 138. A "P values" heading over a column with no cells of its own
+
+**Status: fixed on `fix/p-values-heading-over-no-column`, 2026-09-27**, from
+the corpus session's batch 28 AG3 (EJA 1998, PMID 9587723; four arms of 30
+on a page printed sideways).
+
+- **The defect.** The header ends "(n =30) P values" and the P column
+  beneath holds "NS" on every row - no token, so no column of its own.
+  Its words fell to the nearest column, the fourth arm's, whose name
+  became "Placebo P values"; the p-value column test took the name at
+  its word and dropped the Placebo arm with every cell in it (Age,
+  Height, Weight and both durations in three arms of four).
+- **What changed.** Before the p-value column test, a name that carries
+  the P-values phrase (P value, P-values, significance; the hyphen may
+  be a dash or the minus sign) together with an arm's own words has the
+  phrase stripped and the arm kept. A name that is the phrase alone
+  still marks the p-value column, which is dropped as before.
+- **On the page.** Four arms of 30 - Granisetron, Droperidol,
+  Metoclopramide, Placebo - and 20 cells; the Placebo cells 47.7 +/- 9.1,
+  156.2 +/- 6.5, 56.9 +/- 8.2, 86.2 +/- 26.7, 110.2 +/- 25.8 as printed.
+- **Tests** (`tests/testthat/test-p-values-heading-over-no-column.R`): a
+  rebuilt page with a P-values heading over a column of "NS" reads four
+  arms with their names (1 of 6 expectations fails on the unfixed code:
+  the fourth arm named "Placebo P-values" or dropped); a P-values column
+  with numbers of its own is still dropped. The header-N and Loadsman
+  layout tests still pass.
+
+---
+
+## 137. One letter-fused cell and one digit-fused cell are two witnesses
+
+**Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
+2026-09-27**, from the corpus session's batch 28 AG5 (EJA 1997, PMID
+9241336, a scan; two arms of 25).
+
+- **The defect.** "Weight (kg) 54.626.6 53.7?7.1 NS" and "Peroperative
+  blood loss (ml) 209.42136.7 211.7?130.9 NS": the first arm's cell with
+  the sign set as a digit (issue 90's form), the second with a "?" (issue
+  85's form), and nothing else on the line. The fused-sign repair wants
+  two witnesses - letter-fused cells or genuine glyphs - before it
+  splits anything, counted the letter-fused cell alone, and skipped the
+  line; both rows were lost, while the Height line ("154.625.4
+  154.824.8", two digit-fused cells) read by the announced rule. Eight
+  of sixteen cells.
+- **What changed.** When the letter-fused cells and glyphs fall short of
+  two, the line's precision is taken from the ones there are, and a
+  digit-fused word that splits at that precision is counted as the
+  second witness. A letter-fused cell alone, or one beside a digit-fused
+  word of another precision, is still no evidence.
+- **On the page.** Weight 54.6 +/- 6.6 / 53.7 +/- 7.1, blood loss 209.4
+  +/- 136.7 / 211.7 +/- 130.9 and Buprenorphine 0.04 +/- 0.08 / 0.05 +/-
+  0.09 read; 14 cells. Indomethacin (28.0 +/- 25.3) is skipped as a
+  non-integer level under the analgesics heading - a continuous row under
+  a heading, a design matter and not this issue.
+- **Tests** (`tests/testthat/test-letter-and-digit-fused-cells-are-two-witnesses.R`):
+  the fused-sign repair on the Weight and blood-loss lines (split), a
+  letter-fused cell alone (left) and one beside a digit-fused word of
+  another precision (left); a rebuilt page reads Weight and blood loss
+  in both arms (6 of 9 expectations fail on the unfixed code). The
+  glued-soup, digit-fused, colon-ratio, slot and Loadsman layout tests
+  still pass.
+
+---
+
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
@@ -216,6 +282,38 @@ the corpus session's batch 28 AG6 (CJA 1999, PMID 10522590; two arms of
   and the rows above the arm's 40 (1 of 5 expectations fails on the
   unfixed code). The bracket per-cell n and Loadsman layout tests still
   pass.
+
+---
+
+## 134. A cell set half a line above or below its row rejoins the row
+
+**Status: fixed on `fix/raised-cell-rejoins-its-row`, 2026-09-27**, from the
+corpus session's batch 29 AH4 (Akelma 2020, Turk J Med Sci, Loadsman
+corpus; three arms of 16, 18 and 17).
+
+- **The defect.** "Duration of anaesthesia (min) 90.68 +/- 33.80 [ ] 90.05
+  +/- 23.94", with the middle arm's "84.94 +/- 26.71" five points higher
+  on the page than its neighbours. The line builder's y tolerance of
+  three points made it a line of its own - a label-less line of one cell
+  - so the row went out as two arms under its label and the third cell
+  as a separate variable "Unnamed" (18, 84.94 +/- 26.71).
+- **What changed.** `.ppRejoinRaisedCells()` in pageLayout.R, run by
+  `.ppBuildLines()` after the lines are built: a short label-less line
+  whose every word is a number, a sign or a bracket, within nine points
+  of a neighbouring line that carries words and has no word across this
+  line's x extent, is that line's cell, and its words join the
+  neighbour. A line with a label, or with words the neighbour already
+  covers (a superscript's number over a cell), is left where it is.
+- **On the page.** Duration of anaesthesia reads 90.68 +/- 33.80, 84.94
+  +/- 26.71, 90.05 +/- 23.94 under its own name; no "Unnamed" variable;
+  17 cells as before.
+- **Tests** (`tests/testthat/test-raised-cell-rejoins-its-row.R`): the
+  line builder on a row with its middle cell five points higher (joined)
+  and a superscript number over a cell (left apart); a rebuilt page reads
+  the raised cell in its row and no Unnamed variable (4 of 7
+  expectations fail on the unfixed code). The Loadsman layout, canine
+  long-layout, junk-row, paired-column, label-above-values and stratum
+  tests still pass.
 
 ---
 

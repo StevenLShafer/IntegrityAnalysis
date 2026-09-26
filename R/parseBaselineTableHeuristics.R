@@ -1193,6 +1193,26 @@
   # a bare "P" must also have cells that look like p-values, or a real
   # treatment arm gets discarded - which corrupts the neighbouring row label
   # as well, since the label is everything left of the first surviving cell.
+  # A "P VALUES" HEADING OVER NO COLUMN OF ITS OWN (2026-09-27, ISSUES.md
+  # issue 138; EJA 1998, PMID 9587723, the corpus session's batch 28 AG3;
+  # four arms of 30 on a page printed sideways). The header ends "(n =30)
+  # P values" and the P column beneath holds "NS" on every row - no
+  # token, so no column of its own. Its words fell to the nearest column,
+  # the fourth arm's, whose name became "Placebo P values"; the p-value
+  # test below took the name at its word and dropped the Placebo arm with
+  # every cell in it. A name that carries the phrase AND an arm's own
+  # words is the arm's: the phrase is stripped and the arm kept. A name
+  # that is the phrase alone still marks the p-value column.
+  pPhrase <- "(?i)\\bp[-\u2013\u2212 ]?values?\\b|\\bsignificance\\b"
+  for (k in seq_len(cols$n)) {
+    if (is.na(armName[k]) || !grepl(pPhrase, armName[k], perl = TRUE)) next
+    rest <- .ppSquish(gsub(pPhrase, "", armName[k], perl = TRUE))
+    if (nzchar(rest) && !grepl("^[[:punct:]]*$", rest)) {
+      say("  arm ", k, ": \"", armName[k], "\" carries the P-values heading of a column with no ",
+          "cells of its own - named \"", rest, "\".")
+      armName[k] <- rest
+    }
+  }
   pCol <- integer(0)
   if (cols$n >= 2) {
     for (k in seq_len(cols$n)) {
