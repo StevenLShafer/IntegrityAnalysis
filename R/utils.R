@@ -805,6 +805,35 @@
             if (j > k + 1L) keep[seq(k + 2L, j)] <- FALSE
             hit <- TRUE; repaired <- repaired + 1L
           }
+          # ... AND THE SQUARE BRACKET THAT FOLLOWS THE SD (2026-09-27,
+          # ISSUES.md issue 163; Clin Ther 2004, PMID 15336470, the corpus
+          # session's follow-up to batch 34 AN2). "16 (3) [t0] 16 (3) [t t]
+          # 16 (3) [t0] 16 (3) [9] 16 (3) [t0]": the exclusion bracket that
+          # issue 162 subtracts from the arm's N is OCR'd with the same
+          # look-alike letters as the SD - "[t0]" for [10], "[t t]" (two
+          # words) for [11] - and only the arm whose bracket read "[9]" got
+          # its N. A square-bracket group of one to four such characters
+          # directly after the cell's SD group, on this same "mean" row, is
+          # a count too: the letters become their digits and the group one
+          # word. Issue 109's bracket rule and issue 162's exclusion rule
+          # then read it as they read "[9]".
+          if (j < length(s) && grepl("^\\[", s[j + 1L], perl = TRUE)) {
+            j2 <- j + 1L; found2 <- FALSE
+            while (j2 <= min(j + 3L, length(s))) {
+              if (grepl("\\][.,;*]*$", s[j2], perl = TRUE)) { found2 <- TRUE; break }
+              j2 <- j2 + 1L
+            }
+            if (found2) {
+              inner2 <- gsub("^\\[|\\][.,;*]*$|\\s+", "", paste(s[seq(j + 1L, j2)], collapse = ""), perl = TRUE)
+              if (grepl(look, inner2, perl = TRUE)) {
+                s[j + 1L] <- paste0("[", chartr("lIiLt|Oo", "11111100", inner2), "]")
+                L$width[j + 1L] <- L$x[j2] + L$width[j2] - L$x[j + 1L]
+                if (j2 > j + 1L) keep[seq(j + 2L, j2)] <- FALSE
+                hit <- TRUE; repaired <- repaired + 1L
+              }
+              j <- j2
+            }
+          }
         }
         k <- j + 1L; next
       }

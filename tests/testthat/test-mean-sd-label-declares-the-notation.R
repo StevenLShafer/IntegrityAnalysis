@@ -87,3 +87,25 @@ test_that("look-alike letters before a mean, on a row whose label says mean (SD)
   expect_identical(r$lines[[5]]$text, c("Volume,", "mean", "(SD),", "l", "6", "(3)", "7", "(2)"))
   expect_identical(r$lines[[6]]$text, c("Smokers", "(n)", "t", "6", "(30)"))
 })
+
+# THE EXCLUSION BRACKET AFTER THE SD, OCR'D WITH THE SAME LETTERS (issue
+# 163; Clin Ther 2004, PMID 15336470): "[t0]" is [10] and "[t t]" - two
+# words - is [11] on a "mean (SD)" row; a bracket on a count row is untouched.
+test_that("look-alike letters in the square bracket after the SD are its digits", {
+  W <- function(text, x, width) data.frame(text = text, x = x, width = width, stringsAsFactors = FALSE)
+  L <- function(...) do.call(rbind, list(...))
+  lines <- list(
+    L(W("Table", 52, 22)),
+    L(W("Last", 52, 13), W("menstrual", 68, 33), W("cycle,", 107, 18), W("mean", 128, 18), W("(SD),", 151, 17), W("d", 171, 4),
+      W("t", 261, 1), W("6", 264, 3), W("(3)", 272, 8), W("[t0]", 285, 11),
+      W("t", 326, 1), W("6", 329, 3), W("(3)", 337, 9), W("[t", 350, 4), W("t]", 359, 4),
+      W("16", 454, 7), W("(3)", 464, 9), W("[9]", 478, 8)),
+    # a square bracket that is no count - a citation - is not touched on a count row
+    L(W("Smokers", 52, 30), W("(n)", 86, 12), W("6", 264, 3), W("(30)", 272, 13), W("[t0]", 285, 11)))
+  r <- .ppRepairLookAlikeBracketSd(lines, capIdx = 1L)
+  expect_identical(r$lines[[2]]$text, c("Last", "menstrual", "cycle,", "mean", "(SD),", "d",
+                                        "16", "(3)", "[10]", "16", "(3)", "[11]", "16", "(3)", "[9]"))
+  expect_identical(r$lines[[2]]$x[12], 350)
+  expect_identical(r$lines[[2]]$width[12], 13)
+  expect_identical(r$lines[[3]]$text, c("Smokers", "(n)", "6", "(30)", "[t0]"))
+})
