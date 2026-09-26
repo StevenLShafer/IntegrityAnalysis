@@ -257,6 +257,41 @@ from the corpus session's batch 28 AG2 (Am J Obstet Gynecol 2000, PMID
   layout tests still pass.
 
 ---
+## 130. A digit set for the sign at a slot is the sign, not a number
+
+**Status: fixed on `fix/digit-for-the-sign-at-a-slot`, 2026-09-27**, from
+the corpus session's batch 28 AG1 (Anesth Analg 1998, PMID 9495425, a
+scan; three arms of 50) and its false-cell audit.
+
+- **The defect.** The scan sets the sign as a digit: "972 29" for "97
+  +/- 29" (the 2 glued to the mean) and "5.5 2 0.7" for "5.5 +/- 0.7"
+  (the 2 on its own at the sign column). Rule (b) of the slot repair
+  (issue 77) saw two numbers straddling a slot and put the sign between
+  them, building "972 +/- 29" and "5.5 +/- 2" - two values that are not
+  on the page, which the false-cell audit found.
+- **What changed.** Before rule (b) fires, two forms are judged: (c) a
+  word of one digit standing at the slot, with a number before it and a
+  number close after it, is the sign - no cell has three numbers, and a
+  one-digit SD is never followed by another number within the arm's
+  width; (d) the number before the gap has one more digit before its
+  point than every other mean on the line (972 among 95 and 98), and
+  that last digit ends at the slot: the digit is the sign, and the word
+  is split there. A dropped sign between numbers of the line's own
+  length is repaired as before.
+- **On the page.** Duration of anesthesia reads 97 +/- 29, 95 +/- 23,
+  98 +/- 27 and Morphine 5.5 +/- 0.8, 5.5 +/- 0.7, 5.4 +/- 0.7; 15 cells,
+  all as printed. Age ("44 k 7(2359)", the range glued to the SD) is
+  still unread.
+- **Tests** (`tests/testthat/test-digit-for-the-sign-at-a-slot.R`): the
+  slot repair on a block with the glued "972", the lone "2" and a dropped
+  sign between numbers of the line's own length (the first two read as
+  the sign in the digit's place, the third repaired as before); a
+  rebuilt page reads 97 +/- 29 and 5.5 +/- 0.7 (5 of 9 expectations fail
+  on the unfixed code). The soup-glued, digit-colon, "-I-", slot,
+  tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman
+  layout tests still pass.
+
+---
 
 ## 129. A letter alone at a slot, and soup glued to the mean, are the sign
 
