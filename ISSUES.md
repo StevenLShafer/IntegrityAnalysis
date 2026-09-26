@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 168. The stated-grid tolerance grew with the value, admitting an invalid precision at a large origin
+
+**Status: fixed on `fix/stated-grid-tolerance-is-floating-point`,
+2026-09-27**, from the outside statistical audit of 2026-09-26 (F2, P2
+numerical; report held locally under `.audit/`).
+
+- **The defect.** `.iaOnStatedGrid()` accepted a printed value as on its
+  stated grid when the residual was within 1e-9 of the VALUE. At a
+  location of one billion that allowance is about one unit, so a
+  quartile half a unit off a stated grid of 100,000 (ROUND_DISPERSION =
+  -5) passed there while the same declaration at a location of zero was
+  refused; the admitted grid multiplied the fitted spread, and three
+  honest medians read <0.0001 (1/100001 at 100,000 replicates) where the
+  valid declaration reads 0.4225 at either origin.
+- **What changed.** The tolerance is a fixed number of units in the last
+  place of the value (64, against the two or three the operations
+  spend), never a share of the grid, so an over-coarse claim is judged
+  exactly at every magnitude. A grid finer than that dust is one the
+  arithmetic cannot judge the value against; the check passes it as it
+  always did, and the stated-precision disclosures of screens 2000 and
+  2241 remain the remedy for an over-fine claim (refusal was considered
+  and rejected there). Ordinary values are unaffected (64 ulps of 54.1
+  is 7.7e-13); zero stays on every grid.
+- **Tests** (`tests/testthat/test-stated-grid-tolerance.R`): the audit's
+  cases, screen 1758's, 1459's and 2000's cases, inexact ordinary
+  values, and the unresolvable grid; through the upload reader and the analysis
+  handler at seed 42, the invalid declaration is refused at both origins
+  and the valid one reads the same p at both (UNFIXED: <0.0001 at one
+  billion).
+
+---
+
 ## 167. An unused SE column split an otherwise identical null law
 
 **Status: fixed on `fix/null-law-key-ignores-unused-se`, 2026-09-27**,
