@@ -69,14 +69,38 @@ suppressPackageStartupMessages({ library(httr2); library(curl) })
 token <- Sys.getenv("INTEGRITY_API_TOKEN", "")
 
 say <- function(...) cat(paste0(..., collapse = ""), "\n")
+
+# THE CLIENT DOES NOT FOLLOW REDIRECTS, AND A REMOTE SERVICE MUST BE HTTPS
+# (outside security review, 2026-09-26; the Python twin has the same rule).
+# libcurl follows a 3xx by default, and where it points is the redirecting
+# party's choice, not the operator's; a redirect is reported as a wrong
+# base URL and nothing is re-sent. http:// is accepted only for a service
+# on this machine (the local-run examples above).
+u <- httr2::url_parse(base)
+localHost <- tolower(if (is.null(u$hostname)) "" else u$hostname) %in% c("127.0.0.1", "localhost", "::1", "[::1]")
+if (!(identical(u$scheme, "https") || (identical(u$scheme, "http") && localHost))) {
+  say("the service URL must be https:// (http:// only for a service on this machine): ", base); quit(status = 2)
+}
+noFollow <- function(req) req_options(req, followlocation = FALSE)
+redirected <- function(resp) {
+  st <- resp_status(resp)
+  if (st < 300L || st >= 400L) return(FALSE)
+  loc <- tryCatch(resp_header(resp, "Location"), error = function(e) NULL)
+  say("the service answered ", st, " with a redirect to ", if (is.null(loc)) "(no Location header)" else loc,
+      "; this client does not follow redirects with your token - check the base URL with the operator")
+  TRUE
+}
 show <- function(label, x) if (!is.null(x) && length(x)) say("  ", label, ": ", paste(unlist(x), collapse = "; "))
 
 # ---- health: open, no token ------------------------------------------------
-h <- tryCatch(request(paste0(base, "/health")) |> req_timeout(30) |> req_perform(),
+h <- tryCatch(request(paste0(base, "/health")) |> req_timeout(30) |> noFollow() |>
+                req_error(is_error = function(resp) FALSE) |> req_perform(),
               error = function(e) e)
 if (inherits(h, "error")) {
   say("health: could not reach ", base, " - ", conditionMessage(h)); quit(status = 1)
 }
+if (redirected(h)) quit(status = 1)
+if (resp_status(h) >= 400L) { say("health: ", base, " answered HTTP ", resp_status(h)); quit(status = 1) }
 hb <- resp_body_json(h)
 say("health: ", resp_status(h), "  ok=", isTRUE(hb$ok),
     if (!is.null(hb$commit)) paste0("  build ", substr(hb$commit, 1, 8)) else "",
@@ -91,6 +115,7 @@ if (!file.exists(file)) { say("no such file: ", file); quit(status = 2) }
 req <- request(paste0(base, "/", verb)) |>
   req_headers(Authorization = paste("Bearer", token)) |>
   req_timeout(if (verb == "analyze") 900 else 300) |>
+  noFollow() |>
   req_error(is_error = function(resp) FALSE)
 # the seed goes on the URL, not in the multipart body: a text part without
 # a Content-Type is dropped by the service's multipart parser (found
@@ -102,6 +127,7 @@ t0 <- Sys.time()
 r <- tryCatch(req_perform(req), error = function(e) e)
 secs <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
 if (inherits(r, "error")) { say(verb, ": request failed - ", conditionMessage(r)); quit(status = 1) }
+if (redirected(r)) quit(status = 1)
 status <- resp_status(r)
 # INTEGRITY_API_SAVE_RAW=1 keeps the reply exactly as received, beside the
 # input - for a support question, or for reading the fields the guide names
@@ -127,11 +153,33 @@ if (!is.null(b$overallP)) say("  overall p: ", b$overallP)
 
 # the CSVs the reply carries, saved beside the input
 stem <- tools::file_path_sans_ext(file)
+# THE TEMPLATE IS SAVED VERBATIM, AND SAID SO WHEN THAT MATTERS (outside
+# security review, 2026-09-26; the Python twin has the same note).
+# templateCsv is the round-trip payload - the service must accept it back
+# unchanged, so the client cannot sanitise its labels as the results CSV's
+# are - but it is written as an ordinary .csv beside the input, and a label
+# a spreadsheet would read as a formula ("=...", "@...", "+text") is a
+# manuscript's own text. A cell that begins with =, @, a tab or a carriage
+# return, or with + or - and then something other than a number ("-0.5" is
+# a number; "-cmd" is not), is counted, and the user is told to edit the
+# file in a text editor rather than open it in spreadsheet software.
+formulaCells <- function(txt) {
+  d <- tryCatch(utils::read.csv(text = txt, header = FALSE, colClasses = "character",
+                                check.names = FALSE, na.strings = character(0)),
+                error = function(e) NULL)
+  if (is.null(d)) return(0L)
+  cells <- unlist(d, use.names = FALSE)
+  sum(grepl("^[=@\t\r]", cells) | grepl("^[-+](?![0-9.])", cells, perl = TRUE))
+}
 saveCsv <- function(txt, suffix) {
   if (is.null(txt) || !nzchar(txt)) return(invisible())
   out <- paste0(stem, "-", suffix, ".csv")
   writeLines(txt, out)
   say("  wrote ", out, " (", length(strsplit(txt, "\n")[[1]]) - 1L, " rows)")
+  if (suffix == "template" && (k <- formulaCells(txt)) > 0L)
+    say("  note: ", k, " cell(s) in ", out, " begin with a character spreadsheet software reads as a ",
+        "formula (=, +, -, @); the file is kept exactly as the service returned it so it can be sent ",
+        "back - edit it in a text editor, not in a spreadsheet")
 }
 saveCsv(b$templateCsv, "template")
 saveCsv(b$resultsCsv, "results")
