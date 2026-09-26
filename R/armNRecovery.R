@@ -541,8 +541,23 @@
   #     (c). The bare "(n = 20)" beside one arm's name stays with the
   #     arm-name match of .ppFillArmNFromText(); only a parenthesis that
   #     says "each" or "per group" speaks for every arm.
-  pd <- paste0("(?i)\\(\\s*n\\s*[=:]\\s*(\\d{1,4})\\s+",
-               "(?:(?:of|in|for)\\s+each(?:\\s+(?:group|arm))?|per\\s+(?:group|arm)|each)\\s*\\)")
+  # ... AND THE CAPTION'S OR FOOTNOTE'S SPELLINGS OF IT (2026-09-26, ISSUES.md
+  # issue 150; the corpus session's batch 31: Clin Ther 2014, PMID
+  # 24672087, "(n = 20 patients per group)"; Clin Ther 2004, PMID 15336470,
+  # "(n = 20 patients per study group)"; Clin Ther 2003, PMID 14749148,
+  # "(N = 100; n = 25 in each group)"; A&A 1998, PMID 9768766, the footnote
+  # "n = 60 per group."; A&A 1997, PMID 9322479, "n = 45in each group" with
+  # the space lost). Four arms' or five arms' every cell read and no arm
+  # had an N, because the statement carried a noun ("patients"), a
+  # qualifier ("study group", "treatment group"), a semicolon before it in
+  # the caption's bracket, or no bracket at all. The bracket is optional
+  # on either side now, the noun and the qualifier are allowed, and the
+  # space between the number and "in each" may be missing; the power
+  # calculation guard applies as before.
+  pd <- paste0("(?i)\\(?\\s*n\\s*[=:]\\s*(\\d{1,4})\\s*",
+               "(?:(?:patients|subjects|participants|women|men|children|infants|animals|dogs|rats)\\s+)?",
+               "(?:(?:of|in|for)\\s+each(?:\\s+(?:study|treatment)?\\s*(?:group|arm))?|",
+               "per\\s+(?:(?:study|treatment)\\s+)?(?:group|arm)|each)\\s*\\)?")
   m <- gregexpr(pd, j, perl = TRUE)[[1]]
   if (m[1] != -1) for (h in seq_along(m)) {
     a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L

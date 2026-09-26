@@ -226,6 +226,14 @@
   }
   # ... and the sign fused inside the cell word, "48.4k7.2" (issue 85;
   # Saitoh 1998): see .ppRepairFusedSigns() in utils.R
+  # "(I 0)", "(t2)", "(l i)" - look-alike letters in the bracketed SD of a
+  # "Mean (SD)" row (issue 149): see .ppRepairLookAlikeBracketSd() in utils.R
+  rep <- .ppRepairLookAlikeBracketSd(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read look-alike letters as digits in ", rep$repaired, " bracketed SD(s) of a Mean (SD) row (\"(I 0)\").")
+  }
   rep <- .ppRepairFusedSigns(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
@@ -2160,6 +2168,19 @@
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
+      # A ROW LABELLED "MEAN (SD)" DECLARES ITS CELLS' NOTATION (2026-09-26,
+      # ISSUES.md issue 149; Clin Ther 2003, PMID 12809962, and Clin Ther
+      # 2004, PMID 15336470, the corpus session's batch 31 part 3 AL7 and
+      # AL8). The Clinical Therapeutics tables set each variable as a
+      # heading ("Age, y") over two sub-rows, "Mean (SD) 53 (6) 53 (7) 54
+      # (7)" and "Range 41-65 ...". The OCR gives "Mean (SO)" as often as
+      # "Mean (SD)", the footnote is silent, and the decision below fell
+      # through to n (%) or to a category level called "Mean": the arms'
+      # values became a level column named Mean, and the table failed
+      # with "two columns normalize to the same name: MEAN". A label that
+      # begins with "Mean" - "Mean", "Mean (SD)", "Mean (SO)", "Mean +/-
+      # SD" - says what its cells are before any other evidence is heard.
+      labelSaysMeanSD <- grepl("(?i)^mean(\\b|\\s*[(\u00b1])", rawLabel, perl = TRUE)
       # THE NUMBERS THEMSELVES CAN SAY "n (%)" (2026-09-24, Loadsman
       # corpus, Akkaya 2015 EJA). A table of counts and percentages with
       # no "%" anywhere - no "(%)" in a label, no "n (%)" header, a
@@ -2223,6 +2244,7 @@
       decision <-
         if (parenIsSD == "sd") "sd"
         else if (parenIsSD == "percent") "percent"
+        else if (labelSaysMeanSD) "sd"
         else if (cellsSayPct) "percent"
         else if (labelSaysPct || nextLabelPct) "percent"
         # Under an open "N (%)" block header ("Race, N (%)"), an "a (b)"
