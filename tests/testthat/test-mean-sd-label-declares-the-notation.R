@@ -60,3 +60,20 @@ test_that("a Mean (SD) or Mean (SO) sub-row under a variable heading reads as me
   expect_false(any(grepl("^Mean", r$data$ROW)))
   expect_false("Mean" %in% names(r$data))
 })
+
+# THE MEAN'S LEADING DIGITS AS LETTERS, ON A ROW THAT SAYS "MEAN (SD)" IN ITS
+# TAIL (issue 161; Clin Ther 2004, PMID 15336470): "t 6 (3)" is 16 (3), "II
+# 7 (33)" is 117 (33), and "155 (I I)" is 155 (11) on such a row too.
+test_that("look-alike letters before a mean, on a row whose label says mean (SD), are its first digits", {
+  line <- function(...) { w <- c(...); data.frame(text = w, x = seq(60, by = 30, length.out = length(w)), width = 12, stringsAsFactors = FALSE) }
+  lines <- list(line("Table"),
+                line("Last", "menstrual", "cycle,", "mean", "(SD),", "d", "t", "6", "(3)", "16", "(3)", "l", "6", "(3)"),
+                line("Duration", "of", "anesthesia,", "mean", "(SD),", "min", "106", "(35)", "II", "7", "(33)", "II", "8", "(29)"),
+                line("Height,", "mean", "(SD),", "cm", "159", "(10)", "155", "(I", "I)"),
+                line("Smokers", "(n)", "t", "6", "(30)"))
+  r <- .ppRepairLookAlikeBracketSd(lines, capIdx = 1L)
+  expect_identical(r$lines[[2]]$text, c("Last", "menstrual", "cycle,", "mean", "(SD),", "d", "16", "(3)", "16", "(3)", "16", "(3)"))
+  expect_identical(r$lines[[3]]$text, c("Duration", "of", "anesthesia,", "mean", "(SD),", "min", "106", "(35)", "117", "(33)", "118", "(29)"))
+  expect_identical(r$lines[[4]]$text, c("Height,", "mean", "(SD),", "cm", "159", "(10)", "155", "(11)"))
+  expect_identical(r$lines[[5]]$text, c("Smokers", "(n)", "t", "6", "(30)"))
+})
