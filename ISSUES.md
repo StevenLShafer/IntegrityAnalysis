@@ -132,6 +132,43 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 147. Minerva's page: a small-caps caption, "(N.=50)", and a descriptor under the names
+
+**Status: fixed on `fix/n-dot-equals-size`, 2026-09-26**, from the Loadsman
+corpus (Altinsoy 2015, Minerva Anestesiologica; two arms of 50), one of
+the six Loadsman PDFs that did not parse.
+
+- **The defect.** Table I is whole in the text layer ("Age (yr) 43.4+/-16.7
+  47.3+/-15.9 0.232" and eleven rows more) and the engine found no usable
+  table in the paper. Four things on the page, each a house-style habit:
+  the journal sets "Table" in small capitals and poppler delivers "T" and
+  "able" as two words three points apart, so no line reads "Table I."; the
+  caption's number ends in an em dash, "I.-", followed by two control
+  characters, so the caption anchor saw no table number; the sizes are
+  "(N.=50)", a full stop after the N that none of the eight size patterns
+  allowed; and "(Mean+/-SD)" is set under each arm's name and joined it -
+  "Group C (Mean+/-SD)".
+- **What changed.** `.ppJoinSmallCaps()` (pageLayout.R) joins a lone
+  capital to the lower-case word flush against it on a nearby baseline;
+  control characters leave every word of every page before the anchors
+  are read; the caption anchor's number may end in a dash; the eight size
+  patterns take an optional full stop after the n (and the count text
+  stripped from a name takes it too); and a statistic descriptor - mean or
+  median with its SD, SEM, IQR or range, bracketed or signed - leaves an
+  arm's name.
+- **On the page.** Two arms of 50, Group C and Group S; Age, Length,
+  Weight, Operation time, BMI and Cuff volume as printed, 12 continuous
+  cells; the Loadsman check rises from 81 to 82 of 87.
+- **Tests** (`tests/testthat/test-small-caps-caption-and-n-dot-size.R`):
+  the anchor on a caption number with the dash, the small-caps join (and
+  a capital on its own line, or a gap away, left alone), and a rebuilt
+  page of the Minerva shape reading two arms of 50 with clean names and
+  the rows's means and SDs (3 of 10 expectations fail or error on the unfixed code, which lacks the join).
+  The caption-rescue, Loadsman-layout, manuscript-layout, stratum-header,
+  arm-N recovery, hybrid-merge and fraction tests still pass.
+
+---
+
 ## 146. A look-alike letter for a digit of a fused cell's SD
 
 **Status: fixed on `fix/look-alike-sd-in-a-fused-cell`, 2026-09-27**, from

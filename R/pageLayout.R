@@ -205,6 +205,36 @@
 # category rows and silently became the open block header - orphaning
 # the remaining children into mean/SD rows - and the URL's digits seeded
 # a phantom arm cluster whose missing N vetoed every n (%) row.
+# A SMALL-CAPS WORD SPLIT BY THE TEXT LAYER IS ONE WORD (2026-09-26,
+# ISSUES.md issue 147; Altinsoy 2015, Minerva Anestesiologica, the
+# Loadsman corpus). The journal sets "Table" in small capitals: a full-size
+# "T" and a smaller "able" in another font, and poppler delivers them as
+# two words three points apart in y - "T" at (58, 530), "able" at (63,
+# 533) - so no line reads "Table I." and the page has no caption; the
+# engine read the paper's prose mention of Table I on the page before and
+# found nothing. A one-letter capital immediately followed (no more than a
+# point and a half of gap) by a word that begins in lower case, its box
+# starting within four points of the capital's, is the capital's own word:
+# the two are joined, at the capital's line. Upright text never sets a
+# lone capital flush against a lower-case word on a different baseline.
+.ppJoinSmallCaps <- function(pageWords) {
+  if (is.null(pageWords) || nrow(pageWords) < 2) return(pageWords)
+  cap <- which(grepl("^[A-Z]$", pageWords$text, perl = TRUE))
+  if (!length(cap)) return(pageWords)
+  drop <- rep(FALSE, nrow(pageWords))
+  for (i in cap) {
+    x1 <- pageWords$x[i] + pageWords$width[i]
+    j <- which(!drop & grepl("^[a-z]", pageWords$text, perl = TRUE) &
+                 pageWords$x >= x1 - 1.5 & pageWords$x <= x1 + 1.5 &
+                 abs(pageWords$y - pageWords$y[i]) <= 4 & pageWords$y != pageWords$y[i])
+    if (length(j) != 1L) next
+    pageWords$text[i]  <- paste0(pageWords$text[i], pageWords$text[j])
+    pageWords$width[i] <- pageWords$x[j] + pageWords$width[j] - pageWords$x[i]
+    drop[j] <- TRUE
+  }
+  pageWords[!drop, , drop = FALSE]
+}
+
 .ppStripRotatedText <- function(pageWords) {
   if (is.null(pageWords) || nrow(pageWords) < 8) return(pageWords)
   # candidate words: implausibly narrow for their length (the reported
@@ -384,7 +414,9 @@
   # no candidate, and the assisted route handed the model page 1 - which
   # has no table - so the trial went from read to "no baseline table". A
   # digit or numeral followed by one stray glyph is the caption's number.
-  isNo <- grepl("^(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:)\u2022\u00b7\u2019']?$", w$text, perl = TRUE)
+  # ... the number may end in the journal's dash - Minerva's "Table I.-"
+  # sets an em dash after the full stop (issue 147)
+  isNo <- grepl("^(S?[0-9]{1,2}|[IVXLivxl]{1,4})[.:)\u2022\u00b7\u2019']?[\u2014\u2013-]?$", w$text, perl = TRUE)
   sameLine <- c(abs(diff(w$y)) <= 3, FALSE)
   # "Table" immediately followed by a numeral on the same visual line
   hit  <- which(isTb & c(utils::tail(isNo, -1), FALSE) & sameLine)
