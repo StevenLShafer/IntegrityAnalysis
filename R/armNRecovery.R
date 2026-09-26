@@ -190,7 +190,15 @@
                pos = m[k], stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, out)
-  out <- out[!is.na(out$n) & out$n > 0, , drop = FALSE]
+  # A NUMBER THE LAYER HAS BROKEN IS NO SIZE (2026-09-27, ISSUES.md issue
+  # 144; Anesth Analg 2005, PMID 15978307): the caption's "(N = 120)" comes
+  # through as "(N = 1 20)", "N = 1" matched the arm names, and every arm
+  # took an N of 1 - a trial of 120 scored on four patients. A size whose
+  # digits are followed by a space and more digits is a broken number: it
+  # is dropped, not read as its first part.
+  hitLen <- attr(regexpr("(?i)\\bn\\s*[=:]\\s*\\d[\\d,]*", substring(j, out$pos), perl = TRUE), "match.length")
+  broken <- grepl("^\\s[0-9]", substring(j, out$pos + hitLen, out$pos + hitLen + 1), perl = TRUE)
+  out <- out[!is.na(out$n) & out$n > 0 & !broken, , drop = FALSE]
 
   alloc <- grepl(paste0("(?i)allocat|assign|randomi[sz]|\\bgroup\\b|",
                         "\\barm\\b|receiv|analy[sz]ed|completed|enrol"),

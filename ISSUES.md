@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 144. A number the text layer has broken is no arm size
+
+**Status: fixed on `fix/broken-number-is-no-arm-size`, 2026-09-27**, from
+the corpus session's arm-count audit (Anesth Analg 2005, PMID 15978307;
+four arms of 30).
+
+- **The defect.** The caption's "(N = 120)" comes through the layer as
+  "(N = 1 20)". The document recovery's candidate pattern read "N = 1",
+  matched it to the arm names ("flurbiprofen axetil or vehicle" beside
+  it), and every named arm took an N of 1: a trial of 120 patients
+  would have been scored on four.
+- **What changed.** `.ppArmNCandidatesFromText()` drops a size whose
+  digits are followed by a space and more digits: a broken number is no
+  size, and is not read as its first part. A whole size beside it ("(n =
+  30 each)") is kept.
+- **On the page.** The arms' N is NA rather than 1 - the table is not
+  scored on an invented size. (The sizes themselves are shattered in the
+  header, "(rl ... 30)"; the Methods may yet supply them.)
+- **Tests** (`tests/testthat/test-broken-number-is-no-arm-size.R`): the
+  candidate list on a sentence with the broken caption and a whole
+  statement (1 dropped, 30 kept), the recovery giving the arms 30 from
+  the statement, and nothing invented when the broken caption stands
+  alone (2 of 4 expectations fail on the unfixed code). The arm-size
+  recovery, deterministic and model arm-N, partial-N, fraction and
+  Loadsman layout tests still pass.
+
+---
+
 ## 142. A lone hyphen at a strong slot is the sign
 
 **Status: fixed on `fix/lone-hyphen-at-strong-slot`, 2026-09-27**, from the
