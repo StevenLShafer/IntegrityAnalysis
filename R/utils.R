@@ -819,6 +819,56 @@
 # needs at least one decimal on each side (an integer mean "4757" could
 # split anywhere). The precision must agree across the line's sign
 # cells; where it does not, only the letter form is read.
+# A DECIMAL SD SPLIT AT ITS POINT (2026-09-27, ISSUES.md issue 127; CJA
+# 1994, PMID 8004733, the corpus session's batch 25 "5. I"). The scan's
+# Height line reads "152.8 4- 5.9 152.4 4- 4,7 153.5 5: 5. I": the third
+# arm's SD "5.1" set as two words, "5." and "I" - the point kept with the
+# first digit, the OCR's capital I for the 1 - touching each other on
+# the page. Neither word is a number, so the slot rule could not read
+# the "5:" before them (issue 125 wants a number after the sign) and the
+# cell was lost. A word of digits ending in a point, followed within two
+# points by a one-character word that is a digit or its look-alike
+# (l, I, |), is one decimal number: joined, the look-alike read as its
+# digit, the width the sum. Runs first of the repairs, so the slot rule
+# and the letter-digit rule see the number. The same two pieces come
+# FUSED from a layer that sets them closer ("5.I", "60.l"): a word of
+# digits, a point and one of the look-alikes l, I or | is that number
+# too. O and o are left out of BOTH forms: "5.o" and "5." "o" could be a
+# number and its footnote letter, and a zero read into an SD is a wrong
+# value, not a lost one (CodeRabbit on PR #435); "5.I" cannot be a
+# footnote.
+.ppSplitDecimalHead <- "^[0-9]+[.]$"
+.ppFusedDecimalTail <- "^[0-9]+[.][lI|]$"
+.ppRepairSplitDecimals <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  for (i in seq(capIdx + 1L, n)) {
+    L <- lines[[i]]; s <- L$text
+    fused <- grepl(.ppFusedDecimalTail, s, perl = TRUE)
+    if (any(fused)) {
+      L$text[fused] <- chartr("lI|", "111", s[fused]); s <- L$text
+      repaired <- repaired + sum(fused); lines[[i]] <- L
+    }
+    if (length(s) < 2L) next
+    head <- grepl(.ppSplitDecimalHead, s, perl = TRUE)
+    if (!any(head)) next
+    tail <- c(grepl("^[0-9lI|]$", s[-1L], perl = TRUE), FALSE)
+    gap  <- c(L$x[-1L] - (L$x[-length(s)] + L$width[-length(s)]), Inf)
+    hit  <- head & tail & gap <= 2
+    if (!any(hit)) next
+    keep <- rep(TRUE, nrow(L))
+    for (k in which(hit)) {
+      L$text[k]  <- paste0(s[k], chartr("lI|", "111", s[k + 1L]))
+      L$width[k] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]
+      keep[k + 1L] <- FALSE
+      repaired <- repaired + 1L
+    }
+    lines[[i]] <- L[keep, , drop = FALSE]
+    rownames(lines[[i]]) <- NULL
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # A STRAY DOT FUSED TO A DECIMAL NUMBER (2026-09-26, ISSUES.md issue 126;
 # CJA 1996, PMID 8706192, the corpus session's AF7). The scan's text layer
 # sets a speck before the first cell of the Morphine row and fuses it to
