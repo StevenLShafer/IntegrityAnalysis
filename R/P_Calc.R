@@ -336,17 +336,39 @@
 # (recycled, one column's precision against that column's numbers - the
 # coarsest grid is what matters, so a value must never be judged against
 # another column's finer one).
+# THE TOLERANCE IS THE ARITHMETIC'S OWN, AND NEVER A SHARE OF THE GRID
+# (outside statistical audit 2026-09-26, F2; ISSUES.md issue 168). The
+# dust allowance was 1e-9 of the value: at a printed location of one
+# billion that is about one unit, so a quartile half a unit off a stated
+# grid of 100,000 (ROUND_DISPERSION = -5) passed there while the same
+# declaration at a location of zero was refused - and the admitted grid
+# multiplied the fitted spread and drove three honest medians to <0.0001
+# where the valid declaration reads 0.4225 at either origin. Floating-
+# point error in x, in x / h and in round(x / h) * h is a few units in
+# the last place of x, so the allowance is a fixed number of those (64,
+# generous against the two or three the operations spend) and nothing
+# more. A grid FINER than that dust (a quarter of the step or less) is one
+# the arithmetic cannot judge the value against at that magnitude, and
+# this check has nothing to say about it: the value passes here as it
+# always did, and the stated-precision disclosures of screens 2000 and
+# 2241 (a precision finer than the printed digits is analysed and NOTED,
+# refusal having been considered and rejected there) remain the remedy
+# for an over-fine claim. The over-COARSE claim, the audit's case, is
+# judged exactly at every magnitude. Zero is on every grid; an ordinary
+# value keeps its former tolerance in effect, since 64 ulps of 54.1 is
+# 7.7e-13.
+.iaGridDustUlps <- 64
 .iaOnStatedGrid <- function(x, dec) {
   dec <- suppressWarnings(as.numeric(rep(dec, length.out = length(x))))
   ok <- is.finite(x) & is.finite(dec)
   if (!any(ok)) return(TRUE)
   x <- x[ok]; h <- 10^(-dec[ok])
-  # a value is on the grid when it is a whole number of steps from zero,
-  # within the arithmetic's own dust at that magnitude
-  # the tolerance absorbs floating-point dust, which is proportional to the
-  # VALUE - never to the grid, or a grid of 1e20 would swallow every number
-  # ever printed
-  all(abs(x - round(x / h) * h) <= 1e-9 * abs(x))
+  dust <- .iaGridDustUlps * .Machine$double.eps * abs(x)
+  # only a grid the arithmetic can resolve at this magnitude is judged;
+  # a value is on it when it is a whole number of steps from zero, within
+  # that dust
+  judge <- dust <= h / 4
+  all(abs(x - round(x / h) * h)[judge] <= dust[judge])
 }
 
 # ...and the two holes the first version of that gate left (security screen

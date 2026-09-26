@@ -807,6 +807,28 @@ app_server <- function(input, output, session) {
           "address and analyze again. Without a seed the draws differ ",
           "from run to run within the reported Monte Carlo interval."))
       }
+      # THE UPFRONT ESTIMATE (issue 166): the worst case of this table -
+      # every row escalating to the last stage - against the app's budget,
+      # before the first draw. The refusal names the numbers and what to
+      # do; the precision of the analysis is never reduced to fit.
+      drawWork <- .apiDrawWork(DATA, CategoryNames)
+      budget <- .iaAppDrawBudget()
+      if (drawWork > budget) {
+        outputComments(paste0(
+          "This table asks for more simulation than this server allows in one analysis: ",
+          nrow(DATA), " row(s) totalling ",
+          format(sum(suppressWarnings(as.numeric(DATA$N)), na.rm = TRUE), big.mark = ",", scientific = FALSE),
+          " subjects would need about ",
+          format(signif(drawWork, 2), big.mark = ",", scientific = FALSE),
+          " simulated values if every row escalated to full precision, above the ",
+          format(budget, big.mark = ",", scientific = FALSE),
+          " this app allows. If the table holds several trials, analyze them in separate ",
+          "tables, one trial each. A single trial that alone exceeds the limit cannot be ",
+          "analyzed on this server; the precision of the analysis is never reduced to fit ",
+          "(ISSUES.md issue 166)."))   # outputComments escapes
+        reactiveDone(FALSE)
+        return()
+      }
       start_time <- Sys.time()
       # THE WALL-CLOCK CEILING (issue 165): one analysis may run for
       # .iaAnalysisSeconds() from here; see app_globals.R for why

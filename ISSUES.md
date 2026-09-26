@@ -157,6 +157,38 @@ report held locally under `.audit/`). Documentation only.
 
 ---
 
+## 168. The stated-grid tolerance grew with the value, admitting an invalid precision at a large origin
+
+**Status: fixed on `fix/stated-grid-tolerance-is-floating-point`,
+2026-09-27**, from the outside statistical audit of 2026-09-26 (F2, P2
+numerical; report held locally under `.audit/`).
+
+- **The defect.** `.iaOnStatedGrid()` accepted a printed value as on its
+  stated grid when the residual was within 1e-9 of the VALUE. At a
+  location of one billion that allowance is about one unit, so a
+  quartile half a unit off a stated grid of 100,000 (ROUND_DISPERSION =
+  -5) passed there while the same declaration at a location of zero was
+  refused; the admitted grid multiplied the fitted spread, and three
+  honest medians read <0.0001 (1/100001 at 100,000 replicates) where the
+  valid declaration reads 0.4225 at either origin.
+- **What changed.** The tolerance is a fixed number of units in the last
+  place of the value (64, against the two or three the operations
+  spend), never a share of the grid, so an over-coarse claim is judged
+  exactly at every magnitude. A grid finer than that dust is one the
+  arithmetic cannot judge the value against; the check passes it as it
+  always did, and the stated-precision disclosures of screens 2000 and
+  2241 remain the remedy for an over-fine claim (refusal was considered
+  and rejected there). Ordinary values are unaffected (64 ulps of 54.1
+  is 7.7e-13); zero stays on every grid.
+- **Tests** (`tests/testthat/test-stated-grid-tolerance.R`): the audit's
+  cases, screen 1758's, 1459's and 2000's cases, inexact ordinary
+  values, and the unresolvable grid; through the upload reader and the analysis
+  handler at seed 42, the invalid declaration is refused at both origins
+  and the valid one reads the same p at both (UNFIXED: <0.0001 at one
+  billion).
+
+---
+
 ## 167. An unused SE column split an otherwise identical null law
 
 **Status: fixed on `fix/null-law-key-ignores-unused-se`, 2026-09-27**,
@@ -185,6 +217,36 @@ report held locally under `.audit/`).
   results, inside the 99.9% binomial interval of the audit's reference
   at 100,000 replicates (UNFIXED: 0.008575, outside it, and the two
   files differ).
+
+---
+
+## 166. The app refuses a table whose worst-case simulation exceeds its budget
+
+**Status: fixed on `fix/analysis-draw-budget`, 2026-09-27**, at Steve's
+request after the outside security review of 2026-09-26; the second of
+two interim guards (with issue 165's ceiling) while issue 26 waits for
+the Posit Connect Cloud move.
+
+- **The exposure.** The API estimates a table's worst-case simulation
+  cost (`.apiDrawWork()`: every row escalating to 100,000 replicates)
+  and refuses above `.apiMaxDrawBudget`, routing large single trials to
+  the app; the app made no estimate, so a table built to run for a day
+  started running.
+- **What changed.** `.iaAppDrawBudget()` (R/apiService.R) is ten times
+  the API's budget - about twenty minutes of simulation in the worst
+  case, which no honest baseline table approaches (issue 26's own table
+  is 5e10) while a day-long table (1e13) is far above it. The Analyze
+  observer computes the same estimate on the validated frame and, above
+  the budget, refuses before the first draw with the numbers and the
+  advice (one trial per table; a single trial over the limit cannot be
+  analyzed here; precision is never reduced to fit). Issue 165's
+  wall-clock ceiling stays for the shapes an estimate cannot foresee.
+- **Tests** (`tests/testthat/test-analysis-draw-budget.R`): the budget
+  is the API's times ten and the estimate is the API's own; through the
+  app, a table over a lowered budget is refused with its numbers and
+  nothing is simulated, and the same table under the real budget runs
+  to its Summary (UNFIXED: the budget does not exist). The ceiling,
+  adaptive-m, grid and pipeline tests still pass.
 
 ---
 

@@ -444,6 +444,23 @@
 # tight in practice.
 .apiMaxDrawBudget <- 1.2e10
 .apiReplicateCeiling <- 100000    # the global m in app_globals.R
+# THE APP'S OWN BUDGET (2026-09-27, ISSUES.md issue 166; the second of the
+# two interim guards Steve asked for after the outside security review of
+# 2026-09-26, beside the wall-clock ceiling of issue 165). The API's
+# refusal text routes a large single trial to the app, which has no
+# request timeout, so the app's ceiling on the same worst-case estimate is
+# ten times the API's: about twenty minutes of simulation if every row
+# escalated, which no honest baseline table approaches (issue 26's table:
+# 25 variables at 10,000 per arm is 5e10 in the worst case), while a table
+# built to run for a day (1e13) is refused before its first draw and told
+# why. The estimate is .apiDrawWork(), the same function, on the validated
+# frame; the wall-clock ceiling remains for the shapes an estimate cannot
+# foresee. Widening this is the supported knob, as for the API's; a test
+# sets the option IntegrityAnalysis.appDrawBudget around one Analyze.
+.iaAppDrawBudget <- function() {
+  v <- suppressWarnings(as.numeric(getOption("IntegrityAnalysis.appDrawBudget", 10 * .apiMaxDrawBudget)))
+  if (length(v) != 1L || !is.finite(v) || v <= 0) 10 * .apiMaxDrawBudget else v
+}
 
 # The worst-case simulation cost of a payload, in drawn values: every
 # line contributes its N to one replicate, and the staged scheme can
