@@ -184,6 +184,38 @@ the corpus session's batch 28 AG6 (CJA 1999, PMID 10522590; two arms of
 
 ---
 
+## 134. A cell set half a line above or below its row rejoins the row
+
+**Status: fixed on `fix/raised-cell-rejoins-its-row`, 2026-09-27**, from the
+corpus session's batch 29 AH4 (Akelma 2020, Turk J Med Sci, Loadsman
+corpus; three arms of 16, 18 and 17).
+
+- **The defect.** "Duration of anaesthesia (min) 90.68 +/- 33.80 [ ] 90.05
+  +/- 23.94", with the middle arm's "84.94 +/- 26.71" five points higher
+  on the page than its neighbours. The line builder's y tolerance of
+  three points made it a line of its own - a label-less line of one cell
+  - so the row went out as two arms under its label and the third cell
+  as a separate variable "Unnamed" (18, 84.94 +/- 26.71).
+- **What changed.** `.ppRejoinRaisedCells()` in pageLayout.R, run by
+  `.ppBuildLines()` after the lines are built: a short label-less line
+  whose every word is a number, a sign or a bracket, within nine points
+  of a neighbouring line that carries words and has no word across this
+  line's x extent, is that line's cell, and its words join the
+  neighbour. A line with a label, or with words the neighbour already
+  covers (a superscript's number over a cell), is left where it is.
+- **On the page.** Duration of anaesthesia reads 90.68 +/- 33.80, 84.94
+  +/- 26.71, 90.05 +/- 23.94 under its own name; no "Unnamed" variable;
+  17 cells as before.
+- **Tests** (`tests/testthat/test-raised-cell-rejoins-its-row.R`): the
+  line builder on a row with its middle cell five points higher (joined)
+  and a superscript number over a cell (left apart); a rebuilt page reads
+  the raised cell in its row and no Unnamed variable (4 of 7
+  expectations fail on the unfixed code). The Loadsman layout, canine
+  long-layout, junk-row, paired-column, label-above-values and stratum
+  tests still pass.
+
+---
+
 ## 133. The levels of one variable share a notation
 
 **Status: fixed on `fix/sibling-levels-share-the-count-reading`, 2026-09-27**,
