@@ -132,6 +132,32 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 172. Barnett was presented as the remedy for the arm-SD blind spot
+
+**Status: fixed on `docs/barnett-is-not-the-sd-remedy`, 2026-09-26**,
+from the outside statistical audit of 2026-09-26 (F6, P2 interpretation;
+report held locally under `.audit/`). Documentation only, matching the
+methods paper's limitation paragraph.
+
+- **The defect.** The statistics guide and the user guide said the main
+  screen cannot see disagreement confined to the arm SDs and then
+  presented Barnett's test as "the instrument that looks at that
+  column", "a separate dispersion-aware instrument [that] is the
+  remedy", under a heading calling it independent. Barnett's continuous
+  contrasts also use the pooled variance: with 100 per arm and means of
+  50 and 52, SDs of (10, 10) and of (√50, √150) give the identical
+  contrast, −1.414, so it cannot distinguish those SD patterns. Users
+  were told an untested feature of the table had been checked. The
+  guides also stated the pooled-variance-preserving replacement leaves
+  the p "identical", which the SD-rounding draw no longer guarantees.
+- **What changed.** Both passages say the package has no dedicated test
+  of arm-SD disagreement; Barnett is a separate instrument with related
+  data, not independent evidence and not a remedy for the blind spot;
+  the 0.8365 demonstration is dated to its build; the heading drops
+  "independent".
+
+---
+
 ## 171. The guides claimed exactness and calibration the procedure does not establish
 
 **Status: fixed on `docs/exactness-claims-qualified`, 2026-09-26**, from

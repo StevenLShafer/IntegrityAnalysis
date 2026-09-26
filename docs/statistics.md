@@ -631,14 +631,22 @@ makes a number reproducible; it does not make it more precise.
   and not by accident. The GPT-6 audit of 2026-09-07 demonstrated it
   directly: with 100 per arm and means of 50 and 52, replacing the
   standard deviations (10, 10) with (0, √200) — a radical change, one
-  arm with no variation at all — leaves the pooled variance and the
-  reported p identical at 0.8365, and both tables pass validation
-  ([docs/audits/](audits/), finding F6). A separate dispersion-aware
-  instrument is the remedy, calibrated on its own; the package ships one
-  (Barnett's test, below) and deliberately does not fold its evidence
-  into this combination, because two instruments looking at the same
-  table are not independent evidence and combining them would understate
-  the p. Read them side by side instead.
+  arm with no variation at all — left the pooled variance and the
+  reported p identical at 0.8365 on that build, and both tables pass
+  validation ([docs/audits/](audits/), finding F6). (Since the
+  SD-rounding draw the printed SDs also set the widths of their own
+  intervals, so an arbitrary replacement that keeps the pooled variance
+  need not keep the exact result; the point stands: no statistic here
+  tests whether the arm SDs agree with each other.) **The package has no
+  dedicated test of that disagreement.** Barnett's test (below) is a
+  separate instrument, not a remedy for this blind spot: it looks at the
+  dispersion of standardised between-arm *location* contrasts, and its
+  continuous contrasts use the same pooled variance — with 100 per arm
+  and means of 50 and 52, SDs of (10, 10) and of (√50, √150) give it the
+  identical contrast, −1.414. Its evidence is deliberately not folded
+  into this combination, because two instruments reading one table are
+  not independent evidence and combining them would understate the p.
+  Read them side by side, and read neither as a check on the SD column.
 
 ## One sentence for the skeptical reader
 
@@ -649,7 +657,7 @@ fixed batch and nominal after the staging's stopping rule; it speaks to
 Monte Carlo error, not to the model's fit or to the probability of
 fraud.
 
-## A second, independent instrument: Barnett's dispersion test
+## A second instrument: Barnett's dispersion test
 
 The package also implements the Bayesian test for under- and
 over-dispersion published by Adrian Barnett (*F1000Research* 2022,
