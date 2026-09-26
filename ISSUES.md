@@ -132,6 +132,49 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 152. The arm columns are the slots when the text layer has no sign at all
+
+**Status: fixed on `fix/arm-columns-as-slots-when-no-sign-glyph`,
+2026-09-26**, from the corpus session's batch 31 part 3 AL1-AL4 (J Clin
+Anesth 1999, PMID 10386280, three arms of 50; A&A 1999, PMID 10357343;
+Paediatr Anaesth 2001, PMID 11123735; Paediatr Anaesth 2002, PMID
+11903942).
+
+- **The defect.** Text-born PDFs whose plus-minus glyph has no text: the
+  page prints "45 +/- 12", the layer says "45  12" - two numbers a dozen
+  points apart on every row, no sign anywhere in the block, often none in
+  the footnote ("Values are mean sd or n"). The slot repair's dropped-sign
+  rule needs a slot to stand the sign at, and its slots come from glyphs
+  the block has not got; every row read as bare counts and the tables
+  went out with no continuous variable.
+- **What changed.** When the block carries no genuine glyph and no
+  announced soup, the header's "(n = k)" groups - two or more on one line,
+  one per arm - give the arm columns' centres, and the dropped-sign rule
+  takes those centres as its slots: two numbers straddling an arm's
+  centre with the usual gap are its mean and SD. Nothing else is read
+  against them. The size-sign repair of issue 148 now runs before the
+  slot repair, so "(n 50)" headers are whole groups by then. Two
+  companions: the footnote's announcement is read with or without its
+  spaces and may name a digit ("Values are means6SD" - the symbol font's
+  plus-minus as a "6", the same "6" standing between every mean and its
+  SD, PMID 10386280), and the C1 control characters go with the C0 ones
+  (Paediatr Anaesth's layer sets its sign as U+008B, a word of its own
+  between the mean and the SD, PMIDs 11123735 and 11903942).
+- **On the pages.** 10386280: three arms of 50, Age, Height, Weight,
+  the menstrual row and both durations as printed, 18 cells (main: none).
+  11123735: two arms of 30, 12 cells (main: one false cell). 11903942:
+  four arms of 25, Age, Height and Weight, 12 cells (main: none).
+  10357343: two arms of 60, 10 cells including the paper's own misprint
+  "73 +/- 87" (main: none).
+- **Tests** (`tests/testthat/test-arm-columns-as-slots.R`): the slot
+  repair on the paper's block (Age and Weight signed, the count rows left
+  alone; nothing signed when the header's groups are absent), and a
+  rebuilt page of the shape reading three arms of 50 with four continuous
+  variables (6 of 11 expectations fail on the unfixed code). The slot, dropped-sign, digit-for-the-sign,
+  size-sign and Loadsman layout tests still pass.
+
+---
+
 ## 148. A size group without its sign, or with a hyphen for it
 
 **Status: fixed on `fix/size-group-without-its-sign`, 2026-09-27**, from the

@@ -1390,10 +1390,17 @@
   # table's own caption line or its footnote
   annGlyph <- NA_character_
   for (txt in texts[c(if (capIdx >= 1L) capIdx, idx)]) {
-    m <- regmatches(txt, regexpr("(?i)\\bmeans?\\s+(\\S{1,4})\\s+s\\.?\\s?d\\.?\\b", txt, perl = TRUE))
-    if (length(m) == 1L) {
-      g <- strsplit(m, "\\s+")[[1]][2]
-      if (isSoup(g) || grepl("^[A-Za-z]$", g)) { annGlyph <- g; break }
+    # ... WITH OR WITHOUT ITS SPACES, AND THE GLYPH MAY BE A DIGIT (2026-09-26,
+    # ISSUES.md issue 152; J Clin Anesth 1999, PMID 10386280): the footnote
+    # reads "Values are means6SD" - the symbol font's plus-minus comes
+    # through as a "6" with no space on either side, and the same "6"
+    # stands between every mean and its SD in the table ("45 6 12"). The
+    # announcement is read with optional spaces, and a lone digit is a
+    # glyph it may name; a bracket is not ("mean (SD)" announces nothing).
+    mm <- regmatches(txt, regexec("(?i)\\bmeans?(?:\\s+(\\S{1,4})\\s+|([0-9]))s\\.?\\s?d\\.?\\b", txt, perl = TRUE))[[1]]
+    if (length(mm) == 3L) {
+      g <- if (nzchar(mm[2])) mm[2] else mm[3]
+      if (isSoup(g) || grepl("^[A-Za-z0-9]$", g)) { annGlyph <- g; break }
     }
   }
   announced <- !is.na(annGlyph)
@@ -1444,7 +1451,42 @@
       if (length(unique(ml[k][mt[k]])) >= 2L) mean(mx[k][mt[k]]) else NA_real_, numeric(1))
     slots <- slots[!is.na(slots)]; strong <- strong[!is.na(strong)]
   }
-  if (!announced && (nTrue < 2L || length(slots) == 0L)) return(none)
+  # THE ARM COLUMNS ARE THE SLOTS WHEN THE TEXT LAYER HAS NO SIGN AT ALL
+  # (2026-09-26, ISSUES.md issue 152; the corpus session's batch 31 part 3
+  # AL1-AL4: J Clin Anesth 1999, PMID 10386280, three arms of 50; A&A 1999,
+  # PMID 10357343; Paediatr Anaesth 2001, PMID 11123735; Paediatr Anaesth
+  # 2002, PMID 11903942). Text-born PDFs whose plus-minus glyph has no
+  # text: the page prints "45 +/- 12" and the layer says "45  12" - two
+  # numbers a dozen points apart, on every row, with no sign anywhere in
+  # the block and often none in the footnote ("Values are mean sd or n").
+  # Rule (b) below, the dropped sign, needs a slot to put the sign at, and
+  # the slots come from glyphs the block does not have. The header does
+  # have the arms: two or more "(n = k)" groups on one line, one per arm,
+  # and the centre of each group is where its column's sign belongs. When
+  # the block carries no genuine glyph and no announced soup, those
+  # centres serve rule (b) as its slots - and nothing else: no letter or
+  # soup is read as a sign against them, only two numbers straddling the
+  # arm's centre with the usual gap.
+  armSlots <- numeric(0)
+  if (nTrue == 0L && length(slots) == 0L) {
+    sizeGrp <- "\\(\\s*[Nn]\\.?\\s*[=:~]?\\s*[0-9]{1,4}\\s*\\)"
+    for (i in idx) {
+      L <- lines[[i]]; s <- L$text
+      if (nrow(L) < 2L) next
+      joined <- paste(s, collapse = " ")
+      m <- gregexpr(sizeGrp, joined, perl = TRUE)[[1]]
+      if (m[1] == -1L || length(m) < 2L) next
+      wordStart <- cumsum(c(1, nchar(s) + 1))[seq_along(s)]
+      wordEnd   <- wordStart + nchar(s) - 1
+      armSlots <- vapply(seq_along(m), function(h) {
+        a <- m[h]; b <- a + attr(m, "match.length")[h] - 1L
+        wf <- which(wordEnd >= a)[1]; wl <- rev(which(wordStart <= b))[1]
+        (L$x[wf] + L$x[wl] + L$width[wl]) / 2
+      }, numeric(1))
+      break
+    }
+  }
+  if (!announced && (nTrue < 2L || length(slots) == 0L) && !length(armSlots)) return(none)
   # (iii) the repair, line by line
   repaired <- 0L
   soupGlued <- paste0("^((?:[-+:~\u2212\u2013\u00b7\u2022\u00b1iIlTt]{2,4})|(?:[0-9]:))",
@@ -1543,7 +1585,8 @@
     hit <- hit | (s == "+" & prevNum & nextNum & (atStrong | (announced & atSlot)))
     # (b) the sign dropped entirely: two numbers straddling such a slot with
     # a gap of 4 to 20 points between them (issue 77)
-    back   <- if (announced) slots else strong
+    back   <- if (announced) slots else if (length(strong)) strong else armSlots   # the arm columns when no glyph exists (issue 152)
+    usingArm <- !announced && !length(strong) && length(armSlots) > 0L
     xEnd   <- L$x + L$width
     gapHit <- logical(nrow(L))
     # only a LABELLED line: a figure's axis ticks under a scanned table
@@ -1572,7 +1615,12 @@
       if (grepl("^-", s[k + 1L], perl = TRUE)) next   # a negative number is never an SD
       gap <- L$x[k + 1L] - xEnd[k]
       if (gap < 4 || gap > 20) next
-      if (!any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1)) next
+      # an arm column's centre need not fall between the two numbers - the
+      # "(n = 50)" groups are set a little right of the cells' signs - so
+      # against the arm columns the pair's midpoint within fifteen points
+      # of the centre is enough (issue 152)
+      nearArm <- usingArm && any(abs(back - (xEnd[k] + L$x[k + 1L]) / 2) <= 15)
+      if (!any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1) && !nearArm) next
       if (grepl("^[0-9]$", s[k + 1L], perl = TRUE) && k + 2L <= nrow(L) && isNum(s[k + 2L]) &&
           any(abs(back - L$x[k + 1L]) <= tol) && L$x[k + 2L] - xEnd[k + 1L] <= 20) {
         digitSign[k + 1L] <- TRUE
