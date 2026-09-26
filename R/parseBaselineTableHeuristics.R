@@ -840,6 +840,51 @@
     }
   }
 
+  # A COLUMN THAT SHARES NO LINE WITH ANOTHER IS NOT AN ARM COLUMN
+  # (2026-09-27, ISSUES.md issue 128; Anaesthesia 1999, PMID 10193218, the
+  # corpus session's batch 26 "caption as arm"). The page sets its Table 1
+  # in the right-hand column beside the prose of the left; read full
+  # width, the block runs on past the table's last row into the prose,
+  # and a sentence there - "between 62% and 80% [2, 3]" - carries numbers
+  # at an x no cell of the table uses. Those numbers seeded a column left
+  # of the arms, the legend line's "mean (SD) or median" above it became
+  # the arm's name, and the table read four arms with the first empty on
+  # every row. A table's grid is one of shared lines: every arm column
+  # holds cells on the rows the other arms hold cells on. A column whose
+  # feeding lines carry no token of any other column is not on the grid,
+  # and it goes with its tokens and words, as issue 46's columns do.
+  if (cols$n > 1) {
+    colOf <- cols$assign(allToks$mid)
+    lineOf <- unlist(lapply(dataIdx, function(i) rep(i, nrow(tokensByLine[[i]]))))
+    isolated <- vapply(seq_len(cols$n), function(k) {
+      mine <- unique(lineOf[colOf == k])
+      length(mine) > 0L && !any(colOf[lineOf %in% mine] != k)
+    }, logical(1))
+    if (any(isolated) && !all(isolated)) {
+      say("  ", sum(isolated), " column(s) sharing no line with another column ",
+          "dropped - not arm columns.")
+      keep <- !isolated
+      for (i in dataIdx) {
+        t <- tokensByLine[[i]]
+        if (nrow(t) == 0) next
+        gone <- t[!keep[cols$assign(t$mid)], , drop = FALSE]
+        if (nrow(gone) == 0) next
+        L <- lines[[i]]
+        wMid <- L$x + L$width / 2
+        inGone <- vapply(wMid, function(m) any(m >= gone$x0 - 1 & m <= gone$x1 + 1), logical(1))
+        L <- L[!inGone, , drop = FALSE]
+        if (nrow(L) == 0) { kind[i] <- "junk"; tokensByLine[[i]] <- t[0, , drop = FALSE]; next }
+        lines[[i]]        <- L
+        lineTexts[i]      <- .ppLineText(L)
+        tokensByLine[[i]] <- .ppTokenizeLine(L)
+        if (nrow(tokensByLine[[i]]) == 0) kind[i] <- "junk"
+      }
+      allToks <- do.call(rbind, tokensByLine[dataIdx])
+      if (is.null(allToks) || nrow(allToks) == 0) return(NULL)
+      cols <- clusterCols(allToks$mid)
+    }
+  }
+
   # PAIRED TIMEPOINT COLUMNS UNDER EACH ARM (2026-09-26, ISSUES.md issue
   # 111; Takahashi, CJA 2003, PMID 14525825, the corpus session's batch 26
   # AE2). "Saline" and "Milrinone" over "Before a / After b / Before a /
