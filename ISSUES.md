@@ -157,6 +157,38 @@ four arms of 20).
 
 ---
 
+## 133. The levels of one variable share a notation
+
+**Status: fixed on `fix/sibling-levels-share-the-count-reading`, 2026-09-27**,
+from the corpus session's batch 29 AH1 (Biricik 2024, J PeriAnesthesia
+Nursing, Loadsman corpus; four arms of 28).
+
+- **The defect.** Under "Type of surgery", "Adenoidectomy 7 (25) 10
+  (35.7) 8 (28.6) 8 (28.6)" checked as n (%) in every arm and read as
+  counts; "Tonsillectomy 11 (39.3) 13 (46.3) 10 (35.7) 9 (32.1)" did not
+  - 13 of 28 is 46.4, and the page prints 46.3 - so the cells could not
+  vouch, the footnote's "mean +/- SD" won, and the row read as a
+  continuous variable 11 +/- 39.3 / 13 +/- 46.3 / 10 +/- 35.7 / 9 +/-
+  32.1: four false cells that carried the trial's p.
+- **What changed.** A heading's levels are the categories of one
+  variable and are printed alike. When a level reads as n (%) by its own
+  cells, the heading's position and the level's label x are kept; a
+  later "a (b)" row at the same indentation under the same heading is a
+  level of counts too, a misprinted percentage notwithstanding. (The
+  heading itself closes at the first n (%) level, as issue 105 notes, so
+  the position is kept rather than the open heading.)
+- **On the page.** Tonsillectomy is a category with its complement
+  beside Adenoidectomy and the combined row; Age, Weight, Duration of
+  surgery and Extubating time as before.
+- **Tests** (`tests/testthat/test-sibling-levels-share-the-count-reading.R`):
+  a rebuilt page with the three levels under "Type of surgery", the
+  second with the misprinted percentage, reads no continuous
+  Tonsillectomy row and the row as a category (3 of 6 expectations fail
+  on the unfixed code). The identical-cells, degenerate-category,
+  count-percent, label-fragment and Loadsman layout tests still pass.
+
+---
+
 ## 132. A fraction in parentheses is label text, not a cell
 
 **Status: fixed on `fix/parenthesised-fraction-is-label-text`, 2026-09-27**,
@@ -188,6 +220,41 @@ corpus; two arms of 26 and 25).
   expectations fail on the unfixed code). The tokenizer, arm-N-from-
   fraction, seed-and-ranges, stratum, docx and Loadsman layout tests
   still pass.
+
+---
+
+## 131. A row of cells with "(n = k)" after each cell is a row, not a stratum
+
+**Status: fixed on `fix/per-cell-n-in-parentheses-is-a-row`, 2026-09-27**,
+from the corpus session's batch 28 AG2 (Am J Obstet Gynecol 2000, PMID
+10649150; three arms of 40).
+
+- **The defect.** "Last menstrual cycle (d, mean +/- SD) 16 +/- 3 (n = 38*)
+  16 +/- 3 (n = 37*) 16 +/- 3 (n = 38*)" - a variable known for fewer
+  patients than the arm, its count printed after each cell with the
+  paper's footnote star. The "(n = k)" test of the line classifier took
+  the line for a header, the stratum rule of issue 55 read it as a
+  stratum "Last menstrual cycle ... 16 +/- 3:" over the rows beneath,
+  and the durations and morphine went out under that prefix with N
+  38/37/38 instead of the header's 40 (nine cells with the wrong N) and
+  the three menstrual cells lost.
+- **What changed.** A line that carries two or more cells (mean +/- SD,
+  mean (SD), median [range]) is a data row whatever follows its cells.
+  Each "(n = k)" group after a cell is read at classification, keyed by
+  the cell's left edge, and its words leave the line - left in, their
+  numbers seed a column of their own, which the column drops take away
+  words and all before the row is read. The block walker takes the n
+  from that record when it reads the row, beside issue 109's bracket
+  form.
+- **On the page.** Seven variables in three arms of 40, 21 cells; the
+  menstrual row 16 +/- 3 with N 38, 37 and 38; the durations and
+  morphine with N 40 under their own names.
+- **Tests** (`tests/testthat/test-per-cell-n-in-parentheses.R`): a
+  rebuilt page with the menstrual row's "(n = k*)" groups reads five
+  variables in three arms of 40, the menstrual cells with N 38/37/38, the
+  rows beneath with N 40 and clean names (5 of 7 expectations fail on the
+  unfixed code). The bracket per-cell n, header-N, stratum and Loadsman
+  layout tests still pass.
 
 ---
 
