@@ -719,7 +719,49 @@
   lines  <- split(pageWords, lineId)
   lines  <- lapply(lines, function(d) d[order(d$x), ])
   # Keep reading order (top to bottom)
-  lines[order(vapply(lines, function(d) min(d$y), numeric(1)))]
+  lines  <- lines[order(vapply(lines, function(d) min(d$y), numeric(1)))]
+  .ppRejoinRaisedCells(lines, yTol)
+}
+
+# A CELL SET HALF A LINE ABOVE OR BELOW ITS ROW (2026-09-27, ISSUES.md
+# issue 134; Akelma 2020, Turk J Med Sci, Loadsman corpus - the corpus
+# session's batch 29 AH4; three arms of 16, 18 and 17). "Duration of
+# anaesthesia (min) 90.68 +/- 33.80 [ ] 90.05 +/- 23.94", with the middle
+# arm's "84.94 +/- 26.71" five points higher on the page than its
+# neighbours: the y tolerance of three points made it a line of its own,
+# a label-less line of one cell, and the row went out as two arms under
+# its label and a third cell as "Unnamed". After the lines are built, a
+# short label-less line whose every word is a number or a sign, within
+# nine points of a neighbouring line that carries words and has NO word
+# across this line's x extent, is that line's cell: its words join the
+# neighbour, which then reads as the row it is. A line with a label, or
+# with words the neighbour already covers, is left where it is.
+.ppRejoinRaisedCells <- function(lines, yTol = 3) {
+  if (length(lines) < 2L) return(lines)
+  # a number, a sign or a bracket - the words a cell is made of
+  cellWord <- function(t) grepl("^[-+0-9.,/()\\[\\]%\u00b1\u2022\u2afe\u2212\u2013*]+$", t, perl = TRUE)
+  i <- 1L
+  while (i <= length(lines)) {
+    L <- lines[[i]]
+    short <- nrow(L) <= 4L && all(cellWord(L$text)) && any(grepl("[0-9]", L$text))
+    if (short) {
+      x0 <- min(L$x); x1 <- max(L$x + L$width); y <- min(L$y)
+      for (j in c(i - 1L, i + 1L)) {
+        if (j < 1L || j > length(lines)) next
+        M <- lines[[j]]
+        if (abs(min(M$y) - y) > yTol + 6) next
+        if (nrow(M) <= nrow(L) || all(cellWord(M$text))) next
+        covered <- any(M$x < x1 & M$x + M$width > x0)
+        if (covered) next
+        lines[[j]] <- rbind(M, L); lines[[j]] <- lines[[j]][order(lines[[j]]$x), ]
+        lines[[i]] <- NULL
+        i <- i - 1L
+        break
+      }
+    }
+    i <- i + 1L
+  }
+  lines
 }
 
 .ppLineText <- function(line) .ppSquish(paste(line$text, collapse = " "))
