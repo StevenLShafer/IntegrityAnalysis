@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 132. A fraction in parentheses is label text, not a cell
+
+**Status: fixed on `fix/parenthesised-fraction-is-label-text`, 2026-09-27**,
+from the corpus session's batch 29 AH2 (Ozkan, Anaesthesist 2019, Loadsman
+corpus; two arms of 26 and 25).
+
+- **The defect.** "Mallampati score (1/2) (%) 8 (31)/18 (69) 4 (16)/21
+  (84)" and "ADA score (2/3/4/5) 9/12/4/1 6/15/3/1" name their levels in
+  the label as "(1/2)" and "(2/3/4/5)". The tokenizer read "1/2" as a
+  fraction cell (and "2" of "(2/3/4/5)" as a bare number), which seeded a
+  nameless column left of the arms and cut the row label to "Mallampati
+  score (" so that its "(%)" was lost; with two arms the cells' own
+  n (%) signature cannot vouch (issue 66's three-signature rule), and
+  the row read as a continuous variable 8 +/- 31 / 4 +/- 16 - two false
+  cells that carried the trial's p. Its neighbour "Gender (F/M) (%)",
+  whose level list has letters, read as a category all along.
+- **What changed.** A parenthesised slash list of numbers is matched
+  whole, ahead of every cell form, and dropped by `.ppTokenizeLine()`:
+  no token can start inside it. A count fraction is printed bare
+  ("72/8", "9/12/4/1") and still reads.
+- **On the page.** Two named arms (the nameless third is gone);
+  Mallampati score (1/2) is a category with its complement, as Gender
+  is; Age and BMI unchanged.
+- **Tests** (`tests/testthat/test-parenthesised-fraction-is-label-text.R`):
+  the tokenizer on the Mallampati line (no fraction, the first token
+  after the label's "(%)"), the ADA line (two bare fractions) and a
+  "Sex (M/F) 12/8 11/9" line; a rebuilt page reads two named arms, no
+  continuous Mallampati row and the row as a category (10 of 12
+  expectations fail on the unfixed code). The tokenizer, arm-N-from-
+  fraction, seed-and-ranges, stratum, docx and Loadsman layout tests
+  still pass.
+
 ## 128. A column that shares no line with another column is not an arm
 
 **Status: fixed on `fix/isolated-column-is-not-an-arm`, 2026-09-27**, from
