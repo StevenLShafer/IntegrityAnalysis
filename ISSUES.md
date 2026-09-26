@@ -153,13 +153,16 @@ PMID 10730740, canine landiolol under theophylline; four groups of 9/9/8/8).
 - **On the page.** Table I is refused. Table II (variable headings over
   four dose rows each with its own "(n = 9)", columns Baseline / Landiolol
   / After cessation) does not yet read - the long-layout reader wants
-  group labels, not dose lines - so the document reports no usable table,
-  which is honest where it scored a Pre/Post cohort before.
+  group labels, not dose lines - and the document falls to Table III,
+  plasma concentrations by phase, whose columns "Baseline / Intoxication
+  / Landiolol" come out as arms with an N on one: the timepoint-columns
+  class, not scoreable, and the next thing to teach.
 - **Tests** (`tests/testthat/test-one-cohort-pre-post-table.R`): a rebuilt
   document with a ten-row Pre-/Post- table over a small three-arm table
   with a bland caption and no printed sizes - the paper's own shape -
   reads the second (three arms, no haemodynamic row) where the unfixed
-  code scores the Pre/Post table (UNFIXED). The paired-column and Loadsman layout tests still pass.
+  code scores the Pre/Post table (3 of 3 expectations fail on the unfixed
+  code). The paired-column and Loadsman layout tests still pass.
 
 ---
 
