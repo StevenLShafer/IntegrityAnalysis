@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 163. The exclusion bracket OCR'd with the SD's look-alike letters
+
+**Status: fixed on `fix/look-alike-exclusion-bracket`, 2026-09-27**, from
+the corpus session's follow-up to batch 34 AN2 on 483d5fc (Clin Ther
+2004, PMID 15336470; five arms of 20).
+
+- **The defect.** "Last menstrual cycle, mean (SD), d 16 (3) [t0] 16 (3)
+  [t t] 16 (3) [t0] 16 (3) [9] 16 (3) [t0]": the page prints an
+  exclusion bracket in every arm, the OCR sets "[10]" as "[t0]" and
+  "[11]" as the two words "[t" "t]", and issue 162's rule found a count
+  in arm 4 alone - the row went out with N 20 / 20 / 20 / 11 / 20 where
+  the page means 10 / 9 / 10 / 11 / 10.
+- **What changed.** Issue 149's look-alike repair, having read a cell's
+  SD group on a "mean" row, reads the square-bracket group that directly
+  follows it the same way: one to four look-alike characters, at least
+  one a letter, become their digits and one word. Issues 109 and 162 then
+  read the bracket as they read "[9]". A bracket on a row that does not
+  say "mean" is untouched.
+- **On the page.** The menstrual row's N 10 / 9 / 10 / 11 / 10 in the
+  five arms; nothing else moves.
+- **Tests** (`tests/testthat/test-mean-sd-label-declares-the-notation.R`
+  and `test-bracket-count-excluded.R`, extended): the repair on the row's
+  words with a count-row control, and a rebuilt page of the shape whose
+  four brackets read "[t0]", "[t t]", "[9]", "[t0]" (UNFIXED on the
+  page: the OCR'd arms kept N 20). The per-cell-n, look-alike SD and
+  Loadsman layout tests still pass.
+
+---
+
 ## 162. A bracket the footnote calls the excluded is the arm less that count
 
 **Status: fixed on `fix/bracket-count-is-n-only-when-said`, 2026-09-27**,
