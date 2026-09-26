@@ -2268,7 +2268,12 @@
         nrow(lines[[i + 1]]) <= 4L &&
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
-      labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
+      # ... "Days since last menstrual cycle", "Time since ...", and a label
+      # that ends in a unit - "Height, cm", "Duration of surgery, min" -
+      # are continuous variables by their words (issue 160)
+      labelContinuous <- grepl(continuousKeyword, label, perl = TRUE) ||
+        grepl("(?i)\\b(days?|months?|years?|weeks?|hours?|time)\\s+(since|from|to|until)\\b", label, perl = TRUE) ||
+        grepl("(?i),\\s*(cm|mm|m|kg|g|min|h|hr|hours?|yr|y|years?|mg\\s*/\\s*kg|mg|mL|ml|L|mm\\s*Hg|IU/L|beats/min|bpm|%\\s*of)\\s*$", rawLabel, perl = TRUE)
       # A ROW LABELLED "MEAN (SD)" DECLARES ITS CELLS' NOTATION (2026-09-26,
       # ISSUES.md issue 149; Clin Ther 2003, PMID 12809962, and Clin Ther
       # 2004, PMID 15336470, the corpus session's batch 31 part 3 AL7 and
@@ -2354,6 +2359,17 @@
         # table-level footnote. Without this, "White 12 (33)" became a
         # mean of 12 with an SD of 33 because the footnote also said
         # "mean (SD)" (vocacapsaicin corpus, 2026-08-22).
+        # A ROW LABELLED AS A CONTINUOUS VARIABLE CLOSES AN OPEN COUNT HEADING
+        # (2026-09-27, ISSUES.md issue 160; Clin Ther 2003, PMID 14749148, the
+        # corpus session's batch 31 AK4 (ii) and batch 33; four arms of 25).
+        # "Sex, no. (%)" over "Women 14 (56)" and "Men 11 (44)" stays open,
+        # and the single-line rows that follow - "Height, cm 158 (8)", "Body
+        # weight, kg 57 (8)", "Days since last menstrual cycle 16 (3)", both
+        # durations - were read as its levels, percentages of the arm: five
+        # variables lost to a heading that had ended two rows before. A row
+        # whose label names a continuous variable is a new variable, not a
+        # level, whatever heading stands open above it.
+        else if (labelContinuous) "sd"
         else if (!is.na(catHeader) && catHeaderNPct) "percent"
         # THE LEVELS OF ONE VARIABLE SHARE A NOTATION (2026-09-27, ISSUES.md
         # issue 133; Biricik 2024, J PeriAnesthesia Nursing, Loadsman corpus
