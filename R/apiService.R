@@ -455,10 +455,13 @@
 # built to run for a day (1e13) is refused before its first draw and told
 # why. The estimate is .apiDrawWork(), the same function, on the validated
 # frame; the wall-clock ceiling remains for the shapes an estimate cannot
-# foresee. Widening this is the supported knob, as for the API's; a test
-# sets the option IntegrityAnalysis.appDrawBudget around one Analyze.
+# foresee. Widening this is the supported knob, as for the API's: a local
+# copy sets INTEGRITY_APP_DRAW_BUDGET (issue 174; unset on the deployed
+# server), a test sets the option IntegrityAnalysis.appDrawBudget around
+# one Analyze. The option wins over the environment, as for the ceiling.
 .iaAppDrawBudget <- function() {
-  v <- suppressWarnings(as.numeric(getOption("IntegrityAnalysis.appDrawBudget", 10 * .apiMaxDrawBudget)))
+  v <- suppressWarnings(as.numeric(getOption("IntegrityAnalysis.appDrawBudget",
+                                            Sys.getenv("INTEGRITY_APP_DRAW_BUDGET", 10 * .apiMaxDrawBudget))))
   if (length(v) != 1L || !is.finite(v) || v <= 0) 10 * .apiMaxDrawBudget else v
 }
 
