@@ -50,6 +50,37 @@ m <- 100000
 # user. R/P_Calc.R remains callable directly for anyone with the
 # computing horsepower and a reason.
 .iaMaxArmN <- 5000L
+# A WALL-CLOCK CEILING ON ONE ANALYSIS (2026-09-27, ISSUES.md issue 165;
+# Steve's decision after the outside security review of 2026-09-26). The
+# app runs the Monte Carlo inside the R process that serves the page, so
+# a table built to make every row escalate to the last stage - identical
+# means, tiny SDs, thousands of rows appended over several uploads - would
+# hold a worker for a day, and a handful of such tabs would hold every
+# worker. The asynchronous, bounded-worker design is issue 26, deferred
+# until the Posit Connect Cloud move; until then one analysis may run for
+# this many seconds, checked between trials and, inside P_Calc(), between
+# rows and stages. At the ceiling the analysis STOPS and says so: the
+# trials that finished keep their results, the trial in progress has
+# none, the rest are named as not started. Precision is never reduced to
+# fit (Steve, 2026-08-27, issue 25's log). The default is ten minutes; a
+# deployment sets INTEGRITY_ANALYZE_SECONDS, a test sets the option. The
+# checks are "at or past" the deadline, so a ceiling of zero stops before
+# the first trial on any clock, however coarse its tick.
+.iaAnalysisSeconds <- function() {
+  v <- getOption("IntegrityAnalysis.analysisSeconds",
+                 Sys.getenv("INTEGRITY_ANALYZE_SECONDS", "600"))
+  v <- suppressWarnings(as.numeric(v))
+  if (length(v) != 1L || !is.finite(v) || v < 0) 600 else v   # 0 stops before the first trial
+}
+# The condition P_Calc() raises at the deadline: its own class, so the
+# Analyze observer can tell "the ceiling" from "this trial failed" and
+# stop the whole run rather than move to the next trial.
+.iaAnalysisTimeout <- function(TRIAL) {
+  structure(class = c("iaAnalysisTimeout", "error", "condition"),
+            list(message = paste0("the analysis reached its time ceiling while simulating trial ",
+                                  TRIAL),
+                 call = NULL, trial = TRIAL))
+}
 
 
 # ---- ONE name normalizer, used by validateData AND the API gates -------
