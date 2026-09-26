@@ -160,6 +160,42 @@ five arms of 20).
 
 ---
 
+## 161. Look-alike letters before a mean, on a row that says "mean (SD)" anywhere
+
+**Status: fixed on `fix/look-alike-leading-digits-of-a-mean`, 2026-09-27**,
+from the corpus session's batch 34 AN2 (Clin Ther 2004, PMID 15336470;
+five arms of 20).
+
+- **The defect.** "Last menstrual cycle, mean (SD), d t 6 (3) t 6 (3) t 6
+  (3) 16 (3) t 6 (3)" and "Duration of anesthesia, mean (SD), min 106 (35)
+  II 7 (33) 106 (36) II 2 (37) II 8 (29)": the OCR sets the leading "1" of
+  a mean as "t", "11" as "II", a word of its own before the rest, and the
+  rows read means of 6, 7, 2 and 8 where the page prints 16, 117, 112 and
+  118 - seven false cells scored (p 0.856). Issue 149's look-alike repair
+  covered the SD in its brackets, and only on rows whose label BEGINS
+  with "Mean"; this journal names the notation in the label's tail
+  ("..., mean (SD), d"), so "Height, mean (SD), cm 155 (I I)" lost a cell
+  as well.
+- **What changed.** `.ppRepairLookAlikeBracketSd()` takes a row whose
+  label carries the word "mean" anywhere before its first number, and on
+  it a word of one to three look-alike letters (l, I, t, |) standing
+  directly before a bare number that a bracket group follows is that
+  number's first digits and joins it; the bracket repair then runs as
+  before. The letters must stand against the number, within six points,
+  as a digit set apart does: a label's unit a column away from the first
+  cell ("Volume, mean (SD), l 6 (3)") is not a digit (CodeRabbit on PR
+  #473). A row with no "mean" in its label ("Smokers (n) t 6 (30)") is
+  untouched.
+- **On the page.** The menstrual row 16 (3) in every arm, Duration of
+  anesthesia 106/117/106/112/118, Height in all five arms; the false
+  means gone.
+- **Tests** (`tests/testthat/test-mean-sd-label-declares-the-notation.R`,
+  extended): the repair on the paper's three rows and a count-row control
+  (3 of 4 expectations fail on the unfixed code). The Mean (SD), count-heading and Loadsman layout tests still
+  pass.
+
+---
+
 ## 160. A row labelled as a continuous variable closes an open count heading
 
 **Status: fixed on `fix/continuous-label-closes-a-count-heading`,

@@ -744,9 +744,49 @@
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
   isNum <- function(x) grepl("^[0-9]+(?:[.,][0-9]+)?$", x, perl = TRUE)
   look  <- "^(?=[0-9lIiLtO|o]*[lIiLtO|o])[0-9lIiLtO|o]{1,4}$"
+  # ... AND THE ROW MAY SAY "MEAN" ANYWHERE IN ITS LABEL, AND THE MEAN'S OWN
+  # FIRST DIGITS MAY BE LETTERS TOO (2026-09-27, ISSUES.md issue 161; Clin
+  # Ther 2004, PMID 15336470, the corpus session's batch 34 AN2; five arms
+  # of 20). "Last menstrual cycle, mean (SD), d t 6 (3) t 6 (3) ... 16 (3)"
+  # and "Duration of anesthesia, mean (SD), min 106 (35) II 7 (33) 106 (36)
+  # II 2 (37) II 8 (29)": the OCR sets the leading "1" of a mean as "t" or
+  # "l", "11" as "II", a word of its own before the rest of the number, and
+  # the row read means of 6, 7, 2 and 8 where the page prints 16, 117, 112
+  # and 118 - seven false cells scored. The label names the notation in
+  # its tail ("..., mean (SD), d"), not at its start. On a row whose label
+  # carries the word "mean" before its first number, a word of one to
+  # three look-alike letters (l, I, t, |) standing directly before a bare
+  # number that is followed by a bracket group is the number's first
+  # digits, and joins it.
   for (i in seq(capIdx + 1L, n)) {
     L <- lines[[i]]; s <- L$text
-    if (length(s) < 3L || !grepl("(?i)^mean", s[1], perl = TRUE)) next
+    if (length(s) < 3L) next
+    firstNum <- which(isNum(s))[1]
+    if (is.na(firstNum) || firstNum < 2L) next
+    # the leading look-alikes first, so the bracket rule below sees whole
+    # numbers; the label ends where the first number - or the look-alike
+    # that leads it - begins
+    # ... and the letters stand against the number - within six points -
+    # as a digit set apart does; a label's unit ("Volume, mean (SD), l")
+    # sits a column's width away from the first cell (CodeRabbit on PR #473)
+    gapNext <- c(L$x[-1L] - (L$x[-nrow(L)] + L$width[-nrow(L)]), Inf)
+    lead <- grepl("^[lIt|]{1,3}$", s, perl = TRUE) &
+      c(isNum(s[-1L]), FALSE) &
+      c(grepl("^\\(", s[-(1:2)], perl = TRUE), FALSE, FALSE) &
+      gapNext <= 6
+    labelEnd <- min(firstNum, which(lead), na.rm = TRUE) - 1L
+    if (labelEnd < 1L) next
+    labelTxt <- paste(s[seq_len(labelEnd)], collapse = " ")
+    if (!grepl("(?i)\\bmeans?\\b", labelTxt, perl = TRUE)) next
+    if (any(lead)) {
+      for (k in which(lead)) {
+        s[k + 1L] <- paste0(chartr("lIt|", "1111", s[k]), s[k + 1L])
+        L$width[k + 1L] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]
+        L$x[k + 1L] <- L$x[k]
+      }
+      L$text <- s; L <- L[!lead, , drop = FALSE]; rownames(L) <- NULL
+      lines[[i]] <- L; s <- L$text; repaired <- repaired + sum(lead)
+    }
     keep <- rep(TRUE, length(s)); hit <- FALSE
     k <- 2L
     while (k <= length(s)) {
