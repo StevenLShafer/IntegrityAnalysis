@@ -909,10 +909,14 @@ is never a quantity this screen tests. **Numbers invented in the
 dispersion column alone are therefore invisible to it.** An independent
 audit demonstrated it on a two-arm table of 100 patients: changing the
 standard deviations from 10 and 10 to 0 and 14.14 — one arm with no
-variation whatsoever — leaves the p-value unchanged at 0.8365, because
-the pooled variance is the same. Barnett's dispersion test, which the
-package also implements, is the instrument that looks at that column;
-the two are reported side by side rather than combined, since two
+variation whatsoever — left the p-value unchanged at 0.8365 on that
+build, because the pooled variance is the same. Barnett's dispersion
+test, which the package also implements, does not fill this gap either:
+it looks at how the arms' means spread around each other, using the same
+pooled variance, so it cannot tell standard deviations of (10, 10) from
+(7.07, 12.25) with the same pooled value. Nothing in the package tests
+whether the arms' standard deviations agree with each other. The two
+instruments are reported side by side rather than combined, since two
 readings of one table are not two pieces of evidence.
 
 That is an honest limitation, not a reason to keep the method secret.
