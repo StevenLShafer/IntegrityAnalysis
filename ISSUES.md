@@ -132,6 +132,36 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 166. The app refuses a table whose worst-case simulation exceeds its budget
+
+**Status: fixed on `fix/analysis-draw-budget`, 2026-09-27**, at Steve's
+request after the outside security review of 2026-09-26; the second of
+two interim guards (with issue 165's ceiling) while issue 26 waits for
+the Posit Connect Cloud move.
+
+- **The exposure.** The API estimates a table's worst-case simulation
+  cost (`.apiDrawWork()`: every row escalating to 100,000 replicates)
+  and refuses above `.apiMaxDrawBudget`, routing large single trials to
+  the app; the app made no estimate, so a table built to run for a day
+  started running.
+- **What changed.** `.iaAppDrawBudget()` (R/apiService.R) is ten times
+  the API's budget - about twenty minutes of simulation in the worst
+  case, which no honest baseline table approaches (issue 26's own table
+  is 5e10) while a day-long table (1e13) is far above it. The Analyze
+  observer computes the same estimate on the validated frame and, above
+  the budget, refuses before the first draw with the numbers and the
+  advice (one trial per table; a single trial over the limit cannot be
+  analyzed here; precision is never reduced to fit). Issue 165's
+  wall-clock ceiling stays for the shapes an estimate cannot foresee.
+- **Tests** (`tests/testthat/test-analysis-draw-budget.R`): the budget
+  is the API's times ten and the estimate is the API's own; through the
+  app, a table over a lowered budget is refused with its numbers and
+  nothing is simulated, and the same table under the real budget runs
+  to its Summary (UNFIXED: the budget does not exist). The ceiling,
+  adaptive-m, grid and pipeline tests still pass.
+
+---
+
 ## 165. A wall-clock ceiling on one analysis in the app
 
 **Status: fixed on `fix/analysis-wall-clock-ceiling`, 2026-09-27**, at
