@@ -828,13 +828,15 @@
 # the "5:" before them (issue 125 wants a number after the sign) and the
 # cell was lost. A word of digits ending in a point, followed within two
 # points by a one-character word that is a digit or its look-alike
-# (l, I, |, O, o), is one decimal number: joined, the look-alike read as
-# its digit, the width the sum. Runs first of the repairs, so the slot
-# rule and the letter-digit rule see the number. The same two pieces
-# come FUSED from a layer that sets them closer ("5.I", "60.l"): a word
-# of digits, a point and one of the look-alikes l, I or | is that
-# number too (O and o are left out of the fused form - "5.o" could be a
-# footnote letter; "5.I" cannot).
+# (l, I, |), is one decimal number: joined, the look-alike read as its
+# digit, the width the sum. Runs first of the repairs, so the slot rule
+# and the letter-digit rule see the number. The same two pieces come
+# FUSED from a layer that sets them closer ("5.I", "60.l"): a word of
+# digits, a point and one of the look-alikes l, I or | is that number
+# too. O and o are left out of BOTH forms: "5.o" and "5." "o" could be a
+# number and its footnote letter, and a zero read into an SD is a wrong
+# value, not a lost one (CodeRabbit on PR #435); "5.I" cannot be a
+# footnote.
 .ppSplitDecimalHead <- "^[0-9]+[.]$"
 .ppFusedDecimalTail <- "^[0-9]+[.][lI|]$"
 .ppRepairSplitDecimals <- function(lines, capIdx = 0L) {
@@ -850,13 +852,13 @@
     if (length(s) < 2L) next
     head <- grepl(.ppSplitDecimalHead, s, perl = TRUE)
     if (!any(head)) next
-    tail <- c(grepl("^[0-9lI|Oo]$", s[-1L], perl = TRUE), FALSE)
+    tail <- c(grepl("^[0-9lI|]$", s[-1L], perl = TRUE), FALSE)
     gap  <- c(L$x[-1L] - (L$x[-length(s)] + L$width[-length(s)]), Inf)
     hit  <- head & tail & gap <= 2
     if (!any(hit)) next
     keep <- rep(TRUE, nrow(L))
     for (k in which(hit)) {
-      L$text[k]  <- paste0(s[k], chartr("lI|Oo", "11100", s[k + 1L]))
+      L$text[k]  <- paste0(s[k], chartr("lI|", "111", s[k + 1L]))
       L$width[k] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]
       keep[k + 1L] <- FALSE
       repaired <- repaired + 1L

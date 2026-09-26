@@ -27,6 +27,11 @@ test_that("the helper joins a digits-and-point word with the touching look-alike
   L3 <- data.frame(text = c("60.", "l"), x = c(100, 114), width = c(13, 2), stringsAsFactors = FALSE)
   r <- .ppRepairSplitDecimals(list(L3))
   expect_identical(r$lines[[1]]$text, "60.1")
+  # a split "o" is a footnote letter as much as a zero: left, like the fused "5.o"
+  L5 <- data.frame(text = c("5.", "o", "5.", "O"), x = c(100, 112, 130, 142), width = c(11, 4, 11, 5),
+                   stringsAsFactors = FALSE)
+  r <- .ppRepairSplitDecimals(list(L5))
+  expect_identical(r$repaired, 0L)
   # the fused form, as a layer that sets the pieces closer gives it
   L4 <- data.frame(text = c("153.5", "5:", "5.I", "5.o"), x = c(246, 260, 266, 280), width = c(12, 4, 6, 6),
                    stringsAsFactors = FALSE)

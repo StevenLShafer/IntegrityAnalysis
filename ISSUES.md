@@ -148,11 +148,13 @@ arms of 20), a no-route item until now.
 - **What changed.** `.ppRepairSplitDecimals()` in utils.R, first of the
   repairs: a word of digits ending in a point, followed within two
   points by a one-character word that is a digit or its look-alike (l,
-  I, |, O, o), is one decimal number - joined, the look-alike read as
-  its digit, the width the sum. The fused form a closer layer gives
-  ("5.I", "60.l") is read too, with l, I and | only ("5.o" could be a
-  footnote letter; "5.I" cannot). The slot rule and the letter-digit
-  rule then see the number.
+  I, |), is one decimal number - joined, the look-alike read as its
+  digit, the width the sum. The fused form a closer layer gives ("5.I",
+  "60.l") is read too. O and o are left out of both forms: "5." "o" and
+  "5.o" could be a number and its footnote letter, and a zero read into
+  an SD is a wrong value, not a lost one (CodeRabbit on PR #435); "5.I"
+  cannot be a footnote. The slot rule and the letter-digit rule then
+  see the number.
 - **On the page.** Height reads 152.8 +/- 5.9, 152.4 +/- 4.7, 153.5 +/-
   5.1 in three arms; 15 cells.
 - **Tests** (`tests/testthat/test-split-decimal-sd-joined.R`): the
