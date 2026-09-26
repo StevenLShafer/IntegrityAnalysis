@@ -139,8 +139,9 @@ is_category <- function(x, requireNA = TRUE) {
 # where there may be problems that need further scrutiny"). Three shapes
 # of a row that analyses but deserves a look: an SD larger than its mean
 # on a non-negative quantity; a variable whose every arm prints the same
-# value with no dispersion, or the same mean and SD (fixed by design or by
-# a floor, not a sample); and two variables of one trial with identical
+# value with no dispersion (fixed by design or by a floor, not a sample),
+# or the same mean and SD with dispersion (a shape to check against the
+# page, NOT a reason to remove the row - see (b)); and two variables of one trial with identical
 # N, mean and SD in every arm (a duplicated row). The parser flags the
 # same shapes as it reads a page; here they are judged on the table the
 # analysis will see, whatever its source, and filed as issues with the
@@ -167,11 +168,29 @@ is_category <- function(x, requireNA = TRUE) {
   for (k in unique(key[use])) {
     idx <- which(use & key == k & !is.na(mean) & !is.na(sd))
     if (length(idx) < 2L) next
-    if (all(sd[idx] == 0) || (length(unique(mean[idx])) == 1L && length(unique(sd[idx])) == 1L))
+    # TWO SHAPES, TWO WARNINGS (outside statistical audit 2026-09-26, F3;
+    # ISSUES.md issue 169). No dispersion in any arm is a quantity fixed by
+    # design or by a floor, and removing it is right. The same mean AND SD
+    # printed in every arm WITH dispersion is something else: separate
+    # samples can print identical summaries by chance or by rounding, and
+    # unusually close agreement of exactly those summaries is part of the
+    # evidence this screen exists to weigh. Telling the user such a row is
+    # "not a sample" and to remove it was a false inference and an
+    # outcome-dependent selection rule - the audit's three arms of N 40,
+    # mean 54.1, SD 9.2 read 0.000195 and were each told to go. The row
+    # is flagged factually, to be checked against the page for a column
+    # copied across arms or a duplicated variable, and stays in unless
+    # something outside the numbers says it should not.
+    if (all(sd[idx] == 0))
       for (i in idx)
-        add(i, "MEAN", paste("the same value in every arm with no dispersion, or the same mean",
-                             "and SD in every arm: fixed by design or by a floor, not a sample -",
-                             "consider removing the row before analysis"))
+        add(i, "MEAN", paste("the same value in every arm with no dispersion: fixed by design or",
+                             "by a floor, not a sample - consider removing the row before analysis"))
+    else if (length(unique(mean[idx])) == 1L && length(unique(sd[idx])) == 1L)
+      for (i in idx)
+        add(i, "MEAN", paste("the same mean and SD printed in every arm: check the page for a column",
+                             "copied across arms, a design-fixed quantity or a duplicated variable;",
+                             "if the arms are separate samples the row stays in - agreement this",
+                             "close is what the screen weighs"))
     sig[k] <- paste(n[idx], mean[idx], sd[idx], collapse = "|")
   }
   # (c) two variables of one trial with identical N, mean and SD in every arm
