@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 169. Equal positive means and SDs were called "not a sample" and advised out
+
+**Status: fixed on `fix/equal-summaries-warning-is-factual`, 2026-09-27**,
+from the outside statistical audit of 2026-09-26 (F3, P2 interpretation;
+report held locally under `.audit/`).
+
+- **The defect.** Issue 79's warning joined two shapes in one sentence:
+  no dispersion in any arm, and the same mean and SD printed in every
+  arm. Both were told "fixed by design or by a floor, not a sample -
+  consider removing the row before analysis". The second inference is
+  false - separate samples can print identical summaries by chance or by
+  rounding - and the advice is an outcome-dependent selection rule:
+  unusually close agreement of exactly those summaries is the evidence
+  the screen exists to weigh. The audit's three arms of N 40, mean 54.1,
+  SD 9.2 read 0.000195 and were each told to go.
+- **What changed.** Two warnings. No dispersion anywhere keeps the
+  removal advice. The same mean and SD with dispersion is flagged
+  factually - check the page for a column copied across arms, a design-
+  fixed quantity or a duplicated variable - and the row stays in unless
+  something outside the numbers says otherwise. The user guide's
+  lavender list says the same.
+- **Tests** (`tests/testthat/test-equal-summaries-warning.R`): the two
+  shapes in one table get their two warnings, the positive-SD one with
+  no "not a sample" and no removal advice (UNFIXED); the positive-SD row
+  validates with the warning.
+
+---
+
 ## 168. The stated-grid tolerance grew with the value, admitting an invalid precision at a large origin
 
 **Status: fixed on `fix/stated-grid-tolerance-is-floating-point`,
