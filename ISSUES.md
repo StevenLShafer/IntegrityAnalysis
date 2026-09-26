@@ -185,6 +185,33 @@ corpus session's arm-count audit (batch 28 note c; CJA 1996, PMID
   "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
   and Loadsman layout tests still pass.
 
+**Second cut (`fix/lone-hyphen-must-sit-between-its-numbers`,
+2026-09-27)**, from the corpus session's batch 30 AI2 (Anesth Analg 2004,
+PMID 15281514; four groups of 7 dogs) - a REGRESSION of the first cut.
+
+- **The defect.** A long-layout table - "HR (bpm) I 142 +/- 13 - 142 +/-
+  13 ..." - whose Fatigue column prints an en dash for the two groups
+  without fatigue, at the column where the other two groups' rows set a
+  sign. The dash stands between two numbers at a strong slot and the
+  first cut read it as the sign; the row's cells fused across it, the
+  long-layout reader no longer engaged, and 32 cells became 173 rows
+  with no N.
+- **What changed.** The number before a sign is a mean, and a mean is
+  never itself preceded by a sign; the number after a sign is an SD,
+  never itself followed by one. When the word two before the lone dash,
+  or two after it, is a genuine sign glyph, the numbers on either side
+  belong to other cells: the dash is a placeholder cell and stays. CJA
+  1996's "1.6 - 3.3" has plain numbers two away and reads as before.
+- **On the page.** As before the first cut: four arms of 7, HR, MAP and
+  Pdi at both stimulation frequencies, 32 cells.
+- **Tests** (`tests/testthat/test-lone-hyphen-at-strong-slot.R`,
+  extended): the slot repair on a long-layout block of the paper's shape,
+  whose third and fourth rows set the Fatigue slot with genuine glyphs
+  and whose first and second print the dash there (the dashes stay, the
+  glyphs stay; 2 expectations fail on the unfixed code). The first cut's
+  tests and the soup-glued, "-I-", slot, announced-soup, minus-digit and
+  integer digit-fused tests still pass.
+
 ---
 
 ## 141. The digit-fused sign at integer precision
