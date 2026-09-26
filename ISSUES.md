@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 159. A heading wrapped over two lines keeps its tag
+
+**Status: fixed on `fix/two-line-count-heading`, 2026-09-27**, from the
+corpus session's batch 33 AN1 (Curr Ther Res 2002, PMID 24944401; two arms
+of 50) - the issue 156 class again.
+
+- **The defect.** "No. (%) of patients using analgesics" wraps onto
+  "postoperatively", and the levels beneath - "Indomethacin 31 (62) 32
+  (64)", "Pentazocine 5 (10) 5 (10)" - follow the continuation, which
+  took the heading's place with no count tag: they read as mean (SD),
+  and once the table analysed (issue 149 took its Mean (SD) rows) four
+  false cells of 31 +/- 62 and their kin were scored beside ten good
+  ones (p 0.0206).
+- **What changed.** A label line of three words or fewer that begins in
+  lower case, directly beneath the line that is the open heading, is
+  that heading's continuation: the heading grows by it and keeps its
+  count tag.
+- **On the page.** Two arms of 50; Age, Height, Weight and both
+  durations as mean (SD), the two analgesic levels as counts; ten cells.
+- **Tests** (`tests/testthat/test-two-line-count-heading.R`): a rebuilt
+  page of the shape - three mean (SD) rows, the two-line heading and its
+  two levels - reads two arms of 50 with three continuous rows and no
+  Indomethacin mean (2 of 4 expectations fail on the unfixed code). The
+  count-heading, percent-block and
+  Loadsman layout tests still pass.
+
+---
+
 ## 158. A sign never follows a sign
 
 **Status: fixed on `fix/symbol-font-sign-beside-an-equal-sd`, 2026-09-27**,

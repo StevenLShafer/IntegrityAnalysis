@@ -1764,6 +1764,22 @@
       if (grepl("(?i)https?://|www\\.|downloaded\\s+from|copyright|©",
                 lineTexts[i], perl = TRUE))
         next
+      # A HEADING WRAPPED OVER TWO LINES KEEPS ITS TAG (2026-09-27, ISSUES.md
+      # issue 159; Curr Ther Res 2002, PMID 24944401, the corpus session's
+      # batch 33 AN1; two arms of 50). "No. (%) of patients using
+      # analgesics" wraps onto "postoperatively", and the levels beneath -
+      # "Indomethacin 31 (62) 32 (64)", "Pentazocine 5 (10) 5 (10)" -
+      # followed the continuation, which took the heading's place with no
+      # count tag: four false cells of 31 +/- 62 and their kin were scored.
+      # A label line of three words or fewer that begins in lower case,
+      # directly beneath the line that is the open heading, is that
+      # heading's continuation: the heading grows by it and keeps its tag.
+      if (!is.na(catHeaderAt) && catHeaderAt == i - 1L && !is.na(catHeader) &&
+          nrow(lines[[i]]) <= 3L && grepl("^[a-z]", lbl, perl = TRUE)) {
+        catHeader   <- .ppSquish(paste(catHeader, lbl))
+        catHeaderAt <- i
+        next
+      }
       # A HEADING THAT CARRIES THE COUNT NOTATION MAY RUN LONGER (2026-09-27,
       # ISSUES.md issue 156; Clin Ther 2003, PMID 14749148, the corpus
       # session's batch 32 AM1; four arms of 25). "Type of surgery, no. (%)
