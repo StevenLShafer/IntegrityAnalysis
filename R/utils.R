@@ -1283,8 +1283,18 @@
     meanGlued <- !is.na(mgFrac) & nextNum &
       vapply(mgX, function(x) !is.na(x) && any(abs(slots - x) <= tol), logical(1))
     isSign <- isSoup(s) | (announced & s == annGlyph) | minusDigit
+    # A LONE HYPHEN AT A STRONG SLOT (2026-09-27, ISSUES.md issue 142; CJA
+    # 1996, PMID 8955972, the corpus session's arm-count audit; two arms of
+    # 30). "Pentazocine - mg 1.6 <bullet> 3.3 1.6 - 3.3": the second arm's
+    # sign as a hyphen alone, at the column where every other row sets a
+    # bullet. A one-character word is refused as soup unless announced,
+    # because a lone dash between two numbers is usually a range; at a
+    # STRONG slot - one set by genuine glyphs on two or more lines - it is
+    # the sign, and the row's other cell says so too.
+    atStrong0 <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
+    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0
     base <- prevNum & ((isSign & nextNum) | glued | digitColon | letterSign) & !true(s) & s != "+" &
-      (nchar(s) > 1L | (announced & s == annGlyph) | letterSign)
+      (nchar(s) > 1L | (announced & s == annGlyph) | letterSign | dashAtStrong)
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
     # (a) a plain "+" between two numbers at a slot two or more lines mark

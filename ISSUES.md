@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 142. A lone hyphen at a strong slot is the sign
+
+**Status: fixed on `fix/lone-hyphen-at-strong-slot`, 2026-09-27**, from the
+corpus session's arm-count audit (batch 28 note c; CJA 1996, PMID
+8955972; two arms of 30).
+
+- **The defect.** "Pentazocine - mg 1.6 <bullet> 3.3 1.6 - 3.3": the
+  second arm's sign as a hyphen alone, at the column where every other
+  row sets a bullet. The slot repair refuses a one-character word as soup
+  unless the notation is announced, because a lone dash between two
+  numbers is usually a range; so the cell was two bare numbers and a
+  dash, and the row read one arm of two.
+- **What changed.** At a STRONG slot - one set by genuine glyphs on two
+  or more lines - a hyphen, minus or dash alone between two numbers is
+  the sign; the row's other cell says so too. A dash between two numbers
+  away from the slots is a range, as before.
+- **On the page.** Pentazocine reads 1.6 +/- 3.3 in both arms; 14 cells.
+- **Tests** (`tests/testthat/test-lone-hyphen-at-strong-slot.R`): the
+  slot repair on a block whose bullets set two strong slots, with the
+  hyphen at the second (read) and a range's hyphen away from the slots
+  (left); a rebuilt page reads the second Pentazocine cell (3 of 5
+  expectations fail on the unfixed code). The soup-glued, digit-colon,
+  "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
+  and Loadsman layout tests still pass.
+
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
