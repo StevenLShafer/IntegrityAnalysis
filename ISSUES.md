@@ -161,7 +161,9 @@ itself is the ledger's open item, requested from the corpus session.
   and 99.1% at 0.01 — against 0.9929 / 98.5% over 5,041 on 2026-09-06.
   It also records that the 2026-09-09 arm cap (`.iaMaxArmN` = 5,000)
   refuses the 63 mega-trials the August pilot scored: a policy question
-  for Steve, not a defect of the run. The 100,000-ceiling row follows.
+  for Steve, not a defect of the run. The 100,000-ceiling run (its own
+  row) gives the same figures to three decimals and the same twelve
+  largest differences: the ceiling contributes nothing measurable.
 
 ---
 
