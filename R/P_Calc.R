@@ -876,8 +876,13 @@
 #'   P < 0.001, then a blank spacer row.
 #' @noRd
 P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
-                   excluded = NULL)
+                   excluded = NULL, deadline = NULL)
 {
+  # deadline: the app's wall-clock ceiling (issue 165; .iaAnalysisSeconds).
+  # Checked below at the top of every row of every stage, the unit at
+  # which the work is spent, so a single trial built to run for a day is
+  # stopped within one row's draw of the ceiling. NULL runs to the end:
+  # the API has its own compute budget and no ceiling here.
   # excluded: optional frame of the rows validateData() left out of DATA
   # (its Excluded element: TRIAL, ROW, REASON, ...), so that they are
   # counted on the Summary line and listed in the results - independent
@@ -1598,6 +1603,7 @@ P_Calc <- function(TRIAL, DATA, CategoryNames, m, graphs = NULL,
     sumZ <- numeric(s); zObs <- 0
     held <- vector("list", length(rows))     # draws kept ONLY for rows whose law is shared
     for (j in usable) {
+      if (!is.null(deadline) && Sys.time() >= deadline) stop(.iaAnalysisTimeout(TRIAL))   # issue 165
       sims <- rows[[j]]$sim$simulate(s)      # in the same order as always: the stream is unchanged
       obs  <- rows[[j]]$sim$obs
       # A statistic that is zero up to floating-point dust IS zero. Since

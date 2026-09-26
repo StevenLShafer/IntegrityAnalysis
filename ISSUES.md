@@ -132,6 +132,41 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 165. A wall-clock ceiling on one analysis in the app
+
+**Status: fixed on `fix/analysis-wall-clock-ceiling`, 2026-09-27**, at
+Steve's request after the outside security review of 2026-09-26; the
+first of two interim guards while issue 26 waits for the Posit Connect
+Cloud move.
+
+- **The exposure.** The app runs the Monte Carlo inside the R process
+  that serves the page, with no aggregate compute budget and no clock.
+  A table within every individual limit - thousands of rows appended
+  over several uploads, arms of 5,000, identical means with tiny SDs so
+  every row escalates to 100,000 replicates - would hold a worker for a
+  day, and a handful of such tabs every worker. The API refuses such a
+  table before it starts; the public app, which needs no token, did not.
+- **What changed.** `.iaAnalysisSeconds()` (R/app_globals.R) is the
+  ceiling: ten minutes by default, `INTEGRITY_ANALYZE_SECONDS` for a
+  deployment, an option for tests. The Analyze observer sets a deadline
+  and checks it between trials; `P_Calc()` takes the deadline and checks
+  it at the top of every row of every stage, so a single trial built to
+  run for a day is stopped within one row's draw. At the ceiling the run
+  stops and the log says what finished (those results stand and can be
+  downloaded), which trial was stopped without a result, and which were
+  not started, and how to proceed. Precision is never reduced to fit.
+  The API's call to `P_Calc()` passes no deadline and is unchanged.
+- **Tests** (`tests/testthat/test-analysis-wall-clock-ceiling.R`): the
+  ceiling's three sources and its fallback; `P_Calc()` raises the
+  `iaAnalysisTimeout` condition at a passed deadline and completes
+  without one; through the app, a two-trial table stopped at a passed
+  ceiling logs "0 of 2 trial(s) completed" and names both as not
+  started with no results, and completes both under the default
+  (UNFIXED: the deadline argument does not exist). The adaptive-m, grid
+  and pipeline tests still pass.
+
+---
+
 ## 164. A modest multi-sheet workbook was refused as a decompression bomb
 
 **Status: fixed on `fix/xlsx-text-budget-counts-shared-strings-per-sheet`,
