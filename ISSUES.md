@@ -134,7 +134,7 @@ run follows it into the same path and is renamed on completion.
 
 ## 170. The across-trial combination is described as it was, not as it is
 
-**Status: fixed on `docs/overall-p-combines-the-numbers`, 2026-09-27**,
+**Status: fixed on `docs/overall-p-combines-the-numbers`, 2026-09-26**,
 from the outside statistical audit of 2026-09-26 (F4, P2 specification;
 report held locally under `.audit/`). Documentation only.
 

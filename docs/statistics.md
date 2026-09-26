@@ -345,9 +345,11 @@ independent and uniform under the null, which discrete Monte Carlo mid-p
 estimates under fitted models only approximate, so this step is an
 approximation on top of the within-trial simulation. Each trial enters
 as its numerical estimate — the floored mid-p, 1/(replicates + 1) at the
-smallest — not as the string it is displayed as: two trials each
-displayed "<0.0001" at 100,000 replicates combine to about 8 × 10⁻¹⁰,
-where their displayed 0.0001 would give 7 × 10⁻⁸. (A results table from
+smallest — not as the string it is displayed as: two trials each AT
+the floor (no replicate sum at or beyond the observed one in 100,000, so
+each is 1/100,001 and displayed "<0.0001") combine to about 8 × 10⁻¹⁰,
+where their displayed 0.0001 would give 7 × 10⁻⁸; a trial displayed
+"<0.0001" with some hits enters as its larger estimate. (A results table from
 an older build, or a P typed by hand, has no number behind the display;
 then the display is read, "<0.0001" as 0.0001.) No Monte Carlo interval
 is given for the overall p, and a very small combined value is not
