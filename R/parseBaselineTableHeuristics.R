@@ -299,7 +299,13 @@
     # all, and the n is gone before the row is read. The block walker
     # takes the n from cellNByLine when it reads the row (issue 109's
     # bracket form is read there too).
-    if (grepl("(?i)\\(?\\s*n\\s*[=:~]\\s*\\d+", txt, perl = TRUE)) {
+    # ... AND "N.=50" (2026-09-27, ISSUES.md issue 147; Altinsoy 2015,
+    # Minerva Anestesiologica, the Loadsman corpus): the journal's house
+    # style abbreviates with a full stop - "Group C (N.=50)" - and every
+    # size pattern in this file wanted the "n" directly before its sign.
+    # All eight take an optional full stop after the n now, and the count
+    # text stripped from an arm name takes it too.
+    if (grepl("(?i)\\(?\\s*n\\.?\\s*[=:~]\\s*\\d+", txt, perl = TRUE)) {
       cellToks <- .ppTokenizeLine(lines[[i]])
       cellIdx  <- which(cellToks$type %in% c("meanSD", "numParen", "medianRng"))
       if (length(cellIdx) < 2L) {
@@ -693,7 +699,7 @@
   }
   for (h in which(kind == "header")) {
     if (h >= max(firstData, firstMeasure)) break
-    kHeader <- max(kHeader, length(gregexpr("(?i)n\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
+    kHeader <- max(kHeader, length(gregexpr("(?i)n\\.?\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)[[1]]))
     if (kHeader > 0L) { kHeaderAt <- h; break }
   }
   if (kHeader >= 2L) for (i in dataIdx) {
@@ -1070,9 +1076,9 @@
   # A "[" before the size is cut like a "(".
   hdrAll <- which(kind == "header"); hdrAll <- hdrAll[hdrAll > capIdx]
   for (h in hdrAll) {
-    m1 <- regexpr("(?i)[(\\[]?\\s*n\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)
+    m1 <- regexpr("(?i)[(\\[]?\\s*n\\.?\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)
     if (m1 < 1) next
-    nSizes <- length(gregexpr("(?i)n\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)[[1]])
+    nSizes <- length(gregexpr("(?i)n\\.?\\s*[=:~]\\s*\\d", lineTexts[h], perl = TRUE)[[1]])
     lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(lineTexts[h], 1, m1 - 1)))
     isLabel <- nchar(gsub("[^A-Za-z]", "", lead)) >= 3 &&
       !grepl("(?i)^(number|no\\.?|n|patients|subjects|participants)(\\s+of\\s+(patients|subjects|participants))?$",
@@ -1105,7 +1111,7 @@
     # (n = 40)" over "(n = 20) (n = 20)"), and the population line stays a
     # stratum (CodeRabbit on PR #458).
     nextNSizes <- if (h < length(kind) && kind[h + 1L] == "header")
-      length(gregexpr("(?i)n\\s*[=:~]\\s*\\d", lineTexts[h + 1L], perl = TRUE)[[1]]) else 0L
+      length(gregexpr("(?i)n\\.?\\s*[=:~]\\s*\\d", lineTexts[h + 1L], perl = TRUE)[[1]]) else 0L
     nextIsWrap <- nextNSizes == 1L
     if (nSizes == 1L && !nextIsWrap &&
         grepl("(?i)\\b(patients|subjects|participants|women|men|children|infants|adults|elderly|younger|older)\\b|\\d+\\s*[-–]\\s*\\d+\\s*y",
@@ -1172,7 +1178,7 @@
     joined    <- paste(d$text, collapse = " ")
     wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
     wordEnd   <- wordStart + nchar(d$text) - 1
-    m <- gregexpr("(?i)n\\s*[=:~]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
+    m <- gregexpr("(?i)n\\.?\\s*[=:~]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
     if (m[1] == -1) next
     # "(n = k)" ANNOTATES THE NAME TO ITS LEFT (2026-09-25, issue 37;
     # Kulturoglu 2024 JA). "RIB group (n=24)  PECS group (n=24)  Control
@@ -1233,7 +1239,7 @@
   # COUNT TEXT is removed from it (CodeRabbit on PR #340: "Control(n=15)"
   # set as one word must keep "Control"). A word that was nothing but
   # count - "(n", "=", "24)" - becomes empty and contributes nothing.
-  stripCount <- function(x) .ppSquish(gsub("(?i)\\(?\\s*n\\b|[=:~]|[0-9][0-9,]*\\)?|^[()]$",
+  stripCount <- function(x) .ppSquish(gsub("(?i)\\(?\\s*n\\b\\.?|[=:~]|[0-9][0-9,]*\\)?|^[()]$",
                                            "", x, perl = TRUE))
   for (i in headerIdx) {
     d    <- lines[[i]]
@@ -1249,10 +1255,18 @@
     for (k in seq_len(cols$n)) {
       wtxt <- paste(wordText[near & wCol == k & nzchar(wordText)], collapse = " ")
       if (nchar(wtxt) == 0) next
-      nMatch <- regmatches(wtxt, regexpr("(?i)n\\s*[=:~]\\s*(\\d+)", wtxt, perl = TRUE))
+      nMatch <- regmatches(wtxt, regexpr("(?i)n\\.?\\s*[=:~]\\s*(\\d+)", wtxt, perl = TRUE))
       if (length(nMatch) > 0 && is.na(armN[k]))
         armN[k] <- as.integer(sub("\\D+", "", nMatch))
-      nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\s*[=:~]\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
+      nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\.?\\s*[=:~]\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
+      # A STATISTIC DESCRIPTOR UNDER THE ARM NAMES IS NOT PART OF A NAME
+      # (2026-09-27, ISSUES.md issue 147; Altinsoy 2015, Minerva
+      # Anestesiologica): "(Mean+/-SD)" set under each "Group C (N.=50)"
+      # tells how the cells are printed, and it was joined to the names -
+      # "Group C (Mean+/-SD)". The phrase, bracketed or not, with its sign
+      # or its own brackets, leaves the name.
+      nameTxt <- .ppSquish(gsub(paste0("(?i)\\(?\\s*(mean|median)\\s*(", .ppPLUSMINUS, "|\\+/-|\\()?\\s*",
+                                       "(sd|sem|iqr|range)\\s*\\)?\\s*\\)?"), "", nameTxt, perl = TRUE))
       if (nchar(nameTxt) > 0)
         armName[k] <- .ppSquish(paste(ifelse(is.na(armName[k]), "", armName[k]), nameTxt))
     }
@@ -1706,7 +1720,7 @@
       joined <- paste(d$text, collapse = " ")
       wordStart <- cumsum(c(1, nchar(d$text) + 1))[seq_len(nrow(d))]
       wordEnd   <- wordStart + nchar(d$text) - 1
-      m <- gregexpr("(?i)n\\s*[=:~]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
+      m <- gregexpr("(?i)n\\.?\\s*[=:~]\\s*\\d[\\d,]*", joined, perl = TRUE)[[1]]
       if (m[1] != -1) {
         lead <- .ppSquish(sub("[(\\[]\\s*$", "", substr(joined, 1, m[1] - 1)))
         # the per-arm sizes on the line; a match left of the first arm column
@@ -3094,6 +3108,20 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # pageLayout.R).
   allPages <- lapply(allPages, .ppStripStretchedGlyphs)   # issue 44
   allPages <- lapply(allPages, .ppStripRotatedText)
+  # a small-caps "T" + "able" is one word (issue 147): see .ppJoinSmallCaps()
+  allPages <- lapply(allPages, .ppJoinSmallCaps)
+  # THE TEXT LAYER'S CONTROL CHARACTERS GO (2026-09-27, issue 147; Altinsoy
+  # 2015, Minerva Anestesiologica): the caption's "I.-" came through as
+  # "I.-\u0003\u0003" - two control characters for glyphs the font has no
+  # text for - and the caption anchor, which reads the word whole, did
+  # not see a table number. No word carries a control character on
+  # purpose; they are removed from every word of every page here, before
+  # the anchors are read.
+  allPages <- lapply(allPages, function(w) {
+    if (is.null(w) || nrow(w) == 0) return(w)
+    w$text <- gsub("[\\x01-\\x1f]", "", w$text, perl = TRUE)
+    w[nzchar(w$text), , drop = FALSE]
+  })
   # Arm-N recovery candidates are document-level constants: the "(n = 24)"
   # mentions with allocation-flavoured context, and the stated randomized
   # totals that confirm a positional assignment. Extracted once here, used
