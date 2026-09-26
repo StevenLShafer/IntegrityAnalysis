@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 126. A stray dot fused before a decimal number is dropped
+
+**Status: fixed on `fix/stray-dot-before-decimal`, 2026-09-26**, from the
+corpus session's AF7 (CJA 1996, PMID 8706192, a scan; four arms of 25).
+
+- **The defect.** The text layer sets a speck before the Morphine row's
+  first cell and fuses it to the mean: ".5.0 5:0.6 5.0 -t- 0.8 5.1
+  5:0.9 4.9 5:0.9". A number cannot begin after a dot (the tokenizer's
+  guard, which keeps "1.5" from yielding a "5"), so ".5.0" was no
+  token, the row label swallowed it ("Morphine administered (epidural)
+  after operation (mg) .5.0") and the first arm's cell was lost; the
+  row read three arms of four.
+- **What changed.** `.ppRepairStrayDots()` in utils.R, first of the
+  repairs: a word of a dot and then a number that carries its own
+  decimal point is that number - ".5.0" can be nothing else, since no
+  notation writes two points. The number keeps the dot's share of the
+  width off its left edge. A dot before a whole number (".5") is left
+  alone: it may be "0.5" without its zero, a different reading and not
+  a stray mark.
+- **On the page.** Morphine reads 5.0 +/- 0.6, 5.0 +/- 0.8, 5.1 +/- 0.9,
+  4.9 +/- 0.9 under a clean label.
+- **Tests** (`tests/testthat/test-stray-dot-before-decimal.R`): the
+  helper on the dot before a decimal number (dropped, width kept), a
+  whole number (left) and a line before the caption (left); a rebuilt
+  page with the stray dot reads the first Morphine cell under a clean
+  label (4 expectations fail and the helper is absent on the unfixed
+  code). The "-I-", slot, tokenizer, label-above-values and Loadsman
+  layout tests still pass.
+
 ## 124. "-1-" between two numbers is the plus-minus sign too
 
 **Status: fixed on `fix/dash-one-dash-is-the-sign`, 2026-09-26**, from the

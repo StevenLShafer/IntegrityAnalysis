@@ -819,6 +819,37 @@
 # needs at least one decimal on each side (an integer mean "4757" could
 # split anywhere). The precision must agree across the line's sign
 # cells; where it does not, only the letter form is read.
+# A STRAY DOT FUSED TO A DECIMAL NUMBER (2026-09-26, ISSUES.md issue 126;
+# CJA 1996, PMID 8706192, the corpus session's AF7). The scan's text layer
+# sets a speck before the first cell of the Morphine row and fuses it to
+# the mean: ".5.0 5:0.6 5.0 -t- 0.8 ...". A number cannot begin after a
+# dot (the tokenizer's guard, which keeps "1.5" from yielding a "5"), so
+# ".5.0" was no token, the row label swallowed it ("... operation (mg)
+# .5.0") and the first arm's cell was lost. A word of a dot and then a
+# number that carries its own decimal point is that number: ".5.0" can
+# be nothing else, since no notation writes two points. A dot before a
+# whole number (".5") is left alone - it may be "0.5" without its zero,
+# and that is a different reading, not a stray mark.
+.ppStrayDot <- "^[.]([0-9]+[.][0-9]+)$"
+.ppRepairStrayDots <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  for (i in seq(capIdx + 1L, n)) {
+    L <- lines[[i]]; s <- L$text
+    hit <- grepl(.ppStrayDot, s, perl = TRUE)
+    if (!any(hit)) next
+    for (k in which(hit)) {
+      nc <- nchar(s[k]); w <- L$width[k]
+      L$text[k]  <- sub(.ppStrayDot, "\\1", s[k], perl = TRUE)
+      L$x[k]     <- L$x[k] + w / nc
+      L$width[k] <- w * (nc - 1) / nc
+      repaired <- repaired + 1L
+    }
+    lines[[i]] <- L
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # "-I-" BETWEEN TWO NUMBERS IS THE PLUS-MINUS SIGN (2026-09-26, ISSUES.md
 # issue 123; the corpus session's survey of batch 27). The OCR of a scanned
 # plus-minus is often a minus, a capital I and a minus - "149 -I- 13",
