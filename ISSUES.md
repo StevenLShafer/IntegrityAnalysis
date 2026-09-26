@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 150. The caption's and footnote's spellings of "n per group"
+
+**Status: fixed on `fix/caption-count-per-group`, 2026-09-26**, from the
+corpus session's batch 31 (Clin Ther 2014, PMID 24672087, five arms of
+20; Clin Ther 2004, PMID 15336470, five of 20; Clin Ther 2003, PMID
+14749148, four of 25; A&A 1998, PMID 9768766, three of 60; A&A 1997, PMID
+9322479, six of 45).
+
+- **The defect.** Every cell read and no arm had an N: the only size on
+  the page is the caption's or footnote's - "(n = 20 patients per
+  group)", "(n = 20 patients per study group)", "(N = 100; n = 25 in each
+  group)", "n = 60 per group.", "n = 45in each group" - and issue 99's
+  statement pattern wanted "(n = 20" directly inside its own bracket,
+  followed by "of each" / "in each group" / "per group" and nothing else.
+- **What changed.** The pattern in `.ppGroupsOfN()` (armNRecovery.R)
+  takes the bracket as optional on either side, a noun after the number
+  (patients, subjects, participants, women, men, children, infants,
+  animals, dogs, rats), a qualifier before "group" (study, treatment), and
+  a lost space between the number and "in each"; the power-calculation
+  guard applies as before, and a bare "(n = 20)" beside one arm's name is
+  still no statement for every arm.
+- **On the pages.** The five papers' arms take the caption's or
+  footnote's size where the table printed none.
+- **Tests** (`tests/testthat/test-caption-count-per-group.R`): the
+  statement on six spellings (n 20, group count unstated), the power
+  calculation and the bare "(n = 20)" refused; a rebuilt page whose only
+  sizes are the caption's "(n = 20 patients per group)" giving four arms
+  of 20 (7 of 10 expectations fail on the unfixed code). The n-of-each, arm-N recovery, deterministic arm-N,
+  fraction and Loadsman layout tests still pass.
+
+---
+
 ## 149. A "Mean (SD)" row: its label declares the notation, and its SDs' look-alike letters are digits
 
 **Status: fixed on `fix/mean-sd-label-declares-the-notation`, 2026-09-26**,
