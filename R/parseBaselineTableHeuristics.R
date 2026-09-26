@@ -1089,10 +1089,26 @@
     leadLeft <- lines[[h]]$x[1] < min(cols$centers) - gapHalf
     if (!isLabel || !leadLeft) next
     if (h != hdrAll[1]) { kind[h] <- "stratum"; next }
-    # the first size line: a stratum only when it names a population and
-    # states a single size, with the arm names elsewhere
-    if (nSizes == 1L &&
-        grepl("(?i)patients|subjects|participants|women|men|children|infants|adults|elderly|younger|older|\\d+\\s*[-–]\\s*\\d+\\s*y",
+    # A WRAPPED ARM HEADER IS NO STRATUM (2026-09-27, ISSUES.md issue 55,
+    # second follow-up; the pasted-screenshot fixture of
+    # test-image-uploads.R, broken by #363 on 2026-09-24 and unseen until
+    # the full suite ran with tesseract on the oldryzen node). "Characteristic
+    # Control Treatment (n = 17)" over "(n = 15)": the first arm's size
+    # wrapped onto the next line, the second arm's kept on the header. The
+    # population test below matched "men" INSIDE "Treatment" - its words
+    # had no boundaries - and the header became a stratum: arm 2 lost its
+    # N and every row took the header's words as a prefix. The words are
+    # whole words now, and a first size line whose NEXT line is a size
+    # line too is the header, wrapped, whatever it names - when that next
+    # line carries ONE size, the wrapped arm's. A next line of two or more
+    # sizes is the arms' own size line under a population stratum ("Women
+    # (n = 40)" over "(n = 20) (n = 20)"), and the population line stays a
+    # stratum (CodeRabbit on PR #458).
+    nextNSizes <- if (h < length(kind) && kind[h + 1L] == "header")
+      length(gregexpr("(?i)n\\s*[=:~]\\s*\\d", lineTexts[h + 1L], perl = TRUE)[[1]]) else 0L
+    nextIsWrap <- nextNSizes == 1L
+    if (nSizes == 1L && !nextIsWrap &&
+        grepl("(?i)\\b(patients|subjects|participants|women|men|children|infants|adults|elderly|younger|older)\\b|\\d+\\s*[-–]\\s*\\d+\\s*y",
               lead, perl = TRUE))
       kind[h] <- "stratum"
   }
@@ -1114,6 +1130,10 @@
   headerAt <- which(kind == "header"); headerAt <- headerAt[headerAt < firstData]
   if (length(headerAt) > 0) {
     nameRow <- headerAt[1] - 1L
+    # a population stratum line between the arm names and their size line
+    # ("Variable Placebo Drug" / "Women (n = 40)" / "(n = 20) (n = 20)") is
+    # stepped over: the names are the line above it (CodeRabbit on PR #458)
+    if (nameRow > capIdx + 1L && kind[nameRow] == "stratum") nameRow <- nameRow - 1L
     keepNameRow <- nameRow %in% headerIdx &&
       nrow(lines[[nameRow]]) <= cols$n * 3 + 2
     # the group-name row above a paired timepoint line (issue 111) stays a
