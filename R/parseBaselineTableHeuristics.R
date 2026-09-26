@@ -200,6 +200,25 @@
     lineTexts <- vapply(lines, .ppLineText, character(1))
     say("Read \"-I-\" between two numbers as the plus-minus sign in ", rep$repaired, " word(s).")
   }
+  # "(n 25)", "(n - 20)", "(n -- 60)" - the size group's sign missing or a
+  # hyphen (issue 148): see .ppRepairSizeSign() in utils.R; before the
+  # letter-O repair, whose split form wants the "=" in place, and before
+  # the slot repair, which reads the whole groups as the arm columns when
+  # the block has no sign glyph (issue 152)
+  rep <- .ppRepairSizeSign(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Wrote the equals sign into ", rep$repaired, " size line(s) (\"(n 25)\", \"(n - 20)\").")
+  }
+  # ... and the letter-O size repair follows it here, so "(n = 3o)" is a whole
+  # group when the slot repair reads the arm columns (CodeRabbit on PR #464)
+  rep <- .ppRepairSizeZeros(lines, capIdx)
+  if (rep$repaired > 0L) {
+    lines <- rep$lines
+    lineTexts <- vapply(lines, .ppLineText, character(1))
+    say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
+  }
   rep <- .ppRepairPlusMinusGlyphs(lines, capIdx)
   if (rep$repaired > 0L) {
     lines <- rep$lines
@@ -209,21 +228,6 @@
   }
   # ... and a letter O for a zero inside an "(n = k)" group (issue 75;
   # PMID 10522590's "(n=4O)"): see .ppRepairSizeZeros() in utils.R
-  # "(n 25)", "(n - 20)", "(n -- 60)" - the size group's sign missing or a
-  # hyphen (issue 148): see .ppRepairSizeSign() in utils.R; before the
-  # letter-O repair, whose split form wants the "=" in place
-  rep <- .ppRepairSizeSign(lines, capIdx)
-  if (rep$repaired > 0L) {
-    lines <- rep$lines
-    lineTexts <- vapply(lines, .ppLineText, character(1))
-    say("Wrote the equals sign into ", rep$repaired, " size line(s) (\"(n 25)\", \"(n - 20)\").")
-  }
-  rep <- .ppRepairSizeZeros(lines, capIdx)
-  if (rep$repaired > 0L) {
-    lines <- rep$lines
-    lineTexts <- vapply(lines, .ppLineText, character(1))
-    say("Read a letter O as a zero in ", rep$repaired, " arm size(s) (\"(n=4O)\").")
-  }
   # ... and a letter l, I or O among the digits of an SD right after the sign
   # (issue 116; PMID 9717598's "58 <bullet> l0"): see
   # .ppRepairLetterDigitsAfterSign() in utils.R
@@ -3190,7 +3194,12 @@ parseBaselineTableHeuristics <- function(pdfFile,
   # the anchors are read.
   allPages <- lapply(allPages, function(w) {
     if (is.null(w) || nrow(w) == 0) return(w)
-    w$text <- gsub("[\\x01-\\x1f]", "", w$text, perl = TRUE)
+    # ... AND THE C1 CONTROLS (2026-09-26, issue 152; Paediatr Anaesth 2001,
+    # PMID 11123735, and 2002, PMID 11903942): the plus-minus of those
+    # text layers is the single character U+008B, a word of its own
+    # between the mean and the SD ("120 <U+008B> 18"). It is no text; it
+    # leaves, and the arm columns stand the sign where it was.
+    w$text <- gsub("[\\x01-\\x1f\\x7f-\\x9f]", "", w$text, perl = TRUE)
     w[nzchar(w$text), , drop = FALSE]
   })
   # Arm-N recovery candidates are document-level constants: the "(n = 24)"
