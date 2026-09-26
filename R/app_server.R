@@ -808,6 +808,10 @@ app_server <- function(input, output, session) {
           "from run to run within the reported Monte Carlo interval."))
       }
       start_time <- Sys.time()
+      # THE WALL-CLOCK CEILING (issue 165): one analysis may run for
+      # .iaAnalysisSeconds() from here; see app_globals.R for why
+      deadline <- start_time + .iaAnalysisSeconds()
+      ceilingHit <- FALSE; doneTrials <- character(0)
       # (Progress message wording below taken from the 2025-09-01 local copy
       # on g:, which post-dated the GitHub upload.)
       progress$set(message = "Processed Trial ", value = 0)
@@ -818,21 +822,50 @@ app_server <- function(input, output, session) {
       for (i in 1:LengthTrials)
       {
         TRIAL <- TRIALS[i]
+        # at the ceiling between trials: stop before starting the next
+        if (Sys.time() >= deadline) { ceilingHit <- TRUE; stoppedTrial <- NULL; break }
         # Defense in depth (screen 2026-09-06-0514 F1): an engine error
         # the validator did not foresee is a message and a stopped
         # analysis, never a dead session.
         one <- tryCatch(P_Calc(TRIAL, DATA, CategoryNames, m, graphs = graphsData,
-                               excluded = EXCLUDED),
+                               excluded = EXCLUDED, deadline = deadline),
+                        # at the ceiling inside a trial (issue 165): that
+                        # trial has no result and the run stops here
+                        iaAnalysisTimeout = function(e) {
+                          ceilingHit <<- TRUE; stoppedTrial <<- TRIAL
+                          NULL
+                        },
                         error = function(e) {
                           outputComments(paste0("Trial ", TRIAL, " could not be analyzed: ",
                                                 conditionMessage(e), "."))   # outputComments escapes
                           NULL
                         })
+        if (ceilingHit) break
         if (is.null(one)) next
         OUTPUT <<- rbind(OUTPUT, one)
+        doneTrials <- c(doneTrials, as.character(TRIAL))
         progress$set(
           value = i / LengthTrials,
           detail = paste0(TRIAL, ", P = ",OUTPUT$P[nrow(OUTPUT)-1]))
+      }
+      if (ceilingHit) {
+        # what finished stands; what did not is named (issue 165)
+        done <- doneTrials
+        notStarted <- setdiff(as.character(TRIALS), c(done, as.character(stoppedTrial)))
+        mins <- round(.iaAnalysisSeconds() / 60, 1)
+        outputComments(paste0(
+          "Analysis stopped at the ", mins, "-minute ceiling this server sets for one analysis: ",
+          length(done), " of ", LengthTrials, " trial(s) completed",
+          if (length(done)) " (their results stand and can be downloaded)", ". ",
+          if (!is.null(stoppedTrial)) paste0("Trial ", stoppedTrial,
+            " was stopped before it finished and has no result. "),
+          if (length(notStarted)) paste0(length(notStarted), " trial(s) were not started: ",
+            paste(head(notStarted, 8), collapse = ", "),
+            if (length(notStarted) > 8) paste0(" and ", length(notStarted) - 8, " more"), ". "),
+          "Analyze the remaining trials in a separate table. A single trial that alone ",
+          "exceeds the ceiling cannot be analyzed on this server; the precision of the ",
+          "analysis is never reduced to fit. The ceiling protects the other users of ",
+          "this server (ISSUES.md issue 165)."))   # outputComments escapes
       }
       # FIX: removed 'with(registerDoFuture(), local = TRUE)' (the line the
       # original marked "Not sure which is correct"). with() has no 'local'

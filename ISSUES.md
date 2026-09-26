@@ -160,6 +160,104 @@ report held locally under `.audit/`).
 
 ---
 
+## 168. The stated-grid tolerance grew with the value, admitting an invalid precision at a large origin
+
+**Status: fixed on `fix/stated-grid-tolerance-is-floating-point`,
+2026-09-27**, from the outside statistical audit of 2026-09-26 (F2, P2
+numerical; report held locally under `.audit/`).
+
+- **The defect.** `.iaOnStatedGrid()` accepted a printed value as on its
+  stated grid when the residual was within 1e-9 of the VALUE. At a
+  location of one billion that allowance is about one unit, so a
+  quartile half a unit off a stated grid of 100,000 (ROUND_DISPERSION =
+  -5) passed there while the same declaration at a location of zero was
+  refused; the admitted grid multiplied the fitted spread, and three
+  honest medians read <0.0001 (1/100001 at 100,000 replicates) where the
+  valid declaration reads 0.4225 at either origin.
+- **What changed.** The tolerance is a fixed number of units in the last
+  place of the value (64, against the two or three the operations
+  spend), never a share of the grid, so an over-coarse claim is judged
+  exactly at every magnitude. A grid finer than that dust is one the
+  arithmetic cannot judge the value against; the check passes it as it
+  always did, and the stated-precision disclosures of screens 2000 and
+  2241 remain the remedy for an over-fine claim (refusal was considered
+  and rejected there). Ordinary values are unaffected (64 ulps of 54.1
+  is 7.7e-13); zero stays on every grid.
+- **Tests** (`tests/testthat/test-stated-grid-tolerance.R`): the audit's
+  cases, screen 1758's, 1459's and 2000's cases, inexact ordinary
+  values, and the unresolvable grid; through the upload reader and the analysis
+  handler at seed 42, the invalid declaration is refused at both origins
+  and the valid one reads the same p at both (UNFIXED: <0.0001 at one
+  billion).
+
+---
+
+## 167. An unused SE column split an otherwise identical null law
+
+**Status: fixed on `fix/null-law-key-ignores-unused-se`, 2026-09-27**,
+from the outside statistical audit of 2026-09-26 (F1, P2 numerical;
+report held locally under `.audit/`).
+
+- **The defect.** `.iaNullKey()` included SE among the inputs that name a
+  continuous row's null law, but no simulate closure reads SE: the
+  continuous null is drawn from N, SD and the precisions. A row supplied
+  with the redundant SE = SD / sqrt(N) beside its SD and the same row
+  without it were therefore two laws with two score mappings - the
+  tie-splitting error the shared-law mechanism (audit 2026-09-10 F1)
+  exists to prevent, by a new door. The audit's five shared-law rows
+  (two arms, N 30, SD 6, integer means; one row printed (-1, +1), the
+  rest (0, 0)) read 0.011650 without an SE column and 0.008575 with one
+  on the (-1, +1) row; the same draws mapped through one law give
+  0.010285, and an independent two-million-replicate reference 0.01073.
+- **What changed.** SE is out of the key. It is still validated
+  (non-negative; never beside a missing SD) and carried through, but it
+  names nothing about the law. Q1/Q3 and ROUND_DISPERSION stay: the
+  median draw and the SD interval read them.
+- **Tests** (`tests/testthat/test-null-law-key-ignores-unused-se.R`):
+  the key is identical with SE present, blank or absent, and differs
+  when an input the simulation reads differs; through the upload reader
+  and the analysis handler at seed 42 the two CSVs give bit-identical
+  results, inside the 99.9% binomial interval of the audit's reference
+  at 100,000 replicates (UNFIXED: 0.008575, outside it, and the two
+  files differ).
+
+---
+
+## 165. A wall-clock ceiling on one analysis in the app
+
+**Status: fixed on `fix/analysis-wall-clock-ceiling`, 2026-09-27**, at
+Steve's request after the outside security review of 2026-09-26; the
+first of two interim guards while issue 26 waits for the Posit Connect
+Cloud move.
+
+- **The exposure.** The app runs the Monte Carlo inside the R process
+  that serves the page, with no aggregate compute budget and no clock.
+  A table within every individual limit - thousands of rows appended
+  over several uploads, arms of 5,000, identical means with tiny SDs so
+  every row escalates to 100,000 replicates - would hold a worker for a
+  day, and a handful of such tabs every worker. The API refuses such a
+  table before it starts; the public app, which needs no token, did not.
+- **What changed.** `.iaAnalysisSeconds()` (R/app_globals.R) is the
+  ceiling: ten minutes by default, `INTEGRITY_ANALYZE_SECONDS` for a
+  deployment, an option for tests. The Analyze observer sets a deadline
+  and checks it between trials; `P_Calc()` takes the deadline and checks
+  it at the top of every row of every stage, so a single trial built to
+  run for a day is stopped within one row's draw. At the ceiling the run
+  stops and the log says what finished (those results stand and can be
+  downloaded), which trial was stopped without a result, and which were
+  not started, and how to proceed. Precision is never reduced to fit.
+  The API's call to `P_Calc()` passes no deadline and is unchanged.
+- **Tests** (`tests/testthat/test-analysis-wall-clock-ceiling.R`): the
+  ceiling's three sources and its fallback; `P_Calc()` raises the
+  `iaAnalysisTimeout` condition at a passed deadline and completes
+  without one; through the app, a two-trial table stopped at a passed
+  ceiling logs "0 of 2 trial(s) completed" and names both as not
+  started with no results, and completes both under the default
+  (UNFIXED: the deadline argument does not exist). The adaptive-m, grid
+  and pipeline tests still pass.
+
+---
+
 ## 164. A modest multi-sheet workbook was refused as a decompression bomb
 
 **Status: fixed on `fix/xlsx-text-budget-counts-shared-strings-per-sheet`,
