@@ -21,8 +21,10 @@
 #     stop at 1,000; borderline ones pay ten times; alarming ones a
 #     hundred.
 #   - Point estimate: mid-p (ties count half - the Carlisle-validated
-#     convention), floored at 1/(m+1) (Davison & Hinkley: the Monte Carlo
-#     test is exact-valid; a simulated p of literally 0 is never reported).
+#     convention), floored at 1/(m+1) (Davison & Hinkley's floor against
+#     a literal zero; it is NOT the plus-one rank construction that makes
+#     a permutation test exact, and it does not make this fitted, staged
+#     procedure exact-valid - outside statistical audit 2026-09-26, F5).
 #   - Display: a row shows "<0.0001" ONLY when the one-sided 97.5%
 #     Clopper-Pearson upper bound on the exceedance count clears 0.0001 -
 #     the claim is licensed by the upper confidence limit, not the point

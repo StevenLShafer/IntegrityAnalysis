@@ -129,19 +129,25 @@ the evidence. IntegrityAnalysis is a screening tool whose verdicts may
 be challenged, so it reports only what the simulation supports:
 
 - **No literal zeros.** A row where no replicate matched is floored at
-  1/(replicates + 1) (Davison & Hinkley).
+  1/(replicates + 1) (Davison & Hinkley). The floor prevents a zero
+  estimate and an infinite z-score; it is not the plus-one rank
+  construction that makes a permutation test exact, and it does not by
+  itself make this fitted, rounded, staged procedure an exact test.
 - **"<0.0001" is a confidence statement.** A row displays "<0.0001" only
   when the one-sided 97.5% upper Clopper–Pearson bound on its simulated
   count (ties counted fully — conservative) clears 0.0001. At zero hits
   this needs about 37,000 replicates (at 30,000 the bound is still 1.2 × 10⁻⁴); at 100,000 the bound is
   3.7 × 10⁻⁵.
-- **Every row carries a 95% Monte Carlo interval**, exact
-  Clopper–Pearson, its lower end from the strictly-below count and its
-  upper end from the at-or-below count, so it brackets the mid-p and
-  errs wide ("0.27 to 0.33" for an unremarkable row at 1,000
+- **Every row carries a 95% Monte Carlo interval**, calculated from
+  Clopper–Pearson tail limits, its lower end from the strictly-below
+  count and its upper end from the at-or-below count, so it brackets the
+  mid-p and errs wide ("0.27 to 0.33" for an unremarkable row at 1,000
   replicates; "0 to 3.7e-05" for a row with nothing at or below at
   100,000). It is the simulation's uncertainty about the row's p, not
-  uncertainty about the trial's data.
+  uncertainty about the trial's data; its nominal coverage is qualified
+  by the stopping rule (next bullets) and, for the trial's own interval,
+  by the score mappings being estimated from the same draws that are
+  then scored.
 - **Precision by stage.** At 1,000 replicates a p near 0.05 has a Monte
   Carlo standard error of about 0.007 (95% half-width about 0.014); at
   10,000 about 0.002 (half-width 0.004). This is why a borderline row is
@@ -152,8 +158,12 @@ be challenged, so it reports only what the simulation supports:
   exact enumeration, coverage is about 93.5% for a row whose true p is
   near an escalation threshold (93.7% at p = 0.008, 93.4% at 0.085,
   93.6% at 0.09) and the nominal 95% away from them (95.2% at 0.05, 0.10
-  and 0.20). The interval is a guide to the simulation's precision, not
-  a certified confidence statement; the "<0.0001" bound is unaffected.
+  and 0.20); stopping can also bias the stopped estimate a little (about
+  0.0092 for a true 0.009, 0.0104 for a true 0.010). The interval is a
+  guide to the simulation's precision, not a certified confidence
+  statement, and the "<0.0001" display rule, which reads the upper bound
+  of the same stopped batch, carries the same qualification. Nothing here
+  measures the model's fit to the trial or the probability of fraud.
 
 ## The mean/SD model
 
@@ -257,8 +267,9 @@ and the note says: this row has said everything its rounding lets it
 say, and it cannot alarm however the data were made. For a finely
 printed row the floor is small and a row at it alarms; the note then
 says: nothing agrees better than this. The floor's value depends on the
-printing, the sample size and where the population sits relative to
-the grid, never on the data. A row whose arms differ, however slightly,
+printing, the sample size, the fitted spread and where the population
+sits relative to the grid, not on which arm printed which value. A row
+whose arms differ, however slightly,
 never carries the note, even when no replicate happened to beat it.
 
 The consequences shape the whole method. A coarsely printed row cannot
@@ -328,8 +339,11 @@ reading a trial p, identify duplicated or derived variables.
 
 The trial p is bounded by what its simulation can resolve: it is
 floored at 1/(replicates + 1) like a row, displays "<0.0001" only when
-the 97.5% upper bound on the reaching count licenses it, and carries an
-exact Clopper–Pearson 95% interval whenever it is below 0.001, built
+the 97.5% upper bound on the reaching count licenses it, and carries a
+95% Monte Carlo interval from Clopper–Pearson tail limits whenever it is
+below 0.001 — nominal, because the batch is the one the staging stopped
+at and the rows' score mappings are estimated from the same draws that
+are scored — built
 like a row's (lower end from the strictly-beyond count, upper end from
 the at-or-beyond count, so it brackets the mid-p), e.g. "p < 0.0001
 (95% Monte Carlo interval 0 to 3.7e-05)". Replicates are shared by the
@@ -628,9 +642,12 @@ makes a number reproducible; it does not make it more precise.
 
 ## One sentence for the skeptical reader
 
-Every "<" statement this tool prints is licensed by an exact upper
-confidence bound on its own simulation, not by a point estimate — the
-number reported is the one the simulation supports.
+Every "<" statement this tool prints is licensed by a Clopper–Pearson
+upper bound on its own simulation, not by a point estimate — the number
+reported is the one the simulation supports. The bound is exact for a
+fixed batch and nominal after the staging's stopping rule; it speaks to
+Monte Carlo error, not to the model's fit or to the probability of
+fraud.
 
 ## A second, independent instrument: Barnett's dispersion test
 
