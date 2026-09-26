@@ -81,8 +81,19 @@
 # branch keys on its margins (see .iaCategoryKey). Rows with different
 # inputs get different keys and are mapped, as before, through their
 # own draws.
+# ... AND NEVER AN INPUT THE SIMULATION DOES NOT READ (outside statistical
+# audit 2026-09-26, F1; ISSUES.md issue 167). SE was in the key. No
+# simulate closure reads it - the continuous null is drawn from N, SD and
+# the precisions, and a median row carries no SE at all - so a row
+# supplied with the mathematically redundant SE = SD / sqrt(N) beside its
+# SD, and the same row without it, were two laws with two mappings: the
+# audit's five shared-law rows read 0.011650 without an SE column and
+# 0.008575 with one on a single row, the same draws through one law giving
+# 0.010285. The key is now the inputs the simulation reads and only them;
+# SE is validated (non-negative, never beside a missing SD) and carried,
+# but it names nothing about the law.
 .iaNullKey <- function(kind, ROWS, direct = NULL) {
-  cols <- intersect(c("N", "SD", "SE", "Q1", "Q3", "ROUND_MEAN",
+  cols <- intersect(c("N", "SD", "Q1", "Q3", "ROUND_MEAN",
                       "ROUND_DISPERSION", "ROUND_OBSERVATION"), names(ROWS))
   # The arms are a MULTISET (final-brief independent audit 2026-09-11,
   # F1, read across from the categorical key): the statistic and the
