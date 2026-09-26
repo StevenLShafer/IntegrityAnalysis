@@ -775,6 +775,79 @@
   list(lines = lines, repaired = repaired)
 }
 
+# A SIZE GROUP WITHOUT ITS SIGN, OR WITH A HYPHEN FOR IT (2026-09-27,
+# ISSUES.md issue 148; the corpus session's batch 31 part 2: Clin Ther
+# 2008, PMID 19108790 - "(n 25) (n 25) (n 25) (n 25)" with the four equals
+# signs set on a line of their own; A&A 1999, PMID 10439770 - "(n 60) (n
+# 60)"; Clin Ther 2005, PMID 16117980 - "(n - 20)", the equals sign OCR'd
+# as a hyphen; Clin Ther 2003, PMID 12749510 - "(n -- 60)"). Every size
+# pattern in the engine wants "n" then "=", ":" or "~" then the digits, so
+# none of these headers gave the arms their N although every cell of the
+# table read. Within a bracketed group - the word "(n" (or "(N", "(n.")
+# followed by the digits and their closing bracket, or by a sign word and
+# then the digits - a missing sign is written in and a hyphen sign (one or
+# two) is read as the equals sign; the equals sign may also be glued to
+# the digits ("-20)"). Nothing outside such a bracketed group is touched:
+# "n 25 patients" in prose stays as it is.
+.ppRepairSizeSign <- function(lines, capIdx = 0L) {
+  n <- length(lines); repaired <- 0L
+  if (n <= capIdx) return(list(lines = lines, repaired = 0L))
+  openN  <- "^\\(\\s*[Nn]\\.?$"
+  openNH <- "^\\(\\s*[Nn]\\.?(-{1,2}|\u2013|\u2014|\u2212)$"      # "(n-" - the hyphen glued to the n
+  digits <- "^(?=[0-9Oo]*[0-9])[0-9Oo]{1,4}\\)[.,;*]*$"      # the digits may carry a letter O ("3o)"): the letter-O repair follows
+  hyph   <- "^(-{1,2}|\u2013|\u2014|\u2212|~|:)$"                  # a hyphen, dash or minus sign for the "="
+  glued  <- "^(-{1,2}|\u2013|\u2014|\u2212)([0-9]{1,4}\\)[.,;*]*)$"
+  whole  <- "^(\\(\\s*[Nn]\\.?)(-{1,2}|\u2013|\u2014|\u2212)((?=[0-9Oo]*[0-9])[0-9Oo]{1,4}\\)[.,;*]*)$"
+  prevHit <- FALSE
+  for (i in seq(capIdx + 1L, n)) {
+    s <- lines[[i]]$text
+    # the equals signs set on a line of their own beneath the groups (PMID
+    # 19108790): a line of nothing but "=" right after a repaired line is
+    # emptied, or its signs join the arm names ("Propofol =")
+    if (prevHit && length(s) >= 1L && all(s == "=")) {
+      lines[[i]] <- lines[[i]][0, , drop = FALSE]; prevHit <- FALSE; next
+    }
+    prevHit <- FALSE
+    if (length(s) < 2L || !any(grepl(openN, s, perl = TRUE) | grepl(openNH, s, perl = TRUE) |
+                                grepl(whole, s, perl = TRUE))) next
+    # "(,--30)" beside "(n--3o)" (PMID 9260009): a comma for the n, when the
+    # line carries a genuine group too
+    if (sum(grepl(openN, s, perl = TRUE)) >= 1L) s[grepl("^\\(,$", s, perl = TRUE)] <- "(n"
+    hit <- FALSE
+    # the whole group as one word with the hyphens inside it - "(n--3o)",
+    # "(n-30)" - and, beside such a word, its comma spelling "(,--30)"
+    if (any(grepl(whole, s, perl = TRUE))) {
+      s <- sub("^\\(,(-{1,2}|\u2013|\u2014|\u2212)", "(n\\1", s, perl = TRUE)
+      s <- sub(whole, "\\1 = \\3", s, perl = TRUE); hit <- TRUE
+    }
+    for (k in which(grepl(openNH, s, perl = TRUE))) {          # "(n-" "20)"
+      if (k < length(s) && grepl(digits, s[k + 1L], perl = TRUE)) {
+        s[k] <- sub("(-{1,2}|\u2013|\u2014|\u2212)$", " =", s[k], perl = TRUE); hit <- TRUE
+      }
+    }
+    for (k in which(grepl(openN, s, perl = TRUE))) {
+      if (k >= length(s)) next
+      nxt <- s[k + 1L]
+      if (grepl(digits, nxt, perl = TRUE)) {                     # "(n" "25)"
+        s[k] <- paste(s[k], "="); hit <- TRUE
+      } else if (grepl(glued, nxt, perl = TRUE)) {               # "(n" "-20)"
+        s[k + 1L] <- sub(glued, "= \\2", nxt, perl = TRUE); hit <- TRUE
+      } else if (grepl(hyph, nxt, perl = TRUE) && k + 2L <= length(s) &&
+                 grepl(digits, s[k + 2L], perl = TRUE) && nxt != ":" && nxt != "~") {  # "(n" "-" "20)"
+        s[k + 1L] <- "="; hit <- TRUE
+      } else if (grepl("^[0-9]$", nxt, perl = TRUE) && k + 2L <= length(s) &&
+                 grepl(digits, s[k + 2L], perl = TRUE)) {
+        # "(n 5 60)" - a symbol font's equals sign read as a digit (A&A 1999,
+        # PMID 10439770, where the same font gives "44 6 9" for 44 +/- 9): a
+        # lone digit between "(n" and the bracketed digits is the sign
+        s[k + 1L] <- "="; hit <- TRUE
+      }
+    }
+    if (hit) { lines[[i]]$text <- s; repaired <- repaired + 1L; prevHit <- TRUE }
+  }
+  list(lines = lines, repaired = repaired)
+}
+
 # A LETTER O FOR A ZERO IN AN ARM SIZE (2026-09-25, ISSUES.md issue 75;
 # Fujii 1999, Can J Anaesth, PMID 10522590 - the corpus session's batch 17
 # W2). The scanned page's text layer prints the header sizes as "(n=4O)"
