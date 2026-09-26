@@ -844,8 +844,25 @@
 # number and its footnote letter, and a zero read into an SD is a wrong
 # value, not a lost one (CodeRabbit on PR #435); "5.I" cannot be a
 # footnote.
+# ... AND TWO MORE WAYS A DECIMAL COMES APART (2026-09-27, ISSUES.md issue
+# 140; the corpus session's arm-count audit). (b) The point itself lost:
+# "Height(cm) 154.4 <bullet> 5.8 152 9 <bullet> 4.5 154.8 <bullet> 5.1"
+# (Anesth Analg 1997, PMID 9067046) - the mean "152.9" as "152" and "9",
+# touching, before the sign. A digits word followed within two points by
+# a one-digit word (three points at most) and then a sign glyph, on a line whose other means
+# carry one decimal, is that mean with its point. (c) The point kept with
+# the SECOND part, inside a bracket: "175.9 (41 .l)" (Anesth Analg 1999,
+# PMID 10201761) - "(41" and ".l)" touching, the OCR's l for the 1. A
+# bracket-opening digits word followed within two points by a word of a
+# point, a digit or its look-alike and the closing bracket is that SD. The
+# same split without the point, "(1" "O)" for "(10)" (Anesth Analg 2006,
+# PMID 16982288, the OCR's O for the zero), joins when the closing word
+# carries a look-alike - two digit words in a bracket, "(1" "2)", are left.
 .ppSplitDecimalHead <- "^[0-9]+[.]$"
 .ppFusedDecimalTail <- "^[0-9]+[.][lI|]$"
+.ppLostPointHead    <- "^[0-9]{2,}$"
+.ppBracketHead      <- "^\\(?[0-9]+$"
+.ppBracketTail      <- "^(?:[.,][0-9lI|Oo]+|[0-9lI|Oo]*[lI|Oo][0-9lI|Oo]*)\\)$"
 .ppRepairSplitDecimals <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -858,14 +875,27 @@
     }
     if (length(s) < 2L) next
     head <- grepl(.ppSplitDecimalHead, s, perl = TRUE)
-    if (!any(head)) next
     tail <- c(grepl("^[0-9lI|]$", s[-1L], perl = TRUE), FALSE)
     gap  <- c(L$x[-1L] - (L$x[-length(s)] + L$width[-length(s)]), Inf)
     hit  <- head & tail & gap <= 2
+    # (b) the point lost: the pair stands before a sign, and another mean on
+    #     the line carries one decimal
+    signWord <- grepl(paste0("^(", .ppPLUSMINUS, "|\u2022|\u2afe|\\+/-|\\+-|[-+:~\u2212\u2013\u00b7iIlTt4]{1,3})$"), s, perl = TRUE)
+    oneDec <- grepl("^[0-9]+[.][0-9]$", s, perl = TRUE)
+    lostPt <- grepl(.ppLostPointHead, s, perl = TRUE) & tail & gap <= 3 &
+      c(signWord[-(1:2)], FALSE, FALSE) & sum(oneDec) >= 1L
+    # (c) the point kept with the second part inside a bracket: "(41" ".l)"
+    brHead <- grepl(.ppBracketHead, s, perl = TRUE)
+    brTail <- c(grepl(.ppBracketTail, s[-1L], perl = TRUE), FALSE)
+    brHit  <- brHead & brTail & gap <= 2
+    hit <- hit | lostPt | brHit
     if (!any(hit)) next
     keep <- rep(TRUE, nrow(L))
     for (k in which(hit)) {
-      L$text[k]  <- paste0(s[k], chartr("lI|", "111", s[k + 1L]))
+      nxt <- s[k + 1L]
+      L$text[k]  <- if (brHit[k]) paste0(s[k], chartr("lI|Oo", "11100", nxt))
+                    else if (lostPt[k]) paste0(s[k], ".", nxt)
+                    else paste0(s[k], chartr("lI|", "111", nxt))
       L$width[k] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]
       keep[k + 1L] <- FALSE
       repaired <- repaired + 1L
@@ -1028,9 +1058,25 @@
         if (k < length(s) && isNum(s[k + 1L])) s0 <- c(s0, s[k + 1L])
       }
       dm0 <- unique(.ppFusedDecimals(m0)); ds0 <- unique(.ppFusedDecimals(s0))
-      if (length(dm0) != 1L || length(ds0) != 1L || dm0 < 1L || ds0 < 1L) next
-      digitRe0 <- sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
-      if (sum(hit) + sum(glyph) + sum(grepl(digitRe0, s, perl = TRUE)) < 2L) next
+      if (length(dm0) != 1L || length(ds0) != 1L) next
+      # ... at integer precision the second witness is a word of digits alone
+      # of the right length (issue 141): "98t26 99526 102232 95528"
+      digitRe0 <- if (dm0 >= 1L && ds0 >= 1L)
+        sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
+      else if (dm0 == 0L && ds0 == 0L && length(unique(nchar(s0))) == 1L)
+        sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", unique(nchar(s0)))
+      else NULL
+      if (is.null(digitRe0)) next
+      # an integer candidate counts as the second witness only if its mean
+      # would pass the range check below - "45i8 1200" has no second witness
+      # (CodeRabbit on PR #450)
+      okW <- grepl(digitRe0, s, perl = TRUE) & !hit
+      if (dm0 == 0L && any(okW)) {
+        mk0 <- suppressWarnings(as.numeric(sub(digitRe0, "\\1", s, perl = TRUE)))
+        mn0 <- suppressWarnings(as.numeric(m0))
+        okW <- okW & !is.na(mk0) & all(!is.na(mn0)) & mk0 >= min(mn0) / 3 & mk0 <= max(mn0) * 3
+      }
+      if (sum(hit) + sum(glyph) + sum(okW) < 2L) next
     }
     # the line's precision, from its letter-fused cells and its glyph cells
     # (the numbers either side of a glyph); NA when the cells disagree
@@ -1048,6 +1094,32 @@
     digitRe <- if (!is.na(dm) && !is.na(ds) && dm >= 1L && ds >= 1L)
       sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm, ds) else NULL
     dhit <- if (is.null(digitRe)) rep(FALSE, length(s)) else grepl(digitRe, s, perl = TRUE)
+    # (a2) THE DIGIT-FUSED FORM AT INTEGER PRECISION (2026-09-27, ISSUES.md
+    # issue 141; BJA 1998, PMID 9689270, the corpus session's arm-count
+    # audit; four arms of 30). "Age (years) 45i8 44i7 4329 4428", "Height
+    # (cm) 154i6 153i4 15626 15625", "Duration of anaesthesia (min) 98t26
+    # 99526 102232 95528": whole-number cells, the sign a letter in some
+    # and a digit in the rest. Rule (a) wants a decimal point on each side
+    # to know where the digit sits; with none, the letter-fused cells of
+    # the line say how many digits the SD has (one on Age, two on the
+    # durations), and a word of digits alone splits before that many and
+    # one: "4329" is 43, a 2 for the sign, 9; "102232" is 102, a 2, 32. The
+    # mean must have two digits or more and lie within a factor of three
+    # of the letter-fused means - a bare count on such a line ("120") is
+    # not touched.
+    dInt <- rep(FALSE, length(s)); intRe <- NULL
+    if (!is.na(dm) && !is.na(ds) && dm == 0L && ds == 0L && length(parts) >= 1L) {
+      sdDigits <- unique(nchar(sds)); mNum <- suppressWarnings(as.numeric(means))
+      if (length(sdDigits) == 1L && all(!is.na(mNum)) && sdDigits >= 1L) {
+        intRe <- sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", sdDigits)
+        cand <- grepl(intRe, s, perl = TRUE) & !hit
+        for (k in which(cand)) {
+          mk <- as.numeric(sub(intRe, "\\1", s[k], perl = TRUE))
+          if (mk >= min(mNum) / 3 && mk <= max(mNum) * 3) dInt[k] <- TRUE
+        }
+      }
+    }
+    dhit <- dhit | dInt
     # (b) a soup word glued to the SD alone, after a bare number of the line's
     #     mean precision ("50.1" "k8.0"; issue 90)
     shit <- grepl(.ppFusedSoup, s, perl = TRUE) & c(FALSE, isNum(s[-length(s)])) &
@@ -1068,7 +1140,7 @@
         repaired <- repaired + 1L
         next
       }
-      re <- if (hit[k]) .ppFusedSign else digitRe
+      re <- if (hit[k]) .ppFusedSign else if (dInt[k]) intRe else digitRe
       m  <- regmatches(s[k], regexec(re, s[k], perl = TRUE))[[1]]
       f1 <- nchar(m[2]) / nc; f2 <- nchar(m[3]) / nc
       w1 <- L[k, , drop = FALSE]; w2 <- w1; w3 <- w1
@@ -1307,8 +1379,18 @@
     meanGlued <- !is.na(mgFrac) & nextNum &
       vapply(mgX, function(x) !is.na(x) && any(abs(slots - x) <= tol), logical(1))
     isSign <- isSoup(s) | (announced & s == annGlyph) | minusDigit
+    # A LONE HYPHEN AT A STRONG SLOT (2026-09-27, ISSUES.md issue 142; CJA
+    # 1996, PMID 8955972, the corpus session's arm-count audit; two arms of
+    # 30). "Pentazocine - mg 1.6 <bullet> 3.3 1.6 - 3.3": the second arm's
+    # sign as a hyphen alone, at the column where every other row sets a
+    # bullet. A one-character word is refused as soup unless announced,
+    # because a lone dash between two numbers is usually a range; at a
+    # STRONG slot - one set by genuine glyphs on two or more lines - it is
+    # the sign, and the row's other cell says so too.
+    atStrong0 <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
+    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0
     base <- prevNum & ((isSign & nextNum) | glued | digitColon | letterSign) & !true(s) & s != "+" &
-      (nchar(s) > 1L | (announced & s == annGlyph) | letterSign)
+      (nchar(s) > 1L | (announced & s == annGlyph) | letterSign | dashAtStrong)
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
     # (a) a plain "+" between two numbers at a slot two or more lines mark
