@@ -157,6 +157,149 @@ corpus session's arm-count audit (batch 28 note c; CJA 1996, PMID
   "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
   and Loadsman layout tests still pass.
 
+---
+
+## 140. Two more ways a decimal number comes apart in a text layer
+
+**Status: fixed on `fix/lost-decimal-point`, 2026-09-27**, from the corpus
+session's arm-count audit (batch 28 note c): Anesth Analg 1997, PMID
+9067046 (four arms; Height three of four) and Anesth Analg 1999, PMID
+10201761 (three arms; Duration of operation two of three).
+
+- **The defect.** (b) The point itself lost: "Height(cm) 154.4 <bullet>
+  5.8 152 9 <bullet> 4.5 154.8 <bullet> 5.1" - the mean "152.9" as
+  "152" and "9", three points apart, before the sign; the cell was two
+  bare numbers and a sign and read nothing. (c) The point kept with the
+  SECOND part, inside a bracket: "175.9 (41 .l) 173.6 (44.5)" - "(41"
+  and ".l)" touching, the OCR's l for the 1; the cell's SD was no
+  number and the first arm's cell was lost.
+- **What changed.** `.ppRepairSplitDecimals()` (issue 127) reads two
+  more forms. A word of two or more digits followed within three points
+  by a one-digit word and then a sign glyph, on a line whose other means
+  carry one decimal, is that mean with its point restored ("152.9"). A
+  bracket-opening digits word followed within two points by a word of a
+  point, a digit or its look-alike and the closing bracket is that SD
+  ("(41.1)"); so is the same split without the point when the closing
+  word carries a look-alike - "(1" "O)" for "(10)" (Anesth Analg 2006,
+  PMID 16982288, the OCR's O for the zero; the older stratum's Weight
+  read two arms of three). Two whole numbers before a sign on a line of
+  whole numbers, and two digit words in a bracket ("(1" "2)"), are left
+  as they are.
+- **On the page.** 9067046's Height reads 154.4 +/- 5.8, 152.9 +/- 4.5,
+  154.8 +/- 5.1, 155.1 +/- 5.8 (24 cells); 10201761's Duration of
+  operation reads 175.9 +/- 41.1, 173.6 +/- 44.5, 177.1 +/- 39.4 (15
+  cells).
+- **Tests** (`tests/testthat/test-lost-decimal-point.R`): the helper on
+  the Height line (joined), the bracketed SD (joined) and two whole
+  numbers before a sign on a line of whole numbers (left), and the
+  bracketed "(1" "O)" (joined) beside "(1" "2)" (left); a rebuilt page
+  reads the mean whose point was lost (5 of 7 expectations fail on the
+  unfixed code). The split-decimal, digit-colon, stray-dot, "-I-", slot,
+  tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman
+  layout tests still pass.
+
+---
+
+## 139. A transposed table: groups down the side, variables across the top
+
+**Status: fixed on `feat/transposed-table`, 2026-09-27**, from the corpus
+session's batch 29 AH3 (Aydin 2014, J Anesth, Loadsman corpus; four arms
+of 80; not analysed until now, "N missing").
+
+- **The defect.** "Groups (n = 80) | Age (years) | Gender (M/F) | Duration
+  of surgery (h) | Total remifentanil consumption (ug)" across the top,
+  "Control 61.3 +/- 12.3 72/8 1.6 +/- 0.6 801.4 +/- 267.8" and three more
+  groups down the side, then a "P" row. The walker takes the row labels
+  for variables and the column heads for arms, and read three "arms"
+  called Age, Duration and Total, with N on the first alone and three
+  nameless cells per group.
+- **What changed.** `.ppTransposeBlock()` in pageLayout.R recognises the
+  layout by its head - the label column's heading names the groups
+  (Groups, Treatment, Arm, Drug, Regimen), two or more column heads
+  carry a unit in parentheses or a continuous variable's word, and the
+  rows beneath are short group names over two or more cells - and
+  rewrites the block the way the walker reads: the groups become the
+  arm-name line, the head's shared "(n = k)" their size line, and each
+  column a row with its head as the label and its cells under the groups
+  in order. The P row ends the groups and, transposed, is the p-value
+  column the walker drops. Every candidate block is offered the rewrite
+  before it is read; a block of the ordinary shape is left alone.
+- **On the page.** Four arms of 80 - Control, Strefen, Siccoral,
+  Stomatovis - with Age, Duration of surgery and Total remifentanyl
+  consumption in every arm, 12 cells as printed; nothing skipped.
+- **Tests** (`tests/testthat/test-transposed-table.R`): the transposer on
+  a groups-down-the-side block (arm line, size line, one row per column,
+  in order) and on an ordinary block (left alone); a rebuilt page of the
+  paper's shape reads four arms of 80 and its columns as variables (the
+  helper is absent and 6 expectations fail on the unfixed code). The
+  Loadsman layout, canine long-layout, stratum, paired-column,
+  header-cut and isolated-column tests still pass.
+
+---
+
+## 138. A "P values" heading over a column with no cells of its own
+
+**Status: fixed on `fix/p-values-heading-over-no-column`, 2026-09-27**, from
+the corpus session's batch 28 AG3 (EJA 1998, PMID 9587723; four arms of 30
+on a page printed sideways).
+
+- **The defect.** The header ends "(n =30) P values" and the P column
+  beneath holds "NS" on every row - no token, so no column of its own.
+  Its words fell to the nearest column, the fourth arm's, whose name
+  became "Placebo P values"; the p-value column test took the name at
+  its word and dropped the Placebo arm with every cell in it (Age,
+  Height, Weight and both durations in three arms of four).
+- **What changed.** Before the p-value column test, a name that carries
+  the P-values phrase (P value, P-values, significance; the hyphen may
+  be a dash or the minus sign) together with an arm's own words has the
+  phrase stripped and the arm kept. A name that is the phrase alone
+  still marks the p-value column, which is dropped as before.
+- **On the page.** Four arms of 30 - Granisetron, Droperidol,
+  Metoclopramide, Placebo - and 20 cells; the Placebo cells 47.7 +/- 9.1,
+  156.2 +/- 6.5, 56.9 +/- 8.2, 86.2 +/- 26.7, 110.2 +/- 25.8 as printed.
+- **Tests** (`tests/testthat/test-p-values-heading-over-no-column.R`): a
+  rebuilt page with a P-values heading over a column of "NS" reads four
+  arms with their names (1 of 6 expectations fails on the unfixed code:
+  the fourth arm named "Placebo P-values" or dropped); a P-values column
+  with numbers of its own is still dropped. The header-N and Loadsman
+  layout tests still pass.
+
+---
+
+## 137. One letter-fused cell and one digit-fused cell are two witnesses
+
+**Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
+2026-09-27**, from the corpus session's batch 28 AG5 (EJA 1997, PMID
+9241336, a scan; two arms of 25).
+
+- **The defect.** "Weight (kg) 54.626.6 53.7?7.1 NS" and "Peroperative
+  blood loss (ml) 209.42136.7 211.7?130.9 NS": the first arm's cell with
+  the sign set as a digit (issue 90's form), the second with a "?" (issue
+  85's form), and nothing else on the line. The fused-sign repair wants
+  two witnesses - letter-fused cells or genuine glyphs - before it
+  splits anything, counted the letter-fused cell alone, and skipped the
+  line; both rows were lost, while the Height line ("154.625.4
+  154.824.8", two digit-fused cells) read by the announced rule. Eight
+  of sixteen cells.
+- **What changed.** When the letter-fused cells and glyphs fall short of
+  two, the line's precision is taken from the ones there are, and a
+  digit-fused word that splits at that precision is counted as the
+  second witness. A letter-fused cell alone, or one beside a digit-fused
+  word of another precision, is still no evidence.
+- **On the page.** Weight 54.6 +/- 6.6 / 53.7 +/- 7.1, blood loss 209.4
+  +/- 136.7 / 211.7 +/- 130.9 and Buprenorphine 0.04 +/- 0.08 / 0.05 +/-
+  0.09 read; 14 cells. Indomethacin (28.0 +/- 25.3) is skipped as a
+  non-integer level under the analgesics heading - a continuous row under
+  a heading, a design matter and not this issue.
+- **Tests** (`tests/testthat/test-letter-and-digit-fused-cells-are-two-witnesses.R`):
+  the fused-sign repair on the Weight and blood-loss lines (split), a
+  letter-fused cell alone (left) and one beside a digit-fused word of
+  another precision (left); a rebuilt page reads Weight and blood loss
+  in both arms (6 of 9 expectations fail on the unfixed code). The
+  glued-soup, digit-fused, colon-ratio, slot and Loadsman layout tests
+  still pass.
+
+---
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,

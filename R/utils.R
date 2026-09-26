@@ -844,8 +844,25 @@
 # number and its footnote letter, and a zero read into an SD is a wrong
 # value, not a lost one (CodeRabbit on PR #435); "5.I" cannot be a
 # footnote.
+# ... AND TWO MORE WAYS A DECIMAL COMES APART (2026-09-27, ISSUES.md issue
+# 140; the corpus session's arm-count audit). (b) The point itself lost:
+# "Height(cm) 154.4 <bullet> 5.8 152 9 <bullet> 4.5 154.8 <bullet> 5.1"
+# (Anesth Analg 1997, PMID 9067046) - the mean "152.9" as "152" and "9",
+# touching, before the sign. A digits word followed within two points by
+# a one-digit word (three points at most) and then a sign glyph, on a line whose other means
+# carry one decimal, is that mean with its point. (c) The point kept with
+# the SECOND part, inside a bracket: "175.9 (41 .l)" (Anesth Analg 1999,
+# PMID 10201761) - "(41" and ".l)" touching, the OCR's l for the 1. A
+# bracket-opening digits word followed within two points by a word of a
+# point, a digit or its look-alike and the closing bracket is that SD. The
+# same split without the point, "(1" "O)" for "(10)" (Anesth Analg 2006,
+# PMID 16982288, the OCR's O for the zero), joins when the closing word
+# carries a look-alike - two digit words in a bracket, "(1" "2)", are left.
 .ppSplitDecimalHead <- "^[0-9]+[.]$"
 .ppFusedDecimalTail <- "^[0-9]+[.][lI|]$"
+.ppLostPointHead    <- "^[0-9]{2,}$"
+.ppBracketHead      <- "^\\(?[0-9]+$"
+.ppBracketTail      <- "^(?:[.,][0-9lI|Oo]+|[0-9lI|Oo]*[lI|Oo][0-9lI|Oo]*)\\)$"
 .ppRepairSplitDecimals <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -858,14 +875,27 @@
     }
     if (length(s) < 2L) next
     head <- grepl(.ppSplitDecimalHead, s, perl = TRUE)
-    if (!any(head)) next
     tail <- c(grepl("^[0-9lI|]$", s[-1L], perl = TRUE), FALSE)
     gap  <- c(L$x[-1L] - (L$x[-length(s)] + L$width[-length(s)]), Inf)
     hit  <- head & tail & gap <= 2
+    # (b) the point lost: the pair stands before a sign, and another mean on
+    #     the line carries one decimal
+    signWord <- grepl(paste0("^(", .ppPLUSMINUS, "|\u2022|\u2afe|\\+/-|\\+-|[-+:~\u2212\u2013\u00b7iIlTt4]{1,3})$"), s, perl = TRUE)
+    oneDec <- grepl("^[0-9]+[.][0-9]$", s, perl = TRUE)
+    lostPt <- grepl(.ppLostPointHead, s, perl = TRUE) & tail & gap <= 3 &
+      c(signWord[-(1:2)], FALSE, FALSE) & sum(oneDec) >= 1L
+    # (c) the point kept with the second part inside a bracket: "(41" ".l)"
+    brHead <- grepl(.ppBracketHead, s, perl = TRUE)
+    brTail <- c(grepl(.ppBracketTail, s[-1L], perl = TRUE), FALSE)
+    brHit  <- brHead & brTail & gap <= 2
+    hit <- hit | lostPt | brHit
     if (!any(hit)) next
     keep <- rep(TRUE, nrow(L))
     for (k in which(hit)) {
-      L$text[k]  <- paste0(s[k], chartr("lI|", "111", s[k + 1L]))
+      nxt <- s[k + 1L]
+      L$text[k]  <- if (brHit[k]) paste0(s[k], chartr("lI|Oo", "11100", nxt))
+                    else if (lostPt[k]) paste0(s[k], ".", nxt)
+                    else paste0(s[k], chartr("lI|", "111", nxt))
       L$width[k] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]
       keep[k + 1L] <- FALSE
       repaired <- repaired + 1L
@@ -1007,7 +1037,31 @@
     L <- lines[[i]]; s <- L$text
     hit  <- grepl(.ppFusedSign, s, perl = TRUE)
     glyph <- s == .ppPLUSMINUS
-    if (sum(hit) + sum(glyph) < 2L) next
+    # ONE LETTER-FUSED CELL AND ONE DIGIT-FUSED CELL ARE TWO WITNESSES
+    # (2026-09-27, ISSUES.md issue 137; EJA 1997, PMID 9241336, the corpus
+    # session's batch 28 AG5; two arms of 25). "Weight (kg) 54.626.6
+    # 53.7?7.1 NS" and "Peroperative blood loss (ml) 209.42136.7 211.7?130.9
+    # NS": the first arm's cell with the sign set as a digit, the second
+    # with a "?", and nothing else on the line. The two-witness rule below
+    # counted the letter-fused cell alone, so the line was skipped and
+    # both rows were lost, while the Height line ("154.625.4 154.824.8",
+    # two digit-fused cells) read by the announced rule. A digit-fused
+    # word that splits at the letter-fused cell's precision is the second
+    # witness: it is counted before the rule is applied.
+    if (sum(hit) + sum(glyph) < 2L) {
+      if (sum(hit) + sum(glyph) < 1L) next
+      pre <- lapply(which(hit), function(k)
+        regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]][c(2, 4)])
+      m0 <- vapply(pre, `[`, character(1), 1); s0 <- vapply(pre, `[`, character(1), 2)
+      for (k in which(glyph)) {
+        if (k > 1L && isNum(s[k - 1L])) m0 <- c(m0, s[k - 1L])
+        if (k < length(s) && isNum(s[k + 1L])) s0 <- c(s0, s[k + 1L])
+      }
+      dm0 <- unique(.ppFusedDecimals(m0)); ds0 <- unique(.ppFusedDecimals(s0))
+      if (length(dm0) != 1L || length(ds0) != 1L || dm0 < 1L || ds0 < 1L) next
+      digitRe0 <- sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
+      if (sum(hit) + sum(glyph) + sum(grepl(digitRe0, s, perl = TRUE)) < 2L) next
+    }
     # the line's precision, from its letter-fused cells and its glyph cells
     # (the numbers either side of a glyph); NA when the cells disagree
     parts <- lapply(which(hit), function(k)
