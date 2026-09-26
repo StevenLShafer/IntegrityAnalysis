@@ -57,6 +57,52 @@ test_that("the transposer rewrites a groups-down-the-side block into arms across
                 L(w("Age", 60, 100), w("61.3", 200, 100), w(pm, 220, 100), w("12.3", 230, 100), w("56.5", 300, 100), w(pm, 320, 100), w("13.8", 330, 100)),
                 L(w("Weight", 60, 114), w("70", 200, 114), w(pm, 220, 114), w("9", 230, 114), w("72", 300, 114), w(pm, 320, 114), w("8", 330, 114)))
   expect_null(.ppTransposeBlock(plain, capIdx = 1L))
+  # a group-word line further down the block, after data rows, heads a
+  # LATER table and does not transpose this one (PMID 17523738's Table I
+  # with Table II beneath it; issue 139, second cut)
+  two <- c(plain, list(
+    L(w("Table", 60, 200), w("II.", 90, 200)),
+    L(w("Group", 60, 220), w("Grading", 200, 220), w("of", 240, 220), w("pain", 255, 220), w("Pain", 330, 220), w("score", 355, 220)),
+    L(w("Placebo", 60, 240), w("(n", 100, 240), w("=", 112, 240), w("30)", 120, 240), w("3", 200, 240), w("(10)", 210, 240), w("9", 250, 240), w("(30)", 260, 240), w("2", 340, 240)),
+    L(w("Lidocaine", 60, 254), w("(n", 100, 254), w("=", 112, 254), w("30)", 120, 254), w("22", 200, 254), w("(73)", 215, 254), w("5", 250, 254), w("(17)", 260, 254), w("0", 340, 254))))
+  expect_null(.ppTransposeBlock(two, capIdx = 1L))
+})
+
+# Fujii 2007's page (PMID 17523738), rebuilt: Table I with its four arms of
+# 30 across the top and Table II beneath it with the groups down the side.
+# Table I must still read as itself (issue 139, second cut).
+twoTablesPdf <- function(file = file.path(tempdir(), "twoTables.pdf")) {
+  vx <- c(230, 300, 370, 440)
+  w <- function(x, y, text) list(x = x, y = y, text = text, adj = 0)
+  cell <- function(y, k, mean, sd) list(w(vx[k], y, mean), w(vx[k] + 16, y, pm), w(vx[k] + 26, y, sd))
+  row <- function(y, label, means, sds) c(list(w(33, y, label)),
+    unlist(lapply(1:4, function(k) cell(y, k, means[k], sds[k])), recursive = FALSE))
+  cells <- c(
+    list(w(33, 60, "Table I. Summary of patient demographics. Data are mean (SD) or number as appropriate")),
+    rowCells(80, "Variable", c("Placebo", "Lidocaine", "Flurbiprofen", "Both"), vx + 14, labelX = 33),
+    rowCells(94, "", c("(n = 30)", "(n = 30)", "(n = 30)", "(n = 30)"), vx + 14, labelX = 33),
+    row(112, "Age (y)", c("43", "43", "41", "42"), c("15", "14", "12", "14")),
+    rowCells(130, "Sex (male/female)", c("14/16", "13/17", "14/16", "15/15"), vx + 14, labelX = 33),
+    row(148, "Height (cm)", c("161", "160", "162", "163"), c("11", "8", "9", "7")),
+    row(166, "Weight (kg)", c("60", "58", "58", "60"), c("11", "10", "11", "9")),
+    list(w(33, 240, "Table II. Overall incidence and intensity of pain during injection of propofol")),
+    list(w(33, 260, "Group"), w(200, 260, "Grading of pain [no. (%)]"), w(420, 260, "Pain score"), w(500, 260, "Pain total")),
+    list(w(200, 274, "None"), w(260, 274, "Mild"), w(320, 274, "Moderate"), w(380, 274, "Severe")),
+    list(w(33, 292, "Placebo (n = 30)"), w(200, 292, "3 (10)"), w(260, 292, "9 (30)"), w(320, 292, "10 (33)"), w(380, 292, "8 (27)"), w(430, 292, "2"), w(500, 292, "27 (90)")),
+    list(w(33, 306, "Lidocaine (n = 30)"), w(200, 306, "22 (73)"), w(260, 306, "5 (17)"), w(320, 306, "3 (10)"), w(380, 306, "0 (0)"), w(430, 306, "0"), w(500, 306, "8 (27)")),
+    list(w(33, 320, "Flurbiprofen (n = 30)"), w(200, 320, "17 (57)"), w(260, 320, "9 (30)"), w(320, 320, "4 (13)"), w(380, 320, "0 (0)"), w(430, 320, "0"), w(500, 320, "13 (43)")),
+    list(w(33, 334, "Both (n = 30)"), w(200, 334, "29 (97)"), w(260, 334, "0 (0)"), w(320, 334, "1 (3)"), w(380, 334, "0 (0)"), w(430, 334, "0"), w(500, 334, "1 (3)")))
+  makeTablePdf(file, cells)
+}
+
+test_that("a page with a plain table above a groups-down-the-side table still reads the plain one", {
+  r <- parseBaselineTableHeuristics(twoTablesPdf(), quiet = TRUE)
+  expect_identical(r$arms$N, rep(30L, 4))
+  expect_identical(r$arms$arm, c("Placebo", "Lidocaine", "Flurbiprofen", "Both"))
+  cont <- r$data[!is.na(r$data$MEAN), ]
+  expect_identical(cont$MEAN[cont$ROW == "Age"], c(43, 43, 41, 42))
+  expect_identical(cont$SD[cont$ROW == "Weight"], c(11, 10, 11, 9))
+  expect_false(any(grepl("^Column", cont$ROW)))
 })
 
 test_that("a rebuilt transposed page reads its groups as arms of 80 and its columns as variables", {

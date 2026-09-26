@@ -324,6 +324,34 @@ of 80; not analysed until now, "N missing").
   Loadsman layout, canine long-layout, stratum, paired-column,
   header-cut and isolated-column tests still pass.
 
+**Second cut (`fix/transposed-head-must-head-the-block`, 2026-09-27)**,
+from the corpus session's batch 30 AI1 (Fujii 2007, PMID 17523738; four
+arms of 30) - a REGRESSION of the first cut.
+
+- **The defect.** Table I (variables down the side, four arms across) and,
+  further down the same candidate block, Table II with "Group | Grading
+  of pain [no. (%)] | Pain score | Pain total" across the top and
+  "Placebo (n = 30) 3 (10) 9 (30) ..." down the side. The transposer
+  looked for the group-word line anywhere beneath the caption, found
+  Table II's deep in Table I's block, and rewrote the whole block from
+  Table II's rows: sixteen cells of Table I became four false cells
+  ("Column 2: 8 +/- 27, 0 +/- 0, ...") on six "arms". Every candidate on
+  the page was rewritten the same way.
+- **What changed.** The group-word line must HEAD the block: when any
+  line between the caption and it carries two or more numeric cells - a
+  data row - the line heads a later table and the block is not
+  transposed. Aydin 2014's block, whose head follows its caption
+  directly, is rewritten as before.
+- **On the page.** Table I as before the first cut: four arms of 30, Age,
+  Height and Weight in every arm, 16 cells. (Table II's counts are not a
+  baseline table and are not read.)
+- **Tests** (`tests/testthat/test-transposed-table.R`, extended): the
+  transposer on a plain block followed by a second table's group-word
+  head and rows (left alone), and a rebuilt page of Fujii 2007's shape -
+  Table I over Table II - reading Table I's four arms of 30 with no
+  "Column" rows (4 expectations fail on the unfixed code). The first
+  cut's tests and the Loadsman layout tests still pass.
+
 ---
 
 ## 138. A "P values" heading over a column with no cells of its own
