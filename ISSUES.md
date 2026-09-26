@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 170. The across-trial combination is described as it was, not as it is
+
+**Status: fixed on `docs/overall-p-combines-the-numbers`, 2026-09-27**,
+from the outside statistical audit of 2026-09-26 (F4, P2 specification;
+report held locally under `.audit/`). Documentation only.
+
+- **The defect.** Since issue 78 (2026-09-25) `.iaOverallP()` combines
+  the trials' numerical Monte Carlo estimates (`.PNUM`) and falls back
+  to the displayed string only when no number exists. The statistics
+  guide (two places), the user guide, the API guide and the methods
+  paper still said a trial displayed "<0.0001" enters as 0.0001. On two
+  trials at the 100,000-replicate floor the two algorithms differ by a
+  factor of 89 (8.1e-10 against 7.2e-8).
+- **What changed.** All five passages describe the numerical-input
+  behaviour and its fallback, say the trial p's are treated as
+  independent and uniform under the null (an approximation for mid-p
+  estimates under fitted models), that no Monte Carlo interval is given
+  for the overall p, and that a very small combined value is not
+  evidence of equally fine Monte Carlo resolution. `methods.pdf` rebuilt
+  with `build.sh`.
+- **Tests:** none; the behaviour is pinned by the `stouffer-numeric-
+  trial-p` regression tests of issue 78.
+
+---
+
 ## 165. A wall-clock ceiling on one analysis in the app
 
 **Status: fixed on `fix/analysis-wall-clock-ceiling`, 2026-09-27**, at

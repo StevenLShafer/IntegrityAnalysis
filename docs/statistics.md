@@ -48,7 +48,7 @@ assumptions stated below.
 | Categorical variable | Random 2 × c tables with the observed arm and category totals fixed (`r2dtable`); the lower tail of Pearson's chi-square | Mutually exclusive, exhaustive levels; the counts are the arms' |
 | Row p | The share of replicates at least as homogeneous as the printed row, ties counted by halves (mid-p), floored at 1/(replicates + 1) | — |
 | Trial p | Stouffer's sum of the rows' z-scores, judged against the same sum computed for every replicate (rows simulated independently), ties by halves | The variables are independent |
-| Overall p (several trials) | The closed-form Stouffer combination of the trial p's against the normal table; a trial reported as "<0.0001" enters as 0.0001 | Independent trials; continuous trial p's |
+| Overall p (several trials) | The closed-form Stouffer combination of the trial p's against the normal table; each trial enters as its numerical Monte Carlo estimate (the floored mid-p, 1/(replicates + 1) at the smallest), not as the string it is displayed as | Independent trials whose p's are uniform under the null — an approximation for discrete mid-p estimates under fitted models |
 
 Every trial starts with 1,000 replicates per row and escalates to 10,000
 while the trial's p or any row's is below 0.1, and to 100,000 while
@@ -341,9 +341,20 @@ When a file holds several trials, the Summary sheet's closing row is
 the closed-form Stouffer combination of the trial p's against the normal
 table — a different procedure from the within-trial combination, which
 is judged against its own simulated null. It treats the trial p's as
-continuous and independent; a trial reported as "<0.0001" enters as
-0.0001, on the conservative side; trials that could not be computed are
-left out and the row says how many combined. This is the step Carlisle
+independent and uniform under the null, which discrete Monte Carlo mid-p
+estimates under fitted models only approximate, so this step is an
+approximation on top of the within-trial simulation. Each trial enters
+as its numerical estimate — the floored mid-p, 1/(replicates + 1) at the
+smallest — not as the string it is displayed as: two trials each
+displayed "<0.0001" at 100,000 replicates combine to about 8 × 10⁻¹⁰,
+where their displayed 0.0001 would give 7 × 10⁻⁸. (A results table from
+an older build, or a P typed by hand, has no number behind the display;
+then the display is read, "<0.0001" as 0.0001.) No Monte Carlo interval
+is given for the overall p, and a very small combined value is not
+evidence of equally fine Monte Carlo resolution: the floor is where the
+simulation stops resolving, not a calibrated tail probability. Trials
+that could not be computed are left out and the row says how many
+combined. This is the step Carlisle
 took to reach a single p for the whole body of Fujii's work. Define the
 set of trials before looking at their p's: combining only papers already
 flagged, or counting several publications of one trial as independent
