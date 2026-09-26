@@ -778,6 +778,8 @@
   if (any(grepl("[\u00b1\u2022\u2afe(\\[]|\\+/-", s, perl = TRUE))) return(FALSE)
   followed <- c(grepl(unit, s[-1L], perl = TRUE), FALSE)
   all(followed[isNumW])
+}
+
 # A TRANSPOSED TABLE: GROUPS DOWN THE SIDE, VARIABLES ACROSS THE TOP
 # (2026-09-27, ISSUES.md issue 139; Aydin 2014, J Anesth, Loadsman corpus -
 # the corpus session's batch 29 AH3; four arms of 80). "Groups (n = 80) |
