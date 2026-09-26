@@ -152,15 +152,20 @@ session's arm-count audit (batch 28 note c): Anesth Analg 1997, PMID
   carry one decimal, is that mean with its point restored ("152.9"). A
   bracket-opening digits word followed within two points by a word of a
   point, a digit or its look-alike and the closing bracket is that SD
-  ("(41.1)"). Two whole numbers before a sign on a line of whole numbers
-  are left as two numbers.
+  ("(41.1)"); so is the same split without the point when the closing
+  word carries a look-alike - "(1" "O)" for "(10)" (Anesth Analg 2006,
+  PMID 16982288, the OCR's O for the zero; the older stratum's Weight
+  read two arms of three). Two whole numbers before a sign on a line of
+  whole numbers, and two digit words in a bracket ("(1" "2)"), are left
+  as they are.
 - **On the page.** 9067046's Height reads 154.4 +/- 5.8, 152.9 +/- 4.5,
   154.8 +/- 5.1, 155.1 +/- 5.8 (24 cells); 10201761's Duration of
   operation reads 175.9 +/- 41.1, 173.6 +/- 44.5, 177.1 +/- 39.4 (15
   cells).
 - **Tests** (`tests/testthat/test-lost-decimal-point.R`): the helper on
   the Height line (joined), the bracketed SD (joined) and two whole
-  numbers before a sign on a line of whole numbers (left); a rebuilt page
+  numbers before a sign on a line of whole numbers (left), and the
+  bracketed "(1" "O)" (joined) beside "(1" "2)" (left); a rebuilt page
   reads the mean whose point was lost (5 of 7 expectations fail on the
   unfixed code). The split-decimal, digit-colon, stray-dot, "-I-", slot,
   tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman

@@ -854,12 +854,15 @@
 # the SECOND part, inside a bracket: "175.9 (41 .l)" (Anesth Analg 1999,
 # PMID 10201761) - "(41" and ".l)" touching, the OCR's l for the 1. A
 # bracket-opening digits word followed within two points by a word of a
-# point, a digit or its look-alike and the closing bracket is that SD.
+# point, a digit or its look-alike and the closing bracket is that SD. The
+# same split without the point, "(1" "O)" for "(10)" (Anesth Analg 2006,
+# PMID 16982288, the OCR's O for the zero), joins when the closing word
+# carries a look-alike - two digit words in a bracket, "(1" "2)", are left.
 .ppSplitDecimalHead <- "^[0-9]+[.]$"
 .ppFusedDecimalTail <- "^[0-9]+[.][lI|]$"
 .ppLostPointHead    <- "^[0-9]{2,}$"
 .ppBracketHead      <- "^\\(?[0-9]+$"
-.ppBracketTail      <- "^[.,][0-9lI|]+\\)$"
+.ppBracketTail      <- "^(?:[.,][0-9lI|Oo]+|[0-9lI|Oo]*[lI|Oo][0-9lI|Oo]*)\\)$"
 .ppRepairSplitDecimals <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -890,7 +893,7 @@
     keep <- rep(TRUE, nrow(L))
     for (k in which(hit)) {
       nxt <- s[k + 1L]
-      L$text[k]  <- if (brHit[k]) paste0(s[k], chartr("lI|", "111", nxt))
+      L$text[k]  <- if (brHit[k]) paste0(s[k], chartr("lI|Oo", "11100", nxt))
                     else if (lostPt[k]) paste0(s[k], ".", nxt)
                     else paste0(s[k], chartr("lI|", "111", nxt))
       L$width[k] <- L$x[k + 1L] + L$width[k + 1L] - L$x[k]

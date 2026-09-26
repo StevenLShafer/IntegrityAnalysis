@@ -25,6 +25,12 @@ test_that("the helper restores a lost point before the sign and a point kept wit
                    x = c(159, 262, 284, 295, 340, 361), width = c(8, 20, 10, 8, 20, 22), stringsAsFactors = FALSE)
   r <- .ppRepairSplitDecimals(list(L2))
   expect_identical(r$lines[[1]]$text, c("of", "175.9", "(41.1)", "173.6", "(44.5)"))
+  # the bracket split without the point, the OCR's O for the zero: "(1" "O)"
+  L4 <- data.frame(text = c("Mean", "(SD)", "54", "(10)", "53", "(9)", "54", "(1", "O)", "12", "(1", "2)"),
+                   x = c(60, 85, 150, 165, 200, 215, 250, 265, 275, 300, 315, 325), width = c(22, 20, 12, 20, 12, 15, 12, 9, 10, 12, 9, 10),
+                   stringsAsFactors = FALSE)
+  r <- .ppRepairSplitDecimals(list(L4))
+  expect_identical(r$lines[[1]]$text, c("Mean", "(SD)", "54", "(10)", "53", "(9)", "54", "(10)", "12", "(1", "2)"))
   # two whole numbers before a sign on a line of whole numbers are two numbers
   L3 <- data.frame(text = c("Weight", "54", "8", pm, "7", "55", pm, "8"),
                    x = c(58, 195, 210, 217, 224, 275, 297, 304), width = c(28, 13, 5, 4, 5, 13, 4, 5), stringsAsFactors = FALSE)
