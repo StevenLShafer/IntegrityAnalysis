@@ -1284,6 +1284,17 @@
   if (length(later)) idx <- idx[idx < later[1]]
   if (!length(idx)) return(none)
   isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
+  # AN SD WITH ITS RANGE GLUED ON IS A NUMBER AFTER THE SIGN (2026-09-27,
+  # ISSUES.md issue 145; Anesth Analg 1998, PMID 9495425): "Age 44 k 7(2359)
+  # 45 + 10(21-63) 43 + 7(29-58)" - the range printed in parentheses after
+  # each SD, and the scan glues it to the SD (and loses the dash in the
+  # first). The slot repair asks for a number on each side of a glyph
+  # before it reads the glyph as the sign; "7(2359)" is not a bare number,
+  # so the "k" and the plain pluses were left and the row was lost. A
+  # number with a parenthesised range, or a run of digits where the range
+  # was, glued to its end is a number for that purpose; the tokenizer then
+  # reads the cell and the bracket falls away as a stray token.
+  isNumR <- function(s) grepl(paste0("^", .ppNUM, "\\((?:", .ppNUM, "(?:[-\u2013\u2212]", .ppNUM, ")?|[0-9]{3,6})\\)[*a-z]?$"), s, perl = TRUE)
   true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "\u2afe", "+/-", "+-")
   # a soup word is not a number and carries at least one stroke
   isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
@@ -1294,7 +1305,7 @@
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     g <- true(s) | (s == "+" & prevNum & nextNum)
     nTrue <- nTrue + sum(true(s))
     if (any(g)) {
@@ -1328,7 +1339,7 @@
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     # ... AND SO DOES THE GLUED DIGIT-COLON FORM (2026-09-26, ISSUES.md issue
     # 119; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3): "All
     # values are expressed as mean + SD." over "154.0 5:3.8 154.9 5:4.8
@@ -1370,7 +1381,7 @@
     s <- L$text
     atSlot <- vapply(L$x, function(x) any(abs(slots - x) <= tol), logical(1))
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
     gluedDigit <- glued & grepl("^[0-9]:", s, perl = TRUE)   # "5:5.4": a slot's evidence only
     # A MINUS AND ONE DIGIT AS THE SIGN (2026-09-26, ISSUES.md issue 114; CJA

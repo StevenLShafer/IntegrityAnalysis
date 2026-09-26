@@ -168,6 +168,35 @@ four arms of 30).
 
 ---
 
+## 145. An SD with its range glued on is a number after the sign
+
+**Status: fixed on `fix/sd-with-glued-range-after-sign`, 2026-09-27**, from
+the corpus session's batch 30 (Anesth Analg 1998, PMID 9495425, a scan;
+three arms of 50).
+
+- **The defect.** "Age 44 k 7(2359) 45 + 10(21-63) 43 + 7(29-58)": the
+  range printed in parentheses after each SD, glued to the SD by the
+  scan's text layer, and the first range's dash lost. The slot repair
+  asks for a number on each side of a glyph before it reads the glyph as
+  the sign; "7(2359)" is not a bare number, so the "k" and the plain
+  pluses were left and the Age row read nothing while every other row of
+  the table read.
+- **What changed.** In the slot repair, a number with a parenthesised
+  range - or a run of three to six digits where the range was - glued to
+  its end is a number after the sign. The tokenizer then reads the cell
+  as it already did when the range stood apart; the bracket falls away.
+- **On the page.** Age 44 +/- 7, 45 +/- 10, 43 +/- 7 in the three arms;
+  18 cells where there were 15.
+- **Tests** (`tests/testthat/test-sd-with-glued-range-after-sign.R`): the
+  slot repair on the paper's Age row beneath two rows of genuine signs
+  (the "k" and both pluses read), and a rebuilt page of the paper's shape
+  reading the Age row's means and SDs (3 of 5 expectations fail on the
+  unfixed code). The lone-hyphen, soup-glued, digit-colon, "-I-", slot,
+  announced-soup, minus-digit, Loadsman layout and tokenizer tests still
+  pass.
+
+---
+
 ## 144. A number the text layer has broken is no arm size
 
 **Status: fixed on `fix/broken-number-is-no-arm-size`, 2026-09-27**, from
@@ -634,6 +663,44 @@ from the corpus session's batch 28 AG2 (Am J Obstet Gynecol 2000, PMID
   rows beneath with N 40 and clean names (5 of 7 expectations fail on the
   unfixed code). The bracket per-cell n, header-N, stratum and Loadsman
   layout tests still pass.
+
+**Second cut (`fix/every-count-group-leaves-a-row-of-cells`, 2026-09-27)**,
+from the corpus session's batch 30 (Rezk 2018, Gynecol Endocrinol, the
+Loadsman corpus; two arms of 102 and 100) - a REGRESSION of the first cut.
+
+- **The defect.** The paper sets Table 1 in the right-hand column beside
+  the CONSORT flow diagram of the left. Read full width, the diagram's
+  boxes share the table's lines: "Assessed for eligibility (n=225)" on
+  the header line, "Excluded (n=16) Body mass index ...", "Randomized
+  (n=209) FSH (IU/L) 5.3 +/- 1.4 ...". The first cut made those lines
+  data rows and read only the "(n = k)" groups AFTER their cells; the
+  groups before them stayed, the tokenizer read "(n=209)" as 209 and
+  "(n=16)" as 16, and they seeded a column of their own left of the arms,
+  which the header's "(n=225)" named "eligibility" and sized 225. With
+  three arms and one skipped line fewer, that reading out-scored the
+  clean column reading, and the labels went out as "Excluded (n=",
+  "criteria -Declined: Randomized (n=".
+- **What changed.** Three things, each a rule of its own. (1) On a row of
+  cells every "(n = k)" group is a count, never a cell: the ones after a
+  cell are keyed to it as before, the rest leave the line unkeyed (a
+  trailing full stop after the bracket is allowed). (2) A header count
+  belongs to an arm only within the fence the arm-name assembly already
+  uses - three-quarters of the column gap from the column's centre - by
+  the word before it or, failing that, by its own midpoint; a count
+  outside both is nobody's size. (3) Between the column reading and the
+  full-width reading of one caption that reach the same cells, variables
+  and arms, the column reading is kept: the full-width one adds only the
+  neighbouring column's words. A table that spans the page's columns
+  reads more cells full width and is chosen as before.
+- **On the page.** As before the first cut: two arms of 102 and 100; Age,
+  Body mass index, Duration of infertility, FSH and LH; 10 cells.
+- **Tests** (`tests/testthat/test-per-cell-n-in-parentheses.R`, extended):
+  a rebuilt two-column page of the paper's shape - the diagram's boxes
+  beside the table's rows, prose beneath both - reads two arms of 102 and
+  100, no arm of 225, and clean labels (2 of 5 expectations fail on the
+  unfixed code). The first cut's test and the manuscript-layout,
+  Loadsman-layout, caption-rescue, hybrid-merge, arm-N recovery and
+  fraction tests still pass.
 
 ---
 ## 130. A digit set for the sign at a slot is the sign, not a number
