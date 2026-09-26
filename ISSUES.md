@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 145. An SD with its range glued on is a number after the sign
+
+**Status: fixed on `fix/sd-with-glued-range-after-sign`, 2026-09-27**, from
+the corpus session's batch 30 (Anesth Analg 1998, PMID 9495425, a scan;
+three arms of 50).
+
+- **The defect.** "Age 44 k 7(2359) 45 + 10(21-63) 43 + 7(29-58)": the
+  range printed in parentheses after each SD, glued to the SD by the
+  scan's text layer, and the first range's dash lost. The slot repair
+  asks for a number on each side of a glyph before it reads the glyph as
+  the sign; "7(2359)" is not a bare number, so the "k" and the plain
+  pluses were left and the Age row read nothing while every other row of
+  the table read.
+- **What changed.** In the slot repair, a number with a parenthesised
+  range - or a run of three to six digits where the range was - glued to
+  its end is a number after the sign. The tokenizer then reads the cell
+  as it already did when the range stood apart; the bracket falls away.
+- **On the page.** Age 44 +/- 7, 45 +/- 10, 43 +/- 7 in the three arms;
+  18 cells where there were 15.
+- **Tests** (`tests/testthat/test-sd-with-glued-range-after-sign.R`): the
+  slot repair on the paper's Age row beneath two rows of genuine signs
+  (the "k" and both pluses read), and a rebuilt page of the paper's shape
+  reading the Age row's means and SDs (3 of 5 expectations fail on the
+  unfixed code). The lone-hyphen, soup-glued, digit-colon, "-I-", slot,
+  announced-soup, minus-digit, Loadsman layout and tokenizer tests still
+  pass.
+
+---
+
 ## 144. A number the text layer has broken is no arm size
 
 **Status: fixed on `fix/broken-number-is-no-arm-size`, 2026-09-27**, from
