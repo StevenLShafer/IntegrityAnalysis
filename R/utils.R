@@ -1029,6 +1029,18 @@
 # read by the slot rule above, which needs the column's other rows to
 # set a genuine glyph there.
 .ppFusedSign <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?;~!|]{1,2})([0-9]+(?:\\.[0-9]+)?)$"
+# ... AND THE SAME CELL WITH A LOOK-ALIKE LETTER FOR A DIGIT OF ITS SD
+# (2026-09-27, ISSUES.md issue 146; Br J Anaesth 1998, PMID 9689270, a
+# scan; four arms of 30; the corpus session's batch 30). "Morphine (mg,
+# epidurally) 6t1 5tl 521 6tl": the sign is a "t" in three cells, and in
+# two of them the SD "1" came through as an "l". The letter-fused form
+# above wants digits after the sign, so those two were not cells, the row
+# had one witness, and it was lost whole. This form takes an SD of digits
+# and the look-alikes l, I and O (for 1, 1 and 0), at least one of them;
+# it is read ONLY beside a plain letter-fused cell on the same line whose
+# sign is the same letter (the "t" of "6t1"): the same confusion twice.
+# Read alone, "5ml" in a label would be a cell of 5 +/- 1.
+.ppFusedSignLook <- "^([0-9]+(?:\\.[0-9]+)?)([A-DF-WYZa-df-wyz?;~!|]{1,2})((?=[0-9lIO]*[lIO])[0-9lIO]+)$"
 .ppRepairFusedSigns <- function(lines, capIdx = 0L) {
   n <- length(lines); repaired <- 0L
   if (n <= capIdx) return(list(lines = lines, repaired = 0L))
@@ -1036,6 +1048,16 @@
   for (i in seq(capIdx + 1L, n)) {
     L <- lines[[i]]; s <- L$text
     hit  <- grepl(.ppFusedSign, s, perl = TRUE)
+    # the look-alike form (issue 146): a hit when a plain letter-fused cell
+    # on the line carries the same sign letters
+    look <- grepl(.ppFusedSignLook, s, perl = TRUE) & !hit
+    if (any(look) && any(hit)) {
+      signOf <- function(k, re) regmatches(s[k], regexec(re, s[k], perl = TRUE))[[1]][3]
+      plainSigns <- vapply(which(hit), signOf, character(1), re = .ppFusedSign)
+      look[look] <- vapply(which(look), signOf, character(1), re = .ppFusedSignLook) %in% plainSigns
+      hit <- hit | look
+    } else look[] <- FALSE
+    fusedRe <- function(k) if (look[k]) .ppFusedSignLook else .ppFusedSign
     glyph <- s == .ppPLUSMINUS
     # ONE LETTER-FUSED CELL AND ONE DIGIT-FUSED CELL ARE TWO WITNESSES
     # (2026-09-27, ISSUES.md issue 137; EJA 1997, PMID 9241336, the corpus
@@ -1051,7 +1073,7 @@
     if (sum(hit) + sum(glyph) < 2L) {
       if (sum(hit) + sum(glyph) < 1L) next
       pre <- lapply(which(hit), function(k)
-        regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]][c(2, 4)])
+        regmatches(s[k], regexec(fusedRe(k), s[k], perl = TRUE))[[1]][c(2, 4)])
       m0 <- vapply(pre, `[`, character(1), 1); s0 <- vapply(pre, `[`, character(1), 2)
       for (k in which(glyph)) {
         if (k > 1L && isNum(s[k - 1L])) m0 <- c(m0, s[k - 1L])
@@ -1081,8 +1103,9 @@
     # the line's precision, from its letter-fused cells and its glyph cells
     # (the numbers either side of a glyph); NA when the cells disagree
     parts <- lapply(which(hit), function(k)
-      regmatches(s[k], regexec(.ppFusedSign, s[k], perl = TRUE))[[1]][c(2, 4)])
+      regmatches(s[k], regexec(fusedRe(k), s[k], perl = TRUE))[[1]][c(2, 4)])
     means <- vapply(parts, `[`, character(1), 1); sds <- vapply(parts, `[`, character(1), 2)
+    sds   <- chartr("lIO", "110", sds)   # the look-alike SDs as their digits (issue 146)
     for (k in which(glyph)) {
       if (k > 1L && isNum(s[k - 1L])) means <- c(means, s[k - 1L])
       if (k < length(s) && isNum(s[k + 1L])) sds <- c(sds, s[k + 1L])
@@ -1111,10 +1134,29 @@
     if (!is.na(dm) && !is.na(ds) && dm == 0L && ds == 0L && length(parts) >= 1L) {
       sdDigits <- unique(nchar(sds)); mNum <- suppressWarnings(as.numeric(means))
       if (length(sdDigits) == 1L && all(!is.na(mNum)) && sdDigits >= 1L) {
-        intRe <- sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", sdDigits)
+        # A ONE-DIGIT MEAN WHEN EVERY WITNESS'S MEAN IS ONE DIGIT (issue
+        # 146; PMID 9689270's "521" for 5 +/- 1 beside "6t1", "5tl" and
+        # "6tl"): the split needs two digits before the sign unless the
+        # letter-fused cells of the row all have one, two or more of them,
+        # and no genuine glyph stands on the line (a scan that resolved
+        # the sign anywhere on the row did not fuse it into a count
+        # elsewhere: "Smokers (n) 3 +/- 1 2 +/- 1 120" keeps its 120). A
+        # three-digit number then splits, within the same range check.
+        minMean <- if (all(nchar(means) == 1L) && sum(hit) >= 2L && !any(glyph)) 1L else 2L
+        intRe <- sprintf("^([0-9]{%d,})([0-9])([0-9]{%d})$", minMean, sdDigits)
         cand <- grepl(intRe, s, perl = TRUE) & !hit
+        # ... and only on a row that is cells throughout: a bare number
+        # beside the candidate - the "4" of "Smokers (n) 3i1 2i1 120 4" -
+        # says the row counts, and its three-digit word is a count too
+        if (minMean == 1L && any(isNum(s) & !cand & !hit)) {
+          minMean <- 2L
+          intRe <- sprintf("^([0-9]{%d,})([0-9])([0-9]{%d})$", minMean, sdDigits)
+          cand <- grepl(intRe, s, perl = TRUE) & !hit
+        }
         for (k in which(cand)) {
           mk <- as.numeric(sub(intRe, "\\1", s[k], perl = TRUE))
+          # a one-digit mean with an SD of nought is no cell either
+          if (minMean == 1L && sub(intRe, "\\3", s[k], perl = TRUE) == "0") next
           if (mk >= min(mNum) / 3 && mk <= max(mNum) * 3) dInt[k] <- TRUE
         }
       }
@@ -1140,13 +1182,14 @@
         repaired <- repaired + 1L
         next
       }
-      re <- if (hit[k]) .ppFusedSign else if (dInt[k]) intRe else digitRe
+      re <- if (hit[k]) fusedRe(k) else if (dInt[k]) intRe else digitRe
       m  <- regmatches(s[k], regexec(re, s[k], perl = TRUE))[[1]]
       f1 <- nchar(m[2]) / nc; f2 <- nchar(m[3]) / nc
       w1 <- L[k, , drop = FALSE]; w2 <- w1; w3 <- w1
       w1$text <- m[2]; w1$width <- w * f1
       w2$text <- .ppPLUSMINUS; w2$x <- x0 + w * f1; w2$width <- w * f2
-      w3$text <- m[4]; w3$x <- x0 + w * (f1 + f2); w3$width <- w * (1 - f1 - f2)
+      w3$text <- if (look[k]) chartr("lIO", "110", m[4]) else m[4]   # "l" for 1 (issue 146)
+      w3$x <- x0 + w * (f1 + f2); w3$width <- w * (1 - f1 - f2)
       out[[k]] <- rbind(w1, w2, w3)
       repaired <- repaired + 1L
     }

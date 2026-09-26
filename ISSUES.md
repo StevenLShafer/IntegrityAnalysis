@@ -132,6 +132,42 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 146. A look-alike letter for a digit of a fused cell's SD
+
+**Status: fixed on `fix/look-alike-sd-in-a-fused-cell`, 2026-09-27**, from
+the corpus session's batch 30 (Br J Anaesth 1998, PMID 9689270, a scan;
+four arms of 30).
+
+- **The defect.** "Morphine (mg, epidurally) 6t1 5tl 521 6tl NS": the
+  sign is a "t" in three cells, and in two of them the SD's "1" came
+  through as an "l"; the third cell has a "2" for the sign before a
+  one-digit mean. The letter-fused form wants digits after the sign, so
+  the two "l" cells were not cells; the digit-fused split wants a
+  two-digit mean; the row had one witness and was lost whole while every
+  other row of the table read.
+- **What changed.** In `.ppRepairFusedSigns()`: (1) a fused word whose
+  SD is digits and the look-alikes l, I, O (at least one) is a cell when
+  a plain letter-fused cell on the same line carries the same sign
+  letters - the same confusion twice; alone, "5ml" in a label stays a
+  word. The look-alikes are written as their digits at the split.
+  (2) The integer digit-fused split takes a one-digit mean when every
+  letter-fused witness's mean is one digit, two or more of them stand on
+  the line, no genuine glyph does, no bare number stands beside the
+  candidate (a count row - "Smokers (n) 3i1 2i1 120 4" - keeps its 120),
+  and the SD is not nought; the mean-range check of issue 141 applies as
+  before.
+- **On the page.** Morphine 6 +/- 1, 5 +/- 1, 5 +/- 1, 6 +/- 1 in the
+  four arms of 30; 24 cells where there were 20.
+- **Tests** (`tests/testthat/test-look-alike-sd-in-a-fused-cell.R`): the
+  repair on the paper's Morphine row (four cells; "5ml" beside genuine
+  cells left alone), and a rebuilt page of the paper's shape reading the
+  Morphine row's means and SDs (4 of 7 expectations fail on the unfixed
+  code). The digit-fused, integer digit-fused (incl. its count-row
+  guard), fused-in-cell-word, two-witness, colon-ratio, slot and Loadsman
+  layout tests still pass.
+
+---
+
 ## 144. A number the text layer has broken is no arm size
 
 **Status: fixed on `fix/broken-number-is-no-arm-size`, 2026-09-27**, from
