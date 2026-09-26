@@ -3183,6 +3183,15 @@ parseBaselineTableHeuristics <- function(pdfFile,
   strongOrdered <- isStrong[ord]
 
   tried <- 0L
+  # A TRANSPOSED TABLE IS REWRITTEN THE WAY THE WALKER READS (issue 139):
+  # see .ppTransposeBlock() in pageLayout.R
+  cand <- lapply(cand, function(cc) {
+    tb <- tryCatch(.ppTransposeBlock(cc$lines, cc$capIdx), error = function(e) NULL)
+    if (is.null(tb)) return(cc)
+    cc$lines <- tb$lines; cc$lineTexts <- tb$lineTexts; cc$capIdx <- tb$capIdx
+    cc$transposed <- TRUE
+    cc
+  })
   best <- NULL; bestScore <- -Inf; bestCand <- NULL; bestStrong <- FALSE
   # A straddle (see .ppSetAsideStraddles) is parsed like any candidate but
   # DEFERRED: it competes only if its twin - the single-table reading of
@@ -3205,7 +3214,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
                       paste0("column ", cc$band) else "full width",
                     if (!is.na(cc$caption))
                       paste0(", \"", substr(.ppSquish(cc$caption), 1, 50), "\"")
-                    else "", ")")
+                    else "",
+                    if (isTRUE(cc$transposed)) "; groups down the side, read transposed" else "", ")")
     res <- tryCatch(
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),
