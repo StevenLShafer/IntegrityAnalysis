@@ -132,6 +132,31 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 135. A per-cell n in brackets may carry a footnote mark, and may end the cell
+
+**Status: fixed on `fix/bracket-n-with-footnote-mark`, 2026-09-27**, from
+the corpus session's batch 28 AG6 (CJA 1999, PMID 10522590; two arms of
+40).
+
+- **The defect.** "Last menstrual cycle (days) 16 <bullet> 3[35]* 16
+  <bullet> 3[35]*": the per-cell n of issue 109 in brackets after the
+  SD, with the paper's footnote star after the bracket. Issue 109's
+  pattern is anchored at the word's end and missed the star; and it
+  looked only at a word spanning the whole cell or one after it, while
+  here the bracket sits in the word that ENDS the cell ("3[35]*" after
+  "16 <bullet>"). The row took the arm's 40 for its N.
+- **What changed.** The bracket may be followed by a footnote mark
+  (a star, a letter a to d, a dagger, a double dagger or a section
+  sign), and the word that ends the cell is searched as well as the
+  words spanning or following it.
+- **On the page.** The menstrual row reads 16 +/- 3 with N 35 and 35;
+  nothing else moves.
+- **Tests** (`tests/testthat/test-bracket-n-with-footnote-mark.R`): a
+  rebuilt page with "16 +/- 3[35]*" in both arms gives the row N 35/35
+  and the rows above the arm's 40 (1 of 5 expectations fails on the
+  unfixed code). The bracket per-cell n and Loadsman layout tests still
+  pass.
+
 ## 128. A column that shares no line with another column is not an arm
 
 **Status: fixed on `fix/isolated-column-is-not-an-arm`, 2026-09-27**, from
