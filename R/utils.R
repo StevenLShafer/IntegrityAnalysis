@@ -1028,8 +1028,15 @@
         if (k < length(s) && isNum(s[k + 1L])) s0 <- c(s0, s[k + 1L])
       }
       dm0 <- unique(.ppFusedDecimals(m0)); ds0 <- unique(.ppFusedDecimals(s0))
-      if (length(dm0) != 1L || length(ds0) != 1L || dm0 < 1L || ds0 < 1L) next
-      digitRe0 <- sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
+      if (length(dm0) != 1L || length(ds0) != 1L) next
+      # ... at integer precision the second witness is a word of digits alone
+      # of the right length (issue 141): "98t26 99526 102232 95528"
+      digitRe0 <- if (dm0 >= 1L && ds0 >= 1L)
+        sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
+      else if (dm0 == 0L && ds0 == 0L && length(unique(nchar(s0))) == 1L)
+        sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", unique(nchar(s0)))
+      else NULL
+      if (is.null(digitRe0)) next
       if (sum(hit) + sum(glyph) + sum(grepl(digitRe0, s, perl = TRUE)) < 2L) next
     }
     # the line's precision, from its letter-fused cells and its glyph cells

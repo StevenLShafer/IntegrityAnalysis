@@ -132,6 +132,38 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 141. The digit-fused sign at integer precision
+
+**Status: fixed on `fix/digit-fused-sign-at-integer-precision`,
+2026-09-27**, from the corpus session's arm-count audit (batch 28 note c;
+BJA 1998, PMID 9689270; four arms of 30).
+
+- **The defect.** "Age (years) 45i8 44i7 4329 4428", "Height (cm) 154i6
+  153i4 15626 15625", "Duration of anaesthesia (min) 98t26 99526 102232
+  95528": whole-number cells, the sign a letter in some and a digit in
+  the rest. Issue 90's digit-fused rule wants a decimal point on each
+  side to know where the sign digit sits; with none, the words stayed
+  numbers, and Age, Height and Weight read two arms of four.
+- **What changed.** In the fused-sign repair, when the line's
+  letter-fused cells are whole numbers, they say how many digits the SD
+  has (one on Age, two on the durations), and a word of digits alone
+  splits before that many and one: "4329" is 43, a 2 for the sign, 9;
+  "102232" is 102, a 2, 32. The mean must have two digits or more and
+  lie within a factor of three of the letter-fused means - a bare count
+  on such a line ("120") is not touched. Issue 137's second-witness
+  count takes the integer form too, so a line with one letter-fused
+  cell and digit-fused words beside it ("98t26 99526 102232 95528") is
+  read.
+- **On the page.** Age, Height, Weight and both durations in four arms
+  of 30; 20 cells.
+- **Tests** (`tests/testthat/test-digit-fused-sign-at-integer-precision.R`):
+  the fused-sign repair on the Age, Height and anaesthesia lines (split)
+  and a count row with letter-fused cells beside a bare "120" (left); a
+  rebuilt page with letter- and digit-fused whole-number cells reads
+  every arm (8 of 10 expectations fail on the unfixed code). The
+  two-witness, glued-soup, digit-fused, colon-ratio, slot and Loadsman
+  layout tests still pass.
+
 ## 137. One letter-fused cell and one digit-fused cell are two witnesses
 
 **Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
