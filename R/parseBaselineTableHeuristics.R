@@ -1931,7 +1931,9 @@
     # rule below, as any wrapped second line is.
     if (!nzchar(.ppSquish(rawLabel)) && !is.na(catHeaderAt) && catHeaderAt == i - 1L &&
         !is.na(catHeader) && i - 1L > capIdx) {
-      rawLabel <- lineTexts[i - 1L]
+      # the heading as assembled - both lines of a wrapped one (issue 159;
+      # CodeRabbit on PR #471) - not the last line alone
+      rawLabel <- catHeader
       say("  Row label \"", .ppSquish(rawLabel), "\" taken from the line above its values.")
       catHeader <- NA_character_; catHeaderPct <- FALSE; catHeaderNPct <- FALSE
       catHeaderAt <- NA_integer_

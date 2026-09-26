@@ -38,3 +38,30 @@ test_that("a count heading wrapped over two lines heads its levels, which read a
   expect_false(any(grepl("^Indomethacin|^Pentazocine", cont$ROW)))
   expect_identical(length(unique(cont$ROW)), 3L)
 })
+
+# A wrapped NAME over a label-less value line takes both lines as its name
+# (CodeRabbit on PR #471): "Duration of active" / "phase" / "5.25 (0.86)
+# 5.31 (0.85)" is one variable, "Duration of active phase".
+wrappedNamePdf <- function(file = file.path(tempdir(), "wrappedName.pdf")) {
+  vx <- c(270, 375)
+  w <- function(x, y, text) list(x = x, y = y, text = text, adj = 0)
+  row <- function(y, label, cells) c(list(w(53, y, label)), lapply(1:2, function(k) w(vx[k], y, cells[k])))
+  cells <- c(
+    list(w(53, 60, "Table 1. Baseline characteristics (n = 50 in each group).")),
+    list(w(vx[1], 90, "Ramosetron"), w(vx[2], 90, "Placebo")),
+    row(114, "Age, y", c("45 (8)", "47 (9)")),
+    list(w(53, 132, "Duration of active")),
+    list(w(53, 144, "phase, h")),
+    list(w(vx[1], 156, "5.25 (0.86)"), w(vx[2], 156, "5.31 (0.85)")),
+    row(178, "Weight, kg", c("53 (12)", "55 (11)")),
+    list(w(53, 206, "Values are mean (SD).")))
+  makeTablePdf(file, cells)
+}
+
+test_that("a label-less value line under a two-line name takes both lines as its name", {
+  r <- parseBaselineTableHeuristics(wrappedNamePdf(), quiet = TRUE)
+  cont <- r$data[!is.na(r$data$MEAN), ]
+  expect_true(any(grepl("^Duration of active phase", cont$ROW)))
+  expect_identical(cont$MEAN[grepl("^Duration of active phase", cont$ROW)], c(5.25, 5.31))
+  expect_false(any(grepl("^phase", cont$ROW)))
+})
