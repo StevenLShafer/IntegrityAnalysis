@@ -159,6 +159,83 @@ arms of 60).
 
 ---
 
+## 150. The caption's and footnote's spellings of "n per group"
+
+**Status: fixed on `fix/caption-count-per-group`, 2026-09-26**, from the
+corpus session's batch 31 (Clin Ther 2014, PMID 24672087, five arms of
+20; Clin Ther 2004, PMID 15336470, five of 20; Clin Ther 2003, PMID
+14749148, four of 25; A&A 1998, PMID 9768766, three of 60; A&A 1997, PMID
+9322479, six of 45).
+
+- **The defect.** Every cell read and no arm had an N: the only size on
+  the page is the caption's or footnote's - "(n = 20 patients per
+  group)", "(n = 20 patients per study group)", "(N = 100; n = 25 in each
+  group)", "n = 60 per group.", "n = 45in each group" - and issue 99's
+  statement pattern wanted "(n = 20" directly inside its own bracket,
+  followed by "of each" / "in each group" / "per group" and nothing else.
+- **What changed.** The pattern in `.ppGroupsOfN()` (armNRecovery.R)
+  takes the bracket as optional on either side, a noun after the number
+  (patients, subjects, participants, women, men, children, infants,
+  animals, dogs, rats), a qualifier before "group" (study, treatment), and
+  a lost space between the number and "in each"; the power-calculation
+  guard applies as before, and a bare "(n = 20)" beside one arm's name is
+  still no statement for every arm.
+- **On the pages.** The five papers' arms take the caption's or
+  footnote's size where the table printed none.
+- **Tests** (`tests/testthat/test-caption-count-per-group.R`): the
+  statement on six spellings (n 20, group count unstated), the power
+  calculation and the bare "(n = 20)" refused; a rebuilt page whose only
+  sizes are the caption's "(n = 20 patients per group)" giving four arms
+  of 20 (7 of 10 expectations fail on the unfixed code). The n-of-each, arm-N recovery, deterministic arm-N,
+  fraction and Loadsman layout tests still pass.
+
+---
+
+## 149. A "Mean (SD)" row: its label declares the notation, and its SDs' look-alike letters are digits
+
+**Status: fixed on `fix/mean-sd-label-declares-the-notation`, 2026-09-26**,
+from the corpus session's batch 31 part 3 AL7 and AL8 (Clin Ther 2003,
+PMID 12809962, three arms of 25; Clin Ther 2004, PMID 15336470, five arms
+of 20).
+
+- **The defect.** The Clinical Therapeutics tables set each variable as a
+  heading ("Age, y") over two sub-rows, "Mean (SD) 53 (6) 53 (7) 54 (7)"
+  and "Range 41-65 ...". The OCR gives "Mean (SO)" as often as "Mean
+  (SD)", the footnote is silent, and the "a (b)" decision fell through
+  to n (%) or a category level called "Mean": the arms' values became a
+  level column named Mean and the table failed with "two columns
+  normalize to the same name: MEAN". Only the rows the decision happened
+  to get right came through (12809962: Age alone).
+- **What changed.** Two things. (1) `.ppRepairLookAlikeBracketSd()`
+  (utils.R), run with the text-layer repairs: on a row whose label begins
+  with "Mean", a bracket group of one to four characters from the digits
+  and the look-alikes l, I, i, L, t, | (for 1) and O, o (for 0), at least
+  one of them a letter, following a bare number, is that number's SD -
+  "(I 0)" becomes "(10)", "(L I)" and "(l i)" "(11)", "(t2)" "(12)",
+  "(tt)" "(11)" - and the group becomes one word. "(I)" on an ASA row,
+  "(n)" and "(no)" on any row are left alone. (2) A label that begins
+  with "Mean" - "Mean", "Mean (SD)", "Mean (SO)", "Mean +/- SD" - says
+  what its cells are before any other evidence is heard: the row reads as
+  mean (SD) and the existing statistic-row rule names it after its
+  heading.
+- **On the pages.** 12809962: Age, Height and Body weight as printed with
+  N 25 (9 cells; main read Age alone and put Height's means in a column
+  named Mean). 15336470: its "Mean (SD)" rows read as such; its arm sizes
+  are the caption's "n = 20 patients per study group", a later issue.
+- **Tests** (`tests/testthat/test-mean-sd-label-declares-the-notation.R`):
+  the repair on a Mean row carrying every look-alike spelling (four
+  groups read; an ASA row's "(I)" and a Mean row's "(n)" left alone), and
+  a rebuilt page of the shape - "Mean (SO)" and "Mean (SD)" sub-rows
+  with "(I 0)", "(L I)", "(I I)", "(t2)", "(l i)" SDs and Range sub-rows
+  under three headings, a count row beneath - reading three arms of 25
+  with Age, Height and Body weight as mean (SD), no row or column named
+  Mean (3 expectations fail and 1 errors on the unfixed code, which lacks
+  the repair). The
+  percent-block, Loadsman-layout, manuscript-layout, per-cell-n and
+  size-sign tests still pass.
+
+---
+
 ## 148. A size group without its sign, or with a hyphen for it
 
 **Status: fixed on `fix/size-group-without-its-sign`, 2026-09-27**, from the
