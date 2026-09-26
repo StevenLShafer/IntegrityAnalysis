@@ -810,6 +810,18 @@
                     nrow(lines[[i]]) >= 3L && nTok[i] == 0L, logical(1))]
   if (!length(h)) return(NULL)
   h <- h[1]
+  # THE HEAD MUST HEAD THE BLOCK (2026-09-27, ISSUES.md issue 139, second
+  # cut; Fujii 2007, PMID 17523738, the corpus session's batch 30 AI1). A
+  # page with Table I (variables down the side, four arms of 30 across)
+  # and, further down the same block, Table II with "Group Grading of pain
+  # ... Pain score" across the top and the groups down the side. The
+  # group-word line of Table II was found deep in Table I's block and the
+  # whole block was rewritten from Table II's rows: sixteen cells of Table
+  # I became four false cells from Table II's counts. A table whose groups
+  # run down the side names them in its HEAD, before any data row; a
+  # group-word line that follows a line carrying two or more numeric cells
+  # heads a later table, and this block is not transposed.
+  if (h > capIdx + 1L && any(nTok[seq(capIdx + 1L, h - 1L)] >= 2L)) return(NULL)
   # the data rows: consecutive lines after the head block with two or more
   # cells and a word for a label; the head block is every line before them
   firstData <- h + 1L
