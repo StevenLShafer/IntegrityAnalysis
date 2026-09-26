@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 140. Two more ways a decimal number comes apart in a text layer
+
+**Status: fixed on `fix/lost-decimal-point`, 2026-09-27**, from the corpus
+session's arm-count audit (batch 28 note c): Anesth Analg 1997, PMID
+9067046 (four arms; Height three of four) and Anesth Analg 1999, PMID
+10201761 (three arms; Duration of operation two of three).
+
+- **The defect.** (b) The point itself lost: "Height(cm) 154.4 <bullet>
+  5.8 152 9 <bullet> 4.5 154.8 <bullet> 5.1" - the mean "152.9" as
+  "152" and "9", three points apart, before the sign; the cell was two
+  bare numbers and a sign and read nothing. (c) The point kept with the
+  SECOND part, inside a bracket: "175.9 (41 .l) 173.6 (44.5)" - "(41"
+  and ".l)" touching, the OCR's l for the 1; the cell's SD was no
+  number and the first arm's cell was lost.
+- **What changed.** `.ppRepairSplitDecimals()` (issue 127) reads two
+  more forms. A word of two or more digits followed within three points
+  by a one-digit word and then a sign glyph, on a line whose other means
+  carry one decimal, is that mean with its point restored ("152.9"). A
+  bracket-opening digits word followed within two points by a word of a
+  point, a digit or its look-alike and the closing bracket is that SD
+  ("(41.1)"). Two whole numbers before a sign on a line of whole numbers
+  are left as two numbers.
+- **On the page.** 9067046's Height reads 154.4 +/- 5.8, 152.9 +/- 4.5,
+  154.8 +/- 5.1, 155.1 +/- 5.8 (24 cells); 10201761's Duration of
+  operation reads 175.9 +/- 41.1, 173.6 +/- 44.5, 177.1 +/- 39.4 (15
+  cells).
+- **Tests** (`tests/testthat/test-lost-decimal-point.R`): the helper on
+  the Height line (joined), the bracketed SD (joined) and two whole
+  numbers before a sign on a line of whole numbers (left); a rebuilt page
+  reads the mean whose point was lost (5 of 7 expectations fail on the
+  unfixed code). The split-decimal, digit-colon, stray-dot, "-I-", slot,
+  tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman
+  layout tests still pass.
+
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
