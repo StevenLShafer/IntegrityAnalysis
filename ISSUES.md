@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 153. A line without a letter or a digit is junk
+
+**Status: fixed on `fix/punctuation-rule-line-is-junk`, 2026-09-26**, from
+the corpus session's batch 31 part 3 AL11 (Clin Ther 2010, PMID 20974320;
+three arms of 30).
+
+- **The defect.** The scan's text layer renders the table's printed rule
+  as fifty-four fragments of punctuation on one line between the header
+  and the first row. Fifty-four words with no number was "sustained
+  prose" to the block-ending rule, and the block ended there: three arms
+  named and sized, not one cell read; Table II's counts were read as
+  mean (SD) instead.
+- **What changed.** A line of six or more fragments without a letter or a
+  digit, with at most two words among them, is skipped (kind "junk")
+  before any other test; and the sustained-prose test counts the words
+  that carry a letter or a digit, not the fragments.
+- **On the page.** Three arms of 30 with Age, Height, Weight, both
+  durations, fentanyl and the midazolam dose (the "(SD) [range]" cells'
+  ranges fall away as the bracketed extras they are), 22 cells; main read
+  Table II's counts as mean (SD) instead.
+- **Tests** (`tests/testthat/test-punctuation-rule-line-is-junk.R`): a
+  rebuilt page with the rule line of fragments between "(n = 30)" and
+  the rows reads three arms of 30 and three variables (the test errors on the
+  unfixed code, which finds no usable table). The
+  stratum-header, Loadsman-layout and manuscript-layout tests still pass.
+
+---
+
 ## 150. The caption's and footnote's spellings of "n per group"
 
 **Status: fixed on `fix/caption-count-per-group`, 2026-09-26**, from the
