@@ -2490,6 +2490,30 @@
           m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*[*a-d\u2020\u2021\u00a7]?\\s*$", d$text[w], perl = TRUE))
           if (length(m) && nzchar(m)) { k <- as.integer(gsub("\\D", "", m)); break }
         }
+        # A BRACKET THE FOOTNOTE CALLS THE EXCLUDED IS THE ARM LESS THAT COUNT
+        # (2026-09-27, ISSUES.md issue 162; Clin Ther 2004, PMID 15336470,
+        # the corpus session's batch 34 AN2; five arms of 20). "Last
+        # menstrual cycle, mean (SD), d 16 (3) [10] ... 16 (3) [9]" with the
+        # footnote "postmenopausal patients (brackets) were excluded": the
+        # bracket counts the patients the cell leaves OUT, and the cell's
+        # own n is the arm's 20 less it - 10, 9, 11 - not the 9 the rule
+        # above took. When a footnote says the brackets were excluded and
+        # nothing on the page calls them "[n]", the bracket is subtracted
+        # from the arm's known N; with the N unknown the bracket is left as
+        # nobody's n.
+        # (the footnote may be a label line beneath the last row rather than
+        # a stop line - "~No significant ... / tpo~menopausal patients
+        # (brackets) were excluded." under an OCR'd marker - so the lines
+        # beneath the last data row are read with the footnote evidence)
+        tailTxt <- c(footnoteInfo,
+                     if (lastData < length(lineTexts)) lineTexts[seq(lastData + 1L, min(length(lineTexts), lastData + 6L))])
+        if (!is.na(k) && length(tailTxt) &&
+            any(grepl("(?i)bracket", tailTxt, perl = TRUE)) &&
+            any(grepl("(?i)\\bexclud", tailTxt, perl = TRUE)) &&
+            !any(grepl("\\[\\s*[nN]\\s*\\]", c(tailTxt, rawLabel), perl = TRUE))) {
+          aN <- armN[arms[j]]
+          k <- if (!is.na(aN) && aN > k) aN - k else NA_integer_
+        }
         # ... OR IN PARENTHESES AS "(n = 38*)" RIGHT AFTER THE CELL (issue
         # 131), read and stripped at classification and kept by the cell's
         # left edge in cellNByLine

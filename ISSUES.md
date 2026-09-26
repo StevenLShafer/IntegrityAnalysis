@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 162. A bracket the footnote calls the excluded is the arm less that count
+
+**Status: fixed on `fix/bracket-count-is-n-only-when-said`, 2026-09-27**,
+from the corpus session's batch 34 AN2 (Clin Ther 2004, PMID 15336470;
+five arms of 20).
+
+- **The defect.** "Last menstrual cycle, mean (SD), d 16 (3) [10] 16 (3)
+  [11] ... 16 (3) [9]" with the footnote "postmenopausal patients
+  (brackets) were excluded": issue 109's rule took each bracket for the
+  cell's own n, as it is on the pages that print "[n]" (PMIDs 9924225,
+  10386280), and the fourth cell went out with N 9 where the page means
+  20 less 9.
+- **What changed.** When a footnote says the brackets were excluded and
+  nothing on the page calls them "[n]", the bracket is subtracted from
+  the arm's known N; with the N unknown the bracket is nobody's n. Pages
+  that say "[n]", and pages that say nothing, read as before.
+- **On the page.** The fourth menstrual cell, whose bracket the text layer
+  gives as digits ("[9]"), takes N 11 (the arm's 20 less the excluded);
+  the other four brackets come through as look-alikes ("[t0]", "[t t]")
+  and those cells keep the arm's 20 as before.
+- **Tests** (`tests/testthat/test-bracket-count-excluded.R`): a rebuilt
+  page of the shape reads the menstrual row's four cells with N 10 / 9 /
+  11 / 10 and the other rows with the arm's 20 (1 of 4 expectations fails
+  on the unfixed code). The per-cell-n
+  (bracket and parenthesis), stratum and Loadsman layout tests still pass.
+
+---
+
 ## 160. A row labelled as a continuous variable closes an open count heading
 
 **Status: fixed on `fix/continuous-label-closes-a-count-heading`,
