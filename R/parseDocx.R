@@ -139,10 +139,8 @@
   # in "xml" and legitimately carry long base64 field-data runs, so the
   # widened xlsx scan refused real manuscripts (security screen
   # 2026-09-11-2117, F1). officer, not openxlsx, reads the docx.
-  if (!isTRUE(.apiZipInflationOK(docxFile, "docx")))
-    stop("the Word file's archive declares more than ",
-         round(.apiMaxUncompressed / 1024^2), " MB uncompressed, or is not ",
-         "a Word archive, and was not read", call. = FALSE)
+  if (!is.null(zipWhy <- .apiZipInflationOK(docxFile, "docx", why = TRUE)))
+    stop("the Word file was not read: ", zipWhy, call. = FALSE)   # the gate's own reason (issue 164)
   x <- officer::read_docx(docxFile)
   body <- xml2::xml_find_first(x$doc_obj$get(), "//w:body")
   kids <- xml2::xml_children(body)

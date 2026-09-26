@@ -218,9 +218,8 @@
     # the decompression preflight lives HERE, so every caller of the wide
     # reader is behind it - the app used to call this before its own
     # preflight (screen 2026-09-05-2117 F2)
-    if (!.apiZipInflationOK(path, ext))
-      stop("the workbook expands to more than ", round(.apiMaxUncompressed / 1024^2),
-           " MB when decompressed and was not read", call. = FALSE)
+    if (!is.null(zipWhy <- .apiZipInflationOK(path, ext, why = TRUE)))
+      stop("the workbook was not read: ", zipWhy, call. = FALSE)   # the gate's own reason (issue 164)
     sheets <- openxlsx::getSheetNames(path)
     if (length(sheets) > .iaSheetCountCap)
       stop("the workbook has more than ", .iaSheetCountCap, " sheets and was not read", call. = FALSE)

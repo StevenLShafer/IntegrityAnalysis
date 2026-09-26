@@ -992,10 +992,10 @@ app_server <- function(input, output, session) {
         # declares gigabytes is refused before openxlsx inflates it -
         # and the same read caps as .wideRawCells, so a sparse sheet
         # cannot expand into a table the gates never see.
-        if (ext == "xlsx" && !.apiZipInflationOK(path, ext))
-          stop("the workbook expands to more than ",
-               round(.apiMaxUncompressed / 1024^2),
-               " MB when decompressed and was not read", call. = FALSE)
+        # ... and the refusal names the gate (issue 164): "Could not read
+        # X: it has 600 zip entries; ..."
+        if (ext == "xlsx" && !is.null(zipWhy <- .apiZipInflationOK(path, ext, why = TRUE)))
+          stop(zipWhy, call. = FALSE)
         capped <- function(d) {
           if (nrow(d) > .iaSheetRowCap || ncol(d) > .iaSheetColCap)
             stop(.iaSheetCapMessage("the sheet"), call. = FALSE)

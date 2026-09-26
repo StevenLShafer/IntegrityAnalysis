@@ -92,7 +92,7 @@ test_that("a marker cell over the 128 KiB text bound is refused before the read 
   fx2 <- bigMarkerXlsx(2e6, character(0))                   # 2 MB cell
   r2 <- .apiReadUpload(fx2$path, "big2mb.xlsx")
   expect_false(isTRUE(r2$ok))
-  expect_match(r2$reasons, "100 MB", fixed = TRUE)           # .apiZipInflationOK refuses, before any parse
+  expect_match(r2$reasons, "was not read: it", fixed = TRUE)   # .apiZipInflationOK refuses before any parse and names its gate (issue 164) - here the ratio gate, since 2 MB of one letter compresses 219-fold
 })
 
 test_that("a marker cell within the 16 KiB bound is read and takes a distinct counter label (screen 1407 F1, through the route)", {

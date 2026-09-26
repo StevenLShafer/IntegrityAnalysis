@@ -643,10 +643,21 @@
                                    # per entry (the comment said per-entry; the code
                                    # never was - security audit 2026-09-10)
 
-.apiZipInflationOK <- function(path, ext = tools::file_ext(path)) {
+# EVERY GATE NAMES ITS OWN REASON (2026-09-27, ISSUES.md issue 164; John
+# Loadsman's six-sheet workbook, via the corpus session). The preflight
+# returned one FALSE for eight different refusals and every caller worded
+# it as the decompression bomb, so a 288 KB workbook was reported as
+# "expands to more than the 100 MB limit". With why = TRUE the function
+# returns NULL when the archive passes and otherwise one sentence, in
+# the user's words, naming the gate that refused it ("it has 600 zip
+# entries; ...", "its shared strings ... exceed ..."); the logical form
+# is unchanged for the tests and the tripwire that pin it.
+.apiZipInflationOK <- function(path, ext = tools::file_ext(path), why = FALSE) {
   ext <- tolower(ext)
+  pass <- function() if (why) NULL else TRUE
+  refuse <- function(reason) if (why) reason else FALSE
   # csv is not an archive - nothing to preflight
-  if (ext == "csv") return(TRUE)
+  if (ext == "csv") return(pass())
   info <- tryCatch(utils::unzip(path, list = TRUE), error = function(e) NULL)
   if (is.null(info) || !nrow(info)) {
     # Not readable as a zip. .xlsx and .docx MUST be zips, so an
@@ -654,25 +665,33 @@
     # re-review found this branch FALLING OPEN for xlsx, 2026-08-26).
     # .xls is OLE2 rather than zip, so it legitimately lands here; bound
     # it by file size instead, since there is no directory to inspect.
-    if (ext %in% c("xlsx", "docx")) return(FALSE)
-    return(file.size(path) <= .apiMaxBytesOnDisk)
+    if (ext %in% c("xlsx", "docx"))
+      return(refuse(paste0("it is not a readable .", ext, " archive")))
+    if (file.size(path) > .apiMaxBytesOnDisk)
+      return(refuse(paste0("it is larger than the ", round(.apiMaxBytesOnDisk / 1024^2), " MB limit")))
+    return(pass())
   }
-  if (nrow(info) > .apiMaxZipEntries) return(FALSE)
+  if (nrow(info) > .apiMaxZipEntries)
+    return(refuse(paste0("it has ", nrow(info), " zip entries; a workbook has at most ", .apiMaxZipEntries)))
   # Duplicate entry names: unz() (this gate's reader) returns the FIRST
   # match, but openxlsx extracts with utils::unzip, whose loop writes
   # every entry so the LAST wins - so a bomb hidden in a second entry of
   # the same name is scanned as the benign first and read as the bomb
   # (security screen 2026-09-11-2117, F4). No writer produces duplicate
   # names; refuse them (applies to every archive, not only xlsx).
-  if (anyDuplicated(info$Name)) return(FALSE)
+  if (anyDuplicated(info$Name)) return(refuse("it has two zip entries with the same name"))
   declared <- sum(info$Length, na.rm = TRUE)
-  if (declared > .apiMaxUncompressed) return(FALSE)
+  if (declared > .apiMaxUncompressed)
+    return(refuse(paste0("it expands to more than the ", round(.apiMaxUncompressed / 1024^2),
+                         " MB limit when decompressed")))
   # The declared sizes are attacker-controlled, so ALSO bound the
   # inflation ratio against the real file size on disk: a directory that
   # under-declares while the stream over-inflates still cannot claim a
   # plausible ratio (re-review, H3).
   onDisk <- max(file.size(path), 1)
-  if (declared / onDisk > .apiMaxZipRatio) return(FALSE)
+  if (declared / onDisk > .apiMaxZipRatio)
+    return(refuse(paste0("it declares ", round(declared / onDisk), " times its size on disk when ",
+                         "decompressed; the limit is ", .apiMaxZipRatio)))
   if (ext == "xlsx") {
     # xl/workbook.xml is bounded BEFORE any getSheetNames() call (security
     # screen 2026-09-11-1913, F1): openxlsx's getSheetNames runs a regex
@@ -701,9 +720,12 @@
     # routed here with a "word/workbook.xml").
     wbHits <- info$Name[grepl("workbook.xml$", info$Name)]   # openxlsx's OWN (unescaped) selector
     if (length(wbHits)) {
-      if (length(wbHits) != 1L || !identical(wbHits, "xl/workbook.xml")) return(FALSE)
-      if (isTRUE(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes)) return(FALSE)
-      if (!.apiWorkbookXmlBounded(path, wbHits)) return(FALSE)
+      if (length(wbHits) != 1L || !identical(wbHits, "xl/workbook.xml"))
+        return(refuse("it does not have the single xl/workbook.xml part a workbook has"))
+      if (isTRUE(info$Length[match(wbHits, info$Name)] > .iaMaxWorkbookXmlBytes) ||
+          !.apiWorkbookXmlBounded(path, wbHits))
+        return(refuse(paste0("its workbook part is larger than the ", .iaMaxWorkbookXmlBytes %/% 1024L,
+                             " KB a workbook's is")))
     }
     # The workbook RELATIONSHIPS part is bounded the same way (security
     # screen 2026-09-11-2117, F3): read.xlsx reads xl/_rels/workbook.xml
@@ -716,15 +738,19 @@
     # real rels for ten sheets is one or two KB.
     relsHits <- info$Name[grepl("workbook.xml.rels$", info$Name)]   # openxlsx's OWN selector
     if (length(relsHits)) {
-      if (length(relsHits) != 1L || !identical(relsHits, "xl/_rels/workbook.xml.rels")) return(FALSE)
-      if (isTRUE(info$Length[match(relsHits, info$Name)] > .iaMaxWorkbookXmlBytes)) return(FALSE)
-      if (!.apiWorkbookXmlBounded(path, relsHits)) return(FALSE)
+      if (length(relsHits) != 1L || !identical(relsHits, "xl/_rels/workbook.xml.rels"))
+        return(refuse("it does not have the single xl/_rels/workbook.xml.rels part a workbook has"))
+      if (isTRUE(info$Length[match(relsHits, info$Name)] > .iaMaxWorkbookXmlBytes) ||
+          !.apiWorkbookXmlBounded(path, relsHits))
+        return(refuse(paste0("its workbook relationships part is larger than the ",
+                             .iaMaxWorkbookXmlBytes %/% 1024L, " KB a workbook's is")))
     }
     # ...and the largest cell text openxlsx would read is bounded, so its
     # per-string quadratic cannot be reached (screen 2026-09-11-1455, F1).
-    if (!.apiXlsxStringRunOK(path, info$Name)) return(FALSE)
+    sr <- .apiXlsxStringRunOK(path, info$Name, why = TRUE)
+    if (!is.null(sr)) return(refuse(sr))
   }
-  TRUE
+  pass()
 }
 
 # FALSE when the named archive entry's actual (inflated) bytes exceed
@@ -759,8 +785,27 @@
 # through an inflating connection in bounded chunks, and the scan bails
 # at the first over-long run or "<!", so a crafted cell is detected
 # within one chunk and never handed to openxlsx.
+# THE PER-SHEET DIVISION APPLIES TO THE SHARED STRINGS, NOT TO EVERY PART
+# (2026-09-27, ISSUES.md issue 164; John Loadsman's Diskapi_baseline_
+# tables.xlsx, 288 KB on disk, 1.84 MB inflated, six sheets, refused; the
+# corpus session's report). The aggregate bound counted every non-"<"
+# byte of every XML part - the worksheets' own markup (cell references,
+# style indices, the <v> values) included, not only text - AND divided
+# the budget by the sheet count, so a six-sheet workbook whose shared
+# strings were 22 KB was refused on 1.6 MB of worksheet markup against
+# a 1.4 MB budget, while a one-sheet export of the same data six times
+# larger passed. The two bounds are now what their screens meant:
+#   - the AGGREGATE (screen 1602) is the "<"-free bytes over every part
+#     against the whole budget, since each worksheet is parsed once;
+#   - the PER-SHEET multiplier (screens 1655 and 1730) applies to the
+#     shared-string parts alone - the parts openxlsx re-parses on every
+#     sheet read - against the budget divided by the declared sheets.
+# The shared-string parts are selected by openxlsx's own unescaped
+# pattern ("sharedStrings.xml$", the dot a wildcard, case ignored), so a
+# renamed part it would read is one this bound reaches (screen 2033).
+# With why = TRUE the function returns NULL or the reason (issue 164).
 .apiXlsxStringRunOK <- function(path, names, cap = .iaMaxXlsxStringRun,
-                                capTotal = .iaMaxXlsxStringBytes) {
+                                capTotal = .iaMaxXlsxStringBytes, why = FALSE) {
   # EVERY .xml part is scanned, not just the canonically-named
   # sharedStrings and worksheets (security screen 2026-09-11-2033, F1).
   # openxlsx selects the shared-string part by an unescaped "sharedStrings
@@ -788,39 +833,55 @@
   # workbook declaring ten sheets re-parses the strings ten times while
   # its part count is one (screen 2026-09-11-1730, F1). A real one-sheet
   # table keeps the full budget; the liar's declaration divides its own.
-  capTotal <- capTotal %/% max(1L, .apiXlsxSheetCount(path))
+  sheets <- max(1L, .apiXlsxSheetCount(path))
+  capShared <- capTotal %/% sheets                                    # the shared strings' budget, per sheet read
   lt <- as.raw(0x3c); bang <- as.raw(0x21)                           # "<" and "!"
   total <- 0                                                          # "<"-free bytes over ALL parts
+  shared <- 0                                                         # ... and over the shared-string parts
+  mb <- function(x) sprintf("%.1f MB", x / 1048576)
+  runReason <- paste0("it holds a cell whose text is longer than the ", cap %/% 1024L, " KB limit")
   for (nm in parts) {
     con <- tryCatch(unz(path, nm, open = "rb"), error = function(e) NULL)
     if (is.null(con)) next
-    run <- 0L; ok <- TRUE; endsWithLt <- FALSE
+    isShared <- grepl("sharedStrings.xml$", nm, ignore.case = TRUE)   # openxlsx's OWN (unescaped) selector
+    run <- 0L; bad <- NULL; endsWithLt <- FALSE
     repeat {
       b <- readBin(con, "raw", n = 1048576L)
       if (length(b) == 0) break
-      if (endsWithLt && b[1] == bang) { ok <- FALSE; break }         # "<!" split across the chunk boundary
+      if (endsWithLt && b[1] == bang) { bad <- "it carries a markup declaration in a text part"; break }   # "<!" split across the chunk boundary
       pos <- which(b == lt)
       # a "<" immediately followed by "!" is a markup declaration (CDATA,
       # comment); refuse it - text nodes never begin one
       inner <- pos[pos < length(b)]
-      if (length(inner) && any(b[inner + 1L] == bang)) { ok <- FALSE; break }
-      total <- total + (length(b) - length(pos))                     # every non-"<" byte is cell text
-      if (total > capTotal) { ok <- FALSE; break }                   # the AGGREGATE bound (screen 1602 F1)
+      if (length(inner) && any(b[inner + 1L] == bang)) { bad <- "it carries a markup declaration in a text part"; break }
+      text <- length(b) - length(pos)                                # every non-"<" byte may be cell text
+      total <- total + text
+      if (total > capTotal) {                                        # the AGGREGATE bound (screen 1602 F1)
+        bad <- paste0("it holds more than ", mb(capTotal), " of cell text"); break
+      }
+      if (isShared) {
+        shared <- shared + text
+        if (shared > capShared) {                                    # the PER-SHEET bound (screens 1655, 1730 F1)
+          bad <- paste0("its shared strings (over ", mb(shared), "), read once for each of its ", sheets,
+                        " sheet", if (sheets > 1L) "s", ", exceed the ", mb(capShared), " budget per sheet")
+          break
+        }
+      }
       if (!length(pos)) {
         run <- run + length(b)
-        if (run > cap) { ok <- FALSE; break }
+        if (run > cap) { bad <- runReason; break }
       } else {
-        if (run + (pos[1] - 1L) > cap) { ok <- FALSE; break }        # the run carried in, up to the first "<"
-        if (length(pos) > 1L && max(diff(pos)) - 1L > cap) { ok <- FALSE; break }  # runs wholly inside this chunk
+        if (run + (pos[1] - 1L) > cap) { bad <- runReason; break }   # the run carried in, up to the first "<"
+        if (length(pos) > 1L && max(diff(pos)) - 1L > cap) { bad <- runReason; break }  # runs wholly inside this chunk
         run <- length(b) - pos[length(pos)]                          # the tail run, carried out
-        if (run > cap) { ok <- FALSE; break }
+        if (run > cap) { bad <- runReason; break }
       }
       endsWithLt <- b[length(b)] == lt                               # a "<" at the very end: check "!" next chunk
     }
     close(con)
-    if (!ok) return(FALSE)
+    if (!is.null(bad)) return(if (why) bad else FALSE)
   }
-  TRUE
+  if (why) NULL else TRUE
 }
 
 # How many sheets a workbook DECLARES - and therefore how many times the
@@ -941,13 +1002,12 @@
     list(ok = FALSE, reasons = paste0(name, ": ", .iaXlsMessage()),
          data = NULL, skipped = NULL, flags = character(0), engine = NA_character_)
   } else if (ext %in% c("csv", "xlsx")) {
-    # Decompression-bomb preflight before any in-process read (H3).
-    if (!.apiZipInflationOK(path, ext))
+    # Decompression-bomb preflight before any in-process read (H3); the
+    # reason names the gate that refused (issue 164)
+    zipWhy <- .apiZipInflationOK(path, ext, why = TRUE)
+    if (!is.null(zipWhy))
       return(list(ok = FALSE,
-                  reasons = paste0(name, " expands to more than the ",
-                                   round(.apiMaxUncompressed / 1024^2),
-                                   " MB limit when decompressed and was ",
-                                   "not read."),
+                  reasons = paste0(name, " was not read: ", zipWhy, "."),
                   data = NULL, skipped = NULL, flags = character(0),
                   engine = NA_character_))
     # THE SHEET-COUNT REFUSAL HOLDS ON EVERY ROUTE (security audit

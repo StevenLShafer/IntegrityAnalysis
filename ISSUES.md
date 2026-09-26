@@ -132,6 +132,46 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 164. A modest multi-sheet workbook was refused as a decompression bomb
+
+**Status: fixed on `fix/xlsx-text-budget-counts-shared-strings-per-sheet`,
+2026-09-27**, from the corpus session's report of a workbook Steve
+uploaded (John Loadsman's six-sheet baseline-table workbook, 288 KB on
+disk, 1.84 MB inflated, 27 zip entries).
+
+- **The defect.** The xlsx cell-text preflight (`.apiXlsxStringRunOK()`)
+  counted every non-"<" byte of every XML part - the worksheets' own
+  markup included, not only cell text - and divided its whole-file budget
+  by the sheet count, a division meant for the shared-string table that
+  openxlsx re-parses once per sheet. Six sheets of ordinary size (1.6 MB
+  of markup, 22 KB of shared strings) were refused against a 1.4 MB
+  share while a one-sheet export of the same data six times larger
+  passed. And every caller worded every refusal of
+  `.apiZipInflationOK()` as the decompression bomb, so the user read
+  "expands to more than the 100 MB limit" of a 288 KB file.
+- **What changed.** The aggregate bound is the "<"-free bytes over every
+  part against the whole budget (each worksheet is parsed once); the
+  per-sheet division applies to the shared-string parts alone, selected
+  by openxlsx's own pattern. `.apiZipInflationOK()` and
+  `.apiXlsxStringRunOK()` take `why = TRUE` and return the refusing
+  gate's reason in the user's words (entries, duplicate names, declared
+  size, ratio, workbook part, relationships part, cell-text run, markup
+  declaration, aggregate text, shared strings per sheet); the API's
+  reasons, the app's log, the wide reader and the Word reader use it.
+  The logical form and every existing gate are unchanged, and the ten-
+  sheet and lying-declaration workbooks of screens 1655 and 1730 are
+  still refused.
+- **Tests** (`tests/testthat/test-xlsx-text-budget-per-sheet.R`): a
+  six-sheet workbook whose markup exceeds the old per-sheet share passes
+  (UNFIXED); a non-archive and a lowered declared cap name their gates;
+  the ten-sheet shared-string workbook is refused with the per-sheet
+  reason through `.apiReadUpload()`. The screen tests of 2026-09-11
+  (1407, 1455, 1913, 2117) and the zip-upload and API service tests
+  still pass; one expectation in the 1407 test that pinned the bomb
+  wording for a long-cell refusal now pins the cell-text reason.
+
+---
+
 ## 163. The exclusion bracket OCR'd with the SD's look-alike letters
 
 **Status: fixed on `fix/look-alike-exclusion-bracket`, 2026-09-27**, from
