@@ -155,7 +155,18 @@
     # "*No significant between-group differences were found." (Fujii
     # 2006, PMID 16982288, issue 55) ran on into the block and the prose
     # beneath it seeded a phantom column
-    "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]")
+    "|^(\\*|\u2020|\u2021|\u00a7)\\s*[A-Za-z]",
+    # A LEGEND LINE OF A\\REVIATIONS ENDS THE BLOCK (2026-09-26, ISSUES.md
+    # issue 151; Clin Ther 2007, PMID 17697904, the corpus session's batch
+    # 31 part 2 AK5). "LID/MET 40/2.5 = lidocaine/metoclopramide 40/2.5 mg;
+    # LID/MET 40/5 = lidocaine/metoclopramide 40/5 mg; ..." follows the
+    # table's last row with no footnote mark, and its doses - 40/2.5,
+    # 40/5 - are numbers at the label column's x: they seeded a fifth
+    # column under the label heading, the header's first "(n = 60)" went
+    # to it, and the first arm lost its size. A line that defines two or
+    # more abbreviations - "A = words; B = words" - is the table's legend,
+    # and the block ends there as it does at "Abbreviations:".
+    "|^[^=]{1,60}\\s=\\s[^=;]{2,80};\\s*[^=]{1,60}\\s=\\s")
   footnoteInfo <- character(0)   # kept to help disambiguate "a (b)" cells
 
   # A SCANNED PAGE'S PLUS-MINUS SOUP IS REPAIRED FIRST (2026-09-25,
@@ -253,6 +264,19 @@
   cellNByLine <- vector("list", length(lines))   # per-cell n groups, by line (issue 131)
   for (i in seq(capIdx + 1, length(lines))) {
     txt <- lineTexts[i]
+    # A LINE WITHOUT A LETTER OR A DIGIT IS JUNK (2026-09-26, ISSUES.md issue
+    # 153; Clin Ther 2010, PMID 20974320, the corpus session's batch 31 part
+    # 3 AL11). The scan's text layer renders the table's printed rule as
+    # fifty-four fragments of punctuation - "_ ¥ . _ ._ _..... ~-_._""---
+    # .. _--_ ........" - on one line between the header and the first
+    # row. Fifty-four words with no number is "sustained prose" to the
+    # rule below, and the block ended there: three arms of 30 named and
+    # sized and not one cell read. A line that carries no letter and no
+    # digit says nothing. A line of six or more such fragments with at most
+    # two words among them is skipped, and the rows beneath it are read;
+    # and prose, below, is counted in words that carry a letter or digit.
+    wordy <- grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE)
+    if (sum(!wordy) >= 6L && sum(wordy) <= 2L) { kind[i] <- "junk"; next }
     newCaption <- .ppCaptionStart(txt)
     if (grepl(stopPattern, txt, perl = TRUE) || newCaption) {
       # FIX (2026-08-25): BEFORE the first data line, a footnote-shaped
@@ -430,7 +454,9 @@
       # manuscripts print between the caption and the table body; stopping
       # on them cost whole tables (2026-08-20, A&A submission corpus).
       if (seenData) {
-        if (nrow(lines[[i]]) > 8 || blankRun >= 3) {
+        # words that carry a letter or a digit: a rule rendered as
+        # punctuation fragments is not prose (issue 153)
+        if (sum(grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE)) > 8 || blankRun >= 3) {
           kind[i] <- "stop"
           break
         }
