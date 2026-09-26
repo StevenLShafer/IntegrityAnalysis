@@ -695,6 +695,19 @@ app_server <- function(input, output, session) {
         all(is.na(edited$TRIAL) |
             trimws(as.character(edited$TRIAL)) == ""))
       edited$TRIAL <- 1
+    # THE EDITED GRID IS BOUNDED AS AN UPLOADED SHEET IS (outside security
+    # review, 2026-09-26). An uploaded spreadsheet is refused before it is
+    # read into the table when a cell exceeds .ppMaxCellChars or the text
+    # exceeds .iaMaxTableTextBytes (screen 2026-09-10-2047, F2); the grid
+    # is the same table by another door, and Apply Edits handed whatever
+    # the browser sent straight to validation. The same preflight runs
+    # here, so a cell typed or pasted into the grid meets the bound the
+    # upload met, and the table of record stays what was last validated.
+    msg <- .iaTableTextRefusal(edited)
+    if (!is.null(msg)) {
+      outputComments(paste0("The edited table was not accepted: ", msg, "."))   # outputComments escapes
+      return()
+    }
     # A fresh validation pass gets a fresh log, and any previous results
     # are discarded - the edited table is now the data of record.
     commentsLog(NULL)
@@ -1367,11 +1380,28 @@ app_server <- function(input, output, session) {
       # different category columns; absent columns fill with NA, which is
       # exactly what the category rules expect).
       allCols <- unique(unlist(lapply(frames, function(f) names(f$data))))
-      DATA <<- do.call(rbind, lapply(frames, function(f) {
+      combined <- do.call(rbind, lapply(frames, function(f) {
         d <- f$data
         for (nm in setdiff(allCols, names(d))) d[[nm]] <- NA
         d[, allCols, drop = FALSE]
       }))
+      # THE COMBINED TABLE IS BOUNDED AS ONE (outside security review,
+      # 2026-09-26): each spreadsheet met the text bound on its own above,
+      # and the parsed documents' cells are short by construction, but the
+      # frames concatenate - and append to a table already on the grid -
+      # so the bound is checked once more on what the grid will hold,
+      # BEFORE it becomes the session's table: a refused combination
+      # leaves the table on the grid, and the session's data, as they
+      # were (CodeRabbit on the review's PR), and the log says how to get
+      # back to an analysable state.
+      msg <- .iaTableTextRefusal(combined)
+      if (!is.null(msg)) {
+        outputComments(paste0("The combined table was not accepted: ", msg,   # outputComments escapes
+                              ". The table on the grid is unchanged; click Apply Edits & ",
+                              "Revalidate to analyze it as it stands."))
+        return()
+      }
+      DATA <<- combined
       if (nPrior > 0) {
         outputComments(paste0(
           "Appended ", length(frames) - nPrior, " file(s) to the ",
