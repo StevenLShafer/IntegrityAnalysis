@@ -162,6 +162,80 @@ Nursing, Loadsman corpus; four arms of 28).
   on the unfixed code). The identical-cells, degenerate-category,
   count-percent, label-fragment and Loadsman layout tests still pass.
 
+---
+
+## 132. A fraction in parentheses is label text, not a cell
+
+**Status: fixed on `fix/parenthesised-fraction-is-label-text`, 2026-09-27**,
+from the corpus session's batch 29 AH2 (Ozkan, Anaesthesist 2019, Loadsman
+corpus; two arms of 26 and 25).
+
+- **The defect.** "Mallampati score (1/2) (%) 8 (31)/18 (69) 4 (16)/21
+  (84)" and "ADA score (2/3/4/5) 9/12/4/1 6/15/3/1" name their levels in
+  the label as "(1/2)" and "(2/3/4/5)". The tokenizer read "1/2" as a
+  fraction cell (and "2" of "(2/3/4/5)" as a bare number), which seeded a
+  nameless column left of the arms and cut the row label to "Mallampati
+  score (" so that its "(%)" was lost; with two arms the cells' own
+  n (%) signature cannot vouch (issue 66's three-signature rule), and
+  the row read as a continuous variable 8 +/- 31 / 4 +/- 16 - two false
+  cells that carried the trial's p. Its neighbour "Gender (F/M) (%)",
+  whose level list has letters, read as a category all along.
+- **What changed.** A parenthesised slash list of numbers is matched
+  whole, ahead of every cell form, and dropped by `.ppTokenizeLine()`:
+  no token can start inside it. A count fraction is printed bare
+  ("72/8", "9/12/4/1") and still reads.
+- **On the page.** Two named arms (the nameless third is gone);
+  Mallampati score (1/2) is a category with its complement, as Gender
+  is; Age and BMI unchanged.
+- **Tests** (`tests/testthat/test-parenthesised-fraction-is-label-text.R`):
+  the tokenizer on the Mallampati line (no fraction, the first token
+  after the label's "(%)"), the ADA line (two bare fractions) and a
+  "Sex (M/F) 12/8 11/9" line; a rebuilt page reads two named arms, no
+  continuous Mallampati row and the row as a category (10 of 12
+  expectations fail on the unfixed code). The tokenizer, arm-N-from-
+  fraction, seed-and-ranges, stratum, docx and Loadsman layout tests
+  still pass.
+
+---
+
+## 129. A letter alone at a slot, and soup glued to the mean, are the sign
+
+**Status: fixed on `fix/soup-glued-to-the-mean`, 2026-09-27**, from the
+corpus session's batch 28 AG1 (Anesth Analg 1998, PMID 9495425, a scan;
+three arms of 50 under "Values are expressed as mean +- SD or n").
+
+- **The defect.** The scan sets the sign as "?" and "k" on their own
+  ("154 ? 5", "98 k 27") and as a glyph glued to the MEAN ("55? 8",
+  "71+ 29", "75? 27"). Neither is a soup word - a letter has no stroke,
+  and the glued form is a number with a tail - so the third arm read
+  nowhere, the columns fell to two, and the two "arms" carried arms 1
+  and 2 on some rows and 2 and 3 on others (Height 156/154 for 154/156/
+  154).
+- **What changed.** In the slot repair: at a slot the block's other rows
+  set, a single letter or question mark between two numbers is the sign
+  (the fused-sign repair's alphabet, one character, less the exponent e
+  and the dimension x), and a number with one or two such glyphs glued
+  to its end, followed by a number, is the mean and its sign when the
+  glued glyph stands at the slot - split as the glued SD form is, the
+  sign in the glyph's place. Both need the slot; a letter between two
+  numbers elsewhere on a line is left alone.
+- **On the page.** Three arms of 50; Height, Weight, both durations and
+  Morphine in every arm, 15 cells. Two of them are false - "972 +/- 29"
+  (the sign set as a digit glued to the mean, 97 +/- 29 on the page)
+  and "5.5 +/- 2" (a lone digit for the sign, 5.5 +/- 0.7) - and are
+  issue 130. Age ("44 k 7(2359)", the range glued to the SD) is still
+  unread.
+- **Tests** (`tests/testthat/test-soup-glued-to-the-mean.R`): the slot
+  repair on a block with the lone "?" and "k" and the glued "55?" and
+  "71+" at slots two rows of genuine signs set (all read, the split sign
+  in the glyph's place) and a "k" between numbers away from the slots
+  (left); a rebuilt page with the forms reads three arms and every cell
+  (8 of 11 expectations fail on the unfixed code). The digit-colon,
+  "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
+  and Loadsman layout tests still pass.
+
+---
+
 ## 128. A column that shares no line with another column is not an arm
 
 **Status: fixed on `fix/isolated-column-is-not-an-arm`, 2026-09-27**, from
@@ -191,6 +265,41 @@ the corpus session's batch 26 item on Anaesthesia 1999, PMID 10193218
   four arms, the first named from the legend). The single-token,
   paired-column, header-cut, stray-sign, junk-row and Loadsman layout
   tests still pass.
+
+## 127. A decimal SD split at its point is joined
+
+**Status: fixed on `fix/split-decimal-sd-joined`, 2026-09-27**, from the
+corpus session's batch 25 item on CJA 1994, PMID 8004733 (a scan; three
+arms of 20), a no-route item until now.
+
+- **The defect.** The Height line reads "152.8 4- 5.9 152.4 4- 4,7 153.5
+  5: 5. I": the third arm's SD "5.1" set as two words, "5." and "I" -
+  the point kept with the first digit, the OCR's capital I for the 1 -
+  touching each other on the page. Neither word is a number, so the
+  slot rule could not read the "5:" before them (issue 125 wants a
+  number after the sign) and the cell was lost; Height read two arms of
+  three.
+- **What changed.** `.ppRepairSplitDecimals()` in utils.R, first of the
+  repairs: a word of digits ending in a point, followed within two
+  points by a one-character word that is a digit or its look-alike (l,
+  I, |), is one decimal number - joined, the look-alike read as its
+  digit, the width the sum. The fused form a closer layer gives ("5.I",
+  "60.l") is read too. O and o are left out of both forms: "5." "o" and
+  "5.o" could be a number and its footnote letter, and a zero read into
+  an SD is a wrong value, not a lost one (CodeRabbit on PR #435); "5.I"
+  cannot be a footnote. The slot rule and the letter-digit rule then
+  see the number.
+- **On the page.** Height reads 152.8 +/- 5.9, 152.4 +/- 4.7, 153.5 +/-
+  5.1 in three arms; 15 cells.
+- **Tests** (`tests/testthat/test-split-decimal-sd-joined.R`): the
+  helper on the split pair (joined, width summed), on a full stop before
+  a footnote digit two points away (left), on "60." "l" and on the fused
+  "5.I" beside a "5.o" (left); a rebuilt page reads the third arm's
+  Height through the joined SD and the lone digit-colon sign (the helper
+  is absent and 2 expectations fail on the unfixed code). The
+  digit-colon, stray-dot, "-I-", slot, tokenizer and Loadsman layout
+
+---
 
 ## 126. A stray dot fused before a decimal number is dropped
 

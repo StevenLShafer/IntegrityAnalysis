@@ -58,6 +58,19 @@
     # range in a cell ("31-57") is untouched: the interval alternative
     # takes it whole from its first number.
     "(?<![A-Za-z0-9_.])(?<![A-Za-z0-9][-\u2013\u2212])(?:",
+    # A FRACTION IN PARENTHESES IS LABEL TEXT (2026-09-27, ISSUES.md issue
+    # 132; Anaesthesist 2019, Ozkan, Loadsman corpus - the corpus session's
+    # batch 29 AH2): "Mallampati score (1/2) (%) 8 (31)/18 (69) 4 (16)/21
+    # (84)" and "ADA score (2/3/4/5) 9/12/4/1 6/15/3/1" name their levels
+    # in the label as "(1/2)" and "(2/3/4/5)". Read as a fraction cell and
+    # a bare number, those seeded a nameless column left of the arms, cut
+    # the row label to "Mallampati score (" so that its "(%)" was lost,
+    # and the row read as a continuous variable 8 +/- 31 - two false
+    # cells. A count fraction is printed bare ("72/8", "9/12/4/1"); one
+    # wrapped in parentheses at both ends is a label's level list. The
+    # list is matched WHOLE, ahead of every cell form, so that no token
+    # can start inside it, and .ppTokenizeLine() drops the match.
+    "(?<levels>\\(\\d+(?:\\s*/\\s*\\d+)+\\))|",
     # the BULLET (U+2022) is what a scanned CJA page's plus-minus becomes
     # in its OCR text layer ("56.7 \u2022 6.9", CJA 1995 and 1997, ISSUES.md
     # issue 45); a bullet between two numbers means nothing else
@@ -212,5 +225,6 @@
                start = starts[i],
                stringsAsFactors = FALSE)
   })
-  do.call(rbind, tokens)
+  out <- do.call(rbind, tokens)
+  out[out$type != "levels", , drop = FALSE]   # a label's level list is no token (issue 132)
 }
