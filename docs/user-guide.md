@@ -970,6 +970,16 @@ optional AI assist may carry rows their upload will not. A local copy
 can be started with a seed for every analysis:
 `IntegrityAnalysis::run_app(seed = 12345)`.
 
+**Limits a local copy may raise.** Three limits protect the public
+server, where one long analysis would hold a worker for every visitor:
+no arm above 5,000 subjects, no analysis whose worst case exceeds
+120,000,000,000 simulated values, and no analysis longer than ten
+minutes. A copy on your own machine may take as long as it likes: set
+`INTEGRITY_MAX_ARM_N`, `INTEGRITY_APP_DRAW_BUDGET` and
+`INTEGRITY_ANALYZE_SECONDS` in your `~/.Renviron` (the arm cap is read
+when the package loads, so set it before R starts) and start the app
+as above. The deployed server sets none of them.
+
 With a finite number of replicates, the smallest honestly reportable p
 is bounded. No p is ever reported as zero: a row where no replicate
 matched is floored at 1 divided by (replicates + 1). A p is displayed as

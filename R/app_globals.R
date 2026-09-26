@@ -49,7 +49,20 @@ m <- 100000
 # limit and the documented claim would have been false for every web
 # user. R/P_Calc.R remains callable directly for anyone with the
 # computing horsepower and a reason.
-.iaMaxArmN <- 5000L
+#
+# ... AND A LOCAL COPY MAY RAISE THE CEILING (Steve, 2026-09-26; ISSUES.md
+# issue 174): "I'm happy to have my local computer take as long as
+# necessary. I just don't want shinyapps.io to spend hours on something
+# that takes the app offline." The cap is read ONCE, when the package
+# loads, from INTEGRITY_MAX_ARM_N; unset - as on the deployed server - it
+# is 5,000. A value below 2 or not a number is ignored; above ten million
+# it is clamped there, which keeps the fail-safe reconstruction's integer
+# arithmetic and r2dtable's allocations within what one machine can hold.
+# Set it in ~/.Renviron before R starts, since it is fixed at load.
+.iaMaxArmN <- local({
+  v <- suppressWarnings(as.numeric(Sys.getenv("INTEGRITY_MAX_ARM_N", "5000")))
+  if (length(v) != 1L || !is.finite(v) || v < 2) 5000L else as.integer(min(v, 1e7))
+})
 # A WALL-CLOCK CEILING ON ONE ANALYSIS (2026-09-27, ISSUES.md issue 165;
 # Steve's decision after the outside security review of 2026-09-26). The
 # app runs the Monte Carlo inside the R process that serves the page, so

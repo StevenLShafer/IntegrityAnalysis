@@ -132,6 +132,34 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 174. A local copy may raise the public server's limits by environment variable
+
+**Status: fixed on `feat/local-limits-from-the-environment`, 2026-09-26**,
+at Steve's request the same day: "I'm happy to have my local computer
+take as long as necessary. I just don't want shinyapps.io to spend hours
+on something that takes the app offline."
+
+- **What changed.** `.iaMaxArmN` is read once at package load from
+  `INTEGRITY_MAX_ARM_N` (unset: 5,000; below 2 or not a number: 5,000;
+  above ten million: clamped there), and the API's `.apiMaxN` follows it
+  as before. `.iaAppDrawBudget()` reads `INTEGRITY_APP_DRAW_BUDGET`
+  when the option is not set (unset: ten times the API's budget).
+  `INTEGRITY_ANALYZE_SECONDS` (issue 165) already existed. The deployed
+  server sets none of the three, so shinyapps.io keeps its limits; the
+  user guide's reproducibility section says how a local copy sets them
+  in `~/.Renviron`.
+- **Why the cap is not simply raised.** The 5,000 ceiling was editorial
+  (a trial that large has other auditors) before it was a memory guard
+  (screen 2026-09-09-1532); raising it for everyone is a separate
+  decision Steve has not taken. This gives one machine the choice.
+- **Tests** (`tests/testthat/test-limits-from-the-environment.R`): a
+  child R with the variable set loads the package and both caps follow
+  it, an arm of 6,000 validates; unset, both are 5,000 and the arm is
+  refused; nonsense, 1 and 1e12 fall back or clamp; the draw budget's
+  environment fallback and the option's precedence.
+
+---
+
 ## 171. The guides claimed exactness and calibration the procedure does not establish
 
 **Status: fixed on `docs/exactness-claims-qualified`, 2026-09-26**, from
