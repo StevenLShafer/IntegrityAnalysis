@@ -225,6 +225,7 @@
   blankRun     <- 0
   seenData     <- FALSE
   if (capIdx >= length(lines)) return(NULL)
+  cellNByLine <- vector("list", length(lines))   # per-cell n groups, by line (issue 131)
   for (i in seq(capIdx + 1, length(lines))) {
     txt <- lineTexts[i]
     newCaption <- .ppCaptionStart(txt)
@@ -272,9 +273,53 @@
     # 9350368, 9836028, the corpus session's batch 24): the OCR of an
     # equals sign in a small font is a tilde - "(n ~ 20)", "(n~20)" - and
     # the arm so headed had no N while its neighbour did.
+    # ... UNLESS THE LINE IS A ROW OF CELLS WITH ITS OWN N AFTER EACH
+    # (2026-09-27, ISSUES.md issue 131; Am J Obstet Gynecol 2000, PMID
+    # 10649150, the corpus session's batch 28 AG2): "Last menstrual cycle
+    # (d, mean +/- SD) 16 +/- 3 (n = 38*) 16 +/- 3 (n = 37*) 16 +/- 3 (n =
+    # 38*)" - a variable known for fewer patients than the arm, its count
+    # printed after each cell. The "(n = k)" test above took the line for
+    # a header, the stratum rule of issue 55 then read it as a stratum
+    # "Last menstrual cycle ... 16 +/- 3:" over the rows beneath, and the
+    # durations and morphine went out under that prefix with N 38/37/38
+    # instead of the header's 40, the three menstrual cells lost. A line
+    # that carries two or more cells (mean +/- SD, mean (SD), median
+    # [range]) is a data row whatever follows its cells. Each "(n = k)"
+    # group is read HERE, keyed by the left edge of the cell it follows,
+    # and its words leave the line: left in, their numbers seed a column
+    # of their own, which the column drops below take away words and
+    # all, and the n is gone before the row is read. The block walker
+    # takes the n from cellNByLine when it reads the row (issue 109's
+    # bracket form is read there too).
     if (grepl("(?i)\\(?\\s*n\\s*[=:~]\\s*\\d+", txt, perl = TRUE)) {
-      kind[i] <- "header"
-      next
+      cellToks <- .ppTokenizeLine(lines[[i]])
+      cellIdx  <- which(cellToks$type %in% c("meanSD", "numParen", "medianRng"))
+      if (length(cellIdx) < 2L) {
+        kind[i] <- "header"
+        next
+      }
+      L <- lines[[i]]; drop <- logical(nrow(L)); found <- list()
+      for (ci in cellIdx) {
+        aft <- which(L$x >= cellToks$x1[ci] - 1 & L$x <= cellToks$x1[ci] + 40 & !drop)
+        if (!length(aft)) next
+        # the group is the shortest run of those words that closes the bracket
+        for (m in seq_along(aft)) {
+          run <- aft[seq_len(m)]
+          txtA <- paste(L$text[run], collapse = " ")
+          if (grepl("^\\(\\s*[Nn]\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)$", txtA, perl = TRUE)) {
+            found[[length(found) + 1L]] <- data.frame(x0 = cellToks$x0[ci],
+                                                      n = as.integer(gsub("\\D", "", txtA)))
+            drop[run] <- TRUE
+            break
+          }
+        }
+      }
+      if (length(found)) {
+        cellNByLine[[i]] <- do.call(rbind, found)
+        lines[[i]] <- L[!drop, , drop = FALSE]
+        rownames(lines[[i]]) <- NULL
+        lineTexts[i] <- .ppLineText(lines[[i]])
+      }
     }
     toks <- .ppTokenizeLine(lines[[i]])
     tokensByLine[[i]] <- toks
@@ -2062,11 +2107,19 @@
           m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*$", d$text[w], perl = TRUE))
           if (length(m) && nzchar(m)) { k <- as.integer(gsub("\\D", "", m)); break }
         }
+        # ... OR IN PARENTHESES AS "(n = 38*)" RIGHT AFTER THE CELL (issue
+        # 131), read and stripped at classification and kept by the cell's
+        # left edge in cellNByLine
+        if (is.na(k) && !is.null(cellNByLine[[i]])) {
+          g <- cellNByLine[[i]]
+          hit <- which(abs(g$x0 - t$x0) <= 2)
+          if (length(hit)) k <- g$n[hit[1]]
+        }
         if (!is.na(k) && !is.na(armN[arms[j]]) && k > armN[arms[j]]) k <- NA_integer_
         k
       }, integer(1))
       if (any(!is.na(cellN)))
-        say("  \"", label, "\": per-cell n in brackets - N ",
+        say("  \"", label, "\": per-cell n after the cell - N ",
             paste(ifelse(is.na(cellN), "arm", cellN), collapse = "/"), " for this row.")
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- armTok[[j]]

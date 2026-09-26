@@ -132,6 +132,39 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 131. A row of cells with "(n = k)" after each cell is a row, not a stratum
+
+**Status: fixed on `fix/per-cell-n-in-parentheses-is-a-row`, 2026-09-27**,
+from the corpus session's batch 28 AG2 (Am J Obstet Gynecol 2000, PMID
+10649150; three arms of 40).
+
+- **The defect.** "Last menstrual cycle (d, mean +/- SD) 16 +/- 3 (n = 38*)
+  16 +/- 3 (n = 37*) 16 +/- 3 (n = 38*)" - a variable known for fewer
+  patients than the arm, its count printed after each cell with the
+  paper's footnote star. The "(n = k)" test of the line classifier took
+  the line for a header, the stratum rule of issue 55 read it as a
+  stratum "Last menstrual cycle ... 16 +/- 3:" over the rows beneath,
+  and the durations and morphine went out under that prefix with N
+  38/37/38 instead of the header's 40 (nine cells with the wrong N) and
+  the three menstrual cells lost.
+- **What changed.** A line that carries two or more cells (mean +/- SD,
+  mean (SD), median [range]) is a data row whatever follows its cells.
+  Each "(n = k)" group after a cell is read at classification, keyed by
+  the cell's left edge, and its words leave the line - left in, their
+  numbers seed a column of their own, which the column drops take away
+  words and all before the row is read. The block walker takes the n
+  from that record when it reads the row, beside issue 109's bracket
+  form.
+- **On the page.** Seven variables in three arms of 40, 21 cells; the
+  menstrual row 16 +/- 3 with N 38, 37 and 38; the durations and
+  morphine with N 40 under their own names.
+- **Tests** (`tests/testthat/test-per-cell-n-in-parentheses.R`): a
+  rebuilt page with the menstrual row's "(n = k*)" groups reads five
+  variables in three arms of 40, the menstrual cells with N 38/37/38, the
+  rows beneath with N 40 and clean names (5 of 7 expectations fail on the
+  unfixed code). The bracket per-cell n, header-N, stratum and Loadsman
+  layout tests still pass.
+
 ## 126. A stray dot fused before a decimal number is dropped
 
 **Status: fixed on `fix/stray-dot-before-decimal`, 2026-09-26**, from the
