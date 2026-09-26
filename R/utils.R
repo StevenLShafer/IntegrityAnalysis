@@ -1520,8 +1520,21 @@
   # centres serve rule (b) as its slots - and nothing else: no letter or
   # soup is read as a sign against them, only two numbers straddling the
   # arm's centre with the usual gap.
+  # ... AND ONLY IN A BLOCK WHOSE CELLS ARE BARE PAIRS (2026-09-27, ISSUES.md
+  # issue 157; Clin Ther 2003, PMID 12749510, the corpus session's batch
+  # 32 AM2). A mean (SD) table - "Age, y 44 (9) 45 (8)" - has no sign
+  # glyph either, and its "Range 23-63 21-65" sub-rows lose their dashes
+  # in the text layer: "Range 21 65" is two numbers a dozen points apart,
+  # and the arm columns signed it into a cell of 21 +/- 65 that was then
+  # scored. A block that prints its dispersions in brackets does not
+  # print them after a lost sign: when any row of the block carries an
+  # "a (b)" cell, the arm columns are not read.
   armSlots <- numeric(0)
-  if (nTrue == 0L && length(slots) == 0L) {
+  hasParenCell <- any(vapply(idx, function(i) {
+    s <- lines[[i]]$text
+    any(isNum(s[-length(s)]) & grepl("^\\([0-9]+(?:[.,][0-9]+)?\\)[*a-z]?$", s[-1L], perl = TRUE))
+  }, logical(1)))
+  if (nTrue == 0L && length(slots) == 0L && !hasParenCell) {
     sizeGrp <- "\\(\\s*[Nn]\\.?\\s*[=:~]?\\s*[0-9]{1,4}\\s*\\)"
     for (i in idx) {
       L <- lines[[i]]; s <- L$text
@@ -1659,6 +1672,11 @@
       firstNum <- which(isNum(s))[1]
       labelTxt <- if (!is.na(firstNum) && firstNum > 1L) paste(s[seq_len(firstNum - 1L)], collapse = " ") else ""
       if (grepl("(?i)\\(\\s*n\\s*\\)|\\bno\\.?\\b|n\\s*\\(\\s*%\\s*\\)|%|/", labelTxt, perl = TRUE)) usingArm <- FALSE
+      # ... nor a row whose label IS a range's - "Range", "min-max", "IQR" at
+      # its start - whose two numbers are a range's ends with the dash lost
+      # (issue 157); "Age (years) (range) 8.4 3.2 (2-12)" keeps its mean
+      # and SD, the range word being an annotation of the label
+      if (grepl("(?i)^\\s*(ranges?\\b|min-?max|IQR\\b|interquartile)", labelTxt, perl = TRUE)) usingArm <- FALSE
     }
     if (!announced && !length(strong) && !usingArm) back <- numeric(0)
     xEnd   <- L$x + L$width

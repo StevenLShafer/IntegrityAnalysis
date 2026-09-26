@@ -157,6 +157,33 @@ of 60) - a regression that issue 148 exposed.
 
 ---
 
+## 157. The arm columns sign neither a Range row nor a mean (SD) block
+
+**Status: fixed on `fix/range-row-is-never-signed`, 2026-09-27**, from the
+corpus session's batch 32 AM2 (Clin Ther 2003, PMID 12749510; two arms of
+60) - a regression of issue 152.
+
+- **The defect.** A mean (SD) table - "Age, y 44 (9) 45 (8)" - has no
+  sign glyph either, so issue 152's arm columns were read; its "Range
+  23-63 21-65" sub-rows lose their dashes in the text layer, and "Range 21
+  65" - two numbers a dozen points apart at an arm's centre - was signed
+  into a cell of 21 +/- 65 and scored (p 0.214 on two false rows).
+- **What changed.** Two guards in the slot repair: the arm columns are
+  read only when no row of the block carries an "a (b)" cell (a block
+  that prints its dispersions in brackets prints none after a lost sign),
+  and a row whose label says it is a range - "Range", "min-max", "IQR" -
+  is never signed against them.
+- **On the page.** The two Range rows are skipped as ranges; Age, Weight
+  and both durations as before (Height's "(I I)" SDs are issue 149's
+  class under a Mean (SD) label the page does not print).
+- **Tests** (`tests/testthat/test-arm-columns-as-slots.R`, extended): a
+  mean (SD) block with a Range row is left alone entirely; a bare-pair
+  block signs its Age row and leaves its Range row (3 expectations fail on
+  the unfixed code). The slot,
+  size-sign and Loadsman layout tests still pass.
+
+---
+
 ## 155. One cohort's before-and-after table is no baseline table
 
 **Status: fixed on `fix/one-cohort-pre-post-table-is-no-baseline`,

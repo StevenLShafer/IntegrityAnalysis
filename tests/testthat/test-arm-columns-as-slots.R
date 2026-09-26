@@ -79,3 +79,29 @@ test_that("a rebuilt page whose text layer has no sign glyph reads its rows as m
   expect_identical(cont$MEAN[grepl("^Duration", cont$ROW)], c(223, 228, 225))
   expect_identical(length(unique(cont$ROW)), 4L)
 })
+
+# A "RANGE" SUB-ROW AND A MEAN (SD) BLOCK (issue 157; Clin Ther 2003, PMID
+# 12749510): "Range 21 65" is a range with its dash lost, not a mean and SD;
+# and a block whose cells are "a (b)" prints no lost sign at all.
+test_that("the arm columns sign neither a Range row nor any row of a mean (SD) block", {
+  w <- function(text, x, width) data.frame(text = text, x = x, width = width, stringsAsFactors = FALSE)
+  L <- function(...) do.call(rbind, list(...))
+  hdr <- L(w("(n", 246, 6), w("=", 256, 4), w("60)", 265, 10), w("(n", 344, 6), w("=", 354, 4), w("60)", 363, 10))
+  parenBlock <- list(
+    L(w("Table", 52, 22), w("I.", 76, 4)),
+    hdr,
+    L(w("Age,", 51, 16), w("y", 70, 4), w("44", 248, 9), w("(9)", 260, 11), w("45", 346, 9), w("(8)", 358, 11)),
+    L(w("Range", 61, 21), w("21", 248, 8), w("65", 262, 8), w("23", 346, 8), w("63", 360, 8)))
+  r <- .ppRepairPlusMinusGlyphs(parenBlock, capIdx = 1L)
+  expect_identical(r$repaired, 0L)
+  expect_identical(r$lines[[4]]$text, c("Range", "21", "65", "23", "63"))
+  # a bare-pair block still reads, but not its Range row
+  bareBlock <- list(
+    L(w("Table", 52, 22), w("I.", 76, 4)),
+    hdr,
+    L(w("Age,", 51, 16), w("y", 70, 4), w("44", 248, 9), w("9", 262, 4), w("45", 346, 9), w("8", 360, 4)),
+    L(w("Range", 61, 21), w("21", 248, 8), w("65", 262, 8), w("23", 346, 8), w("63", 360, 8)))
+  r2 <- .ppRepairPlusMinusGlyphs(bareBlock, capIdx = 1L)
+  expect_identical(r2$lines[[3]]$text, c("Age,", "y", "44", "±", "9", "45", "±", "8"))
+  expect_identical(r2$lines[[4]]$text, c("Range", "21", "65", "23", "63"))
+})
