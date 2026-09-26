@@ -132,6 +132,41 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 137. One letter-fused cell and one digit-fused cell are two witnesses
+
+**Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
+2026-09-27**, from the corpus session's batch 28 AG5 (EJA 1997, PMID
+9241336, a scan; two arms of 25).
+
+- **The defect.** "Weight (kg) 54.626.6 53.7?7.1 NS" and "Peroperative
+  blood loss (ml) 209.42136.7 211.7?130.9 NS": the first arm's cell with
+  the sign set as a digit (issue 90's form), the second with a "?" (issue
+  85's form), and nothing else on the line. The fused-sign repair wants
+  two witnesses - letter-fused cells or genuine glyphs - before it
+  splits anything, counted the letter-fused cell alone, and skipped the
+  line; both rows were lost, while the Height line ("154.625.4
+  154.824.8", two digit-fused cells) read by the announced rule. Eight
+  of sixteen cells.
+- **What changed.** When the letter-fused cells and glyphs fall short of
+  two, the line's precision is taken from the ones there are, and a
+  digit-fused word that splits at that precision is counted as the
+  second witness. A letter-fused cell alone, or one beside a digit-fused
+  word of another precision, is still no evidence.
+- **On the page.** Weight 54.6 +/- 6.6 / 53.7 +/- 7.1, blood loss 209.4
+  +/- 136.7 / 211.7 +/- 130.9 and Buprenorphine 0.04 +/- 0.08 / 0.05 +/-
+  0.09 read; 14 cells. Indomethacin (28.0 +/- 25.3) is skipped as a
+  non-integer level under the analgesics heading - a continuous row under
+  a heading, a design matter and not this issue.
+- **Tests** (`tests/testthat/test-letter-and-digit-fused-cells-are-two-witnesses.R`):
+  the fused-sign repair on the Weight and blood-loss lines (split), a
+  letter-fused cell alone (left) and one beside a digit-fused word of
+  another precision (left); a rebuilt page reads Weight and blood loss
+  in both arms (6 of 9 expectations fail on the unfixed code). The
+  glued-soup, digit-fused, colon-ratio, slot and Loadsman layout tests
+  still pass.
+
+---
+
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
