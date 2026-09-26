@@ -132,6 +132,36 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 128. A column that shares no line with another column is not an arm
+
+**Status: fixed on `fix/isolated-column-is-not-an-arm`, 2026-09-27**, from
+the corpus session's batch 26 item on Anaesthesia 1999, PMID 10193218
+("caption as arm"; three arms of 60), a no-route item until now.
+
+- **The defect.** The page sets its Table 1 in the right-hand column
+  beside the prose of the left. Read full width, the block runs on past
+  the table's last row into the prose, and a sentence there - "between
+  62% and 80% [2, 3]" - carries numbers at an x no cell of the table
+  uses. Those numbers seeded a column left of the arms; the legend
+  line's "mean (SD) or median", set on the arm names' line, became the
+  column's name, the paper's "(n = 60 for each)" gave it an N (the
+  header's own sizes read "(n 60)", unreadable), and the table read four
+  arms with the first empty on every row.
+- **What changed.** After the label-less and single-token column drops,
+  a column whose feeding lines carry no token of any other column is
+  dropped with its tokens and words: a table's grid is one of shared
+  lines, and every arm column holds cells on the rows the other arms
+  hold cells on. A single-column table is exempt.
+- **On the page.** Three arms of 60, the same 12 cells as before.
+- **Tests** (`tests/testthat/test-isolated-column-is-not-an-arm.R`): a
+  rebuilt page on the scan's shape - the table's three arms, the legend
+  fragment on the arm names' line, unreadable header sizes, the size
+  statement, and the prose beneath with its numbers clustered at their
+  own x - reads three arms (4 expectations fail on the unfixed code:
+  four arms, the first named from the legend). The single-token,
+  paired-column, header-cut, stray-sign, junk-row and Loadsman layout
+  tests still pass.
+
 ## 126. A stray dot fused before a decimal number is dropped
 
 **Status: fixed on `fix/stray-dot-before-decimal`, 2026-09-26**, from the
