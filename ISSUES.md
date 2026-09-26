@@ -132,6 +132,35 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 145. An SD with its range glued on is a number after the sign
+
+**Status: fixed on `fix/sd-with-glued-range-after-sign`, 2026-09-27**, from
+the corpus session's batch 30 (Anesth Analg 1998, PMID 9495425, a scan;
+three arms of 50).
+
+- **The defect.** "Age 44 k 7(2359) 45 + 10(21-63) 43 + 7(29-58)": the
+  range printed in parentheses after each SD, glued to the SD by the
+  scan's text layer, and the first range's dash lost. The slot repair
+  asks for a number on each side of a glyph before it reads the glyph as
+  the sign; "7(2359)" is not a bare number, so the "k" and the plain
+  pluses were left and the Age row read nothing while every other row of
+  the table read.
+- **What changed.** In the slot repair, a number with a parenthesised
+  range - or a run of three to six digits where the range was - glued to
+  its end is a number after the sign. The tokenizer then reads the cell
+  as it already did when the range stood apart; the bracket falls away.
+- **On the page.** Age 44 +/- 7, 45 +/- 10, 43 +/- 7 in the three arms;
+  18 cells where there were 15.
+- **Tests** (`tests/testthat/test-sd-with-glued-range-after-sign.R`): the
+  slot repair on the paper's Age row beneath two rows of genuine signs
+  (the "k" and both pluses read), and a rebuilt page of the paper's shape
+  reading the Age row's means and SDs (3 of 5 expectations fail on the
+  unfixed code). The lone-hyphen, soup-glued, digit-colon, "-I-", slot,
+  announced-soup, minus-digit, Loadsman layout and tokenizer tests still
+  pass.
+
+---
+
 ## 144. A number the text layer has broken is no arm size
 
 **Status: fixed on `fix/broken-number-is-no-arm-size`, 2026-09-27**, from
@@ -184,6 +213,33 @@ corpus session's arm-count audit (batch 28 note c; CJA 1996, PMID
   expectations fail on the unfixed code). The soup-glued, digit-colon,
   "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
   and Loadsman layout tests still pass.
+
+**Second cut (`fix/lone-hyphen-must-sit-between-its-numbers`,
+2026-09-27)**, from the corpus session's batch 30 AI2 (Anesth Analg 2004,
+PMID 15281514; four groups of 7 dogs) - a REGRESSION of the first cut.
+
+- **The defect.** A long-layout table - "HR (bpm) I 142 +/- 13 - 142 +/-
+  13 ..." - whose Fatigue column prints an en dash for the two groups
+  without fatigue, at the column where the other two groups' rows set a
+  sign. The dash stands between two numbers at a strong slot and the
+  first cut read it as the sign; the row's cells fused across it, the
+  long-layout reader no longer engaged, and 32 cells became 173 rows
+  with no N.
+- **What changed.** The number before a sign is a mean, and a mean is
+  never itself preceded by a sign; the number after a sign is an SD,
+  never itself followed by one. When the word two before the lone dash,
+  or two after it, is a genuine sign glyph, the numbers on either side
+  belong to other cells: the dash is a placeholder cell and stays. CJA
+  1996's "1.6 - 3.3" has plain numbers two away and reads as before.
+- **On the page.** As before the first cut: four arms of 7, HR, MAP and
+  Pdi at both stimulation frequencies, 32 cells.
+- **Tests** (`tests/testthat/test-lone-hyphen-at-strong-slot.R`,
+  extended): the slot repair on a long-layout block of the paper's shape,
+  whose third and fourth rows set the Fatigue slot with genuine glyphs
+  and whose first and second print the dash there (the dashes stay, the
+  glyphs stay; 2 expectations fail on the unfixed code). The first cut's
+  tests and the soup-glued, "-I-", slot, announced-soup, minus-digit and
+  integer digit-fused tests still pass.
 
 ---
 
@@ -296,6 +352,34 @@ of 80; not analysed until now, "N missing").
   helper is absent and 6 expectations fail on the unfixed code). The
   Loadsman layout, canine long-layout, stratum, paired-column,
   header-cut and isolated-column tests still pass.
+
+**Second cut (`fix/transposed-head-must-head-the-block`, 2026-09-27)**,
+from the corpus session's batch 30 AI1 (Fujii 2007, PMID 17523738; four
+arms of 30) - a REGRESSION of the first cut.
+
+- **The defect.** Table I (variables down the side, four arms across) and,
+  further down the same candidate block, Table II with "Group | Grading
+  of pain [no. (%)] | Pain score | Pain total" across the top and
+  "Placebo (n = 30) 3 (10) 9 (30) ..." down the side. The transposer
+  looked for the group-word line anywhere beneath the caption, found
+  Table II's deep in Table I's block, and rewrote the whole block from
+  Table II's rows: sixteen cells of Table I became four false cells
+  ("Column 2: 8 +/- 27, 0 +/- 0, ...") on six "arms". Every candidate on
+  the page was rewritten the same way.
+- **What changed.** The group-word line must HEAD the block: when any
+  line between the caption and it carries two or more numeric cells - a
+  data row - the line heads a later table and the block is not
+  transposed. Aydin 2014's block, whose head follows its caption
+  directly, is rewritten as before.
+- **On the page.** Table I as before the first cut: four arms of 30, Age,
+  Height and Weight in every arm, 16 cells. (Table II's counts are not a
+  baseline table and are not read.)
+- **Tests** (`tests/testthat/test-transposed-table.R`, extended): the
+  transposer on a plain block followed by a second table's group-word
+  head and rows (left alone), and a rebuilt page of Fujii 2007's shape -
+  Table I over Table II - reading Table I's four arms of 30 with no
+  "Column" rows (4 expectations fail on the unfixed code). The first
+  cut's tests and the Loadsman layout tests still pass.
 
 ---
 

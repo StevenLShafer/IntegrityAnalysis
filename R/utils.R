@@ -1241,6 +1241,17 @@
   if (length(later)) idx <- idx[idx < later[1]]
   if (!length(idx)) return(none)
   isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
+  # AN SD WITH ITS RANGE GLUED ON IS A NUMBER AFTER THE SIGN (2026-09-27,
+  # ISSUES.md issue 145; Anesth Analg 1998, PMID 9495425): "Age 44 k 7(2359)
+  # 45 + 10(21-63) 43 + 7(29-58)" - the range printed in parentheses after
+  # each SD, and the scan glues it to the SD (and loses the dash in the
+  # first). The slot repair asks for a number on each side of a glyph
+  # before it reads the glyph as the sign; "7(2359)" is not a bare number,
+  # so the "k" and the plain pluses were left and the row was lost. A
+  # number with a parenthesised range, or a run of digits where the range
+  # was, glued to its end is a number for that purpose; the tokenizer then
+  # reads the cell and the bracket falls away as a stray token.
+  isNumR <- function(s) grepl(paste0("^", .ppNUM, "\\((?:", .ppNUM, "(?:[-\u2013\u2212]", .ppNUM, ")?|[0-9]{3,6})\\)[*a-z]?$"), s, perl = TRUE)
   true  <- function(s) s %in% c(.ppPLUSMINUS, "\u2022", "\u2afe", "+/-", "+-")
   # a soup word is not a number and carries at least one stroke
   isSoup <- function(s) grepl(.ppSoupGlyph, s, perl = TRUE) & !isNum(s) &
@@ -1251,7 +1262,7 @@
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     g <- true(s) | (s == "+" & prevNum & nextNum)
     nTrue <- nTrue + sum(true(s))
     if (any(g)) {
@@ -1285,7 +1296,7 @@
     L <- lines[[i]]; if (nrow(L) < 3L) next
     s <- L$text
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     # ... AND SO DOES THE GLUED DIGIT-COLON FORM (2026-09-26, ISSUES.md issue
     # 119; CJA 1995, PMID 7614644, the corpus session's batch 27 AF3): "All
     # values are expressed as mean + SD." over "154.0 5:3.8 154.9 5:4.8
@@ -1327,7 +1338,7 @@
     s <- L$text
     atSlot <- vapply(L$x, function(x) any(abs(slots - x) <= tol), logical(1))
     prevNum <- c(FALSE, isNum(s[-length(s)]))
-    nextNum <- c(isNum(s[-1L]), FALSE)
+    nextNum <- c(isNum(s[-1L]) | isNumR(s[-1L]), FALSE)
     glued <- grepl(soupGlued, s, perl = TRUE) & !isNum(s)
     gluedDigit <- glued & grepl("^[0-9]:", s, perl = TRUE)   # "5:5.4": a slot's evidence only
     # A MINUS AND ONE DIGIT AS THE SIGN (2026-09-26, ISSUES.md issue 114; CJA
@@ -1388,7 +1399,24 @@
     # STRONG slot - one set by genuine glyphs on two or more lines - it is
     # the sign, and the row's other cell says so too.
     atStrong0 <- vapply(L$x, function(x) any(abs(strong - x) <= tol), logical(1))
-    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0
+    # ... BUT NOT A PLACEHOLDER BETWEEN TWO CELLS (2026-09-27, ISSUES.md
+    # issue 142, second cut; Anesth Analg 2004, PMID 15281514, the corpus
+    # session's batch 30 AI2). A long-layout table whose Fatigue column
+    # prints an en dash for the two groups without fatigue, at the column
+    # where the other groups' rows set a sign: "HR (bpm) I 142 +/- 13 -
+    # 142 +/- 13 ...". The dash stands between two numbers at a strong
+    # slot and was read as the sign, so the row's cells fused across it
+    # and the long-layout reader no longer engaged: 32 cells became 173
+    # rows without an N. The number before a sign is a MEAN, and a mean is
+    # never itself preceded by a sign; the number after a sign is an SD,
+    # never itself followed by one. When the word two before the dash, or
+    # the word two after it, is a genuine sign glyph, the numbers on either
+    # side of the dash belong to other cells and the dash is a cell of its
+    # own - a placeholder - and stays.
+    twoBefore <- c(FALSE, FALSE, true(s)[seq_len(max(0L, length(s) - 2L))])
+    twoAfter  <- c(true(s)[-seq_len(min(2L, length(s)))], FALSE, FALSE)[seq_along(s)]
+    dashAtStrong <- grepl("^[-\u2212\u2013]$", s, perl = TRUE) & prevNum & nextNum & atStrong0 &
+      !twoBefore & !twoAfter
     base <- prevNum & ((isSign & nextNum) | glued | digitColon | letterSign) & !true(s) & s != "+" &
       (nchar(s) > 1L | (announced & s == annGlyph) | letterSign | dashAtStrong)
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
