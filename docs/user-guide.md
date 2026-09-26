@@ -964,7 +964,10 @@ address: `https://integrityanalysis.io/app/?seed=12345` or the app's own
 `https://steveshafer.shinyapps.io/IntegrityAnalysis/?seed=12345`. Every
 press of Analyze in that session uses the seed; the log confirms it and
 the results workbook's Summary sheet records it. The same table, the
-same seed and the same build then give the same numbers anywhere. Record
+same seed and the same build then give the same numbers in the same
+computational environment (the Provenance sheet records the build; the
+repository pins the R and package versions); identical numbers on a
+different platform are expected but not guaranteed. Record
 the build with the seed (the Provenance sheet carries it), because a
 change to the simulation changes what a seed produces. To send a
 colleague a run they can reproduce, send them the *table* (the
@@ -1250,13 +1253,17 @@ The engine has been validated at two levels.
 
 **Against Carlisle 2017.** John Carlisle generously provided the
 spreadsheet of continuous baseline variables behind his 5,087-trial
-analysis [6]. Run through the current engine (the most recent row of
-[the validation ledger](validation-ledger.md), which records every such
-measurement), the stored and recomputed trial p values agree with
-r = 0.993 across 5,041 usable trials (mid-p convention, one-sided), and
-the two agree on whether a trial alarms at p < 0.05 for 98.5% of
-trials. The engine is the 2017 method, faster and with the refinements
-described above.
+analysis [6]. Run through the release build of 26 September 2026 (the
+most recent row of [the validation ledger](validation-ledger.md), which
+records every such measurement with its build, date, seed and replicate
+ceiling), the stored and recomputed trial p values agree with r = 0.992
+across 4,976 usable trials (mid-p convention, one-sided; 0.993 across
+5,041 on the 6 September build), and the two agree on whether a trial
+alarms at p < 0.05 for 98.2% of trials and at p < 0.01 for 99.1%.
+Agreement with Carlisle is agreement with a comparator computed from the
+same tables, not a false-alarm rate or a sensitivity to fabrication. The
+engine is the 2017 method, faster and with the refinements described
+above.
 
 **End to end, from PDF to verdict.** The complete pipeline — PDF
 upload, extraction, validation, analysis — is exercised against the
