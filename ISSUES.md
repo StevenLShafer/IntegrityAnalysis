@@ -132,6 +132,37 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 160. A row labelled as a continuous variable closes an open count heading
+
+**Status: fixed on `fix/continuous-label-closes-a-count-heading`,
+2026-09-27**, from the corpus session's batch 31 AK4 (ii) and batch 33
+(Clin Ther 2003, PMID 14749148; four arms of 25).
+
+- **The defect.** "Sex, no. (%)" over "Women 14 (56)" and "Men 11 (44)"
+  stays open, and the single-line rows that follow - "Height, cm 158
+  (8)", "Body weight, kg 57 (8)", "Days since last menstrual cycle 16
+  (3)", "Duration of surgery, min 220 (48)", "Duration of anesthesia, min
+  253 (48)" - were read as its levels, percentages of the arm: five
+  variables lost, the table analysed on Age and the ramosetron dose
+  alone. (The corpus session had taken this for a label shift in the text
+  layer; the layer is straight.)
+- **What changed.** In the "a (b)" decision a row whose label names a
+  continuous variable outranks the open count heading: it is a new
+  variable, not a level, and closes the heading. "Days since ..." and
+  "Time since ..." are continuous by their words, and so is a label that
+  ends in a unit ("Height, cm", "Duration of surgery, min").
+- **On the page.** Age, Height, Body weight, the menstrual row and both
+  durations as mean (SD) with N 25, and the ramosetron dose - 27 cells where
+  the certified build read 7; Women/Men and the surgery types as counts.
+- **Tests**
+  (`tests/testthat/test-continuous-label-closes-a-count-heading.R`): a
+  rebuilt page of the shape reads the five continuous rows after the Sex
+  block and keeps Women/Men as counts (4 of 8 expectations fail on the
+  unfixed code). The percent-block,
+  count-heading, Mean (SD) sub-row and Loadsman layout tests still pass.
+
+---
+
 ## 158. A sign never follows a sign
 
 **Status: fixed on `fix/symbol-font-sign-beside-an-equal-sd`, 2026-09-27**,
