@@ -1252,9 +1252,32 @@
     isNumMark <- function(x) grepl(paste0("^", .ppNUM, "[*a-z]{0,2}$"), x, perl = TRUE)
     nextNumMark <- c(isNumMark(s[-1L]), FALSE)
     digitColon <- grepl("^[0-9]:$", s, perl = TRUE) & prevNum & nextNumMark & atSlot
+    # A LETTER OR A QUESTION MARK ALONE AT A SLOT, AND SOUP GLUED TO THE
+    # MEAN (2026-09-27, ISSUES.md issue 129; Anesth Analg 1998, PMID
+    # 9495425, the corpus session's batch 28 AG1; three arms of 50 under
+    # "mean +- SD"). The scan sets the sign as "?" and "k" on their own
+    # ("154 ? 5", "98 k 27") and as a glyph glued to the MEAN ("55? 8",
+    # "71+ 29", "75? 27"). Neither is a soup word - a letter has no stroke,
+    # and the glued form is a number with a tail - so the third arm read
+    # nowhere and the columns fell to two. At a slot the block's other
+    # rows set, a single letter or question mark between two numbers is
+    # the sign (the fused-sign repair's alphabet, one character, less the
+    # exponent e and the dimension x), and a number with one or two such
+    # glyphs glued to its end, followed by a number, is the mean and its
+    # sign when the glued glyph stands at the slot: split as the glued SD
+    # form is. Both need the slot; a letter between two numbers elsewhere
+    # on a line is left alone.
+    letterSign <- grepl("^[A-DF-WYZa-df-wyz?;!|]$", s, perl = TRUE) & prevNum & nextNum & atSlot
+    meanGluedRe <- "^([0-9]+(?:[.,][0-9]+)?)([-+?;!|~A-DF-WYZa-df-wyz]{1,2})$"
+    mgTail <- regmatches(s, regexec(meanGluedRe, s, perl = TRUE))
+    mgFrac <- vapply(seq_along(s), function(k) {
+      m <- mgTail[[k]]; if (length(m) < 3L) return(NA_real_); nchar(m[2]) / nchar(s[k]) }, numeric(1))
+    mgX <- L$x + L$width * mgFrac
+    meanGlued <- !is.na(mgFrac) & nextNum &
+      vapply(mgX, function(x) !is.na(x) && any(abs(slots - x) <= tol), logical(1))
     isSign <- isSoup(s) | (announced & s == annGlyph) | minusDigit
-    base <- prevNum & ((isSign & nextNum) | glued | digitColon) & !true(s) & s != "+" &
-      (nchar(s) > 1L | (announced & s == annGlyph))
+    base <- prevNum & ((isSign & nextNum) | glued | digitColon | letterSign) & !true(s) & s != "+" &
+      (nchar(s) > 1L | (announced & s == annGlyph) | letterSign)
     base <- base & !(grepl("^[-\u2212\u2013][0-9]$", s, perl = TRUE) & !minusDigit)   # a real negative number stays one
     hit  <- base & (atSlot | (announced & !gluedDigit & sum(base & !gluedDigit) >= 2L))
     # (a) a plain "+" between two numbers at a slot two or more lines mark
@@ -1276,10 +1299,17 @@
       if (gap < 4 || gap > 20) next
       if (any(back > xEnd[k] - 1 & back < L$x[k + 1L] + 1)) gapHit[k] <- TRUE
     }
-    if (!any(hit) && !any(gapHit)) next
+    if (!any(hit) && !any(gapHit) && !any(meanGlued)) next
     out <- vector("list", nrow(L))
     for (k in seq_len(nrow(L))) {
-      if (!hit[k]) {
+      if (meanGlued[k] && !hit[k]) {
+        # "55?" at the slot: the number, then the sign in the glyph's place
+        repaired <- repaired + 1L
+        w1 <- L[k, , drop = FALSE]; w2 <- L[k, , drop = FALSE]
+        w1$text <- mgTail[[k]][2]; w1$width <- L$width[k] * mgFrac[k]
+        w2$text <- .ppPLUSMINUS; w2$x <- mgX[k]; w2$width <- L$width[k] * (1 - mgFrac[k])
+        out[[k]] <- rbind(w1, w2)
+      } else if (!hit[k]) {
         out[[k]] <- L[k, , drop = FALSE]
       } else {
         repaired <- repaired + 1L
