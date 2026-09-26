@@ -329,6 +329,19 @@
         lineTexts[i] <- .ppLineText(lines[[i]])
       }
     }
+    # A LINE OF DOSE SUB-HEADS IS A HEADER LINE (2026-09-27, ISSUES.md issue
+    # 143; Anesth Analg 2005, PMID 15978307, the corpus session's arm-count
+    # audit; four arms of 30). "Flurbiprofen Axetil" spans three columns
+    # and the line beneath reads "25 mg 50 mg 75 mg Vehicle": every number
+    # on it is a dose with its unit, and no data row has yet begun. Read as
+    # a data line its numbers were bare counts, the sub-heads never
+    # reached the arm names, and the arms came out nameless with the
+    # rows beneath skipped. Before the first data row, a line whose every
+    # number is followed by a unit word is a line of header words, not data.
+    if (!seenData && .ppDoseHeadLine(lines[[i]])) {
+      kind[i] <- "label"      # a header word line, read for the arm names below
+      next
+    }
     toks <- .ppTokenizeLine(lines[[i]])
     tokensByLine[[i]] <- toks
     if (nrow(toks) > 0) {
@@ -1167,6 +1180,30 @@
       nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\s*[=:~]\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
       if (nchar(nameTxt) > 0)
         armName[k] <- .ppSquish(paste(ifelse(is.na(armName[k]), "", armName[k]), nameTxt))
+    }
+  }
+  # A DRUG'S NAME OVER ITS DOSE COLUMNS NAMES EACH OF THEM (2026-09-27,
+  # ISSUES.md issue 143; Anesth Analg 2005, PMID 15978307): "Flurbiprofen
+  # Axetil" is set once, centred over "25 mg | 50 mg | 75 mg", and the
+  # nearest-column assignment above gives it to the middle dose alone -
+  # "25 mg", "Flurbiprofen Axetil 50 mg", "75 mg", "Vehicle". A column
+  # whose name is a phrase and a dose lends the phrase to the adjacent
+  # columns named by a dose alone, on either side, as far as the run of
+  # dose-only names goes: the doses are of one drug.
+  doseTail <- "([0-9]+(?:[.,][0-9]+)?\\s*(?:mg|g|\u00b5g|ug|mcg|ng|ml|mL|IU|U|mmol|mEq)(?:/kg)?)$"
+  doseOnly <- !is.na(armName) & grepl(paste0("^", doseTail), armName, perl = TRUE)
+  for (k in seq_len(cols$n)) {
+    if (is.na(armName[k]) || doseOnly[k]) next
+    m <- regmatches(armName[k], regexec(paste0("^(.+?)\\s+", doseTail), armName[k], perl = TRUE))[[1]]
+    if (length(m) < 3L || !grepl("[A-Za-z]{3,}", m[2])) next
+    phrase <- m[2]
+    for (step in c(-1L, 1L)) {
+      j <- k + step
+      while (j >= 1L && j <= cols$n && doseOnly[j]) {
+        armName[j] <- .ppSquish(paste(phrase, armName[j]))
+        say("  arm ", j, ": \"", armName[j], "\" - the drug's name over its dose columns.")
+        j <- j + step
+      }
     }
   }
 
@@ -3203,6 +3240,15 @@ parseBaselineTableHeuristics <- function(pdfFile,
   strongOrdered <- isStrong[ord]
 
   tried <- 0L
+  # A TRANSPOSED TABLE IS REWRITTEN THE WAY THE WALKER READS (issue 139):
+  # see .ppTransposeBlock() in pageLayout.R
+  cand <- lapply(cand, function(cc) {
+    tb <- tryCatch(.ppTransposeBlock(cc$lines, cc$capIdx), error = function(e) NULL)
+    if (is.null(tb)) return(cc)
+    cc$lines <- tb$lines; cc$lineTexts <- tb$lineTexts; cc$capIdx <- tb$capIdx
+    cc$transposed <- TRUE
+    cc
+  })
   best <- NULL; bestScore <- -Inf; bestCand <- NULL; bestStrong <- FALSE
   # A straddle (see .ppSetAsideStraddles) is parsed like any candidate but
   # DEFERRED: it competes only if its twin - the single-table reading of
@@ -3225,7 +3271,8 @@ parseBaselineTableHeuristics <- function(pdfFile,
                       paste0("column ", cc$band) else "full width",
                     if (!is.na(cc$caption))
                       paste0(", \"", substr(.ppSquish(cc$caption), 1, 50), "\"")
-                    else "", ")")
+                    else "",
+                    if (isTRUE(cc$transposed)) "; groups down the side, read transposed" else "", ")")
     res <- tryCatch(
       .ppParseBlock(cc$lines, cc$lineTexts, cc$capIdx, trial, parenIsSD,
                     roundObsDelta, function(...) invisible(NULL),

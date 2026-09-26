@@ -158,6 +158,147 @@ four arms of 30).
   recovery, deterministic and model arm-N, partial-N, fraction and
   Loadsman layout tests still pass.
 
+---
+
+## 142. A lone hyphen at a strong slot is the sign
+
+**Status: fixed on `fix/lone-hyphen-at-strong-slot`, 2026-09-27**, from the
+corpus session's arm-count audit (batch 28 note c; CJA 1996, PMID
+8955972; two arms of 30).
+
+- **The defect.** "Pentazocine - mg 1.6 <bullet> 3.3 1.6 - 3.3": the
+  second arm's sign as a hyphen alone, at the column where every other
+  row sets a bullet. The slot repair refuses a one-character word as soup
+  unless the notation is announced, because a lone dash between two
+  numbers is usually a range; so the cell was two bare numbers and a
+  dash, and the row read one arm of two.
+- **What changed.** At a STRONG slot - one set by genuine glyphs on two
+  or more lines - a hyphen, minus or dash alone between two numbers is
+  the sign; the row's other cell says so too. A dash between two numbers
+  away from the slots is a range, as before.
+- **On the page.** Pentazocine reads 1.6 +/- 3.3 in both arms; 14 cells.
+- **Tests** (`tests/testthat/test-lone-hyphen-at-strong-slot.R`): the
+  slot repair on a block whose bullets set two strong slots, with the
+  hyphen at the second (read) and a range's hyphen away from the slots
+  (left); a rebuilt page reads the second Pentazocine cell (3 of 5
+  expectations fail on the unfixed code). The soup-glued, digit-colon,
+  "-I-", slot, tokenizer, announced-soup, glued-digit-colon, minus-digit
+  and Loadsman layout tests still pass.
+
+---
+
+## 141. The digit-fused sign at integer precision
+
+**Status: fixed on `fix/digit-fused-sign-at-integer-precision`,
+2026-09-27**, from the corpus session's arm-count audit (batch 28 note c;
+BJA 1998, PMID 9689270; four arms of 30).
+
+- **The defect.** "Age (years) 45i8 44i7 4329 4428", "Height (cm) 154i6
+  153i4 15626 15625", "Duration of anaesthesia (min) 98t26 99526 102232
+  95528": whole-number cells, the sign a letter in some and a digit in
+  the rest. Issue 90's digit-fused rule wants a decimal point on each
+  side to know where the sign digit sits; with none, the words stayed
+  numbers, and Age, Height and Weight read two arms of four.
+- **What changed.** In the fused-sign repair, when the line's
+  letter-fused cells are whole numbers, they say how many digits the SD
+  has (one on Age, two on the durations), and a word of digits alone
+  splits before that many and one: "4329" is 43, a 2 for the sign, 9;
+  "102232" is 102, a 2, 32. The mean must have two digits or more and
+  lie within a factor of three of the letter-fused means - a bare count
+  on such a line ("120") is not touched. Issue 137's second-witness
+  count takes the integer form too, so a line with one letter-fused
+  cell and digit-fused words beside it ("98t26 99526 102232 95528") is
+  read.
+- **On the page.** Age, Height, Weight and both durations in four arms
+  of 30; 20 cells.
+- **Tests** (`tests/testthat/test-digit-fused-sign-at-integer-precision.R`):
+  the fused-sign repair on the Age, Height and anaesthesia lines (split)
+  and a count row with letter-fused cells beside a bare "120" (left); a
+  rebuilt page with letter- and digit-fused whole-number cells reads
+  every arm (8 of 10 expectations fail on the unfixed code). The
+  two-witness, glued-soup, digit-fused, colon-ratio, slot and Loadsman
+  layout tests still pass.
+
+---
+
+## 140. Two more ways a decimal number comes apart in a text layer
+
+**Status: fixed on `fix/lost-decimal-point`, 2026-09-27**, from the corpus
+session's arm-count audit (batch 28 note c): Anesth Analg 1997, PMID
+9067046 (four arms; Height three of four) and Anesth Analg 1999, PMID
+10201761 (three arms; Duration of operation two of three).
+
+- **The defect.** (b) The point itself lost: "Height(cm) 154.4 <bullet>
+  5.8 152 9 <bullet> 4.5 154.8 <bullet> 5.1" - the mean "152.9" as
+  "152" and "9", three points apart, before the sign; the cell was two
+  bare numbers and a sign and read nothing. (c) The point kept with the
+  SECOND part, inside a bracket: "175.9 (41 .l) 173.6 (44.5)" - "(41"
+  and ".l)" touching, the OCR's l for the 1; the cell's SD was no
+  number and the first arm's cell was lost.
+- **What changed.** `.ppRepairSplitDecimals()` (issue 127) reads two
+  more forms. A word of two or more digits followed within three points
+  by a one-digit word and then a sign glyph, on a line whose other means
+  carry one decimal, is that mean with its point restored ("152.9"). A
+  bracket-opening digits word followed within two points by a word of a
+  point, a digit or its look-alike and the closing bracket is that SD
+  ("(41.1)"); so is the same split without the point when the closing
+  word carries a look-alike - "(1" "O)" for "(10)" (Anesth Analg 2006,
+  PMID 16982288, the OCR's O for the zero; the older stratum's Weight
+  read two arms of three). Two whole numbers before a sign on a line of
+  whole numbers, and two digit words in a bracket ("(1" "2)"), are left
+  as they are.
+- **On the page.** 9067046's Height reads 154.4 +/- 5.8, 152.9 +/- 4.5,
+  154.8 +/- 5.1, 155.1 +/- 5.8 (24 cells); 10201761's Duration of
+  operation reads 175.9 +/- 41.1, 173.6 +/- 44.5, 177.1 +/- 39.4 (15
+  cells).
+- **Tests** (`tests/testthat/test-lost-decimal-point.R`): the helper on
+  the Height line (joined), the bracketed SD (joined) and two whole
+  numbers before a sign on a line of whole numbers (left), and the
+  bracketed "(1" "O)" (joined) beside "(1" "2)" (left); a rebuilt page
+  reads the mean whose point was lost (5 of 7 expectations fail on the
+  unfixed code). The split-decimal, digit-colon, stray-dot, "-I-", slot,
+  tokenizer, announced-soup, glued-digit-colon, minus-digit and Loadsman
+  layout tests still pass.
+
+---
+
+## 139. A transposed table: groups down the side, variables across the top
+
+**Status: fixed on `feat/transposed-table`, 2026-09-27**, from the corpus
+session's batch 29 AH3 (Aydin 2014, J Anesth, Loadsman corpus; four arms
+of 80; not analysed until now, "N missing").
+
+- **The defect.** "Groups (n = 80) | Age (years) | Gender (M/F) | Duration
+  of surgery (h) | Total remifentanil consumption (ug)" across the top,
+  "Control 61.3 +/- 12.3 72/8 1.6 +/- 0.6 801.4 +/- 267.8" and three more
+  groups down the side, then a "P" row. The walker takes the row labels
+  for variables and the column heads for arms, and read three "arms"
+  called Age, Duration and Total, with N on the first alone and three
+  nameless cells per group.
+- **What changed.** `.ppTransposeBlock()` in pageLayout.R recognises the
+  layout by its head - the label column's heading names the groups
+  (Groups, Treatment, Arm, Drug, Regimen), two or more column heads
+  carry a unit in parentheses or a continuous variable's word, and the
+  rows beneath are short group names over two or more cells - and
+  rewrites the block the way the walker reads: the groups become the
+  arm-name line, the head's shared "(n = k)" their size line, and each
+  column a row with its head as the label and its cells under the groups
+  in order. The P row ends the groups and, transposed, is the p-value
+  column the walker drops. Every candidate block is offered the rewrite
+  before it is read; a block of the ordinary shape is left alone.
+- **On the page.** Four arms of 80 - Control, Strefen, Siccoral,
+  Stomatovis - with Age, Duration of surgery and Total remifentanyl
+  consumption in every arm, 12 cells as printed; nothing skipped.
+- **Tests** (`tests/testthat/test-transposed-table.R`): the transposer on
+  a groups-down-the-side block (arm line, size line, one row per column,
+  in order) and on an ordinary block (left alone); a rebuilt page of the
+  paper's shape reads four arms of 80 and its columns as variables (the
+  helper is absent and 6 expectations fail on the unfixed code). The
+  Loadsman layout, canine long-layout, stratum, paired-column,
+  header-cut and isolated-column tests still pass.
+
+---
+
 ## 138. A "P values" heading over a column with no cells of its own
 
 **Status: fixed on `fix/p-values-heading-over-no-column`, 2026-09-27**, from
@@ -186,7 +327,6 @@ on a page printed sideways).
   layout tests still pass.
 
 ---
-
 ## 137. One letter-fused cell and one digit-fused cell are two witnesses
 
 **Status: fixed on `fix/letter-and-digit-fused-cells-are-two-witnesses`,
@@ -221,7 +361,6 @@ on a page printed sideways).
   still pass.
 
 ---
-
 ## 136. A look-alike letter among the digits of the mean before the sign
 
 **Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
