@@ -27,6 +27,10 @@ test_that("the fused-sign repair splits integer digit-fused words by the letter-
   expect_identical(r$lines[[3]]$text, c("Height", "(cm)", "154", pm, "6", "153", pm, "4", "156", pm, "6", "156", pm, "5", "NS"))
   expect_identical(r$lines[[4]]$text, c("Duration", "of", "anaesthesia", "(min)", "98", pm, "26", "99", pm, "26", "102", pm, "32", "95", pm, "28", "NS"))
   expect_identical(r$lines[[5]]$text, c("Smokers", "(n)", "3", pm, "1", "2", pm, "1", "120", "4", "NS"))
+  # one letter-fused cell beside a digit word whose mean is out of range: no
+  # second witness, nothing split (CodeRabbit on PR #450)
+  r <- .ppRepairFusedSigns(list(w("Dose", "45i8", "1200")))
+  expect_identical(r$lines[[1]]$text, c("Dose", "45i8", "1200"))
 })
 
 integerFusedPdf <- function(file = file.path(tempdir(), "integerFused.pdf")) {

@@ -1067,7 +1067,16 @@
         sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", unique(nchar(s0)))
       else NULL
       if (is.null(digitRe0)) next
-      if (sum(hit) + sum(glyph) + sum(grepl(digitRe0, s, perl = TRUE)) < 2L) next
+      # an integer candidate counts as the second witness only if its mean
+      # would pass the range check below - "45i8 1200" has no second witness
+      # (CodeRabbit on PR #450)
+      okW <- grepl(digitRe0, s, perl = TRUE) & !hit
+      if (dm0 == 0L && any(okW)) {
+        mk0 <- suppressWarnings(as.numeric(sub(digitRe0, "\\\\1", s, perl = TRUE)))
+        mn0 <- suppressWarnings(as.numeric(m0))
+        okW <- okW & !is.na(mk0) & all(!is.na(mn0)) & mk0 >= min(mn0) / 3 & mk0 <= max(mn0) * 3
+      }
+      if (sum(hit) + sum(glyph) + sum(okW) < 2L) next
     }
     # the line's precision, from its letter-fused cells and its glyph cells
     # (the numbers either side of a glyph); NA when the cells disagree
