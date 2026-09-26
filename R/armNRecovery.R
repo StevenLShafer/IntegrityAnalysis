@@ -165,7 +165,7 @@
   j <- .ppSquish(paste(txt, collapse = " "))
   # "(n:50 each)" - a colon for the equals sign (issue 89; PMIDs 9861126, 9924225)
   m <- gregexpr("(?i)\\bn\\s*[=:]\\s*\\d[\\d,]*", j, perl = TRUE)[[1]]
-  if (m[1] == -1) return(empty)
+  noN  <- m[1] == -1L   # no "n = k" at all: the "included N" statements below may still speak (issue 154)
   lens <- attr(m, "match.length")
   out <- lapply(seq_along(m), function(k) {
     hit <- substr(j, m[k], m[k] + lens[k] - 1)
@@ -189,16 +189,47 @@
                before = substr(j, nearFrom, max(nearFrom, m[k] - 1)),
                pos = m[k], stringsAsFactors = FALSE)
   })
-  out <- do.call(rbind, out)
+  out <- if (noN) data.frame(n = integer(0), context = character(0), near = character(0),
+                             before = character(0), pos = integer(0), stringsAsFactors = FALSE)
+         else do.call(rbind, out)
   # A NUMBER THE LAYER HAS BROKEN IS NO SIZE (2026-09-27, ISSUES.md issue
   # 144; Anesth Analg 2005, PMID 15978307): the caption's "(N = 120)" comes
   # through as "(N = 1 20)", "N = 1" matched the arm names, and every arm
   # took an N of 1 - a trial of 120 scored on four patients. A size whose
   # digits are followed by a space and more digits is a broken number: it
   # is dropped, not read as its first part.
-  hitLen <- attr(regexpr("(?i)\\bn\\s*[=:]\\s*\\d[\\d,]*", substring(j, out$pos), perl = TRUE), "match.length")
-  broken <- grepl("^\\s[0-9]", substring(j, out$pos + hitLen, out$pos + hitLen + 1), perl = TRUE)
+  hitLen <- if (nrow(out)) attr(regexpr("(?i)\\bn\\s*[=:]\\s*\\d[\\d,]*", substring(j, out$pos), perl = TRUE), "match.length") else integer(0)
+  broken <- if (nrow(out)) grepl("^\\s[0-9]", substring(j, out$pos + hitLen, out$pos + hitLen + 1), perl = TRUE) else logical(0)
   out <- out[!is.na(out$n) & out$n > 0 & !broken, , drop = FALSE]
+  # "GROUP 1 (LACTOFERRIN GROUP): INCLUDED 100 PREGNANT WOMEN" (2026-09-26,
+  # ISSUES.md issue 154; Rezk 2016, J Matern Fetal Neonatal Med, the
+  # Loadsman corpus): a group's size stated as a sentence about the group
+  # - "included", "comprised", "consisted of", "contained" and then the
+  # count with its noun - carries no "n =" and the ladder never saw it.
+  # Each such statement is a candidate with the words before it (the
+  # group's name) as its context, matched to the arm names as an "(n =
+  # k)" mention is.
+  # (the count is followed by its noun, or by an adjective of the people -
+  # "included 100 pregnant" - since a two-column page's text may break the
+  # sentence after the adjective; "included 100 mL" matches neither)
+  mi <- gregexpr(paste0("(?i)\\b(?:included|comprised|comprising|consisted of|consisting of|contained|enrolled)\\s+",
+                        "([0-9]{1,4})\\s+(?:(?:pregnant|healthy|adult|consecutive|elderly|female|male)\\b",
+                        "|(?:women|men|patients|subjects|participants|children|infants|volunteers|parturients|dogs|rats)\\b)"),
+                 j, perl = TRUE)[[1]]
+  if (mi[1] != -1) {
+    lensI <- attr(mi, "match.length")
+    inc <- do.call(rbind, lapply(seq_along(mi), function(k) {
+      hit <- substr(j, mi[k], mi[k] + lensI[k] - 1)
+      n   <- suppressWarnings(as.integer(regmatches(hit, regexpr("[0-9]{1,4}", hit))))
+      nearFrom <- max(1, mi[k] - 60)
+      data.frame(n = n, context = substr(j, max(1, mi[k] - 90), mi[k] + lensI[k] + 12),
+                 near = substr(j, nearFrom, mi[k] + lensI[k] + 12),
+                 before = substr(j, nearFrom, max(nearFrom, mi[k] - 1)),
+                 pos = mi[k], stringsAsFactors = FALSE)
+    }))
+    inc <- inc[!is.na(inc$n) & inc$n > 0, , drop = FALSE]
+    out <- rbind(out, inc)
+  }
 
   alloc <- grepl(paste0("(?i)allocat|assign|randomi[sz]|\\bgroup\\b|",
                         "\\barm\\b|receiv|analy[sz]ed|completed|enrol"),
@@ -307,6 +338,20 @@
     hits <- which(vapply(armsOf, function(a) k %in% a, logical(1)))
     if (length(hits) == 0) next
     ns <- unique(cand$n[hits])
+    # WHEN THE STATEMENTS ABOUT ONE ARM DISAGREE (2026-09-26, ISSUES.md issue
+    # 154; Rezk 2016): the CONSORT diagram allocates "Lactoferrin (n=110)"
+    # and the Methods say "Group 1 (Lactoferrin group): included 100
+    # pregnant women" - the table's population. A statement of the
+    # analysed, included or completed group outranks one of allocation,
+    # randomisation or assignment; the arm takes it when it is the one size
+    # left (a loss-to-follow-up count nearby does not disqualify it).
+    if (length(ns) > 1L) {
+      keepC <- grepl("(?i)analy[sz]ed|included|completed|comprised|consisted", cand$near[hits], perl = TRUE) &
+        !grepl("(?i)allocat|randomi[sz]ed|assigned", cand$near[hits], perl = TRUE)
+      if (any(keepC) && length(unique(cand$n[hits][keepC])) == 1L) {
+        hits <- hits[keepC]; ns <- unique(cand$n[hits])
+      }
+    }
     if (length(ns) == 1) {
       armN[k]  <- ns
       source[k] <- paste0("document text (arm name matched): ",
