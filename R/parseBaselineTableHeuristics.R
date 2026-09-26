@@ -299,7 +299,7 @@
     # all, and the n is gone before the row is read. The block walker
     # takes the n from cellNByLine when it reads the row (issue 109's
     # bracket form is read there too).
-    # ... AND "N.=50" (2026-09-27, ISSUES.md issue 147; Altinsoy 2015,
+    # ... AND "N.=50" (2026-09-26, ISSUES.md issue 147; Altinsoy 2015,
     # Minerva Anestesiologica, the Loadsman corpus): the journal's house
     # style abbreviates with a full stop - "Group C (N.=50)" - and every
     # size pattern in this file wanted the "n" directly before its sign.
@@ -315,8 +315,9 @@
       L <- lines[[i]]; drop <- logical(nrow(L)); found <- list()
       # a "(n = k)" group as a run of the line's words, closed by its
       # bracket (a trailing full stop or comma may follow the bracket:
-      # "(n=2)." in a flow diagram's box)
-      grpRe <- "^\\(\\s*[Nn]\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)[.,;:]?$"
+      # "(n=2)." in a flow diagram's box); the n may carry Minerva's full
+      # stop, "(N.=50)" (issue 147; CodeRabbit on PR #459)
+      grpRe <- "^\\(\\s*[Nn]\\.?\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)[.,;:]?$"
       for (ci in cellIdx) {
         aft <- which(L$x >= cellToks$x1[ci] - 1 & L$x <= cellToks$x1[ci] + 40 & !drop)
         if (!length(aft)) next
@@ -1260,7 +1261,7 @@
         armN[k] <- as.integer(sub("\\D+", "", nMatch))
       nameTxt <- .ppSquish(gsub("(?i)\\(?\\s*n\\.?\\s*[=:~]\\s*\\d+\\s*\\)?", "", wtxt, perl = TRUE))
       # A STATISTIC DESCRIPTOR UNDER THE ARM NAMES IS NOT PART OF A NAME
-      # (2026-09-27, ISSUES.md issue 147; Altinsoy 2015, Minerva
+      # (2026-09-26, ISSUES.md issue 147; Altinsoy 2015, Minerva
       # Anestesiologica): "(Mean+/-SD)" set under each "Group C (N.=50)"
       # tells how the cells are printed, and it was joined to the names -
       # "Group C (Mean+/-SD)". The phrase, bracketed or not, with its sign
@@ -3110,7 +3111,7 @@ parseBaselineTableHeuristics <- function(pdfFile,
   allPages <- lapply(allPages, .ppStripRotatedText)
   # a small-caps "T" + "able" is one word (issue 147): see .ppJoinSmallCaps()
   allPages <- lapply(allPages, .ppJoinSmallCaps)
-  # THE TEXT LAYER'S CONTROL CHARACTERS GO (2026-09-27, issue 147; Altinsoy
+  # THE TEXT LAYER'S CONTROL CHARACTERS GO (2026-09-26, issue 147; Altinsoy
   # 2015, Minerva Anestesiologica): the caption's "I.-" came through as
   # "I.-\u0003\u0003" - two control characters for glyphs the font has no
   # text for - and the caption anchor, which reads the word whole, did

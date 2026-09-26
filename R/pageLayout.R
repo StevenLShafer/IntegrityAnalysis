@@ -205,7 +205,7 @@
 # category rows and silently became the open block header - orphaning
 # the remaining children into mean/SD rows - and the URL's digits seeded
 # a phantom arm cluster whose missing N vetoed every n (%) row.
-# A SMALL-CAPS WORD SPLIT BY THE TEXT LAYER IS ONE WORD (2026-09-27,
+# A SMALL-CAPS WORD SPLIT BY THE TEXT LAYER IS ONE WORD (2026-09-26,
 # ISSUES.md issue 147; Altinsoy 2015, Minerva Anestesiologica, the
 # Loadsman corpus). The journal sets "Table" in small capitals: a full-size
 # "T" and a smaller "able" in another font, and poppler delivers them as

@@ -134,7 +134,7 @@ run follows it into the same path and is renamed on completion.
 
 ## 147. Minerva's page: a small-caps caption, "(N.=50)", and a descriptor under the names
 
-**Status: fixed on `fix/n-dot-equals-size`, 2026-09-27**, from the Loadsman
+**Status: fixed on `fix/n-dot-equals-size`, 2026-09-26**, from the Loadsman
 corpus (Altinsoy 2015, Minerva Anestesiologica; two arms of 50), one of
 the six Loadsman PDFs that did not parse.
 

@@ -1,10 +1,10 @@
 # test-small-caps-caption-and-n-dot-size.R - a "Table" set in small capitals
 # and split by the text layer into "T" + "able" is one word, and "(N.=50)"
-# is an arm size (ISSUES.md issue 147, 2026-09-27).
+# is an arm size (ISSUES.md issue 147, 2026-09-26).
 #
 ############################################################################
 # Provenance                                                               #
-# Written 2026-09-27 by Claude Code (model Claude Fable 5.1) from the       #
+# Written 2026-09-26 by Claude Code (model Claude Fable 5.1) from the       #
 # Loadsman corpus (Altinsoy 2015, Minerva Anestesiologica; two arms of 50): #
 # "T" at (58, 530) and "able" at (63, 533), "Group C (N.=50) Group S        #
 # (N.=50)", rows "Age (yr) 43.4+/-16.7 47.3+/-15.9 0.232"; the engine found  #
