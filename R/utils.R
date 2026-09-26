@@ -1058,9 +1058,25 @@
         if (k < length(s) && isNum(s[k + 1L])) s0 <- c(s0, s[k + 1L])
       }
       dm0 <- unique(.ppFusedDecimals(m0)); ds0 <- unique(.ppFusedDecimals(s0))
-      if (length(dm0) != 1L || length(ds0) != 1L || dm0 < 1L || ds0 < 1L) next
-      digitRe0 <- sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
-      if (sum(hit) + sum(glyph) + sum(grepl(digitRe0, s, perl = TRUE)) < 2L) next
+      if (length(dm0) != 1L || length(ds0) != 1L) next
+      # ... at integer precision the second witness is a word of digits alone
+      # of the right length (issue 141): "98t26 99526 102232 95528"
+      digitRe0 <- if (dm0 >= 1L && ds0 >= 1L)
+        sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm0, ds0)
+      else if (dm0 == 0L && ds0 == 0L && length(unique(nchar(s0))) == 1L)
+        sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", unique(nchar(s0)))
+      else NULL
+      if (is.null(digitRe0)) next
+      # an integer candidate counts as the second witness only if its mean
+      # would pass the range check below - "45i8 1200" has no second witness
+      # (CodeRabbit on PR #450)
+      okW <- grepl(digitRe0, s, perl = TRUE) & !hit
+      if (dm0 == 0L && any(okW)) {
+        mk0 <- suppressWarnings(as.numeric(sub(digitRe0, "\\1", s, perl = TRUE)))
+        mn0 <- suppressWarnings(as.numeric(m0))
+        okW <- okW & !is.na(mk0) & all(!is.na(mn0)) & mk0 >= min(mn0) / 3 & mk0 <= max(mn0) * 3
+      }
+      if (sum(hit) + sum(glyph) + sum(okW) < 2L) next
     }
     # the line's precision, from its letter-fused cells and its glyph cells
     # (the numbers either side of a glyph); NA when the cells disagree
@@ -1078,6 +1094,32 @@
     digitRe <- if (!is.na(dm) && !is.na(ds) && dm >= 1L && ds >= 1L)
       sprintf("^([0-9]+\\.[0-9]{%d})([0-9])([0-9]+\\.[0-9]{%d})$", dm, ds) else NULL
     dhit <- if (is.null(digitRe)) rep(FALSE, length(s)) else grepl(digitRe, s, perl = TRUE)
+    # (a2) THE DIGIT-FUSED FORM AT INTEGER PRECISION (2026-09-27, ISSUES.md
+    # issue 141; BJA 1998, PMID 9689270, the corpus session's arm-count
+    # audit; four arms of 30). "Age (years) 45i8 44i7 4329 4428", "Height
+    # (cm) 154i6 153i4 15626 15625", "Duration of anaesthesia (min) 98t26
+    # 99526 102232 95528": whole-number cells, the sign a letter in some
+    # and a digit in the rest. Rule (a) wants a decimal point on each side
+    # to know where the digit sits; with none, the letter-fused cells of
+    # the line say how many digits the SD has (one on Age, two on the
+    # durations), and a word of digits alone splits before that many and
+    # one: "4329" is 43, a 2 for the sign, 9; "102232" is 102, a 2, 32. The
+    # mean must have two digits or more and lie within a factor of three
+    # of the letter-fused means - a bare count on such a line ("120") is
+    # not touched.
+    dInt <- rep(FALSE, length(s)); intRe <- NULL
+    if (!is.na(dm) && !is.na(ds) && dm == 0L && ds == 0L && length(parts) >= 1L) {
+      sdDigits <- unique(nchar(sds)); mNum <- suppressWarnings(as.numeric(means))
+      if (length(sdDigits) == 1L && all(!is.na(mNum)) && sdDigits >= 1L) {
+        intRe <- sprintf("^([0-9]{2,})([0-9])([0-9]{%d})$", sdDigits)
+        cand <- grepl(intRe, s, perl = TRUE) & !hit
+        for (k in which(cand)) {
+          mk <- as.numeric(sub(intRe, "\\1", s[k], perl = TRUE))
+          if (mk >= min(mNum) / 3 && mk <= max(mNum) * 3) dInt[k] <- TRUE
+        }
+      }
+    }
+    dhit <- dhit | dInt
     # (b) a soup word glued to the SD alone, after a bare number of the line's
     #     mean precision ("50.1" "k8.0"; issue 90)
     shit <- grepl(.ppFusedSoup, s, perl = TRUE) & c(FALSE, isNum(s[-length(s)])) &
@@ -1098,7 +1140,7 @@
         repaired <- repaired + 1L
         next
       }
-      re <- if (hit[k]) .ppFusedSign else digitRe
+      re <- if (hit[k]) .ppFusedSign else if (dInt[k]) intRe else digitRe
       m  <- regmatches(s[k], regexec(re, s[k], perl = TRUE))[[1]]
       f1 <- nchar(m[2]) / nc; f2 <- nchar(m[3]) / nc
       w1 <- L[k, , drop = FALSE]; w2 <- w1; w3 <- w1
