@@ -425,6 +425,19 @@
       kind[i] <- "label"      # a header word line, read for the arm names below
       next
     }
+    # ... AND SO IS A LINE OF GROUP NUMBERS (2026-09-26, ISSUES.md issue 154;
+    # Rezk 2016, J Matern Fetal Neonatal Med, the Loadsman corpus, the corpus
+    # session's batch 31 part 1 AJ3; two arms of 100). The arm names wrap
+    # over three lines - "Group 1 | Group 2", "(Lactoferrin | (Ferrous",
+    # "group) | group) t-test p value" - and the first of them, "Group 1
+    # Group 2", carries two numbers: it was a data row, skipped as a bare
+    # count, and the arms went out nameless. Before the first data row, a
+    # line whose every number is the word "Group" or "Arm" followed by a
+    # small integer or a roman numeral is a line of header words.
+    if (!seenData && .ppGroupNumberLine(lines[[i]])) {
+      kind[i] <- "label"
+      next
+    }
     toks <- .ppTokenizeLine(lines[[i]])
     tokensByLine[[i]] <- toks
     if (nrow(toks) > 0) {
