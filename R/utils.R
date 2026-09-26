@@ -1072,7 +1072,7 @@
       # (CodeRabbit on PR #450)
       okW <- grepl(digitRe0, s, perl = TRUE) & !hit
       if (dm0 == 0L && any(okW)) {
-        mk0 <- suppressWarnings(as.numeric(sub(digitRe0, "\\\\1", s, perl = TRUE)))
+        mk0 <- suppressWarnings(as.numeric(sub(digitRe0, "\\1", s, perl = TRUE)))
         mn0 <- suppressWarnings(as.numeric(m0))
         okW <- okW & !is.na(mk0) & all(!is.na(mn0)) & mk0 >= min(mn0) / 3 & mk0 <= max(mn0) * 3
       }
