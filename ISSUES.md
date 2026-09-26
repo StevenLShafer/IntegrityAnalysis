@@ -3091,9 +3091,12 @@ session's batch 7 finding M1 (Fujii & Nakayama 2006, Clin Ther; PMID
   an N and every row prefixed "Characteristic Control Treatment:". The
   test runs only with tesseract present and off the runner, so the full
   suite on the oldryzen node was the first to see it. The population
-  words are whole words now, and a first size line whose next line is a
-  size line too is the header, wrapped, whatever it names. Text-layer
-  test of the shape in test-stratum-header.R (3 of 5 expectations fail
+  words are whole words now, and a first size line whose next line
+  carries one size is the header, wrapped, whatever it names; a next line
+  of two or more sizes is the arms' own size line under a population
+  stratum, which stays a stratum, and the arm names are then read from
+  the line above it (CodeRabbit on PR #458). Text-layer tests of both
+  shapes in test-stratum-header.R (3 of 5 first-part expectations fail
   on the unfixed code); the stratum-header, image-upload (with
   tesseract) and Loadsman layout tests pass.
 

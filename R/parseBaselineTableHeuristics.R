@@ -1099,9 +1099,15 @@
     # had no boundaries - and the header became a stratum: arm 2 lost its
     # N and every row took the header's words as a prefix. The words are
     # whole words now, and a first size line whose NEXT line is a size
-    # line too is the header, wrapped, whatever it names.
-    nextIsSize <- h < length(kind) && kind[h + 1L] == "header"
-    if (nSizes == 1L && !nextIsSize &&
+    # line too is the header, wrapped, whatever it names - when that next
+    # line carries ONE size, the wrapped arm's. A next line of two or more
+    # sizes is the arms' own size line under a population stratum ("Women
+    # (n = 40)" over "(n = 20) (n = 20)"), and the population line stays a
+    # stratum (CodeRabbit on PR #458).
+    nextNSizes <- if (h < length(kind) && kind[h + 1L] == "header")
+      length(gregexpr("(?i)n\\s*[=:~]\\s*\\d", lineTexts[h + 1L], perl = TRUE)[[1]]) else 0L
+    nextIsWrap <- nextNSizes == 1L
+    if (nSizes == 1L && !nextIsWrap &&
         grepl("(?i)\\b(patients|subjects|participants|women|men|children|infants|adults|elderly|younger|older)\\b|\\d+\\s*[-–]\\s*\\d+\\s*y",
               lead, perl = TRUE))
       kind[h] <- "stratum"
@@ -1124,6 +1130,10 @@
   headerAt <- which(kind == "header"); headerAt <- headerAt[headerAt < firstData]
   if (length(headerAt) > 0) {
     nameRow <- headerAt[1] - 1L
+    # a population stratum line between the arm names and their size line
+    # ("Variable Placebo Drug" / "Women (n = 40)" / "(n = 20) (n = 20)") is
+    # stepped over: the names are the line above it (CodeRabbit on PR #458)
+    if (nameRow > capIdx + 1L && kind[nameRow] == "stratum") nameRow <- nameRow - 1L
     keepNameRow <- nameRow %in% headerIdx &&
       nrow(lines[[nameRow]]) <= cols$n * 3 + 2
     # the group-name row above a paired timepoint line (issue 111) stays a

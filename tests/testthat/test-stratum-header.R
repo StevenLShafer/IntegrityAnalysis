@@ -151,4 +151,20 @@ test_that("a first size line whose next line is a size line is the header, wrapp
   makeTablePdf(f2, cells2)
   r2 <- parseBaselineTableHeuristics(f2, quiet = TRUE)
   expect_true(all(grepl("^Women: ", r2$data$ROW)))
+  # ... and when the arms' own size line follows the population line, the
+  # population line is still the stratum, the sizes are the arms', and the
+  # names come from the line above the stratum (CodeRabbit on PR #458)
+  f3 <- file.path(tempdir(), "populationThenSizes.pdf")
+  cells3 <- c(
+    list(list(x = 40, y = 60, text = "Table I. Patient demographics", adj = 0)),
+    rowCells(84,  "Variable", c("Placebo", "Drug"), vx),
+    list(list(x = 40, y = 104, text = "Women (n = 40)", adj = 0)),
+    rowCells(118, "", c("(n = 20)", "(n = 20)"), vx),
+    rowCells(140, "Age (y)", c("31 \u00b1 5", "30 \u00b1 6"), vx),
+    rowCells(158, "Weight (kg)", c("56 \u00b1 9", "57 \u00b1 8"), vx))
+  makeTablePdf(f3, cells3)
+  r3 <- parseBaselineTableHeuristics(f3, quiet = TRUE)
+  expect_identical(r3$arms$arm, c("Placebo", "Drug"))
+  expect_identical(r3$arms$N, c(20L, 20L))
+  expect_true(all(grepl("^Women: ", r3$data$ROW)))
 })
