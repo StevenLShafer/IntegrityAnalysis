@@ -132,6 +132,58 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 136. A look-alike letter among the digits of the mean before the sign
+
+**Status: fixed on `fix/letter-in-the-mean-before-the-sign`, 2026-09-27**,
+from the corpus session's batch 28 AG7 (Anesth Analg 2002, PMID 12182258;
+four arms of 20).
+
+- **The defect.** "Duration of anesthesia, min 20l +/- 40 205 +/- 40 207
+  +/- 41 204 +/- 49": the OCR's lowercase l for the 1 of the mean "201",
+  the sign genuine after it. Issue 116 reads such a letter in the SD
+  after the sign; the mean before it was not looked at, so the word was
+  no number and the first cell was lost (23 of 24 cells).
+- **What changed.** `.ppRepairLetterDigitsAfterSign()` reads the word
+  before a genuine sign glyph as it reads the word after it: a run of
+  digits and the look-alikes l, I, |, O and o, with at least one digit
+  and one look-alike, becomes the number.
+- **On the page.** Duration of anesthesia reads 201 +/- 40, 205 +/- 40,
+  207 +/- 41, 204 +/- 49; 24 cells.
+- **Tests** (`tests/testthat/test-letter-in-the-mean-before-the-sign.R`):
+  the helper on "20l" before a sign and "4O" after one (both read) and
+  "I2" beside no sign (left); a rebuilt page reads the first Duration
+  cell (4 of 5 expectations fail on the unfixed code). The letter-l-in-
+  SD, size-zero, slot and Loadsman layout tests still pass.
+
+---
+
+## 135. A per-cell n in brackets may carry a footnote mark, and may end the cell
+
+**Status: fixed on `fix/bracket-n-with-footnote-mark`, 2026-09-27**, from
+the corpus session's batch 28 AG6 (CJA 1999, PMID 10522590; two arms of
+40).
+
+- **The defect.** "Last menstrual cycle (days) 16 <bullet> 3[35]* 16
+  <bullet> 3[35]*": the per-cell n of issue 109 in brackets after the
+  SD, with the paper's footnote star after the bracket. Issue 109's
+  pattern is anchored at the word's end and missed the star; and it
+  looked only at a word spanning the whole cell or one after it, while
+  here the bracket sits in the word that ENDS the cell ("3[35]*" after
+  "16 <bullet>"). The row took the arm's 40 for its N.
+- **What changed.** The bracket may be followed by a footnote mark
+  (a star, a letter a to d, a dagger, a double dagger or a section
+  sign), and the word that ends the cell is searched as well as the
+  words spanning or following it.
+- **On the page.** The menstrual row reads 16 +/- 3 with N 35 and 35;
+  nothing else moves.
+- **Tests** (`tests/testthat/test-bracket-n-with-footnote-mark.R`): a
+  rebuilt page with "16 +/- 3[35]*" in both arms gives the row N 35/35
+  and the rows above the arm's 40 (1 of 5 expectations fails on the
+  unfixed code). The bracket per-cell n and Loadsman layout tests still
+  pass.
+
+---
+
 ## 133. The levels of one variable share a notation
 
 **Status: fixed on `fix/sibling-levels-share-the-count-reading`, 2026-09-27**,
