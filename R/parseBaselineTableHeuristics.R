@@ -233,6 +233,7 @@
   blankRun     <- 0
   seenData     <- FALSE
   if (capIdx >= length(lines)) return(NULL)
+  cellNByLine <- vector("list", length(lines))   # per-cell n groups, by line (issue 131)
   for (i in seq(capIdx + 1, length(lines))) {
     txt <- lineTexts[i]
     newCaption <- .ppCaptionStart(txt)
@@ -280,9 +281,53 @@
     # 9350368, 9836028, the corpus session's batch 24): the OCR of an
     # equals sign in a small font is a tilde - "(n ~ 20)", "(n~20)" - and
     # the arm so headed had no N while its neighbour did.
+    # ... UNLESS THE LINE IS A ROW OF CELLS WITH ITS OWN N AFTER EACH
+    # (2026-09-27, ISSUES.md issue 131; Am J Obstet Gynecol 2000, PMID
+    # 10649150, the corpus session's batch 28 AG2): "Last menstrual cycle
+    # (d, mean +/- SD) 16 +/- 3 (n = 38*) 16 +/- 3 (n = 37*) 16 +/- 3 (n =
+    # 38*)" - a variable known for fewer patients than the arm, its count
+    # printed after each cell. The "(n = k)" test above took the line for
+    # a header, the stratum rule of issue 55 then read it as a stratum
+    # "Last menstrual cycle ... 16 +/- 3:" over the rows beneath, and the
+    # durations and morphine went out under that prefix with N 38/37/38
+    # instead of the header's 40, the three menstrual cells lost. A line
+    # that carries two or more cells (mean +/- SD, mean (SD), median
+    # [range]) is a data row whatever follows its cells. Each "(n = k)"
+    # group is read HERE, keyed by the left edge of the cell it follows,
+    # and its words leave the line: left in, their numbers seed a column
+    # of their own, which the column drops below take away words and
+    # all, and the n is gone before the row is read. The block walker
+    # takes the n from cellNByLine when it reads the row (issue 109's
+    # bracket form is read there too).
     if (grepl("(?i)\\(?\\s*n\\s*[=:~]\\s*\\d+", txt, perl = TRUE)) {
-      kind[i] <- "header"
-      next
+      cellToks <- .ppTokenizeLine(lines[[i]])
+      cellIdx  <- which(cellToks$type %in% c("meanSD", "numParen", "medianRng"))
+      if (length(cellIdx) < 2L) {
+        kind[i] <- "header"
+        next
+      }
+      L <- lines[[i]]; drop <- logical(nrow(L)); found <- list()
+      for (ci in cellIdx) {
+        aft <- which(L$x >= cellToks$x1[ci] - 1 & L$x <= cellToks$x1[ci] + 40 & !drop)
+        if (!length(aft)) next
+        # the group is the shortest run of those words that closes the bracket
+        for (m in seq_along(aft)) {
+          run <- aft[seq_len(m)]
+          txtA <- paste(L$text[run], collapse = " ")
+          if (grepl("^\\(\\s*[Nn]\\s*[=:~]\\s*[0-9]{1,4}\\s*\\*?\\s*\\)$", txtA, perl = TRUE)) {
+            found[[length(found) + 1L]] <- data.frame(x0 = cellToks$x0[ci],
+                                                      n = as.integer(gsub("\\D", "", txtA)))
+            drop[run] <- TRUE
+            break
+          }
+        }
+      }
+      if (length(found)) {
+        cellNByLine[[i]] <- do.call(rbind, found)
+        lines[[i]] <- L[!drop, , drop = FALSE]
+        rownames(lines[[i]]) <- NULL
+        lineTexts[i] <- .ppLineText(lines[[i]])
+      }
     }
     toks <- .ppTokenizeLine(lines[[i]])
     tokensByLine[[i]] <- toks
@@ -1379,6 +1424,10 @@
   catHeader    <- NA_character_
   catHeaderPct <- FALSE        # did the category header announce percentages?
   catHeaderNPct <- FALSE       # ... or "N (%)" cells (counts with percents)?
+  # the last level read as n (%) by its own cells: the heading it stood
+  # under and the x of its label (issue 133)
+  pctLevelHeadingAt <- NA_integer_
+  pctLevelX         <- NA_real_
   catColumns   <- character(0)
   usedRowNames <- character(0)
   pctDerived   <- character(0) # rows whose counts were derived from percents
@@ -2025,11 +2074,33 @@
         # mean of 12 with an SD of 33 because the footnote also said
         # "mean (SD)" (vocacapsaicin corpus, 2026-08-22).
         else if (!is.na(catHeader) && catHeaderNPct) "percent"
+        # THE LEVELS OF ONE VARIABLE SHARE A NOTATION (2026-09-27, ISSUES.md
+        # issue 133; Biricik 2024, J PeriAnesthesia Nursing, Loadsman corpus
+        # - the corpus session's batch 29 AH1; four arms of 28). Under "Type
+        # of surgery", "Adenoidectomy 7 (25) 10 (35.7) 8 (28.6) 8 (28.6)"
+        # checked as n (%) in every arm and read as counts; "Tonsillectomy
+        # 11 (39.3) 13 (46.3) 10 (35.7) 9 (32.1)" did not - 13 of 28 is
+        # 46.4, and the page prints 46.3 - so the cells could not vouch,
+        # the footnote's "mean +/- SD" won, and the row read as a
+        # continuous variable 11 +/- 39.3: four false cells that carried the
+        # trial's p. A heading's levels are the categories of ONE variable
+        # and are printed alike: a row set at the same indentation as a
+        # level that read as n (%) by its own cells, under the same
+        # heading, is a level of counts too, a misprinted percentage
+        # notwithstanding. (The heading itself closes at the first n (%)
+        # level - see issue 105's note - so the heading's POSITION and the
+        # level's label x are kept, not the open heading.)
+        else if (!is.na(catHeaderAt) && identical(pctLevelHeadingAt, catHeaderAt) &&
+                 !is.na(pctLevelX) && abs(lines[[i]]$x[1] - pctLevelX) <= 2) "percent"
         else if (labelContinuous || footSaysMeanSD) "sd"
         else if (tableHasPlusMinus) "percent"
         else if (footSaysPercent) "percent"
         else "sd"
       mainType <- if (decision == "sd") "meanSD" else "nPct"
+      if (decision == "percent" && cellsSayPct && !is.na(catHeaderAt)) {
+        pctLevelHeadingAt <- catHeaderAt
+        pctLevelX         <- lines[[i]]$x[1]
+      }
       if (parenIsSD == "auto" && cellsSayPct)
         say("  \"", label, "\": read \"a (b)\" as n (%) - in every arm the ",
             "bracketed number is the first as a percentage of the arm N.")
@@ -2115,11 +2186,19 @@
           m <- regmatches(d$text[w], regexpr("\\[\\s*([0-9]{1,4})\\s*\\]\\s*$", d$text[w], perl = TRUE))
           if (length(m) && nzchar(m)) { k <- as.integer(gsub("\\D", "", m)); break }
         }
+        # ... OR IN PARENTHESES AS "(n = 38*)" RIGHT AFTER THE CELL (issue
+        # 131), read and stripped at classification and kept by the cell's
+        # left edge in cellNByLine
+        if (is.na(k) && !is.null(cellNByLine[[i]])) {
+          g <- cellNByLine[[i]]
+          hit <- which(abs(g$x0 - t$x0) <= 2)
+          if (length(hit)) k <- g$n[hit[1]]
+        }
         if (!is.na(k) && !is.na(armN[arms[j]]) && k > armN[arms[j]]) k <- NA_integer_
         k
       }, integer(1))
       if (any(!is.na(cellN)))
-        say("  \"", label, "\": per-cell n in brackets - N ",
+        say("  \"", label, "\": per-cell n after the cell - N ",
             paste(ifelse(is.na(cellN), "arm", cellN), collapse = "/"), " for this row.")
       perArm <- lapply(seq_len(nArms), function(j) {
         t <- armTok[[j]]
