@@ -117,3 +117,38 @@ test_that("a stratum line's sole size is its total, never an arm's, even when it
   d <- r$data[!is.na(r$data$MEAN), ]
   expect_false(any(!is.na(d$N) & d$N == 60L))
 })
+
+# ---- a wrapped arm header is no stratum (issue 55, second follow-up) --------
+# The pasted-screenshot shape of test-image-uploads.R, here through the text
+# layer under a caption: "Characteristic Control Treatment (n = 17)" with the
+# first arm's "(n = 15)" wrapped onto the next line. #363's population test
+# matched "men" inside "Treatment" and made the header a stratum.
+test_that("a first size line whose next line is a size line is the header, wrapped - and 'Treatment' is no population", {
+  vx <- c(300, 420)
+  f <- file.path(tempdir(), "wrappedHeaderText.pdf")
+  cells <- c(
+    list(list(x = 72, y = 60, text = "Table 1. Baseline characteristics", adj = 0)),
+    rowCells(80,  "Characteristic", c("Control", "Treatment (n = 17)"), vx),
+    rowCells(98,  "",               c("(n = 15)", ""),                  vx),
+    rowCells(126, "Age (yr)",       c("45.3 (12.1)", "46.1 (11.8)"),    vx),
+    rowCells(144, "Weight (kg)",    c("63 (13)",     "68 (12)"),        vx),
+    rowCells(162, "Male, n (%)",    c("10 (67%)",    "12 (71%)"),       vx),
+    rowCells(180, "Smoker, n (%)",  c("4 (27%)",     "5 (29%)"),        vx))
+  makeTablePdf(f, cells)
+  r <- parseBaselineTableHeuristics(f, quiet = TRUE)
+  expect_equal(r$arms$N, c(15, 17))
+  expect_setequal(unique(r$data$ROW), c("Age", "Weight", "Male", "Smoker"))
+  expect_equal(nrow(r$skipped), 0L)
+  # a genuine population line over the arms, one size, is still a stratum
+  # when the line beneath it is not a size line
+  f2 <- file.path(tempdir(), "populationFirst.pdf")
+  cells2 <- c(
+    list(list(x = 40, y = 60, text = "Table I. Patient demographics", adj = 0)),
+    rowCells(84,  "Variable", c("Placebo", "Drug"), vx),
+    list(list(x = 40, y = 104, text = "Women (n = 40)", adj = 0)),
+    rowCells(126, "Age (y)", c("31 \u00b1 5", "30 \u00b1 6"), vx),
+    rowCells(144, "Weight (kg)", c("56 \u00b1 9", "57 \u00b1 8"), vx))
+  makeTablePdf(f2, cells2)
+  r2 <- parseBaselineTableHeuristics(f2, quiet = TRUE)
+  expect_true(all(grepl("^Women: ", r2$data$ROW)))
+})

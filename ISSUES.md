@@ -3082,6 +3082,20 @@ session's batch 7 finding M1 (Fujii & Nakayama 2006, Clin Ther; PMID
   falls back to the sizes the walk found (an N row inside a stratum) where
   the column header printed none. That page now reads both strata of three
   arms of 20 with prefixed names.
+- **Second follow-up (`fix/wrapped-header-is-no-stratum`, 2026-09-27).**
+  The follow-up's population test had no word boundaries and matched
+  "men" inside "Treatment": the pasted-screenshot shape of
+  test-image-uploads.R - no caption, "Characteristic Control Treatment
+  (n = 17)" with the first arm's "(n = 15)" wrapped onto the next line -
+  read its header as a stratum from 2026-09-24 (#363) on, arm 2 without
+  an N and every row prefixed "Characteristic Control Treatment:". The
+  test runs only with tesseract present and off the runner, so the full
+  suite on the oldryzen node was the first to see it. The population
+  words are whole words now, and a first size line whose next line is a
+  size line too is the header, wrapped, whatever it names. Text-layer
+  test of the shape in test-stratum-header.R (3 of 5 expectations fail
+  on the unfixed code); the stratum-header, image-upload (with
+  tesseract) and Loadsman layout tests pass.
 
 ---
 
