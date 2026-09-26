@@ -132,6 +132,43 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 139. A transposed table: groups down the side, variables across the top
+
+**Status: fixed on `feat/transposed-table`, 2026-09-27**, from the corpus
+session's batch 29 AH3 (Aydin 2014, J Anesth, Loadsman corpus; four arms
+of 80; not analysed until now, "N missing").
+
+- **The defect.** "Groups (n = 80) | Age (years) | Gender (M/F) | Duration
+  of surgery (h) | Total remifentanil consumption (ug)" across the top,
+  "Control 61.3 +/- 12.3 72/8 1.6 +/- 0.6 801.4 +/- 267.8" and three more
+  groups down the side, then a "P" row. The walker takes the row labels
+  for variables and the column heads for arms, and read three "arms"
+  called Age, Duration and Total, with N on the first alone and three
+  nameless cells per group.
+- **What changed.** `.ppTransposeBlock()` in pageLayout.R recognises the
+  layout by its head - the label column's heading names the groups
+  (Groups, Treatment, Arm, Drug, Regimen), two or more column heads
+  carry a unit in parentheses or a continuous variable's word, and the
+  rows beneath are short group names over two or more cells - and
+  rewrites the block the way the walker reads: the groups become the
+  arm-name line, the head's shared "(n = k)" their size line, and each
+  column a row with its head as the label and its cells under the groups
+  in order. The P row ends the groups and, transposed, is the p-value
+  column the walker drops. Every candidate block is offered the rewrite
+  before it is read; a block of the ordinary shape is left alone.
+- **On the page.** Four arms of 80 - Control, Strefen, Siccoral,
+  Stomatovis - with Age, Duration of surgery and Total remifentanyl
+  consumption in every arm, 12 cells as printed; nothing skipped.
+- **Tests** (`tests/testthat/test-transposed-table.R`): the transposer on
+  a groups-down-the-side block (arm line, size line, one row per column,
+  in order) and on an ordinary block (left alone); a rebuilt page of the
+  paper's shape reads four arms of 80 and its columns as variables (the
+  helper is absent and 6 expectations fail on the unfixed code). The
+  Loadsman layout, canine long-layout, stratum, paired-column,
+  header-cut and isolated-column tests still pass.
+
+---
+
 ## 138. A "P values" heading over a column with no cells of its own
 
 **Status: fixed on `fix/p-values-heading-over-no-column`, 2026-09-27**, from

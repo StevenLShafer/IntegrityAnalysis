@@ -766,6 +766,111 @@
 
 .ppLineText <- function(line) .ppSquish(paste(line$text, collapse = " "))
 
+# A TRANSPOSED TABLE: GROUPS DOWN THE SIDE, VARIABLES ACROSS THE TOP
+# (2026-09-27, ISSUES.md issue 139; Aydin 2014, J Anesth, Loadsman corpus -
+# the corpus session's batch 29 AH3; four arms of 80). "Groups (n = 80) |
+# Age (years) | Gender (M/F) | Duration of surgery (h) | Total remifentanil
+# consumption (ug)" across the top, "Control 61.3 +/- 12.3 72/8 1.6 +/- 0.6
+# 801.4 +/- 267.8" and three more groups down the side, then a "P" row.
+# The walker takes the row labels for variables and the column heads for
+# arms, and reads three "arms" called Age, Duration and Total with N on
+# the first alone. The layout is recognised by its head: the label
+# column's heading names the groups (Groups, Treatment, Arm, Drug), two
+# or more column heads carry a unit in parentheses or a continuous
+# variable's word, and the rows beneath are short group names over cells.
+# The block is then rewritten the way the walker reads: the groups become
+# the arm-name line (with the shared "(n = k)" as their size line), and
+# each column becomes a row - its head as the label, its cells placed
+# under the groups in order. The P row, if any, becomes a p-value column
+# and is dropped as such. Returns NULL when the block is not of this
+# shape.
+.ppTransposeBlock <- function(lines, capIdx = 0L) {
+  n <- length(lines)
+  if (n < capIdx + 4L) return(NULL)
+  isNum <- function(s) grepl(paste0("^", .ppNUM, "$"), s, perl = TRUE)
+  nTok  <- vapply(lines, function(L) nrow(.ppTokenizeLine(L)), integer(1))
+  idx   <- seq(capIdx + 1L, n)
+  # the head: the first line beneath the caption whose first word names the groups
+  groupWord <- "(?i)^(groups?|treatments?|arms?|drugs?|regimens?)$"
+  h <- idx[vapply(idx, function(i) grepl(groupWord, lines[[i]]$text[1], perl = TRUE) &&
+                    nrow(lines[[i]]) >= 3L && nTok[i] == 0L, logical(1))]
+  if (!length(h)) return(NULL)
+  h <- h[1]
+  # the data rows: consecutive lines after the head block with two or more
+  # cells and a word for a label; the head block is every line before them
+  firstData <- h + 1L
+  while (firstData <= n && nTok[firstData] < 2L) firstData <- firstData + 1L
+  if (firstData > n) return(NULL)
+  headIdx <- seq(h, firstData - 1L)
+  rows <- integer(0)
+  for (i in seq(firstData, n)) {
+    L <- lines[[i]]
+    if (nTok[i] < 2L || isNum(L$text[1])) break
+    if (grepl("^[Pp]$", L$text[1])) break          # the P row ends the groups
+    rows <- c(rows, i)
+  }
+  if (length(rows) < 2L) return(NULL)
+  labelX1 <- max(vapply(rows, function(i) { L <- lines[[i]]; L$x[1] + L$width[1] }, numeric(1)))
+  # the columns, from the rows' tokens
+  toks <- do.call(rbind, lapply(rows, function(i) { t <- .ppTokenizeLine(lines[[i]]); t$row <- i; t }))
+  cols <- .ppClusterColumns(toks$mid)
+  if (cols$n < 2L) return(NULL)
+  toks$col <- cols$assign(toks$mid)
+  colX0 <- tapply(toks$x0, toks$col, min); colX1 <- tapply(toks$x1, toks$col, max)
+  # the head words, by column: a word belongs to the column its centre falls in
+  # (widened to the midpoints between columns); the label column's words
+  # ("Groups", "(n = 80)") carry the shared size
+  headWords <- do.call(rbind, lines[headIdx])
+  wm <- headWords$x + headWords$width / 2
+  bounds <- c(-Inf, (head(colX1, -1) + tail(colX0, -1)) / 2, Inf)
+  headCol <- findInterval(wm, bounds)
+  inLabel <- wm < min(colX0) - 2
+  headCol[inLabel] <- 0L
+  varNames <- vapply(seq_len(cols$n), function(k) .ppSquish(paste(headWords$text[headCol == k], collapse = " ")), character(1))
+  if (sum(nzchar(varNames)) < 2L) return(NULL)
+  unitOrVar <- grepl("(?i)\\([a-z/%]+\\)|\\b(age|weight|height|bmi|duration|time|dose|consumption|volume|length|score)\\b",
+                     varNames, perl = TRUE)
+  if (sum(unitOrVar) < 2L) return(NULL)
+  sizeTxt <- .ppSquish(paste(headWords$text[headCol == 0L], collapse = " "))
+  sizeM <- regmatches(sizeTxt, regexpr("(?i)\\(?\\s*n(?:\\s*=|\\s*:)\\s*[0-9]+\\s*\\)?", sizeTxt, perl = TRUE))
+  # ---- the rewritten block
+  cap <- if (capIdx >= 1L) lines[[capIdx]] else NULL
+  labX <- 60; X <- 250 + 95 * (seq_along(rows) - 1L); cw <- 5.5
+  word <- function(text, x, y) data.frame(text = text, x = x, y = y, width = cw * nchar(text), height = 10,
+                                          stringsAsFactors = FALSE)
+  y <- if (!is.null(cap)) max(cap$y) + 16 else 40
+  out <- list(); if (!is.null(cap)) out[[1]] <- cap
+  # arm names: each group's label words - the words left of the first column
+  armLine <- do.call(rbind, lapply(seq_along(rows), function(j) {
+    L <- lines[[rows[j]]]; lab <- L$text[L$x + L$width / 2 < min(colX0) - 1]
+    word(paste(lab, collapse = " "), X[j], y)
+  }))
+  out[[length(out) + 1L]] <- armLine
+  if (length(sizeM) == 1L && nzchar(sizeM)) {
+    y <- y + 14
+    out[[length(out) + 1L]] <- do.call(rbind, lapply(seq_along(rows), function(j) word(sizeM, X[j], y)))
+  }
+  for (k in seq_len(cols$n)) {
+    y <- y + 14
+    lbl <- if (nzchar(varNames[k])) varNames[k] else paste("Column", k)
+    parts <- list(word(lbl, labX, y))
+    for (j in seq_along(rows)) {
+      L <- lines[[rows[j]]]
+      wm2 <- L$x + L$width / 2
+      inCol <- wm2 >= colX0[k] - 1 & wm2 <= colX1[k] + 1
+      if (!any(inCol)) next
+      cellW <- L[inCol, , drop = FALSE]
+      shift <- X[j] - min(cellW$x)
+      cellW$x <- cellW$x + shift; cellW$y <- y
+      parts[[length(parts) + 1L]] <- cellW[, c("text", "x", "y", "width", "height"), drop = FALSE]
+    }
+    out[[length(out) + 1L]] <- do.call(rbind, parts)
+  }
+  out <- lapply(out, function(L) { rownames(L) <- NULL; L[order(L$x), , drop = FALSE] })
+  list(lines = out, lineTexts = vapply(out, .ppLineText, character(1)),
+       capIdx = if (!is.null(cap)) 1L else 0L, groups = length(rows), variables = cols$n)
+}
+
 # ---------------------------------------------------------------------------
 # 1-D clustering of token midpoints into table columns
 # ---------------------------------------------------------------------------
