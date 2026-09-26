@@ -184,6 +184,45 @@ corpus session's batch 32 AM2 (Clin Ther 2003, PMID 12749510; two arms of
 
 ---
 
+## 156. A heading that carries the count notation may run longer
+
+**Status: fixed on `fix/level-under-a-count-heading-is-a-count`,
+2026-09-27**, from the corpus session's batch 32 AM1 (Clin Ther 2003, PMID
+14749148; four arms of 25) - a regression that issue 150 exposed.
+
+- **The defect.** "Type of surgery, no. (%) of patients" is seven words,
+  one over the six that fence prose out of the category headings, so the
+  levels beneath it - "Tympanoplasty 17 (68) 18 (72) 18 (72) 18 (72)",
+  "Radical mastoidectomy 8 (32) ..." - had no heading and read as mean
+  (SD). Before issue 150 the table failed validation for want of an N;
+  with the caption's "n = 25 in each group" taken, eight false cells (17
+  +/- 68 ...) were scored beside the genuine Age row: the worst item of
+  the 06e4aff certification.
+- **What changed.** A label line that names the count notation - "no.
+  (%)", "n (%)" - is a heading by that very tag and may run to ten words:
+  in the heading rule itself, in the scan of the label lines before the
+  first data row, and in the sustained-prose stop, which would otherwise
+  end the block at a nine-word heading (CodeRabbit on PR #468). And the
+  "N (%) tag on the next line" rule, which lets a wrapped label's tag
+  beneath the row speak for it, takes only a short continuation (four
+  words or fewer): a count heading beneath a row is the next variable's,
+  not the row's - the same page's "Days since last menstrual cycle 16
+  (3)" had read as counts for that reason.
+- **On the page.** The two surgery levels read as counts under their
+  heading; Age and the ramosetron dose as before. (Height, Weight, the
+  menstrual row and both durations are still lost to the label shift of
+  batch 31 AK4.)
+- **Tests** (`tests/testthat/test-count-heading-may-run-longer.R`): a
+  rebuilt page of the shape - the caption's "n = 25 in each group", two
+  mean (SD) rows, the seven-word heading and its two levels - reads four
+  arms of 25 with the levels as counts and no Tympanoplasty mean (2 of 4
+  expectations fail on the unfixed code); the same heading before the
+  first data row and a nine-word heading after data has begun both head
+  their levels.
+  The percent-block, category-heading and Loadsman layout tests still pass.
+
+---
+
 ## 155. One cohort's before-and-after table is no baseline table
 
 **Status: fixed on `fix/one-cohort-pre-post-table-is-no-baseline`,

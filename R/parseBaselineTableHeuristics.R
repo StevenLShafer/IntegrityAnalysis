@@ -460,7 +460,12 @@
       if (seenData) {
         # words that carry a letter or a digit: a rule rendered as
         # punctuation fragments is not prose (issue 153)
-        if (sum(grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE)) > 8 || blankRun >= 3) {
+        # ... and a line that names the count notation - "Type of surgery,
+        # no. (%) of patients" - is a heading, not prose, up to ten words
+        # (issue 156; CodeRabbit on PR #468)
+        nWordy <- sum(grepl("[A-Za-z0-9]", lines[[i]]$text, perl = TRUE))
+        isCountHead <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", txt, perl = TRUE) && nWordy <= 10
+        if ((nWordy > 8 && !isCountHead) || blankRun >= 3) {
           kind[i] <- "stop"
           break
         }
@@ -1713,7 +1718,10 @@
     for (j in pre) {
       lbl <- .ppCleanLabel(lineTexts[j])
       L   <- lines[[j]]
-      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L || nrow(L) > 6) next
+      # a heading that names the count notation may run to ten words here
+      # too (issue 156; CodeRabbit on PR #468)
+      preTag <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[j], perl = TRUE)
+      if (nchar(gsub("[^[:alnum:]]", "", lbl)) <= 1L || nrow(L) > (if (preTag) 10 else 6)) next
       if (max(L$x + L$width) >= min(cols$centers) - 20) next
       if (grepl(paste0("(?i)\\b(values?|data|results?|numbers?)\\s+(are|were|is)\\b|",
                        "\\bexpressed\\b|\\bpresented\\b|\\bshown\\b"),
@@ -1756,7 +1764,17 @@
       if (grepl("(?i)https?://|www\\.|downloaded\\s+from|copyright|©",
                 lineTexts[i], perl = TRUE))
         next
-      if (nchar(lbl) > 0 && nrow(lines[[i]]) <= 6) {
+      # A HEADING THAT CARRIES THE COUNT NOTATION MAY RUN LONGER (2026-09-27,
+      # ISSUES.md issue 156; Clin Ther 2003, PMID 14749148, the corpus
+      # session's batch 32 AM1; four arms of 25). "Type of surgery, no. (%)
+      # of patients" is seven words, one over the six that fence prose out
+      # of the headings, so the levels beneath it - "Tympanoplasty 17 (68)
+      # 18 (72) ..." - had no heading, read as mean (SD), and once the
+      # caption's N admitted the table (issue 150) eight false cells were
+      # scored. A label line that names the count notation - "no. (%)",
+      # "n (%)" - is a heading by that very tag; it may run to ten words.
+      nPctTag <- grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i], perl = TRUE)
+      if (nchar(lbl) > 0 && (nrow(lines[[i]]) <= 6 || (nPctTag && nrow(lines[[i]]) <= 10))) {
         catHeader <- lbl
         catHeaderAt <- i
         # "Race, N (%)": the children below are counts-with-percents -
@@ -2223,7 +2241,13 @@
       # N (%)" beneath it): the continuation is a label-kind line, and
       # its tag is this row's notation evidence (vocacapsaicin corpus,
       # 2026-08-22).
+      # ... and only a SHORT continuation carries it: a label line of five
+      # or more words beneath the row is the next variable's heading, not
+      # this row's tag - "Days since last menstrual cycle 16 (3)" over "Type
+      # of surgery, no. (%) of patients" read as counts (issue 156; Clin
+      # Ther 2003, PMID 14749148)
       nextLabelPct <- i < length(kind) && kind[i + 1] == "label" &&
+        nrow(lines[[i + 1]]) <= 4L &&
         grepl("(?i)\\b(no?|n)\\.?\\s*\\(\\s*%\\s*\\)", lineTexts[i + 1],
               perl = TRUE)
       labelContinuous <- grepl(continuousKeyword, label, perl = TRUE)
