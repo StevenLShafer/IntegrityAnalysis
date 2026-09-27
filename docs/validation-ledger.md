@@ -25,16 +25,30 @@ Those rows also record a change of population: the arm cap of
 5,014 scored, not 5,080; the two later 2026-09-26 rows admit them again by the
 local override of issue 174 (the public cap stays, by Steve's decision).
 
-**Where the two methods part.** Agreement with Carlisle's p is weakest
-where a mean's reporting unit exceeds the standard error of the arm
-difference, which is where the two methods treat rounding differently:
-this engine draws each printed value from the interval its precision
-stands for and judges ties by an exact null (the rounding sections of
-`statistics.md`; the tie experiment of 2026-09-03), where the 2017
-method did not. Across the 5,077 scored trials of the all-arms run,
-grouped by the share of a trial's continuous variables whose reporting
-unit exceeds that standard error (the pooled SD times √(1/n₁ + 1/n₂) of
-its two largest arms), agreement falls steadily with the share:
+**Where agreement is weakest.** In this comparator run, agreement with
+Carlisle's stored trial p-values is weaker when more of a trial's
+continuous variables have a coarse reporting unit relative to the
+standard error of an arm difference. An earlier version of this
+paragraph explained that as "the two methods treat rounding
+differently: this engine draws each printed value from its interval,
+the 2017 method did not"; the follow-up statistical audit of 2026-09-27
+showed both halves wrong, and the explanation is withdrawn. Carlisle's
+2017 Methods adjust the Monte Carlo "for the precision to which mean
+(SD) were reported", take the per-variable result nearest 0.5 and
+combine by Stouffer, and the 2015 method paper defines the half-tie
+mid-p; this engine rounds each *simulated* arm mean to the printed
+precision and draws the SD from its interval while the observed printed
+means stay as the statistic, and judges the trial against the simulated
+null of the summed z-scores. Both procedures account for reporting
+precision; their input declarations, row calculations and within-trial
+combination need not coincide, and which of those produces the gradient
+is not identified. What follows is the association, across the 5,077
+scored trials of the all-arms run, grouped by the share of a trial's
+continuous variables whose reporting unit exceeds that standard error
+(the pooled SD times √(1/n₁ + 1/n₂) of its two largest arms, with the
+largest arm's declared DECM). The correlation falls steadily with the
+share; the median difference and the share within 0.05 do not, quite,
+in the last bin:
 
 | share of coarse-unit variables | trials | r | median \|Δp\| | within 0.05 | alarm concordance at 0.05 |
 |---|---|---|---|---|---|
@@ -44,9 +58,9 @@ its two largest arms), agreement falls steadily with the share:
 | 51–75% | 78 | 0.9712 | 0.0398 | 57.7% | 96.2% |
 | above 75% | 67 | 0.9673 | 0.0313 | 58.2% | 100% (67 trials with very few alarms; it says little) |
 
-and, by the largest arm, near-steadily (the two smallest bins are level
-at 91% within 0.05 and the second has the higher r; the fall begins
-above 100 per arm), with the bin's mean coarse-unit share rising
+and, by the largest arm, near-steadily in r (the two smallest bins are
+level at 91% within 0.05 and the second has the higher r; the fall
+begins above 100 per arm), with the bin's mean coarse-unit share rising
 alongside:
 
 | largest arm | trials | r | median \|Δp\| | within 0.05 | alarm concordance at 0.05 | mean coarse-unit share |
@@ -58,12 +72,62 @@ alongside:
 | 1,001–5,000 | 181 | 0.9788 | 0.0262 | 68.5% | 96.1% | 0.30 |
 | above 5,000 | 63 | 0.9635 | 0.0304 | 58.7% | 95.2% | 0.38 |
 
-Both tables sum to the 5,077 scored trials. In that regime the engine's p is usually the larger (NEJM 864
-0.58 against 0.21; NEJM 913 0.49 against 0.23; NEJM 204 0.34 against
-0.16), occasionally the smaller (JAMA 198, twelve variables at 19,541
-and 29,294 per arm: 0.0077 against 0.066). Which treatment is right is a
-methods question, not a defect of either run; the tables are in the
-run's workbook, sheet "Rounding gradient".
+Both tables sum to the 5,077 scored trials; they are in the run's
+workbook, sheet "Rounding gradient", and were reproduced independently
+by the follow-up audit.
+
+**The differences run in both directions, and in the coarse-unit
+regime the engine's p is more often the smaller.** An earlier version
+of this paragraph said "usually the larger"; the follow-up audit counted
+the Trials sheet: across all 5,077 scored trials the engine's p is
+larger in 2,329 and smaller in 2,747 (one equal); among the 1,292
+trials with at least one coarse-unit variable it is larger in 464
+(35.9%) and smaller in 827 (64.0%), with a median signed difference of
+−0.009, and every nonzero coarse-share bin has more decreases than
+increases; only the 63 mega-trials show a modest majority of increases
+(35 larger, 27 smaller, one equal). Neither a larger nor a smaller p is
+evidence about either method's calibration:
+
+| share of coarse-unit variables | trials | engine p larger | engine p smaller | equal |
+|---|---|---|---|---|
+| none | 3,785 | 1,865 | 1,920 | 0 |
+| up to 25% | 769 | 279 | 490 | 0 |
+| 26–50% | 378 | 124 | 254 | 0 |
+| 51–75% | 78 | 31 | 47 | 0 |
+| above 75% | 67 | 30 | 36 | 1 |
+
+**The worked example is a provenance question first.** NEJM 864 (PMID
+25014686) reads 0.58 here against Carlisle's stored 0.21. The runner
+builds TRIAL, ROW, N, MEAN and SD from the One Sheet and discards its
+DECM and DECSD columns, so the validator infers precision from the
+printed digits; for that trial's cholesterol row the workbook declares
+one decimal (128.0 (22.0)) while the article's Table 1 prints "128 ±
+22", so the inferred integer precision matches the article and the
+workbook's declaration does not. Supplying the workbook's declarations
+instead moves the trial from 0.5815 to 0.1613 at seed 42; independent
+fixed-SD references give 0.577 at the article's precision and 0.163 at
+the workbook's, and a normal-reference Stouffer at the workbook's
+precision gives 0.217, close to the stored 0.2119. The example therefore
+mixes an input-declaration question with a methods question and settles
+neither; the declarations must be reconciled with the article and the
+historical calculation before it can. The age row itself is sound: for
+arms of 12,838 and 12,835 with SD 7.5 printed to 0.1, the honest-null
+probability that the two printed means agree is 0.390 by independent
+quadrature (insensitive to where the population mean sits on the grid),
+so its mid-p is 0.195, which is what the engine reads. Equal printed
+means at this size are weak evidence one row at a time - about two
+honest trials in five - and are not thereby no evidence: five
+independent such rows all agreeing carry a mid-p of about 0.0045.
+
+The follow-up audit's statement of the caveat, adopted here: in this
+comparator run, agreement with Carlisle's stored trial p-values is
+weaker when more variables have coarse reporting units relative to the
+standard error of an arm difference; both procedures account for
+reporting precision, but their input declarations, row calculations and
+within-trial combination need not coincide; the differences occur in
+both directions, and in this run the engine's p is smaller in about 64%
+of trials with at least one coarse-unit variable; this comparison does
+not establish either method's calibration.
 
 | Date | Engine (commit / PR) | Trials compared | Replicate ceiling | r vs Carlisle | median \|Δp\| | within 0.05 | alarm concordance (p < 0.05 both ways) | Notes |
 |---|---|---|---|---|---|---|---|---|
@@ -75,10 +139,10 @@ run's workbook, sheet "Rounding gradient".
 | 2026-09-06 | sigma draw (#185, from merged main) | 5,041 usable | 10,000 | 0.9929 | 0.0142 | 89.1% | 98.5% | median \|Δp\| vs pooled 0.009, confined to ≤ 30 per arm; **the citable row** |
 | 2026-09-06 | sigma-draw engine, location-scale pair (recorded in #193) | 5,041 usable | 10,000 | 0.9931 / 0.9932 | — | 89.3% / 89.9% | 98.5% either way | a PAIRED RE-RUN of the row above, not a new engine: the replicate's common location drawn at σ/√(mean N) (as shipped) vs σ/√ΣN, identical data and seeds; 419 vs 420 alarms, 7 crossing each way; median change 0.0000–0.0007 by arm size, no direction. The 0.9931 differs from the row above's 0.9929 only because it is a fresh run. Data: `C:/dev/Corpus/synthetic/location-scale/` |
 | 2026-09-06 | SD rounding draw (feature/sd-rounding-draw, from 166dc5b) | 5,041 usable | 10,000 | 0.9932 | 0.0138 | 89.2% | 98.5% | vs the sigma-draw run: median \|Δp\| 0.0077, r 0.9982, alarms 420 → 418 (5 down, 7 up), no direction by arm size; data `C:/dev/Corpus/synthetic/sd-round/` |
-| 2026-09-26 | release build after the fifth audit's numerical fixes (53aa576: #483 null-law key without SE, #484 stated-grid tolerance, #486 app draw budget) | 4,976 usable of 5,014 scored | 10,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.9% | 98.2% at 0.05 (his 356 alarms, ours 405); 99.1% at 0.01 (111, 139) | seed 42 re-set per trial; run by the corpus session's `_tools/carlisle2017_compare.R`, John's One Sheet cells through validateData → P_Calc, his stored one-sided p joined with the A&A numbering offset; 66 of 5,080 not scored: 63 refused `too_large` (an arm above `.iaMaxArmN` = 5,000, the mega-trials, which the August pilot scored before the 2026-09-09 cap), 3 `incongruent`; 38 scored trials with his p exactly 1 dropped as usable-rule; 34 with his p in [0.9999, 1) stay in. On all 5,014 scored: r 0.9894, Spearman 0.9891, same medians and concordances. 39.7% within 0.01. Summary workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e4_summary.xlsx`. The difference from the 6 September rows combines the engine's changes since then with the 63 mega-trials now refused; the ceiling contributes nothing measurable (next row) |
-| 2026-09-26 | the same release build, 53aa576 | 4,976 usable of 5,014 scored | 100,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.8% | 98.2% at 0.05 (his 356, ours 406); 99.0% at 0.01 (111, 139) | seed 42 re-set per trial, same runner and join as the row above; the 10,000-ceiling figures to three decimals, with the same twelve largest differences at the same p's, so the replicate ceiling contributes nothing measurable to the agreement with Carlisle. On all 5,014 scored: r 0.9894, Spearman 0.9891. 39.9% within 0.01. Workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e5_summary.xlsx` |
+| 2026-09-26 | release build after the fifth audit's numerical fixes (53aa576: #483 null-law key without SE, #484 stated-grid tolerance, #486 app draw budget) | 4,976 usable of 5,014 scored | 10,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.9% | 98.2% at 0.05 (his 356 alarms, ours 405); 99.1% at 0.01 (111, 139) | seed 42 re-set per trial; run by the corpus session's `_tools/carlisle2017_compare.R`, John's One Sheet cells through validateData → P_Calc, his stored one-sided p joined with the A&A numbering offset; 66 of 5,080 not scored: 63 refused `too_large` (an arm above `.iaMaxArmN` = 5,000, the mega-trials, which the August pilot scored before the 2026-09-09 cap), 3 `incongruent`; 38 scored trials with his p exactly 1 dropped as usable-rule; 34 with his p in [0.9999, 1) stay in. On all 5,014 scored: r 0.9894, Spearman 0.9891, same medians and concordances. 39.7% within 0.01. Summary workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e4_summary.xlsx`. The difference from the 6 September rows combines the engine's changes since then with the 63 mega-trials now refused; the ceiling leaves r, Spearman and the median |Δp| unchanged at three decimals and moves the shares within 0.05 and 0.01 by 0.1 point (next row), which is not a statement about individual trials |
+| 2026-09-26 | the same release build, 53aa576 | 4,976 usable of 5,014 scored | 100,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.8% | 98.2% at 0.05 (his 356, ours 406); 99.0% at 0.01 (111, 139) | seed 42 re-set per trial, same runner and join as the row above; r, Spearman and the median |Δp| are the 10,000-ceiling figures to three decimals, the shares within 0.05 and within 0.01 move by 0.1 point (88.9% → 88.8%, 99.1% → 99.0%), and the twelve largest differences are the same trials at the same p's: the replicate ceiling changes the aggregate agreement with Carlisle by no more than that. It does change individual trials that reach the third stage, and a trial that stops earlier repeats the same batch at either ceiling under the same seed, so this pair of rows is not a Monte Carlo error assessment (follow-up audit 2026-09-27, N4). On all 5,014 scored: r 0.9894, Spearman 0.9891. 39.9% within 0.01. Workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e5_summary.xlsx` |
 | 2026-09-26 | the release build with the arm cap raised for the run (4c5bcc5, whose R/ is identical to 89bc836; `INTEGRITY_MAX_ARM_N=1000000`, issue 174) | 5,038 usable of 5,077 scored | 10,000 | 0.9913 (Spearman 0.9913) | 0.0142 | 88.5% | 98.2% at 0.05 (his 358 alarms, ours 410); 99.0% at 0.01 (111, 142) | Steve's request: the 63 mega-trials (arms 5,006 to 34,644; 41 NEJM, 22 JAMA) admitted; only the 3 incongruent trials refused. On all 5,077 scored: r 0.9891, Spearman 0.9888, 88.3% within 0.05, 39.6% within 0.01. Admitting the mega-trials moves the corpus figures by 0.0003 in r and 0.4 points within 0.05 against the 53aa576 rows. Seed 42 per trial, same runner; workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_4c5bcc5_m1e4_allarms_summary.xlsx` |
-| 2026-09-26 | the 63 mega-trials alone, same run | 63 | 10,000 (and 100,000: the same p to four decimals) | 0.9635 | 0.0304 | 58.7% | 95.2% at 0.05 (his 2 alarms, ours 5) | the weaker agreement is not Monte Carlo noise (rescoring at 100,000 reproduces every p to four decimals in under a second each); it is the rounding gradient described below the table. Example: NEJM 864 (PMID 25014686), arms 12,838 and 12,835, age 64.9 vs 64.9 with SD 7.5 - the SE of the arm difference is 0.09 against a reporting unit of 0.1, the engine's rows sit at their attainable floor and the trial reads 0.58 against Carlisle's 0.21 |
+| 2026-09-26 | the 63 mega-trials alone, same run | 63 | 10,000 (and 100,000: the same p to four decimals in 60 of 63; JAMA 112 0.006400 → 0.006315, JAMA 198 0.007700 → 0.008330, NEJM 460 0.002700 → 0.002450) | 0.9635 | 0.0304 | 58.7% | 95.2% at 0.05 (his 2 alarms, ours 5) | an earlier version of this row called the agreement at the two ceilings proof that the weaker agreement is not Monte Carlo noise; it is not that (follow-up audit 2026-09-27, N4): a trial that stops at 1,000 draws repeats the same batch at either ceiling under the same seed. For NEJM 864 (PMID 25014686; arms 12,838 and 12,835) the systematic difference does hold by a different argument - three seeds give 0.5815, 0.5755 and 0.5935 at either ceiling, a fixed 100,000-draw batch gives 0.5767, 0.5760 and 0.5786, and an independent discrete-normal reference gives 0.5775 at the runner's inferred precision - but see the provenance note below the table: at the workbook's declared precision the same trial reads 0.16. These 63 trials are the association's tail, described below; the cause is not identified |
 
 ### A single published trial, computed by the method's own authors
 

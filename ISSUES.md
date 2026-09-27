@@ -155,6 +155,57 @@ session. Corpus tooling only.
 
 ---
 
+## 175. The follow-up statistical audit: seven findings closed, the engine declared done, four ledger corrections
+
+**Status: fixed on `docs/comparator-narrative-corrected`, 2026-09-27**,
+from the follow-up outside statistical audit of 2026-09-27 against
+d06b84c (report held locally under `.audit/`). Documentation only.
+
+- **Closure.** The auditor reran its own frozen fixtures and routes on
+  the 27eaf9a snapshot and on d06b84c: F1 (SE in the null-law key) and
+  F2 (stated-grid tolerance) show the former failure on the old build
+  and the intended result on the new, with the distinct-law and valid-
+  precision controls unchanged; F3 to F6 closed on the revised text; F7
+  partially, pending the corrections below. 1,552 assertions across 43
+  files, no failures. No P1 and no numerical P2 in the engine: the
+  stopping rule of 2026-09-10 is met, and the statistical engine is
+  declared complete at d06b84c. Effort moves to corpus validation.
+- **The four corrections, all to the ledger narrative of issue 173's
+  postscript.** N1: Carlisle's 2017 Methods adjust the Monte Carlo for
+  reporting precision and the 2015 paper defines the half-tie mid-p, so
+  "the 2017 method did not treat rounding" was false; and this engine
+  rounds the *simulated* means and draws the SD from its interval - it
+  does not draw the observed means from intervals. N2: in the
+  coarse-unit regime the engine's p is the *smaller* in 64% of trials
+  (827 of 1,292), not "usually the larger"; every nonzero bin has more
+  decreases. N3: the NEJM 864 example is a precision-declaration question
+  first: the corpus runner discards the One Sheet's DECM/DECSD, the
+  workbook declares one decimal for a cholesterol row the article prints
+  as integers, and supplying the workbook's declarations moves the trial
+  from 0.58 to 0.16 (Carlisle's stored 0.21). N4: the 10,000-versus-
+  100,000 agreement has three exceptions and, for a trial that stops at
+  1,000 draws, repeats the same batch, so it was not a noise check; a
+  fixed 100,000-draw batch and an independent discrete-normal reference
+  (0.5775) do support the systematic difference for that trial at the
+  runner's inferred precision.
+- **What the audit confirmed.** For arms of 12,838 and 12,835 with SD
+  7.5 printed to 0.1, the honest-null probability of identical printed
+  means is 0.390 by independent quadrature, so the engine's row mid-p of
+  0.195 is right, and accounting for rounding is necessary; equal
+  printed means at that size are weak evidence one row at a time and
+  real evidence across independent rows (five such rows: about 0.0045).
+- **What changed.** `docs/validation-ledger.md`: the paragraph rewritten
+  as an association with the auditor's caveat, the direction counts per
+  bin, the provenance note on NEJM 864, the ceiling rows' claims
+  corrected; `docs/statistics.md`: the clause; `docs/methods/methods.tex`:
+  the build paragraph records the follow-up and the declaration
+  (`methods.pdf` rebuilt); this entry and the postscripts on issue 173.
+- **For the corpus session.** The runner could carry DECM/DECSD from the
+  One Sheet and log where they disagree with the printed digits; the
+  comparator example can be recomputed after that reconciliation.
+
+---
+
 ## 174. A local copy may raise the public server's limits by environment variable
 
 **Status: fixed on `feat/local-limits-from-the-environment`, 2026-09-26**,
@@ -225,14 +276,17 @@ itself is the ledger's open item, requested from the corpus session.
 - **Postscript, 2026-09-26 (evening).** At Steve's request the corpus
   session reran the comparison with the cap raised locally, admitting
   the 63 mega-trials (the ledger's all-arms rows): the corpus figures
-  move by 0.0003 in r; on the 63 alone r is 0.9635, and rescoring at
-  100,000 replicates reproduces every p to four decimals, so the weaker
-  agreement is a rounding gradient, not noise - it runs through the
-  whole corpus wherever a mean's reporting unit exceeds the standard
-  error of the arm difference, where this engine's treatment of
-  rounding parts from Carlisle's 2017 method. The ledger describes it;
-  whether either treatment is preferable is a methods question for
-  Steve.
+  move by 0.0003 in r; on the 63 alone r is 0.9635. Agreement with
+  Carlisle is weaker the more of a trial's continuous variables have a
+  reporting unit coarser than the standard error of the arm difference;
+  the ledger records the association.
+- **Postscript, 2026-09-27.** The follow-up audit (issue 175) withdrew
+  the explanation the first postscript gave for that association: both
+  procedures account for reporting precision, the differences run in
+  both directions (the engine's p is the smaller in 64% of coarse-unit
+  trials), the "identical at 100,000" check was not a noise check, and
+  the NEJM 864 example is a precision-declaration question before it is
+  a methods one. The ledger paragraph is rewritten accordingly.
 
 ---
 
