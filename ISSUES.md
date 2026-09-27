@@ -199,6 +199,17 @@ itself is the ledger's open item, requested from the corpus session.
   by environment variable (issue 174). The 100,000-ceiling run (its own
   row) gives the same figures to three decimals and the same twelve
   largest differences: the ceiling contributes nothing measurable.
+- **Postscript, 2026-09-26 (evening).** At Steve's request the corpus
+  session reran the comparison with the cap raised locally, admitting
+  the 63 mega-trials (the ledger's all-arms rows): the corpus figures
+  move by 0.0003 in r; on the 63 alone r is 0.9635, and rescoring at
+  100,000 replicates reproduces every p to four decimals, so the weaker
+  agreement is a rounding gradient, not noise - it runs through the
+  whole corpus wherever a mean's reporting unit exceeds the standard
+  error of the arm difference, where this engine's treatment of
+  rounding parts from Carlisle's 2017 method. The ledger describes it;
+  whether either treatment is preferable is a methods question for
+  Steve.
 
 ---
 
