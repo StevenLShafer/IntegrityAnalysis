@@ -175,6 +175,22 @@ sources <- rbind(
       "subscription", "newcarlisle-manifest",
       "The extension corpus beyond Carlisle 2017. manifest.csv holds 5,084 targets; 21 files retrieved so far."),
 
+  # THE CARLISLE DOWNLOAD FOLDER (2026-09-27, ISSUES.md issue 176; found by
+  # the Carlisle download session, proposed by the corpus session). The
+  # 1,277 PMID-named PDFs harvested since 2026-09-24 sat in a folder no
+  # source row covered, so the nightly build never saw them. The pattern
+  # is anchored to the PMID file name, so manifest.csv, the runbooks, the
+  # target CSVs and the logs in that folder are not scanned; recursive is
+  # FALSE because the inbox subfolder holds downloads not yet verified and
+  # renamed, and tools/ and logs/ hold no papers. PMID overlap with
+  # C:/temp/Journals is zero (verified 2026-09-27).
+  src("carlisle-download", "C:/dev/Corpus/CarlisleDownload", "^PMID_[0-9]+[.]pdf$",
+      "Publisher web sites (Anesthesia & Analgesia via IARS Ovid, NEJM, JAMA), downloaded under Steve Shafer's subscriptions",
+      "2026-09-24 onward", "paced retrieval by the Carlisle download session; manifest.csv (time, pmid, doi, ovid_url, file, bytes, outcome, md5) is the per-file provenance",
+      "subscription", "filename-pmid",
+      "The Carlisle 2017 corpus beyond C:/temp/Journals, filed by PMID. Supersedes the newcarlisle queue in .NewCarlisle (21 files) as the extension collection; NEJM/JAMA PDFs are Steve's subscription copies, derived tables only leave the machine. Two files carry a retraction watermark (manifest outcome column) and are genuine papers.",
+      recursive = FALSE),
+
   src("shafer-studies", "C:/temp/Shafer studies", "[.](docx|xlsx|pdf)$",
       "Manuscript drafts and published versions of trials Steve Shafer co-authored (the vocacapsaicin postsurgical-pain programme), plus hand-built Table 1 fixtures",
       "2023 to 2024", "author's own files",
