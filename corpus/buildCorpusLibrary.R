@@ -186,7 +186,7 @@ sources <- rbind(
   # C:/temp/Journals is zero (verified 2026-09-27).
   src("carlisle-download", "C:/dev/Corpus/CarlisleDownload", "^PMID_[0-9]+[.]pdf$",
       "Publisher web sites (Anesthesia & Analgesia via IARS Ovid, NEJM, JAMA), downloaded under Steve Shafer's subscriptions",
-      "2026-09-24 onward", "paced retrieval by the Carlisle download session; manifest.csv (time, pmid, doi, ovid_url, file, bytes, outcome, md5) is the per-file provenance",
+      "2026-09-24 onward", "paced retrieval by the Carlisle download session; manifest.csv (time, pmid, doi, ovid_url, file, bytes, outcome) is the per-file provenance; duplicates are caught by the build's own hashCache.csv",
       "subscription", "filename-pmid",
       "The Carlisle 2017 corpus beyond C:/temp/Journals, filed by PMID. Supersedes the newcarlisle queue in .NewCarlisle (21 files) as the extension collection; NEJM/JAMA PDFs are Steve's subscription copies, derived tables only leave the machine. Two files carry a retraction watermark (manifest outcome column) and are genuine papers.",
       recursive = FALSE),
