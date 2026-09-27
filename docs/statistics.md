@@ -63,7 +63,7 @@ summaries exactly as the paper rounded its own, and counts how often
 the simulated arms agree at least as well as the printed ones. Ties
 count half — the mid-p convention, a deliberate choice. A mid-p is
 centred on the right value on average, and it reproduces Carlisle's
-published 2017 values (r = 0.992 over 4,976 usable trials on the 26 September 2026 release build, 0.993 over 5,041 on the 6 September build; [ledger](validation-ledger.md) — agreement is weakest where a mean's reporting unit exceeds the standard error of the arm difference, the regime where this engine's treatment of rounding parts from the 2017 method's, as the ledger sets out), but it is not
+published 2017 values (r = 0.992 over 4,976 usable trials on the 26 September 2026 release build, 0.993 over 5,041 on the 6 September build; [ledger](validation-ledger.md) — agreement is weakest where a mean's reporting unit exceeds the standard error of the arm difference; both procedures account for reporting precision, the differences run in both directions, and the ledger records the association without a settled cause), but it is not
 exactly uniform for every fixed margin of a discrete table: where the
 tie mass is large, the share of honest tables below 0.05 can sit above
 or below 5%. (An inclusive-tail p, counting every tie, would be
