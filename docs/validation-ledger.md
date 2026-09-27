@@ -33,12 +33,32 @@ stands for and judges ties by an exact null (the rounding sections of
 `statistics.md`; the tie experiment of 2026-09-03), where the 2017
 method did not. Across the 5,077 scored trials of the all-arms run,
 grouped by the share of a trial's continuous variables whose reporting
-unit exceeds that standard error: none (3,785 trials) r 0.9929 and 93.2%
-within 0.05; up to a quarter (769) 0.9817 and 79.1%; up to half (378)
-0.9791 and 70.1%; up to three quarters (78) 0.9712 and 57.7%; above
-(67) 0.9673 and 58.2%. By largest arm: 50 or fewer (3,159) 0.9906 and
-91.3%; 1,001 to 5,000 (181) 0.9788 and 68.5%; above 5,000 (63) 0.9635
-and 58.7%. In that regime the engine's p is usually the larger (NEJM 864
+unit exceeds that standard error (the pooled SD times √(1/n₁ + 1/n₂) of
+its two largest arms), agreement falls steadily with the share:
+
+| share of coarse-unit variables | trials | r | median \|Δp\| | within 0.05 | alarm concordance at 0.05 |
+|---|---|---|---|---|---|
+| none | 3,785 | 0.9929 | 0.0122 | 93.2% | 98.7% |
+| up to 25% | 769 | 0.9817 | 0.0204 | 79.1% | 97.0% |
+| 26–50% | 378 | 0.9791 | 0.0298 | 70.1% | 95.5% |
+| 51–75% | 78 | 0.9712 | 0.0398 | 57.7% | 96.2% |
+| above 75% | 67 | 0.9673 | 0.0313 | 58.2% | 100% (67 trials with very few alarms; it says little) |
+
+and, by the largest arm, near-steadily (the two smallest bins are level
+at 91% within 0.05 and the second has the higher r; the fall begins
+above 100 per arm), with the bin's mean coarse-unit share rising
+alongside:
+
+| largest arm | trials | r | median \|Δp\| | within 0.05 | alarm concordance at 0.05 | mean coarse-unit share |
+|---|---|---|---|---|---|---|
+| 50 or fewer | 3,159 | 0.9906 | 0.0129 | 91.3% | 98.5% | 0.04 |
+| 51–100 | 666 | 0.9943 | 0.0129 | 91.6% | 98.2% | 0.07 |
+| 101–500 | 809 | 0.9840 | 0.0176 | 82.6% | 97.5% | 0.12 |
+| 501–1,000 | 199 | 0.9860 | 0.0197 | 80.9% | 98.5% | 0.22 |
+| 1,001–5,000 | 181 | 0.9788 | 0.0262 | 68.5% | 96.1% | 0.30 |
+| above 5,000 | 63 | 0.9635 | 0.0304 | 58.7% | 95.2% | 0.38 |
+
+Both tables sum to the 5,077 scored trials. In that regime the engine's p is usually the larger (NEJM 864
 0.58 against 0.21; NEJM 913 0.49 against 0.23; NEJM 204 0.34 against
 0.16), occasionally the smaller (JAMA 198, twelve variables at 19,541
 and 29,294 per arm: 0.0077 against 0.066). Which treatment is right is a
