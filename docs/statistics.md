@@ -63,7 +63,7 @@ summaries exactly as the paper rounded its own, and counts how often
 the simulated arms agree at least as well as the printed ones. Ties
 count half — the mid-p convention, a deliberate choice. A mid-p is
 centred on the right value on average, and it reproduces Carlisle's
-published 2017 values (r = 0.993 over 5,041 usable trials in the current engine, [ledger](validation-ledger.md)), but it is not
+published 2017 values (r = 0.992 over 4,976 usable trials on the 26 September 2026 release build, 0.993 over 5,041 on the 6 September build; [ledger](validation-ledger.md)), but it is not
 exactly uniform for every fixed margin of a discrete table: where the
 tie mass is large, the share of honest tables below 0.05 can sit above
 or below 5%. (An inclusive-tail p, counting every tie, would be
@@ -387,7 +387,11 @@ builds, to show a reviewer exactly what was run — set the seed: in the
 app, add `?seed=12345` to the page's address before pressing Analyze (or
 start a local copy with `run_app(seed = 12345)`); in the API, send
 `seed` with the request. The same normalized table, the same seed and
-the same build then give the same numbers on any machine; the log and
+the same build then give the same numbers in the same computational
+environment — R and package versions as pinned in `renv.lock`, the RNG
+configuration; on a different platform identical numbers are expected
+but not established, since floating-point libraries and collation can
+differ. The log and
 the results workbook record the seed, and the API echoes it. The build
 matters as much as the seed, because any change to how the simulation
 draws changes what a seed produces: record the build commit (the health

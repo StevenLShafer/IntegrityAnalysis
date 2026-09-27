@@ -12,6 +12,18 @@ same tables, not a measurement of the false-alarm rate or of sensitivity
 to fabrication; the honest-null and synthetic experiments that measure
 those live in `docs/statistics.md` and beside the corpus tooling.
 
+Each row is a measurement of the build it names, on the date and at the
+replicate ceiling it records; no row is a statement about the current
+engine. The statistical changes since the 6 September 2026 rows — the
+numerical trial p entering the across-trial combination (issue 78), the
+null-law key without SE (issue 167), the stated-grid tolerance (issue
+168) — are measured by the two 2026-09-26 rows at 53aa576, at the
+10,000 and the 100,000 ceilings, which agree to three decimals. (The app's
+wall-clock ceiling and draw budget, issues 165 and 166, change no p.)
+That row also records a change of population: the arm cap of 2026-09-09
+refuses the 63 mega-trials the August pilot scored, so n is 5,014
+scored, not 5,080.
+
 | Date | Engine (commit / PR) | Trials compared | Replicate ceiling | r vs Carlisle | median \|Δp\| | within 0.05 | alarm concordance (p < 0.05 both ways) | Notes |
 |---|---|---|---|---|---|---|---|---|
 | 2026-08-17 | mid-p build (PR #8) | 5,080 | 100,000 | 0.991 | 0.0095 | 92% | 97.4% | first full run after mid-p adopted; per-row early stop |
@@ -22,6 +34,8 @@ those live in `docs/statistics.md` and beside the corpus tooling.
 | 2026-09-06 | sigma draw (#185, from merged main) | 5,041 usable | 10,000 | 0.9929 | 0.0142 | 89.1% | 98.5% | median \|Δp\| vs pooled 0.009, confined to ≤ 30 per arm; **the citable row** |
 | 2026-09-06 | sigma-draw engine, location-scale pair (recorded in #193) | 5,041 usable | 10,000 | 0.9931 / 0.9932 | — | 89.3% / 89.9% | 98.5% either way | a PAIRED RE-RUN of the row above, not a new engine: the replicate's common location drawn at σ/√(mean N) (as shipped) vs σ/√ΣN, identical data and seeds; 419 vs 420 alarms, 7 crossing each way; median change 0.0000–0.0007 by arm size, no direction. The 0.9931 differs from the row above's 0.9929 only because it is a fresh run. Data: `C:/dev/Corpus/synthetic/location-scale/` |
 | 2026-09-06 | SD rounding draw (feature/sd-rounding-draw, from 166dc5b) | 5,041 usable | 10,000 | 0.9932 | 0.0138 | 89.2% | 98.5% | vs the sigma-draw run: median \|Δp\| 0.0077, r 0.9982, alarms 420 → 418 (5 down, 7 up), no direction by arm size; data `C:/dev/Corpus/synthetic/sd-round/` |
+| 2026-09-26 | release build after the fifth audit's numerical fixes (53aa576: #483 null-law key without SE, #484 stated-grid tolerance, #486 app draw budget) | 4,976 usable of 5,014 scored | 10,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.9% | 98.2% at 0.05 (his 356 alarms, ours 405); 99.1% at 0.01 (111, 139) | seed 42 re-set per trial; run by the corpus session's `_tools/carlisle2017_compare.R`, John's One Sheet cells through validateData → P_Calc, his stored one-sided p joined with the A&A numbering offset; 66 of 5,080 not scored: 63 refused `too_large` (an arm above `.iaMaxArmN` = 5,000, the mega-trials, which the August pilot scored before the 2026-09-09 cap), 3 `incongruent`; 38 scored trials with his p exactly 1 dropped as usable-rule; 34 with his p in [0.9999, 1) stay in. On all 5,014 scored: r 0.9894, Spearman 0.9891, same medians and concordances. 39.7% within 0.01. Summary workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e4_summary.xlsx`. The difference from the 6 September rows combines the engine's changes since then with the 63 mega-trials now refused; the ceiling contributes nothing measurable (next row) |
+| 2026-09-26 | the same release build, 53aa576 | 4,976 usable of 5,014 scored | 100,000 | 0.9916 (Spearman 0.9916) | 0.0141 | 88.8% | 98.2% at 0.05 (his 356, ours 406); 99.0% at 0.01 (111, 139) | seed 42 re-set per trial, same runner and join as the row above; the 10,000-ceiling figures to three decimals, with the same twelve largest differences at the same p's, so the replicate ceiling contributes nothing measurable to the agreement with Carlisle. On all 5,014 scored: r 0.9894, Spearman 0.9891. 39.9% within 0.01. Workbook `C:/dev/Fujii Boldt Reuben/_batch/Carlisle2017_53aa576_m1e5_summary.xlsx` |
 
 ### A single published trial, computed by the method's own authors
 
@@ -44,7 +58,12 @@ can reach. "Within 0.05" is the share of trials whose
 p lies within 0.05 of his. The runs from 2026-09-05 used
 `INTEGRITY_MMAX=10000` for the reasons recorded in the runner (the
 2026-09-04 run switched to it after its first 3,725 trials); the two
-ceilings change nothing above p = 10⁻⁴. Delta files and per-trial
+ceilings agree wherever a row stops before the third stage, but a row
+that escalates to 100,000 replicates is re-estimated on a fresh batch,
+so the ceiling changes p's near and below 10⁻³ as well as the floor
+(the same seed reads 0.00015 at 10,000 and 0.000195 at 100,000 on the
+2026-09-26 audit's equal-summaries fixture), not only values below
+10⁻⁴. Delta files and per-trial
 results: `C:/dev/Corpus/synthetic/sd-null/`,
 `C:/dev/Corpus/synthetic/exact/` and
 `C:/dev/Corpus/synthetic/location-scale/` (off the repository).

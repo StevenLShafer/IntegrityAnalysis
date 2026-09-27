@@ -163,6 +163,45 @@ on something that takes the app offline."
 
 ---
 
+## 173. Historical validation presented as current; reproducibility promised too broadly
+
+**Status: fixed on `docs/validation-claims-dated`, 2026-09-26**, from
+the outside statistical audit of 2026-09-26 (F7, P3 validation record;
+report held locally under `.audit/`). Documentation only; the rerun
+itself is the ledger's open item, requested from the corpus session.
+
+- **The defect.** The README, the statistics guide and the user guide
+  described the r = 0.993 / 98.5% concordance figures, measured on the
+  6 September 2026 build, as "the current engine's"; the ledger said the
+  two replicate ceilings "change nothing above p = 10⁻⁴", which is false
+  under adaptive redrawing (0.00015 at 10,000 against 0.000195 at
+  100,000 on the same seed); and the guides promised "the same numbers
+  on any machine", broader than the recorded environment establishes.
+- **What changed.** The figures are dated to their build with the rerun
+  named as pending; the ledger says each row measures the build it
+  names and lists the statistical changes since; the ceiling sentence
+  says what the ceiling does change; reproducibility is promised for the
+  recorded computational environment, with a different platform
+  "expected but not established". The methods paper's build paragraph
+  names this build and the fifth audit, and keeps the Carlisle figures
+  tied to the 6 September build until the rerun is recorded. The merge
+  commit of this issue's pull request is the build the paper refers to.
+- **The rerun** (corpus session, 2026-09-26, 53aa576, seed 42, ceiling
+  10,000) is the ledger's newest row: r 0.9916 over 4,976 usable trials,
+  median |Δp| 0.0141, 88.9% within 0.05, alarm concordance 98.2% at 0.05
+  and 99.1% at 0.01 — against 0.9929 / 98.5% over 5,041 on 2026-09-06.
+  It also records that the 2026-09-09 arm cap (`.iaMaxArmN` = 5,000)
+  refuses the 63 mega-trials the August pilot scored. Steve decided the
+  same day that the public cap stays: a trial with 5,000 subjects per
+  arm is funded by a government, a large non-profit or a pharmaceutical
+  company, and the fraud seen in such trials is confined to one or two
+  study sites, not the trial as a whole; a local copy may raise the cap
+  by environment variable (issue 174). The 100,000-ceiling run (its own
+  row) gives the same figures to three decimals and the same twelve
+  largest differences: the ceiling contributes nothing measurable.
+
+---
+
 ## 172. Barnett was presented as the remedy for the arm-SD blind spot
 
 **Status: fixed on `docs/barnett-is-not-the-sd-remedy`, 2026-09-26**,
