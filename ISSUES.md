@@ -132,6 +132,29 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 176. The Carlisle download folder is a corpus source
+
+**Status: fixed on `corpus/register-carlisle-download-folder`, 2026-09-27**,
+found by the Carlisle download session and proposed by the corpus
+session. Corpus tooling only.
+
+- **The gap.** The 1,277 PDFs the download session has harvested since
+  2026-09-24 into `C:/dev/Corpus/CarlisleDownload`, all named
+  `PMID_<pmid>.pdf`, were covered by no `src()` row in
+  `corpus/buildCorpusLibrary.R`, so the nightly build (carlisle-journals
+  1,865, newcarlisle 21) never saw them. Their PMIDs do not overlap
+  `C:/temp/Journals`.
+- **What changed.** A `carlisle-download` source row with the
+  `filename-pmid` identity, the pattern anchored to the PMID file name
+  (the folder's manifest, runbooks, target CSVs and logs are not
+  scanned) and `recursive = FALSE` (the inbox subfolder holds downloads
+  not yet verified and renamed). Preferred over copying the files into
+  `C:/temp/Journals`, which would duplicate 1,277 PDFs, lose the
+  manifest's provenance and mix Steve's original collection.
+- **Next.** The next build plus identity pass indexes them.
+
+---
+
 ## 175. The follow-up statistical audit: seven findings closed, the engine declared done, four ledger corrections
 
 **Status: fixed on `docs/comparator-narrative-corrected`, 2026-09-27**,
