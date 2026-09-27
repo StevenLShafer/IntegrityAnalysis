@@ -132,6 +132,40 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 177. The Carlisle comparison of record carries Carlisle's declared precision
+
+**Status: fixed on `docs/carlisle-comparison-declared-precision`, 2026-09-27**,
+from the corpus session's reruns after the follow-up audit's N3.
+Documentation and ledger only; the runner is the corpus session's.
+
+- **What was found.** The runner had built TRIAL, ROW, N, MEAN and SD
+  from Carlisle's One Sheet and discarded its DECM and DECSD, so the
+  validator inferred precision from stored digits that had lost their
+  trailing zeros (4,015 means by one decimal). Carrying the
+  declarations through, floored at each cell's own digits because 2,401
+  SDs in 144 trials are computed values carrying five or more digits
+  against a declared one decimal, raises agreement with Carlisle on the
+  same 5,038 usable trials from r 0.9913 to 0.9937 (the capped set of
+  4,976 with inferred precision read 0.9916) and on the 63 mega-trials
+  from 0.9635 to 0.9905, and takes NEJM 864 from 0.58 to 0.16 against the
+  stored 0.21. Much of the "rounding gradient" of 2026-09-26 was the
+  inferred precision; a spread within 0.05 remains where reporting
+  units are coarse, and there the engine's p is the smaller in every
+  bin.
+- **What changed.** Three ledger rows (declared-floor as the comparison
+  of record, pure declared for what it loses, the 63 alone), a
+  paragraph with the census of the two precision sources, the movers
+  against the inferred run and the gradient tables with direction
+  counts; the citable figure in the README, the statistics guide, the
+  user guide and the methods paper becomes r 0.994 over 5,038 usable
+  trials with the declared precision, with the inferred-precision and 6
+  September figures beside it.
+- **For curation, not the engine.** 105 means in 48 trials (93 JAMA and
+  NEJM) are declared coarser than their digits (171.5 or 166.75 declared
+  as integers): hand-combined arms, each wanting a page check.
+
+---
+
 ## 176. The Carlisle download folder is a corpus source
 
 **Status: fixed on `corpus/register-carlisle-download-folder`, 2026-09-27**,

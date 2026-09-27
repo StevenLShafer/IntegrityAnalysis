@@ -42,10 +42,13 @@ exactly what is sent, what Anthropic keeps, and for how long).
 - **The Monte Carlo** (`R/P_Calc.R`) — adaptive replicates, exact
   rounding treatment, median/IQR rows via a metalog null, one-sided p
   toward homogeneity, exact combination across rows; measured against
-  Carlisle's 2017 analysis run by run (r = 0.992 and 98.2% alarm
-  concordance over 4,976 usable trials on the 26 September 2026 release
-  build, 0.993 and 98.5% over 5,041 on the 6 September build; every run
-  in [docs/validation-ledger.md](docs/validation-ledger.md)). The method
+  Carlisle's 2017 analysis run by run (r = 0.994 and 98.3% alarm
+  concordance over 5,038 usable trials on the 26 September 2026 release
+  build with Carlisle's declared precision carried through, floored at
+  each cell's own digits (the ledger's declared-floor); 0.992 over
+  4,976 with precision inferred from the printed digits; 0.993 and 98.5%
+  over 5,041 on the 6 September build; every run in
+  [docs/validation-ledger.md](docs/validation-ledger.md)). The method
   as equations, with citations to the original sources, is the
   [methods paper](docs/methods/methods.pdf) (LaTeX source in
   `docs/methods/`; published at <https://integrityanalysis.io/methods.pdf>).
