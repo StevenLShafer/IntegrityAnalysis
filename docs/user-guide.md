@@ -1268,7 +1268,8 @@ most recent row of [the validation ledger](validation-ledger.md), which
 records every such measurement with its build, date, seed and replicate
 ceiling), the stored and recomputed trial p values agree with r = 0.994
 across 5,038 usable trials when Carlisle's declared precision is carried
-through (mid-p convention, one-sided; 0.992 across 4,976 with precision
+through, floored at each cell's own digits (the ledger's declared-floor;
+mid-p convention, one-sided; 0.992 across 4,976 with precision
 inferred from the printed digits; 0.993 across 5,041 on the 6 September
 build), and the two agree on whether a trial alarms at p < 0.05 for
 98.3% of trials and at p < 0.01 for 99.1%.

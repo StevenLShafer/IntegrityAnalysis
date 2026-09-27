@@ -145,8 +145,9 @@ Documentation and ledger only; the runner is the corpus session's.
   declarations through, floored at each cell's own digits because 2,401
   SDs in 144 trials are computed values carrying five or more digits
   against a declared one decimal, raises agreement with Carlisle on the
-  usable trials from r 0.9916 to 0.9937 and on the 63 mega-trials from
-  0.9635 to 0.9905, and takes NEJM 864 from 0.58 to 0.16 against the
+  same 5,038 usable trials from r 0.9913 to 0.9937 (the capped set of
+  4,976 with inferred precision read 0.9916) and on the 63 mega-trials
+  from 0.9635 to 0.9905, and takes NEJM 864 from 0.58 to 0.16 against the
   stored 0.21. Much of the "rounding gradient" of 2026-09-26 was the
   inferred precision; a spread within 0.05 remains where reporting
   units are coarse, and there the engine's p is the smaller in every
