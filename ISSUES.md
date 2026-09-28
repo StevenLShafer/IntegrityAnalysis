@@ -185,7 +185,12 @@ session. Corpus tooling only.
   not yet verified and renamed). Preferred over copying the files into
   `C:/temp/Journals`, which would duplicate 1,277 PDFs, lose the
   manifest's provenance and mix Steve's original collection.
-- **Next.** The next build plus identity pass indexes them.
+- **Indexed.** The 04:30 build of 2026-09-28 (builder at f47a484) took
+  the row: by_source carlisle-download 1,478, beside carlisle-journals
+  1,865 and newcarlisle 21; works 38,324 → 39,785, files 58,290 →
+  59,768. The folder held 1,548 PMID PDFs by 05:15, so the 70 filed
+  after the build started land the following night. `index/sources.csv`
+  carries the row.
 
 ---
 
