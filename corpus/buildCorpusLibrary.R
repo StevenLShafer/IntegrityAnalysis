@@ -191,6 +191,51 @@ sources <- rbind(
       "The Carlisle 2017 corpus beyond C:/temp/Journals, filed by PMID. Supersedes the newcarlisle queue in .NewCarlisle (21 files) as the extension collection; NEJM/JAMA PDFs are Steve's subscription copies, derived tables only leave the machine. Two files carry a retraction watermark (manifest outcome column) and are genuine papers.",
       recursive = FALSE),
 
+  # THE FUJII, BOLDT, REUBEN AND LOADSMAN CORPORA (2026-09-28, ISSUES.md
+  # issue 178; found by the Carlisle download session, verified and
+  # proposed by the corpus session). About 700 manuscripts under
+  # C:/dev/Fujii Boldt Reuben had never been indexed. The folder ROOT is
+  # never a source - it holds _engine (a repository clone and libraries),
+  # _batch and _deliverable - so each row is a subfolder. Under Loadsman,
+  # _confidential (an unpublished manuscript proof), _to_delete, _src (the
+  # raw archives, every file duplicated in RCT/Other) and
+  # RCT_by_institution (md5-identical copies arranged for John's package)
+  # are deliberately not sources. The "other - do not delete" subfolders
+  # of the three author corpora ARE indexed: their exclusion is an
+  # analysis decision, recorded in the Excluded_*.csv files, not a corpus
+  # one.
+  src("fujii", "C:/dev/Fujii Boldt Reuben/Fujii", "[.]pdf$",
+      "Publisher web sites via the Stanford Lane proxy, Stanford DocXpress document delivery, purchases, and the Masui to Sosei (Anesthesia and Resuscitation) papers supplied by Roy Ochiai",
+      "2026-08 to 2026-09", "manual download by Steve Shafer and the corpus session; worklist boldt-fujii (PR #39)",
+      "subscription", "filename-pmid",
+      "Yoshitaka Fujii's retracted trials: 186 PMID_<pmid>.pdf at the top level, 19 MTS<year>_<page>.pdf (Masui to Sosei, not in PubMed, no PMID; citations in AnesthResusc_citations_2026-09-08.csv), and 'other - do not delete/' with 7 PMID PDFs excluded from analysis as not randomised (Excluded_Fujii_2026-09-08.csv). The Carlisle 2012 corpus of 168 is the analysed subset (Carlisle168_filelist_2026-09-24.csv)."),
+
+  src("boldt", "C:/dev/Fujii Boldt Reuben/Boldt", "[.]pdf$",
+      "Publisher web sites via the Stanford Lane proxy, Stanford DocXpress document delivery, and purchases",
+      "2026-08 to 2026-09", "manual download by Steve Shafer and the corpus session; worklist boldt-fujii (PR #39)",
+      "subscription", "filename-pmid",
+      "Joachim Boldt's retracted papers, Boldt_PMID_<pmid>.pdf: 180 papers plus 4 retraction notices and 1 erratum (Boldt_PMID_<pmid>.retraction_notice.pdf, .erratum_2015.pdf) at the top level, and 'other - do not delete/' with 67 PMID PDFs excluded from analysis (Excluded_Boldt)."),
+
+  src("reuben", "C:/dev/Fujii Boldt Reuben/Reuben", "[.]pdf$",
+      "Publisher web sites via the Stanford Lane proxy, Stanford DocXpress document delivery, and purchases",
+      "2026-08 to 2026-09", "manual download by Steve Shafer and the corpus session; worklist boldt-fujii (PR #39)",
+      "subscription", "filename-pmid",
+      "Scott Reuben's retracted papers, Reuben_PMID_<pmid>.pdf: 20 at the top level, 4 excluded from analysis in 'other - do not delete/'."),
+
+  src("loadsman-rct", "C:/dev/Fujii Boldt Reuben/Loadsman/RCT", "[.]pdf$",
+      "Two archives from John Loadsman (Polat etc.zip, Polat, Sait.zip; 201 unique PDFs) plus the Rezk set, received 2026-09-24; publisher PDFs collected by him",
+      "2026-09-24", "received by email from John Loadsman, triaged by the corpus session (Loadsman_triage_2026-09-24.csv)",
+      "unknown", "loadsman-manifest",
+      "The 87 parallel-group human RCTs from the Loadsman case, the set analysed for his package. File names are DOI-style or publisher PII (1-s2.0-<PII>-main.pdf); identity from the triage CSV (a doi for 64, a pmid for 12, 22 with neither).",
+      recursive = FALSE),
+
+  src("loadsman-other", "C:/dev/Fujii Boldt Reuben/Loadsman/Other", "[.]pdf$",
+      "Two archives from John Loadsman (Polat etc.zip, Polat, Sait.zip; 201 unique PDFs) plus the Rezk set, received 2026-09-24; publisher PDFs collected by him",
+      "2026-09-24", "received by email from John Loadsman, triaged by the corpus session (Loadsman_triage_2026-09-24.csv)",
+      "unknown", "loadsman-manifest",
+      "The 181 non-RCT papers from the same archives: 74 randomised animal experiments, 49 in vitro or bench, 7 reviews or case reports, 28 other; a doi for 166, a pmid for 3. Indexed as manuscripts; the method has nothing to say about them.",
+      recursive = FALSE),
+
   src("shafer-studies", "C:/temp/Shafer studies", "[.](docx|xlsx|pdf)$",
       "Manuscript drafts and published versions of trials Steve Shafer co-authored (the vocacapsaicin postsurgical-pain programme), plus hand-built Table 1 fixtures",
       "2023 to 2024", "author's own files",
@@ -310,8 +355,28 @@ readIdentity <- function(kind, paths, srcRow) {
     out$NCT <- sub("^(NCT\\d+)_.*$", "\\1", base)
     out$NCT[!grepl("^NCT\\d+$", out$NCT)] <- NA
   } else if (kind == "filename-pmid") {
-    out$PMID <- ifelse(grepl("^PMID_\\d+", base),
-                       sub("^PMID_(\\d+).*$", "\\1", base), NA)
+    # PMID_<pmid>.pdf, and since issue 178 also Boldt_PMID_<pmid>.pdf and
+    # Reuben_PMID_<pmid>.pdf: the PMID is the digits after a "PMID_" that
+    # starts the name or follows an underscore. A retraction notice or an
+    # erratum named after its paper (Boldt_PMID_<pmid>.retraction_notice.pdf)
+    # takes that paper's PMID, which is right - it is a version of that
+    # work - and the content hash keeps the files apart.
+    out$PMID <- ifelse(grepl("(^|_)PMID_\\d+", base),
+                       sub("^.*?(^|_)PMID_(\\d+).*$", "\\2", base), NA)
+  } else if (kind == "loadsman-manifest") {
+    # The Loadsman triage CSV sits one level above the RCT and Other
+    # folders (issue 178): its `filename` column is the file's base name,
+    # `pmid` and `doi` are filled where known (87 of 87 and 181 of 181
+    # files have a row; a doi for most, a pmid for a few, 22 RCTs with
+    # neither, which then rest on the content hash alone).
+    tf <- file.path(dirname(srcRow$PATH), "Loadsman_triage_2026-09-24.csv")
+    if (file.exists(tf)) {
+      m <- utils::read.csv(tf, colClasses = "character")
+      i <- safeMatch(tolower(base), tolower(m$filename))
+      pm <- trimws(m$pmid[i]); dz <- trimws(m$doi[i])
+      out$PMID <- ifelse(!is.na(pm) & nzchar(pm), pm, NA)
+      out$DOI  <- ifelse(!is.na(dz) & nzchar(dz), dz, NA)
+    }
   }
   out$PMID[!is.na(out$PMID) & !grepl("^\\d+$", out$PMID)] <- NA
   out
