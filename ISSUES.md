@@ -132,6 +132,46 @@ run follows it into the same path and is renamed on completion.
 
 ---
 
+## 178. The Fujii, Boldt, Reuben and Loadsman corpora are corpus sources
+
+**Status: fixed on `corpus/register-fujii-boldt-reuben-loadsman`, 2026-09-28**,
+found by the Carlisle download session, verified and proposed by the
+corpus session, on Steve's ask for one integrated corpus across all
+manuscripts. Corpus tooling only.
+
+- **The gap.** `C:/dev/Fujii Boldt Reuben` had no source row in
+  `corpus/buildCorpusLibrary.R`, so about 700 manuscripts - the three
+  retraction corpora and John Loadsman's archives - had never been
+  indexed.
+- **What changed.** Five rows, each a subfolder (the root holds
+  `_engine`, `_batch` and `_deliverable` and is never a source): `fujii`
+  (212 PDFs: 186 PMID-named, 19 Masui to Sosei papers without a PMID, 7
+  excluded from analysis in "other - do not delete"), `boldt` (252: 180
+  papers, 4 retraction notices, 1 erratum, 67 excluded), `reuben` (24:
+  20 and 4 excluded), `loadsman-rct` (the 87 parallel-group human RCTs
+  of the Loadsman case) and `loadsman-other` (the 181 non-RCT papers
+  from the same archives). The "other - do not delete" subfolders are
+  indexed: their exclusion is an analysis decision, recorded in the
+  `Excluded_*.csv` files, not a corpus one. Never a source under
+  Loadsman: `_confidential` (an unpublished manuscript proof, whose
+  hash the corpus session verified appears nowhere in RCT, Other or
+  RCT_by_institution), `_to_delete`, `_src` (the raw archives, every
+  file duplicated in RCT and Other) and `RCT_by_institution`
+  (md5-identical copies arranged for John's package). Two identity
+  changes: `filename-pmid` now reads a PMID after any underscore
+  (`Boldt_PMID_<pmid>.pdf`; a retraction notice or erratum named after
+  its paper takes that paper's PMID, the hash keeping the files apart),
+  and a `loadsman-manifest` kind reads the triage CSV one level above
+  the RCT and Other folders, matching on file name and taking `pmid` and
+  `doi` where filled.
+- **Checked.** On the real folders: 205 + 7, 185 + 67, 20 + 4, 87 and
+  181 PDFs; the triage CSV's columns; the identity function on the
+  Boldt and Reuben names, the Masui to Sosei names (no PMID) and the
+  Loadsman folders (64 dois and 12 pmids among the 87 RCTs). The 04:30
+  build indexes them; the counts follow here as for issue 176.
+
+---
+
 ## 177. The Carlisle comparison of record carries Carlisle's declared precision
 
 **Status: fixed on `docs/carlisle-comparison-declared-precision`, 2026-09-27**,
