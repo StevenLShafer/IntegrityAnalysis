@@ -174,7 +174,9 @@ manuscripts. Corpus tooling only.
   252, reuben 24, loadsman-rct 87, loadsman-other 181 - the folder
   counts exactly, the hash dedup folding nothing. The library went from
   39,785 to 40,605 works and 59,768 to 60,652 files (884 newly hashed);
-  by_share restricted 34,248 (+2,362), the other classes unchanged. The
+  by_share restricted 34,248, up 2,362 over the day's two builds (this
+  morning's 1,478 carlisle-download files and tonight's 884: 1,478 + 884
+  = 2,362), the other share classes unchanged by either build. The
   identity pass followed (15,028 PubMed records); the zipped backup was
   left to the 04:30 nightly.
 
