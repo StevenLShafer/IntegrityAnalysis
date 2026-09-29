@@ -167,8 +167,18 @@ manuscripts. Corpus tooling only.
 - **Checked.** On the real folders: 205 + 7, 185 + 67, 20 + 4, 87 and
   181 PDFs; the triage CSV's columns; the identity function on the
   Boldt and Reuben names, the Masui to Sosei names (no PMID) and the
-  Loadsman folders (64 dois and 12 pmids among the 87 RCTs). The 04:30
-  build indexes them; the counts follow here as for issue 176.
+  Loadsman folders (64 dois and 12 pmids among the 87 RCTs).
+- **Indexed.** Steve asked for the download work to reach the master
+  corpus the same night, so the corpus session ran the build by hand at
+  main 4190625 (2026-09-28 20:41 to 21:05): by_source fujii 212, boldt
+  252, reuben 24, loadsman-rct 87, loadsman-other 181 - the folder
+  counts exactly, the hash dedup folding nothing. The library went from
+  39,785 to 40,605 works and 59,768 to 60,652 files (884 newly hashed);
+  by_share restricted 34,248, up 2,362 over the day's two builds (this
+  morning's 1,478 carlisle-download files and tonight's 884: 1,478 + 884
+  = 2,362), the other share classes unchanged by either build. The
+  identity pass followed (15,028 PubMed records); the zipped backup was
+  left to the 04:30 nightly.
 
 ---
 
@@ -230,7 +240,8 @@ session. Corpus tooling only.
   1,865 and newcarlisle 21; works 38,324 → 39,785, files 58,290 →
   59,768. The folder held 1,548 PMID PDFs by 05:15, so the 70 filed
   after the build started land the following night. `index/sources.csv`
-  carries the row.
+  carries the row. The hand-run build of 2026-09-28 21:05 (issue 178)
+  found 1,606 in that source.
 
 ---
 
